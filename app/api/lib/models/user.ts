@@ -1,5 +1,5 @@
-import mongoose, { Schema, Model, model } from 'mongoose';
-import { User } from '@/app/api/lib/types/auth';
+import mongoose, {model, Schema} from 'mongoose';
+import {User} from '@/app/api/lib/types/auth';
 
 const UserSchema = new Schema<User>(
     {
