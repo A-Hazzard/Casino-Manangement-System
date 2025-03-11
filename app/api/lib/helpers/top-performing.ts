@@ -1,5 +1,5 @@
 import { Db } from "mongodb"
-import { QueryFilter, CustomDate } from "../types"
+import {QueryFilter, CustomDate, TimePeriod} from "../types"
 import { getDatesForTimePeriod } from "../utils/dates"
 import { ActiveTab } from "@/lib/types"
 
@@ -16,7 +16,7 @@ type PipelineStage = Record<string, unknown>
 export async function getTopPerformingMetrics(
   db: Db,
   activeTab: ActiveTab,
-  timePeriod: string
+  timePeriod: TimePeriod
 ) {
   const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod)
 

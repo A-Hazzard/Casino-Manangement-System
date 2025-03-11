@@ -22,6 +22,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback, useRef } from "react";
 import LoadingOverlay from "@/components/layout/LoadingOverlay";
 import getAllGamingLocations from "@/lib/helpers/locations";
+import {TimePeriod} from "@/app/api/lib/types";
 
 export default function Home() {
     // Full-page overlay shown only on the first load.
@@ -115,7 +116,7 @@ export default function Home() {
                     );
                     setGamingLocations(validLocations);
                 }
-                const timeFrame = getTimeFrame() as "Today" | "Yesterday" | "7d" | "30d" | "Custom";
+                const timeFrame = getTimeFrame() as TimePeriod;
                 setActiveMetricsFilter(timeFrame);
 
                 // Only pass licencee if selected.

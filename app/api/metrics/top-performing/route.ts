@@ -2,6 +2,7 @@ import { connectDB } from "@/app/api/lib/middleware/db"
 import { NextRequest, NextResponse } from "next/server"
 import { getTopPerformingMetrics } from "@/app/api/lib/helpers/top-performing"
 import { ActiveTab } from "@/lib/types"
+import {TimePeriod} from "@/app/api/lib/types";
 
 /**
  * Retrieves the TOP 5 Performing Locations or Gaming Cabinets (machines)** 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     
     const activeTab = (searchParams.get("activeTab") as ActiveTab) || "locations" 
-    const timePeriod = searchParams.get("timePeriod") || "7d" 
+    const timePeriod: TimePeriod = searchParams.get("timePeriod") as TimePeriod || "7d"
 
     console.log(`📊 Fetching top 5 ${activeTab} for ${timePeriod}...`)
 

@@ -2,6 +2,7 @@ import { connectDB } from "@/app/api/lib/middleware/db"
 import { NextRequest, NextResponse } from "next/server"
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates"
 import { getMetricsForLocations } from '@/app/api/lib/helpers/meters/aggregations'
+import {ParamsType} from "@/app/api/lib/types";
 
 /**
  * Retrieves **meter trend data** for gaming locations based on a specified **time period** or a **Custom date range**.
@@ -45,11 +46,11 @@ export async function GET(req: NextRequest) {
     const params = Object.fromEntries(req.nextUrl.searchParams.entries())
 
     let { startDate, endDate  } = params
-    const { timePeriod, licencee } = params
+    const { timePeriod, licencee } = params as ParamsType
     if (startDate && endDate) {
       startDate = new Date(startDate).toISOString()
       endDate = new Date(endDate).toISOString()
-    } else if (timePeriod && timePeriod !== "all") {
+    } else {
       const dates = getDatesForTimePeriod(timePeriod)
       startDate = dates.startDate.toISOString()
       endDate = dates.endDate.toISOString()

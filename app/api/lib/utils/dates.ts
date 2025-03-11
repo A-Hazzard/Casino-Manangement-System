@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { CustomDate } from '@/app/api/lib/types';
+import {CustomDate, TimePeriod} from '@/app/api/lib/types';
 
 // Extend dayjs with the required plugins
 dayjs.extend(utc);
@@ -17,7 +17,7 @@ const DEFAULT_TIMEZONE = 'America/Port_of_Spain';
  * @returns {{ startDate: Date, endDate: Date }} - An object containing the calculated start and end dates.
  */
 export const getDatesForTimePeriod = (
-    timePeriod: 'Today' | 'Yesterday' | '7d' | '30d',
+    timePeriod: TimePeriod,
     locationTimeZone: string = DEFAULT_TIMEZONE
 ): CustomDate => {
   let startDate: Date;
