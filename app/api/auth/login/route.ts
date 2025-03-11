@@ -29,7 +29,7 @@ export async function POST(request: Request) {
             response.cookies.set("token", result.token || "", {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                maxAge: 3600,
+                maxAge: 172800,
                 path: "/",
             });
 

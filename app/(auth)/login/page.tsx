@@ -39,10 +39,9 @@ export default function LoginPage() {
         try {
             const response = await loginUser({emailAddress, password});
             if (response.success) {
-                setMessage("Login successful!");
                 router.push('/')
             } else {
-                setMessage(response.message || "Login failed.");
+                setMessage("Invalid Credentials.");
             }
         } catch (error) {
             setMessage("An unexpected error occurred.");
