@@ -1,37 +1,47 @@
-import mongoose from "mongoose"
-import { Db } from "mongodb"
+// lib/middleware/db.ts
+import mongoose from 'mongoose';
 
-const MONGO_URI = process.env.MONGO_URI as string
+const MONGODB_URI = process.env.MONGO_URI;
+if (!MONGODB_URI) throw new Error('❌ MONGO_URI not set in environment variables');
 
-if (!MONGO_URI) {
-  throw new Error("❌ MongoDB connection string is missing from env variables")
+interface MongooseCache {
+  conn: mongoose.Connection | null;
+  promise: Promise<mongoose.Connection> | null;
 }
 
-let cachedDb: mongoose.Connection | null = null
-let connectionPromise: Promise<Db | undefined> | null = null; // For locking
+const mongooseCache: MongooseCache = {
+  conn: null,
+  promise: null,
+};
 
 /**
- * Connects to MongoDB and returns the database instance.
- * Uses caching to avoid multiple connections.
- * 
- * @returns {Promise<Db>} - The MongoDB database instance.
+ * Connects to MongoDB with caching and explicitly returns a native MongoDB Db instance.
+ *
+ * @returns {Promise<Db>} MongoDB database instance (native MongoDB driver).
  */
-export async function connectDB(): Promise<Db | undefined> {
-  if (cachedDb) {
-    console.log("🔄 Using cached database connection");
-    return mongoose.connection.db;
+export async function connectDB() {
+  if (mongooseCache.conn) {
+    console.log('🔄 Using cached MongoDB connection');
+    return mongooseCache.conn.db; // Return the native driver Db instance
   }
 
-  if (!connectionPromise) {
-    connectionPromise = (async () => {
-      console.log("🔌 Connecting to MongoDB...");
-      const connection = await mongoose.connect(MONGO_URI);
-      cachedDb = connection.connection; // Cache successful connection
-      console.log("✅ Connected to MongoDB");
-
-      return mongoose.connection.db;
-    })();
+  if (!mongooseCache.promise) {
+    mongooseCache.promise = mongoose
+        .connect(MONGODB_URI || "", {
+          bufferCommands: false,
+          connectTimeoutMS: 10000,
+        })
+        .then((mongooseInstance) => {
+          console.log('🔥 MongoDB connected successfully.');
+          return mongooseInstance.connection;
+        })
+        .catch((err) => {
+          mongooseCache.promise = null;
+          console.error('❌ MongoDB connection error:', err);
+          throw err;
+        });
   }
 
-  return connectionPromise;
+  mongooseCache.conn = await mongooseCache.promise;
+  return mongooseCache.conn.db; // Native MongoDB driver
 }

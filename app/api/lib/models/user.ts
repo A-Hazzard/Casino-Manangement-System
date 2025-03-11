@@ -1,23 +1,24 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Model, model } from 'mongoose';
+import { User } from '@/app/api/lib/types/auth';
 
-const UserSchema = new mongoose.Schema(
+const UserSchema = new Schema<User>(
     {
         isEnabled: { type: Boolean, default: true },
-        roles: { type: [String], default: [] },
-        permissions: { type: [String], default: [] },
+        roles: [{ type: String }],
         username: { type: String, required: true },
-        emailAddress: { type: String, required: true},
+        emailAddress: { type: String, required: true, unique: true },
         profile: {
             firstName: { type: String },
             lastName: { type: String },
             gender: { type: String },
         },
         password: { type: String, required: true },
-        deletedAt: { type: Date, default: null },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date },
     },
     { timestamps: true }
 );
 
-UserSchema.index({ emailAddress: 1}, { unique: true })
+const UserModel = mongoose.models.users || model<User>('users', UserSchema);
 
-export default mongoose.models.User || mongoose.model("users", UserSchema);
+export default UserModel;
