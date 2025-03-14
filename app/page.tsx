@@ -6,56 +6,36 @@ import PcLayout from "@/components/layout/PcLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import CustomSelect from "@/components/ui/CustomSelect";
 import DateRange from "@/components/ui/dateRange";
-import { RADIAN, timeFrames } from "@/lib/constants/uiConstants";
-import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
-import {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    dateRange,
-    locations,
-    TopPerformingData,
-} from "@/lib/types";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import { switchFilter } from "@/lib/utils/metrics";
+import {RADIAN, timeFrames} from "@/lib/constants/uiConstants";
+import {fetchTopPerformingData} from "@/lib/helpers/topPerforming";
+import {ActiveFilters, dashboardData,} from "@/lib/types";
+import {CustomizedLabelProps} from "@/lib/types/componentProps";
+import {switchFilter} from "@/lib/utils/metrics";
 import Image from "next/image";
-import { useEffect, useState, useCallback, useRef } from "react";
+import {useCallback, useEffect, useRef} from "react";
 import LoadingOverlay from "@/components/layout/LoadingOverlay";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import {TimePeriod} from "@/app/api/lib/types";
+import {useDashBoardStore} from "@/lib/ store/dashboardStore";
 
 export default function Home() {
-    // Full-page overlay shown only on the first load.
-    const [initialLoading, setInitialLoading] = useState(true);
-    // Used for showing skeleton loaders in the aggregator (chart & metrics) area.
-    const [loadingChartData, setLoadingChartData] = useState(false);
-    // New state for top-performing loading.
-    const [loadingTopPerforming, setLoadingTopPerforming] = useState(false);
-
-    const [pieChartSortIsOpen, setPieChartSortIsOpen] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [activeTab, setActiveTab] = useState<ActiveTab>("Cabinets");
-    const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-        Today: true,
-        Yesterday: false,
-        last7days: false,
-        last30days: false,
-        Custom: false,
-    });
-    const [totals, setTotals] = useState<dashboardData | null>(null);
-    const [chartData, setChartData] = useState<dashboardData[]>([]);
-    const [activeMetricsFilter, setActiveMetricsFilter] = useState("Today");
-    // Top performing filter state – separate from aggregator filter.
-    const [activePieChartFilter, setActivePieChartFilter] = useState("Today");
-    const [CustomDateRange, setCustomDateRange] = useState<dateRange>({
-        startDate: new Date(),
-        endDate: new Date(),
-    });
-    const [topPerformingData, setTopPerformingData] = useState<TopPerformingData[]>([]);
-    const [gamingLocations, setGamingLocations] = useState<locations[]>([]);
-    // Licencee state: empty string means "All Licencee"
-    const [selectedLicencee, setSelectedLicencee] = useState("");
-
+    const {
+        initialLoading, setInitialLoading,
+        loadingChartData, setLoadingChartData,
+        loadingTopPerforming, setLoadingTopPerforming,
+        activeFilters, setActiveFilters,
+        activeMetricsFilter, setActiveMetricsFilter,
+        activePieChartFilter, setActivePieChartFilter,
+        activeTab, setActiveTab,
+        totals, setTotals,
+        chartData, setChartData,
+        gamingLocations, setGamingLocations,
+        selectedLicencee, setSelectedLicencee,
+        showDatePicker, setShowDatePicker,
+        customDateRange, setCustomDateRange,
+        topPerformingData, setTopPerformingData,
+        pieChartSortIsOpen, setPieChartSortIsOpen
+    } = useDashBoardStore();
     // To compare new totals with previous ones.
     const prevTotals = useRef<dashboardData | null>(null);
 
@@ -128,14 +108,14 @@ export default function Home() {
             } catch (error) {
                 console.error("Error fetching metrics:", error);
             } finally {
+                setLoadingChartData(false);
                 if (initialLoading) {
                     setInitialLoading(false);
                 }
-                // Leave loadingChartData true until new totals are received.
             }
         }
         void loadData();
-    }, [activeFilters, getTimeFrame, selectedLicencee, initialLoading]);
+    }, [activeFilters, selectedLicencee, initialLoading, setActiveMetricsFilter, setTotals, setChartData, setInitialLoading, setLoadingChartData, setGamingLocations]);
 
     // Top Performing: Fetch top performing data separately.
     useEffect(() => {
@@ -206,7 +186,7 @@ export default function Home() {
                     {showDatePicker && (
                         <div className="w-fit mx-auto lg:hidden my-4">
                             <DateRange
-                                CustomDateRange={CustomDateRange}
+                                CustomDateRange={customDateRange}
                                 setCustomDateRange={setCustomDateRange}
                                 setTotals={setTotals}
                                 setChartData={setChartData}
@@ -226,7 +206,7 @@ export default function Home() {
                         topPerformingData={topPerformingData}
                         showDatePicker={showDatePicker}
                         setLoadingChartData={setLoadingChartData}
-                        CustomDateRange={CustomDateRange}
+                        CustomDateRange={customDateRange}
                         setCustomDateRange={setCustomDateRange}
                         setActiveFilters={setActiveFilters}
                         setActiveTab={setActiveTab}
@@ -255,7 +235,7 @@ export default function Home() {
                         topPerformingData={topPerformingData}
                         showDatePicker={showDatePicker}
                         setLoadingChartData={setLoadingChartData}
-                        CustomDateRange={CustomDateRange}
+                        CustomDateRange={customDateRange}
                         setCustomDateRange={setCustomDateRange}
                         setActiveFilters={setActiveFilters}
                         setActiveTab={setActiveTab}

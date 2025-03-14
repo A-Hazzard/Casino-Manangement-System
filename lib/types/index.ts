@@ -103,7 +103,17 @@ export type locations = {
   }
 }
 
-export type AuthJWTPayload = {
-  userId: string;
-  email: string;
-}
+export type UserAuthPayload = {
+  _id: string;
+  emailAddress: string;
+  password?: string;
+  isEnabled: boolean;
+  roles: string[];
+  permissions: string[];
+  resourcePermissions: {
+    [key: string]: {
+      entity: string;
+      resources: string[]
+    }
+  }
+};

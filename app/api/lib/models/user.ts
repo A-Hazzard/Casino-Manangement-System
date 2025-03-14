@@ -1,7 +1,6 @@
 import mongoose, {model, Schema} from 'mongoose';
-import {User} from '@/app/api/lib/types/auth';
 
-const UserSchema = new Schema<User>(
+const UserSchema = new Schema(
     {
         isEnabled: { type: Boolean, default: true },
         roles: [{ type: String }],
@@ -19,6 +18,6 @@ const UserSchema = new Schema<User>(
     { timestamps: true }
 );
 
-const UserModel = mongoose.models.users || model<User>('users', UserSchema);
+const UserModel = mongoose.models.users || model('users', UserSchema);
 
 export default UserModel;

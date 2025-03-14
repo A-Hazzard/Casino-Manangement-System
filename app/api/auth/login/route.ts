@@ -18,28 +18,29 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await authenticateUser(emailAddress, password);
-        if (result.success) {
-            console.log(`Login successful for user ${emailAddress}`);
-            const response = NextResponse.json({
-                success: true,
-                message: "Login successful",
-                token: result.token,
-            });
-
-            response.cookies.set("token", result.token || "", {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                maxAge: 172800,
-                path: "/",
-            });
-
-            return response;
-        } else {
+        if (!result.success || !result.user || !result.token) {
             return NextResponse.json(
                 { success: false, message: result.message || "Invalid credentials." },
                 { status: 401 }
             );
         }
+
+        const response = NextResponse.json({
+            success: true,
+            message: "Login successful",
+            user: result.user,
+            token: result.token,
+        });
+
+        response.cookies.set("token", result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 172800, // 48 hours
+            path: "/",
+        });
+
+        return response;
+
     } catch (error) {
         console.error("Login API error:", error);
         return NextResponse.json(

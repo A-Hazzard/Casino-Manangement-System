@@ -7,8 +7,8 @@ const publicPaths = ["/login", "/forgot-password"];
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Exclude API routes from middleware authentication
-    if (pathname.startsWith("/api")) {
+    // ✅ Skip API requests & public assets
+    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/favicon.ico")) {
         return NextResponse.next();
     }
 
@@ -26,10 +26,12 @@ export async function middleware(request: NextRequest) {
 
     const isPublicPath = publicPaths.includes(pathname);
 
+    // ✅ Redirect logged-in users away from `/login`
     if (isAuthenticated && isPublicPath) {
         return NextResponse.redirect(new URL("/", request.url));
     }
 
+    // ✅ Redirect unauthenticated users away from protected pages
     if (!isAuthenticated && !isPublicPath) {
         return NextResponse.redirect(new URL("/login", request.url));
     }

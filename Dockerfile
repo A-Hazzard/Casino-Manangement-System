@@ -1,6 +1,5 @@
 # ⚡ Stage 1: Base Image
 FROM node:18-alpine AS base
-
 # Set working directory
 WORKDIR /app
 

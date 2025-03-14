@@ -1,9 +1,9 @@
-import {User} from "@/app/api/lib/types/auth";
+import {UserDocument} from "@/app/api/lib/types/auth";
 
-export function validateEmail(emailAddress: User["emailAddress"]): boolean {
+export function validateEmail(emailAddress: UserDocument["emailAddress"]): boolean {
     return /\S+@\S+\.\S+/.test(emailAddress)
 }
 
-export function validatePassword(password: User["password"]): boolean {
+export function validatePassword(password: UserDocument["password"]): boolean {
     return password.length >= 6
 }

@@ -1,13 +1,14 @@
-export type User = {
-    _id: string
-    isEnabled: boolean
-    roles: Array<string>
-    permissions: Array<string>
-    username: string
-    emailAddress: string
-    profile: Record<string, string>
-    password: string
-    deletedAt: Date
-    createdAt: Date
-    updatedAt: Date
-}
+import { Document } from "mongoose";
+
+export type UserDocument = Document & {
+    _id: string;
+    emailAddress: string;
+    password: string;
+    isEnabled: boolean;
+    roles: string[];
+    permissions: string[];
+    resourcePermissions: Record<string, {
+        entity: string;
+        resources: string[];
+    }>;
+};

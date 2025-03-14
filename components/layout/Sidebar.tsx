@@ -1,26 +1,10 @@
 "use client"
 
 import Image from 'next/image';
-import { LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import {LogOut} from 'lucide-react';
+import {logoutUser} from "@/lib/helpers/auth";
 
 export default function Sidebar() {
-    const router = useRouter();
-
-    const handleLogout = async () => {
-        const response = await fetch('/api/auth/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (response.ok) {
-            router.push('/login');
-        } else {
-            console.error('Failed to logout');
-        }
-    };
 
     return (
         <aside
@@ -36,7 +20,7 @@ export default function Sidebar() {
             />
             {/* Other sidebar items */}
             <button
-                onClick={handleLogout}
+                onClick={logoutUser}
                 className="group mt-auto mb-4 mx-auto p-2 rounded hover:bg-buttonActive"
                 aria-label="Logout"
             >

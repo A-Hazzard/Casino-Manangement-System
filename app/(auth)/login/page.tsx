@@ -1,10 +1,10 @@
 "use client";
 
 import React, {useState} from "react";
-import { useRouter } from "next/navigation";
+import {useRouter} from "next/navigation";
 import {motion} from "framer-motion";
 import {loginUser, sendForgotPasswordEmail} from "@/lib/helpers/auth"; // Frontend helper functions
-import {validateEmail, validatePassword} from "@/lib/utils/validation"; // Frontend validation functions
+import {validateEmail, validatePassword} from "@/lib/utils/validation";
 
 export default function LoginPage() {
     const [isForgot, setIsForgot] = useState(false);
