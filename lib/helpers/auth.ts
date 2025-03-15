@@ -10,7 +10,7 @@ export async function loginUser({
 }) {
     try {
         const { data } = await axios.post("/api/auth/login/", { emailAddress, password }, { withCredentials: true });
-
+        console.log(data, 'is data');
         if (data.success) {
             useUserStore.getState().setUser(data.user);
             return { success: true };
@@ -18,6 +18,7 @@ export async function loginUser({
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        console.error(errorMessage, 'is error message')
         return { success: false, message: errorMessage };
     }
 
