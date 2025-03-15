@@ -29,7 +29,7 @@ export async function connectDB() {
     mongooseCache.promise = mongoose
         .connect(MONGODB_URI || "", {
           bufferCommands: false,
-          connectTimeoutMS: 10000,
+          connectTimeoutMS: 30000,
         })
         .then((mongooseInstance) => {
           console.log('🔥 MongoDB connected successfully.');
