@@ -41,7 +41,7 @@ export default function LoginPage() {
             if (response.success) {
                 router.push('/')
             } else {
-                setMessage("Invalid Credentials.");
+                setMessage(response.message);
             }
         } catch (error) {
             setMessage("An unexpected error occurred.");
