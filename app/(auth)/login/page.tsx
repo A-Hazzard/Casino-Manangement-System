@@ -41,6 +41,7 @@ export default function LoginPage() {
             if (response.success) {
                 router.push('/')
             } else {
+                console.log(response)
                 setMessage(response.message);
             }
         } catch (error) {
