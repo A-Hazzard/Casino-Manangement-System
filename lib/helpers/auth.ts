@@ -19,7 +19,7 @@ export async function loginUser({
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error(errorMessage, 'is error message')
-        return { success: false, message: errorMessage };
+        return { success: false, error: errorMessage };
     }
 
 }

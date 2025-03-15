@@ -39,7 +39,7 @@ export default function LoginPage() {
         try {
             const response = await loginUser({emailAddress, password});
             if (response.success) router.push('/')
-            else setMessage(response.message);
+            else if (response.error) setMessage(response.error);
 
         } catch (error) {
             setMessage("An unexpected error occurred.");
