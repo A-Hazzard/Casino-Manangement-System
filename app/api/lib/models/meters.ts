@@ -1,6 +1,7 @@
-import { Schema, model, models } from "mongoose"
+import { Schema, model, models } from "mongoose";
 
 const MeterSchema = new Schema({
+  _id: String,
   machine: { type: Schema.Types.ObjectId, ref: "Machine", required: true },
   location: { type: Schema.Types.ObjectId, ref: "Location", required: true },
   locationSession: { type: Schema.Types.ObjectId, ref: "LocationSession" },
@@ -18,11 +19,23 @@ const MeterSchema = new Schema({
     totalCancelledCredits: Number,
     jackpot: Number,
   },
-})
+  coinIn: { type: Number },
+  coinOut: { type: Number },
+  totalCancelledCredits: { type: Number },
+  totalHandPaidCancelledCredits: { type: Number },
+  totalWonCredits: { type: Number },
+  drop: { type: Number },
+  jackpot: { type: Number },
+  currentCredits: { type: Number },
+  gamesPlayed: { type: Number },
+  gamesWon: { type: Number },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
 
-MeterSchema.index({readAt: 1})
-MeterSchema.index({location: 1})
-MeterSchema.index({machine: 1})
-
-
-export const Meter = models.Meter || model("meters", MeterSchema)
+/**
+ * Mongoose model for meter readings, including references to machines and locations, and all meter fields.
+ * Exported as 'Meter' for use in API routes and data access layers.
+ */
+const Meter = models.Meter || model("Meter", MeterSchema);
+export { Meter };

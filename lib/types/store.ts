@@ -1,62 +1,63 @@
 import {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    dateRange,
-    locations,
-    TopPerformingData, UserAuthPayload,
+  ActiveFilters,
+  ActiveTab,
+  dashboardData,
+  dateRange,
+  locations,
+  TopPerformingData,
+  UserAuthPayload,
 } from "@/lib/types/index";
 import { TimePeriod } from "@/app/api/lib/types";
 
 export type DashBoardStore = {
-    initialLoading: boolean;
-    setInitialLoading: (state: boolean) => void;
+  initialLoading: boolean;
+  setInitialLoading: (_state: boolean) => void;
 
-    loadingChartData: boolean;
-    setLoadingChartData: (state: boolean) => void;
+  loadingChartData: boolean;
+  setLoadingChartData: (_state: boolean) => void;
 
-    loadingTopPerforming: boolean;
-    setLoadingTopPerforming: (state: boolean) => void;
+  loadingTopPerforming: boolean;
+  setLoadingTopPerforming: (_state: boolean) => void;
 
-    pieChartSortIsOpen: boolean;
-    setPieChartSortIsOpen: (state: boolean) => void;
+  pieChartSortIsOpen: boolean;
+  setPieChartSortIsOpen: (_state: boolean) => void;
 
-    showDatePicker: boolean;
-    setShowDatePicker: (state: boolean) => void;
+  showDatePicker: boolean;
+  setShowDatePicker: (_state: boolean) => void;
 
-    activeTab: ActiveTab;
-    setActiveTab: (state: ActiveTab) => void;
+  activeTab: ActiveTab;
+  setActiveTab: (_state: ActiveTab) => void;
 
-    activeFilters: ActiveFilters;
-    setActiveFilters: (state: ActiveFilters) => void;
+  activeFilters: ActiveFilters;
+  setActiveFilters: (_state: ActiveFilters) => void;
 
-    totals: dashboardData | null;
-    setTotals: (state: dashboardData | null) => void;
+  totals: dashboardData | null;
+  setTotals: (_state: dashboardData | null) => void;
 
-    chartData: dashboardData[];
-    setChartData: (state: dashboardData[]) => void;
+  chartData: dashboardData[];
+  setChartData: (_state: dashboardData[]) => void;
 
-    activeMetricsFilter: TimePeriod;
-    setActiveMetricsFilter: (state: TimePeriod) => void;
+  activeMetricsFilter: TimePeriod;
+  setActiveMetricsFilter: (_state: TimePeriod) => void;
 
-    activePieChartFilter: TimePeriod;
-    setActivePieChartFilter: (state: TimePeriod) => void;
+  activePieChartFilter: TimePeriod;
+  setActivePieChartFilter: (_state: TimePeriod) => void;
 
-    customDateRange: dateRange;
-    setCustomDateRange: (state: dateRange) => void;
+  customDateRange: dateRange;
+  setCustomDateRange: (_state: dateRange) => void;
 
-    topPerformingData: TopPerformingData[];
-    setTopPerformingData: (state: TopPerformingData[]) => void;
+  topPerformingData: TopPerformingData[];
+  setTopPerformingData: (_state: TopPerformingData[]) => void;
 
-    gamingLocations: locations[];
-    setGamingLocations: (state: locations[]) => void;
+  gamingLocations: locations[];
+  setGamingLocations: (_state: locations[]) => void;
 
-    selectedLicencee: string;
-    setSelectedLicencee: (state: string) => void;
+  selectedLicencee: string;
+  setSelectedLicencee: (_state: string) => void;
 };
 
 export type UserStore = {
-    user: UserAuthPayload | null;
-    setUser: (user: UserAuthPayload) => void;
-    clearUser: () => void;
-}
+  user: UserAuthPayload | null;
+  setUser: (_user: UserAuthPayload) => void;
+  clearUser: () => void;
+};

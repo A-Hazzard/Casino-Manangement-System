@@ -1,0 +1,78 @@
+variables:
+  DOCKER_DRIVER: overlay2
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  PNPM_VERSION: 8.6.2 # Updated to stable version
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+
+stages:
+  - build
+  - build_image
+  - deploy
+
+cache:
+  key:
+    files:
+      - pnpm-lock.yaml
+    prefix: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules
+    - .pnpm-store
+
+.default_before_script: &default_before_script
+  - npm install -g pnpm@${PNPM_VERSION}
+  - pnpm install --frozen-lockfile --store=node_modules/.pnpm-store
+
+build:
+  stage: build
+  image: node:20-alpine
+  before_script:
+    - *default_before_script
+  script:
+    - pnpm run build
+  artifacts:
+    paths:
+      - .next/
+      - public/
+    expire_in: 1 week
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules
+      - .pnpm-store
+    policy: pull-push
+
+build_image:
+  stage: build_image
+  image: docker:20.10
+  services:
+    - name: docker:20.10-dind
+      alias: docker
+  variables:
+    DOCKER_BUILDKIT: 1
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker buildx create --use
+    - docker buildx build \
+      --platform linux/amd64 \
+      --build-arg MONGO_URI=${MONGO_URI} \
+      --build-arg JWT_SECRET=${JWT_SECRET} \
+      --build-arg EMAIL_USER=${EMAIL_USER} \
+      --build-arg SENDGRID_API_KEY=${SENDGRID_API_KEY} \
+      --build-arg NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+      --build-arg NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN} \
+      -t ${IMAGE_TAG} \
+      -t ${CI_REGISTRY_IMAGE}:latest \
+      --push \
+      .
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image deployment/your-deployment your-container=${IMAGE_TAG} --record
+    - kubectl rollout status deployment/your-deployment
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual

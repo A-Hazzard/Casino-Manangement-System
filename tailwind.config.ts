@@ -1,10 +1,11 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
   content: [
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./pages/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -70,4 +71,4 @@ export default {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+} satisfies Config;

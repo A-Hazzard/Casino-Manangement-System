@@ -1,35 +1,46 @@
-# ⚡ Stage 1: Base Image
-FROM node:18-alpine AS base
+# Use Node 20 base image
+FROM node:20-alpine
+
 # Set working directory
-WORKDIR /app
+WORKDIR /app/evolution1
 
-# Enable Corepack and use the latest pnpm
-RUN corepack enable && corepack use pnpm
+# Install pnpm 10
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 
-# ⚡ Stage 2: Dependencies Layer
-FROM base AS deps
+# Copy package and lock files for dependency caching
+COPY ./pnpm-lock.yaml ./package.json ./
 
-# Copy package.json and lock file separately for better caching
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies using pnpm
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# ⚡ Stage 3: Development Image
-FROM base AS dev
-
-# Set environment variables for development mode
-ENV NODE_ENV=development
-
-# Copy project files (excluding node_modules for volume mounting)
-COPY --from=deps /app/node_modules ./node_modules
+# Copy everything else
 COPY . .
 
-# Install additional tools (for debugging inside container)
-RUN apk add --no-cache bash
+# Set environment variables (will be replaced via GitLab CI)
+ARG NODE_ENV
+ARG MONGO_URI
+ARG JWT_SECRET
+ARG EMAIL_USER
+ARG SENDGRID_API_KEY
 
-# Expose Next.js default port
+ENV NODE_ENV=${NODE_ENV}
+ENV MONGO_URI=${MONGO_URI}
+ENV JWT_SECRET=${JWT_SECRET}
+ENV EMAIL_USER=${EMAIL_USER}
+ENV SENDGRID_API_KEY=${SENDGRID_API_KEY}
+
+# Build the Next.js app
+# Provide placeholder values for build-time checks if not passed via --build-arg
+# The actual runtime values will be set by the ENV instructions above using ARGs passed during build or CI/CD runtime injection
+RUN MONGO_URI=${MONGO_URI:-dummy_mongo_uri} \
+    JWT_SECRET=${JWT_SECRET:-dummy_jwt_secret} \
+    EMAIL_USER=${EMAIL_USER:-dummy_email_user} \
+    SENDGRID_API_KEY=${SENDGRID_API_KEY:-dummy_sendgrid_key} \
+    NODE_ENV=${NODE_ENV:-production} \
+    pnpm build
+
+# Expose the production port
 EXPOSE 3000
 
-# Run Next.js in development mode
-CMD ["pnpm", "dev"]
+# Start the app
+CMD ["pnpm", "start"]

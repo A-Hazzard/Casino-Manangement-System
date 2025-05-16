@@ -1,29 +1,40 @@
 import mongoose from "mongoose";
-import { Db } from "mongodb";
+import { MongooseCache } from "@/lib/types/mongo";
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/";
+const MONGODB_URI = process.env.MONGO_URI;
+if (!MONGODB_URI) throw new Error("MONGO_URI not set in environment variables");
 
-if (!MONGO_URI) {
-    console.error("❌ MONGO_URI is not set in environment variables.");
-}
+const mongooseCache: MongooseCache = {
+  conn: null,
+  promise: null,
+};
 
-export async function connectDB(): Promise<Db | null> { // Now returns `Db | null`
-    try {
-        const connection = await mongoose.connect(MONGO_URI, {
-            bufferCommands: false,
-            connectTimeoutMS: 30000,
-        });
+/**
+ * Connects to MongoDB with caching and explicitly returns a native MongoDB Db instance.
+ *
+ * @returns Promise resolving to a MongoDB database instance (native MongoDB driver).
+ */
+export async function connectDB() {
+  if (mongooseCache.conn) {
+    return mongooseCache.conn.db;
+  }
 
-        console.log("🔥 MongoDB connected successfully.");
+  if (!mongooseCache.promise) {
+    mongooseCache.promise = mongoose
+      .connect(MONGODB_URI || "", {
+        bufferCommands: false,
+        connectTimeoutMS: 10000,
+      })
+      .then((mongooseInstance) => {
+        return mongooseInstance.connection;
+      })
+      .catch((err) => {
+        mongooseCache.promise = null;
+        console.error("MongoDB connection error:", err);
+        throw err;
+      });
+  }
 
-        if (!connection.connection.db) {
-            console.error("❌ Failed to get MongoDB database instance.");
-            return null; // Instead of throwing, we return `null`
-        }
-
-        return connection.connection.db; // Everything is good, return the database
-    } catch (err) {
-        console.error("❌ MongoDB connection error:", err);
-        return null; // Return `null` on failure
-    }
+  mongooseCache.conn = await mongooseCache.promise;
+  return mongooseCache.conn.db;
 }

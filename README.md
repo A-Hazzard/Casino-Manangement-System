@@ -16,11 +16,11 @@
 ## 🛠️ Tech Stack
 | Tech | Description |
 |------|------------|
-| **Next.js 14** | React-based framework for performance & scalability |
+| **Next.js 15** | React-based framework for performance & scalability |
 | **TypeScript** | Type safety & better developer experience |
 | **Tailwind CSS** | Utility-first styling for responsive UI |
 | **Recharts** | Data visualization & charting |
-| **Firebase / MongoDB** | NoSQL database for real-time data |
+| **MongoDB** | NoSQL database for application data |
 | **Zustand** | State management for complex app interactions |
 
 ---
@@ -61,6 +61,47 @@ pnpm install
 pnpm run dev
 ```
 Open http://localhost:3000 to see the application.
+
+---
+
+## 🐳 Docker Setup
+
+You can also build and run the application using Docker.
+
+### **1️⃣ Build the Docker Image Locally**
+This command builds the Docker image using the `Dockerfile` in the project root and tags it as `evolution1-cms:local`.
+```sh
+docker build -t evolution1-cms:local .
+```
+
+### **2️⃣ Run the Docker Container Locally**
+This command runs the container based on the image built in the previous step.
+```sh
+docker run --rm -p 3000:3000 \\
+  -e MONGO_URI="your_mongodb_connection_string" \\
+  -e JWT_SECRET="your_jwt_secret" \\
+  -e EMAIL_USER="your_sendgrid_verified_email" \\
+  -e SENDGRID_API_KEY="your_sendgrid_api_key" \\
+  -e NODE_ENV="production" \\
+  evolution1-cms:local
+```
+**Explanation:**
+*   `--rm`: Automatically removes the container when it stops.
+*   `-p 3000:3000`: Maps port 3000 on your host machine to port 3000 inside the container.
+*   `-e VAR="value"`: Sets the required environment variables. **Replace the placeholder values** (like `"your_mongodb_connection_string"`) with your actual credentials for the application to function correctly.
+*   `evolution1-cms:local`: Specifies the Docker image to run.
+
+Once the container is running, you can access the application at http://localhost:3000.
+
+### **3️⃣ (Optional) Push to GitLab Registry**
+If you have access and need to push the image to the project's GitLab registry, first build it with the registry tag:
+```sh
+docker build -t registry.gitlab.com/sunny-group/sas/dynamic-cms .
+```
+Then, push the image:
+```sh
+docker push registry.gitlab.com/sunny-group/sas/dynamic-cms
+```
 
 ---
 

@@ -1,0 +1,134 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getAllCollectionReports,
+  getMonthlyCollectionReportSummary,
+  getMonthlyCollectionReportByLocation,
+} from "@/lib/helpers/collectionReport";
+import { connectDB } from "@/app/api/lib/middleware/db";
+import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { Machine } from "@/app/api/lib/models/machines";
+
+export async function GET(req: NextRequest) {
+  await connectDB();
+  const { searchParams } = new URL(req.url);
+  // If ?locationsOnly is present, return locations with machines
+  if (searchParams.get("locationsWithMachines")) {
+    // Fetch all locations
+    const locations = await GamingLocations.find({}, "_id name").lean();
+    // For each location, fetch its machines
+    const locationsWithMachines = await Promise.all(
+      locations.map(async (loc) => {
+        const machines = await Machine.find(
+          { gamingLocation: loc._id },
+          "_id serialNumber Custom.name"
+        ).lean();
+        return {
+          _id: loc._id,
+          name: loc.name,
+          machines: machines.map((m) => ({
+            _id: m._id,
+            serialNumber: m.serialNumber,
+            name: m.Custom?.name || m.serialNumber || "Unnamed Machine",
+          })),
+        };
+      })
+    );
+    return NextResponse.json({ locations: locationsWithMachines });
+  }
+  const startDateStr = searchParams.get("startDate");
+  const endDateStr = searchParams.get("endDate");
+  const locationName = searchParams.get("locationName") || undefined;
+  // If startDate and endDate are present, treat as monthly aggregation
+  if (startDateStr && endDateStr) {
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    const summary = await getMonthlyCollectionReportSummary(
+      startDate,
+      endDate,
+      locationName
+    );
+    const details = await getMonthlyCollectionReportByLocation(
+      startDate,
+      endDate,
+      locationName
+    );
+    return NextResponse.json({ summary, details });
+  }
+  // Otherwise, return all collection reports (legacy behavior)
+  const licencee = searchParams.get("licencee") || undefined;
+  const reports = await getAllCollectionReports(licencee);
+  return NextResponse.json(reports);
+}
+
+export async function POST(req: NextRequest) {
+  await connectDB();
+  try {
+    const body = (await req.json()) as CreateCollectionReportPayload;
+    // Basic validation (required fields)
+    const requiredFields = [
+      "variance",
+      "previousBalance",
+      "currentBalance",
+      "amountToCollect",
+      "amountCollected",
+      "amountUncollected",
+      "partnerProfit",
+      "taxes",
+      "advance",
+      "collectorName",
+      "locationName",
+      "locationReportId",
+      "location",
+      "totalDrop",
+      "totalCancelled",
+      "totalGross",
+      "totalSasGross",
+      "timestamp",
+    ];
+    for (const field of requiredFields) {
+      if (
+        body[field as keyof CreateCollectionReportPayload] === undefined ||
+        body[field as keyof CreateCollectionReportPayload] === null
+      ) {
+        return NextResponse.json(
+          { success: false, error: `Missing required field: ${field}` },
+          { status: 400 }
+        );
+      }
+    }
+    // Sanitize string fields (basic trim)
+    const stringFields = [
+      "collectorName",
+      "locationName",
+      "locationReportId",
+      "location",
+      "varianceReason",
+      "reasonForShortagePayment",
+      "balanceCorrectionReas",
+    ];
+    const bodyRecord: Record<string, unknown> = body as Record<string, unknown>;
+    stringFields.forEach((field) => {
+      if (bodyRecord[field] && typeof bodyRecord[field] === "string") {
+        bodyRecord[field] = (bodyRecord[field] as string).trim();
+      }
+    });
+    // Convert timestamp fields
+    const doc = {
+      ...body,
+      timestamp: new Date(body.timestamp),
+      previousCollectionTime: body.previousCollectionTime
+        ? new Date(body.previousCollectionTime)
+        : undefined,
+    };
+    const created = await CollectionReport.create(doc);
+    return NextResponse.json({ success: true, data: created._id });
+  } catch (err) {
+    console.error("Error creating collection report:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to create collection report." },
+      { status: 500 }
+    );
+  }
+}

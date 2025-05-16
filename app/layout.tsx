@@ -1,6 +1,7 @@
-import type { Metadata } from "next"
-import "./globals.css"
-import { Montserrat } from "next/font/google"
+import type { Metadata } from "next";
+import "./globals.css";
+import { Montserrat } from "next/font/google";
+
 export const metadata: Metadata = {
   title: "Dynamic1 CMS - Manage Casinos Seamlessly",
   description:
@@ -12,12 +13,6 @@ export const metadata: Metadata = {
   creator: "Dynamic1 Team",
   publisher: "Dynamic1 Group",
   robots: "index, follow",
-  viewport: {
-    width: "device-width",
-    initialScale: 1.0,
-    maximumScale: 5.0,
-  },
-  themeColor: "#5119E9",
   openGraph: {
     title: "Dynamic1 CMS - Optimize Casino Operations",
     description:
@@ -47,23 +42,23 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://gy.sas.backoffice.ltd",
   },
-}
+};
 
 const montserrat = Montserrat({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-montserrat",
   display: "swap",
-})
+});
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable}`}>
       <body>{children}</body>
     </html>
-  )
+  );
 }

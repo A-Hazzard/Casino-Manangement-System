@@ -1,14 +1,16 @@
-import {model, models, Schema} from "mongoose";
+import { model, models, Schema } from "mongoose";
 
-const GamingLocationsSchema = new Schema({
+const GamingLocationsSchema = new Schema(
+  {
+    _id: String,
     name: String,
     country: String,
     address: {
-        street: String,
-        city: String,
+      street: String,
+      city: String,
     },
     rel: {
-        licencee: String,
+      licencee: String,
     },
     profitShare: Number,
     collectionBalance: Number,
@@ -16,28 +18,39 @@ const GamingLocationsSchema = new Schema({
     gameDayOffset: Number,
     isLocalServer: Boolean,
     billValidatorOptions: {
-        denom1: Boolean,
-        denom2: Boolean,
-        denom5: Boolean,
-        denom10: Boolean,
-        denom20: Boolean,
-        denom50: Boolean,
-        denom100: Boolean,
-        denom200: Boolean,
-        denom500: Boolean,
-        denom1000: Boolean,
-        denom2000: Boolean,
-        denom5000: Boolean,
-        denom10000: Boolean,
+      denom1: Boolean,
+      denom2: Boolean,
+      denom5: Boolean,
+      denom10: Boolean,
+      denom20: Boolean,
+      denom50: Boolean,
+      denom100: Boolean,
+      denom200: Boolean,
+      denom500: Boolean,
+      denom1000: Boolean,
+      denom2000: Boolean,
+      denom5000: Boolean,
+      denom10000: Boolean,
     },
     geoCoords: {
-        latitude: Number,
-        longitude: Number,
+      latitude: Number,
+      longitude: Number,
     },
     createdAt: Date,
     updatedAt: Date,
     deletedAt: Date,
-})
+    status: String,
+    statusHistory: [Schema.Types.Mixed],
+    noSMIBLocation: Boolean,
+  },
+  {
+    timestamps: true,
+    versionKey: false,
+  }
+);
 
-export const GamingLocations
-= models.GamingLocations || model("GamingLocations", GamingLocationsSchema);
+/**
+ * Mongoose model for gaming locations, including schema for address, geo-coordinates, and status.
+ */
+export const GamingLocations =
+  models.GamingLocations || model("GamingLocations", GamingLocationsSchema);

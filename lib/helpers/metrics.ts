@@ -1,4 +1,5 @@
-import {dashboardData, Metrics} from "@/lib/types";
+import { dashboardData, Metrics } from "@/lib/types";
+import { TimePeriod } from "@/lib/types/api";
 import axios from "axios";
 
 /**
@@ -10,7 +11,7 @@ import axios from "axios";
  * the time period is "Today" or "Yesterday"), and finally sorts the results
  * chronologically.
  *
- * @param {string} [timePeriod="7d"] - The time period to fetch metrics for.
+ * @param {TimePeriod} [timePeriod="7d"] - The time period to fetch metrics for.
  *                                     Options include "Today", "Yesterday",
  *                                     "7d", "30d", or "Custom" (when used with startDate/endDate).
  * @param {Date} [startDate] - The start date for a Custom date range (used when timePeriod is "Custom").
@@ -20,24 +21,20 @@ import axios from "axios";
 /**
  * Fetches and aggregates metric data from the API endpoint.
  *
- * The function calls the `/api/metrics/meters` endpoint using a time period,
- * and optionally a Custom date range (startDate/endDate) as well as an optional licencee filter.
- * It then normalizes the data into the `dashboardData` shape, groups records by either day or by hour
- * (if the time period is "Today" or "Yesterday"), and finally sorts the results chronologically.
+ * Calls the `/api/metrics/meters` endpoint using a time period, and optionally a custom date range and licencee filter.
+ * Normalizes the data into the dashboardData shape, groups records by day or hour, and sorts chronologically.
  *
- * @param {string} [timePeriod="7d"] - The time period to fetch metrics for.
- *                                     Options include "Today", "Yesterday", "7d", "30d", or "Custom" (when used with startDate/endDate).
- * @param {Date} [startDate] - The start date for a Custom date range (used when timePeriod is "Custom").
- * @param {Date} [endDate] - The end date for a Custom date range (used when timePeriod is "Custom").
- * @param {string} [licencee] - (Optional) The licencee ID to filter the metrics by. When provided,
- *                              only metrics for gaming locations belonging to this licencee will be returned.
- * @returns {Promise<dashboardData[]>} A promise that resolves to an array of aggregated dashboardData objects.
+ * @param timePeriod - The time period to fetch metrics for (default: "7d").
+ * @param startDate - (Optional) Start date for a custom range.
+ * @param endDate - (Optional) End date for a custom range.
+ * @param licencee - (Optional) Licencee ID to filter metrics.
+ * @returns Promise resolving to an array of aggregated dashboardData objects.
  */
 export async function getMetrics(
-    timePeriod: string = "7d",
-    startDate?: Date,
-    endDate?: Date,
-    licencee?: string
+  timePeriod: TimePeriod = "7d",
+  startDate?: Date,
+  endDate?: Date,
+  licencee?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;

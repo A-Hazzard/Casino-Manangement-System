@@ -1,8 +1,8 @@
-import { connectDB } from "@/app/api/lib/middleware/db"
-import { NextRequest, NextResponse } from "next/server"
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates"
-import { getMetricsForLocations } from '@/app/api/lib/helpers/meters/aggregations'
-import {ParamsType} from "@/app/api/lib/types";
+import { connectDB } from "@/app/api/lib/middleware/db";
+import { NextRequest, NextResponse } from "next/server";
+import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
+import { getMetricsForLocations } from "@/app/api/lib/helpers/meters/aggregations";
+import type { ApiParamsType } from "@/lib/types/api";
 
 /**
  * Retrieves **meter trend data** for gaming locations based on a specified **time period** or a **Custom date range**.
@@ -35,64 +35,71 @@ import {ParamsType} from "@/app/api/lib/types";
  */
 export async function GET(req: NextRequest) {
   try {
-    const db = await connectDB()
+    const db = await connectDB();
     if (!db) {
-      console.error("😪 Database connection not established")
+      console.error("Database connection not established");
       return NextResponse.json(
-          { error: "Database connection not established" },
-          { status: 500 }
-      )
+        { error: "Database connection not established" },
+        { status: 500 }
+      );
     }
-    const params = Object.fromEntries(req.nextUrl.searchParams.entries())
+    const params = Object.fromEntries(req.nextUrl.searchParams.entries());
 
-    let { startDate, endDate  } = params
-    const { timePeriod, licencee } = params as ParamsType
+    let { startDate, endDate } = params;
+    const timePeriod = params.timePeriod;
+    const licencee = params.licencee;
+    // Ensure type safety for timePeriod and licencee
+    const apiParams: ApiParamsType = {
+      timePeriod: (timePeriod as ApiParamsType["timePeriod"]) || "Today",
+      licencee: licencee || "",
+    };
     if (startDate && endDate) {
-      startDate = new Date(startDate).toISOString()
-      endDate = new Date(endDate).toISOString()
+      startDate = new Date(startDate).toISOString();
+      endDate = new Date(endDate).toISOString();
     } else {
-      const dates = getDatesForTimePeriod(timePeriod)
-      startDate = dates.startDate.toISOString()
-      endDate = dates.endDate.toISOString()
+      const dates = getDatesForTimePeriod(apiParams.timePeriod);
+      startDate = dates.startDate.toISOString();
+      endDate = dates.endDate.toISOString();
     }
 
     if (!startDate || !endDate) {
-      console.error("❌ Invalid date range provided.")
+      console.error("Invalid date range provided.");
       return NextResponse.json(
-          { error: "❌ Invalid date range." },
-          { status: 400 }
-      )
+        { error: "Invalid date range." },
+        { status: 400 }
+      );
     }
 
-    console.log(`📊 Fetching meters for ${timePeriod}...`)
+    console.log(`Fetching meters for ${apiParams.timePeriod}...`);
 
     const metrics = await getMetricsForLocations(
-        db,
-        { startDate: new Date(startDate), endDate: new Date(endDate) },
-        false,
-        licencee // pass the licencee value (if provided)
-    )
+      db,
+      { startDate: new Date(startDate), endDate: new Date(endDate) },
+      false,
+      apiParams.licencee // pass the licencee value (if provided)
+    );
 
-
-    if (licencee) {
+    if (apiParams.licencee) {
       if (metrics.length > 0) {
-        console.log("✅ Metrics successfully retrieved for licencee")
+        console.log("Metrics successfully retrieved for licencee");
       } else {
-        console.error(`❌ No metrics data found for licencee ${licencee}`)
+        console.error(
+          `No metrics data found for licencee ${apiParams.licencee}`
+        );
       }
     } else {
-      console.log("✅ Metrics successfully retrieved:")
+      console.log("Metrics successfully retrieved");
     }
 
-    console.log(`✅ Successfully retrieved metrics for: ${timePeriod} 📈`)
+    console.log(`Successfully retrieved metrics for: ${apiParams.timePeriod}`);
 
     // If a licencee filter is used, wrap the result in an object with key "result"
-    return NextResponse.json(metrics)
+    return NextResponse.json(metrics);
   } catch (error) {
-    console.error("❌ Error in metrics API:", error)
+    console.error("Error in metrics API:", error);
     return NextResponse.json(
-        { error: "❌ Internal Server Error" },
-        { status: 500 }
-    )
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

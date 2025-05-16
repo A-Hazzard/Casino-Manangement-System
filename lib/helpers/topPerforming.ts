@@ -1,39 +1,35 @@
-import axios from "axios"
-import { ActiveTab, TopPerformingData } from "@/lib/types"
-import { colorPalette } from "@/lib/constants/uiConstants"
+import axios from "axios";
+import { ActiveTab, TopPerformingData } from "@/lib/types";
+import { colorPalette } from "@/lib/constants/uiConstants";
 
 /**
  * Fetches top-performing locations or Cabinets and assigns colors dynamically.
  *
- * @param activeTab - Either `"locations"` or `"Cabinets"`
- * @param timePeriod - The time period (e.g., `"7d"`, `"30d"`)
- * @returns Promise resolving to an array of top-performing locations or Cabinets
+ * @param activeTab - Either "locations" or "Cabinets".
+ * @param timePeriod - The time period (7d, 30d, etc.).
+ * @returns Promise resolving to an array of top-performing entities with color assignment.
  */
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
   timePeriod: string = "7d"
 ): Promise<TopPerformingData[]> {
   try {
-    // console.log(`📊 Fetching top-performing ${activeTab} for ${timePeriod}...`)
+    const params = { activeTab, timePeriod };
+    const headers = { "Content-Type": "application/json" };
+    const response = await axios.get(`/api/metrics/top-performing`, {
+      params,
+      headers,
+    });
 
-    const params = { activeTab, timePeriod }
-    const headers = { "Content-Type": "application/json" }
-    const response = await axios.get(`/api/metrics/top-performing`, { params, headers })
+    const rawData: TopPerformingData[] = response.data.data || [];
 
-    const rawData: TopPerformingData[] = response.data.data || []
-    // console.log(`✅ Raw API Response for ${activeTab}:`, rawData)
-
-    if (!rawData.length) {
-      console.log(`🚫 No data found for ${activeTab} in the specified time period.`)
-    }
-
-    // Dynamically assign colors from the colorPalette
+    // Assign colors from the palette
     return rawData.map((item, index) => ({
       ...item,
-      color: colorPalette[index % colorPalette.length], // Cycle through colors
-    }))
+      color: colorPalette[index % colorPalette.length],
+    }));
   } catch (error) {
-    console.error(`❌ Failed to fetch top-performing ${activeTab}:`, error)
-    return []
+    console.error(`Failed to fetch top-performing ${activeTab}:`, error);
+    return [];
   }
 }

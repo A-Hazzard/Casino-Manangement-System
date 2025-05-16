@@ -3,7 +3,7 @@ import { authenticateUser } from "@/app/api/lib/helpers/auth";
 import { validateEmail, validatePassword } from "@/app/api/lib/utils/validation";
 import { connectDB } from "@/app/api/lib/middleware/db";
 
-export const runtime = "nodejs"; // Force Next.js to use Node.js runtime
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
     try {

@@ -1,42 +1,45 @@
-import { Db } from "mongodb"
-import {QueryFilter, CustomDate, TimePeriod} from "../types"
-import { getDatesForTimePeriod } from "../utils/dates"
-import { ActiveTab } from "@/lib/types"
-
-type PipelineStage = Record<string, unknown>
+import { Db } from "mongodb";
+import { getDatesForTimePeriod } from "../utils/dates";
+import { ActiveTab } from "@/lib/types";
+import {
+  PipelineStage,
+  QueryFilter,
+  TimePeriod,
+  CustomDate,
+} from "@/lib/types/api";
 
 /**
  * Fetches the top 5 performing locations or Cabinets based on total moneyIn (drop).
  *
- * @param db - MongoDB database instance
- * @param activeTab - The current tab the user is on ("locations" or "Cabinets") N.B Cabinets = Machines
- * @param timePeriod - The time range (e.g., "7d", "30d")
- * @returns Aggregated results sorted by performance
+ * @param db - MongoDB database instance.
+ * @param activeTab - The current tab the user is on ("locations" or "Cabinets").
+ * @param timePeriod - The time range (e.g., "7d", "30d").
+ * @returns Promise resolving to aggregated results sorted by performance.
  */
 export async function getTopPerformingMetrics(
   db: Db,
   activeTab: ActiveTab,
   timePeriod: TimePeriod
 ) {
-  const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod)
+  const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod);
 
   const filter: QueryFilter = {
     readAt: { $gte: startDate, $lte: endDate },
-  }
+  };
 
   const aggregationQuery =
     activeTab === "Cabinets"
       ? aggregateMetersForTop5Machines(filter)
-      : aggregateMetersForTop5Locations(filter)
+      : aggregateMetersForTop5Locations(filter);
 
-  return db.collection("meters").aggregate(aggregationQuery).toArray()
+  return db.collection("meters").aggregate(aggregationQuery).toArray();
 }
 
 /**
  * Aggregates meters for the top 5 performing locations.
  *
- * @param filter - MongoDB filter object for date range
- * @returns MongoDB aggregation pipeline
+ * @param filter - MongoDB filter object for date range.
+ * @returns MongoDB aggregation pipeline for top 5 locations.
  */
 function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
   return [
@@ -67,9 +70,7 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
         totalJackpot: 1,
       },
     },
-    // Sort by location name (to group same names together) and totalDrop descending
     { $sort: { location: 1, totalDrop: -1 } },
-    // Group by location name to ensure uniqueness – for each location, pick the record with the highest totalDrop
     {
       $group: {
         _id: "$location",
@@ -87,7 +88,6 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
         totalJackpot: 1,
       },
     },
-    // Finally, sort by totalDrop descending and limit to 5 results
     { $sort: { totalDrop: -1 } },
     { $limit: 5 },
   ];
@@ -96,8 +96,8 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
 /**
  * Aggregates meters for the top 5 performing machines.
  *
- * @param filter - MongoDB filter object for date range
- * @returns MongoDB aggregation pipeline
+ * @param filter - MongoDB filter object for date range.
+ * @returns MongoDB aggregation pipeline for top 5 machines.
  */
 function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
   return [
@@ -134,7 +134,7 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
     {
       $project: {
         _id: 0,
-        machine: "$machineDetails._id",
+        machine: "$machineDetails.serialNumber",
         location: "$locationDetails.name",
         totalCoinIn: 1,
         totalCoinOut: 1,
@@ -144,9 +144,7 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
         totalJackpot: 1,
       },
     },
-    // First, sort by location (to group by) and then by totalDrop descending
     { $sort: { location: 1, totalDrop: -1 } },
-    // Group by location to remove duplicates—only the first (highest totalDrop) entry per location is kept
     {
       $group: {
         _id: "$location",
@@ -172,7 +170,6 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
         totalJackpot: 1,
       },
     },
-    // Finally, sort the unique locations by totalDrop descending and limit to 5
     { $sort: { totalDrop: -1 } },
     { $limit: 5 },
   ];
