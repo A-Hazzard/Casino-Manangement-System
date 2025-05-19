@@ -13,6 +13,7 @@ type Props = {
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (val: boolean) => void;
   isSearching?: boolean;
+  onSearchSubmit: () => void;
 };
 
 export default function CollectionReportFilters({
@@ -24,6 +25,7 @@ export default function CollectionReportFilters({
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
   isSearching = false,
+  onSearchSubmit,
 }: Props) {
   const filterRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,13 +104,14 @@ export default function CollectionReportFilters({
           ease: "power2.out",
         }
       );
+      onSearchSubmit();
     }
   };
 
   return (
     <div
       ref={filterRef}
-      className="bg-buttonActive rounded-lg p-4 flex flex-col gap-4 mb-4"
+      className="rounded-lg p-4 flex flex-col gap-4 mb-4 md:bg-buttonActive"
     >
       <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
         <div className="relative flex-1">
@@ -116,18 +119,18 @@ export default function CollectionReportFilters({
             ref={inputRef}
             type="text"
             placeholder="Search Collector or Location..."
-            className="w-full px-4 py-2 rounded-md border-none outline-none text-sm pr-10"
+            className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyPress={handleSearchKeyPress}
           />
           <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors">
-            <MagnifyingGlassIcon className="w-5 h-5" />
+            <MagnifyingGlassIcon className="w-5 h-5 text-black" />
           </button>
         </div>
         <select
           ref={selectRef}
-          className="px-4 py-2 rounded-md text-sm w-full md:w-auto"
+          className="px-4 py-2 rounded-md text-sm w-full md:w-auto border border-black"
           value={selectedLocation}
           onChange={(e) => onLocationChange(e.target.value)}
         >
@@ -139,7 +142,7 @@ export default function CollectionReportFilters({
           ))}
         </select>
         <div ref={checkboxRef} className="hidden md:flex items-center ml-4">
-          <label className="flex items-center gap-2 text-white font-medium">
+          <label className="flex items-center gap-2 text-black font-medium">
             <Checkbox
               id="uncollected-only-desktop"
               checked={showUncollectedOnly}
@@ -154,8 +157,11 @@ export default function CollectionReportFilters({
           </label>
         </div>
       </div>
-      <div ref={checkboxRef} className="flex items-center mt-2 md:hidden">
-        <label className="flex items-center gap-2 text-white font-medium">
+      <div
+        ref={checkboxRef}
+        className="mx-auto flex items-center mt-2 md:hidden"
+      >
+        <label className="flex items-center gap-2 text-black font-medium">
           <Checkbox
             id="uncollected-only-mobile"
             checked={showUncollectedOnly}
@@ -164,7 +170,7 @@ export default function CollectionReportFilters({
             }
             className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
           />
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium text-black">
             SHOW UNCOLLECTED ONLY
           </span>
         </label>

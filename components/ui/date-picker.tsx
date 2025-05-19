@@ -3,10 +3,11 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { DayPicker, SelectSingleEventHandler } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -20,28 +21,47 @@ export type DatePickerProps = {
 };
 
 export function DatePicker({ date, setDate, disabled }: DatePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  const handleSelect: SelectSingleEventHandler = (
+    day,
+    selectedDate,
+    activeModifiers,
+    e
+  ) => {
+    if (activeModifiers && e) {
+      /* Stub */
+    }
+    setDate(day);
+    if (day) {
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
           className={cn(
-            "w-full md:w-[240px] justify-start text-left font-normal", // Adjusted width
+            "w-full md:w-[240px] justify-start text-left font-normal",
             !date && "text-muted-foreground"
           )}
           disabled={disabled}
+          onClick={() => setIsOpen(true)}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
-        <Calendar
+        <DayPicker
           mode="single"
           selected={date}
-          onSelect={setDate}
-          initialFocus
-          disabled={disabled} // Pass disabled prop to Calendar
+          onSelect={handleSelect}
+          initialFocus={isOpen}
+          disabled={disabled}
+          showOutsideDays
         />
       </PopoverContent>
     </Popover>

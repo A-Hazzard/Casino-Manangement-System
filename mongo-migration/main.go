@@ -60,7 +60,17 @@ func main() {
 	srcDB := srcClient.Database("sas-prod")
 	dstDB := dstClient.Database("sas-dev")
 
-	collections := []string{"gaminglocations", "users", "machines"}
+	collections := []string{
+		"gaminglocations",
+		"users",
+		"machines",
+		"collectionreports",
+		"licencees",
+		"acceptedbills",
+		"countries",
+		"machineevents",
+		"schedulers",
+	}
 
 	var wg sync.WaitGroup
 	for _, collName := range collections {

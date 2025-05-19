@@ -3,10 +3,11 @@
 import * as React from "react";
 import { format, set } from "date-fns";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { DayPicker, SelectSingleEventHandler } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +49,27 @@ export function DateTimePicker({
     });
   }, [date]);
 
+  const handleDateSelect: SelectSingleEventHandler = (
+    selectedDay,
+    activeModifiers,
+    e
+  ) => {
+    if (selectedDay) {
+      // Stub usage to satisfy ESLint
+      if (activeModifiers && e) {
+        // This block does nothing but uses the variables.
+      }
+      let hours = parseInt(time.hours);
+      if (time.period === "PM" && hours < 12) hours += 12;
+      if (time.period === "AM" && hours === 12) hours = 0;
+      const minutes = parseInt(time.minutes);
+      const newDate = set(selectedDay, { hours, minutes });
+      setDate(newDate);
+    } else {
+      setDate(undefined);
+    }
+  };
+
   // Update the date with the selected time (but not when date changes)
   React.useEffect(() => {
     if (!date) return;
@@ -86,12 +108,13 @@ export function DateTimePicker({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="p-0">
-          <Calendar
+          <DayPicker
             mode="single"
             selected={date}
-            onSelect={setDate}
+            onSelect={handleDateSelect}
             initialFocus
             disabled={disabled}
+            showOutsideDays
           />
           <div className="p-3 border-t border-border">
             <div className="flex items-center justify-between">

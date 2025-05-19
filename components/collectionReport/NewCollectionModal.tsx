@@ -31,6 +31,10 @@ import {
   getLocationsWithMachines,
   createCollectionReport,
 } from "@/lib/helpers/collectionReport";
+import { useUserStore } from "@/lib/store/userStore";
+import { v4 as uuidv4 } from "uuid";
+import { validateCollectionReportPayload } from "@/lib/utils/validation";
+import { toast } from "sonner";
 
 export default function NewCollectionModal({
   show,
@@ -38,10 +42,12 @@ export default function NewCollectionModal({
   locations = [],
 }: NewCollectionModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const user = useUserStore((state) => state.user);
 
   const [selectedLocationId, setSelectedLocationId] = useState<
     string | undefined
   >(undefined);
+  const [selectedLocationName, setSelectedLocationName] = useState<string>("");
   const [locationSearch, setLocationSearch] = useState("");
   const [cabinetsForLocation, setCabinetsForLocation] = useState<CabinetData[]>(
     []
@@ -49,6 +55,7 @@ export default function NewCollectionModal({
   const [selectedCabinetId, setSelectedCabinetId] = useState<
     string | undefined
   >(undefined);
+  const [selectedMachineName, setSelectedMachineName] = useState<string>("");
 
   const [currentMachineIndex, setCurrentMachineIndex] = useState(0);
 
@@ -86,6 +93,36 @@ export default function NewCollectionModal({
   const currentMachine = currentMachines[currentMachineIndex];
   const totalMachinesInCabinet = currentMachines.length;
 
+  // Update selectedLocationName when selectedLocation changes
+  useEffect(() => {
+    if (selectedLocation) {
+      setSelectedLocationName(selectedLocation.name);
+      console.log(`Selected location name: ${selectedLocation.name}`);
+    } else {
+      setSelectedLocationName("");
+    }
+  }, [selectedLocation]);
+
+  // Update selectedMachineName when selectedCabinetId changes
+  useEffect(() => {
+    if (selectedCabinetId) {
+      const machine = locationsWithMachines
+        .find((l) => l._id === selectedLocationId)
+        ?.machines.find((m) => String(m._id) === selectedCabinetId);
+
+      if (machine) {
+        setSelectedMachineName(machine.name);
+        console.log(
+          `Selected machine name: ${machine.name}, serialNumber: ${machine.serialNumber}`
+        );
+      } else {
+        setSelectedMachineName("");
+      }
+    } else {
+      setSelectedMachineName("");
+    }
+  }, [selectedCabinetId, selectedLocationId, locationsWithMachines]);
+
   useEffect(() => {
     if (show && modalRef.current) {
       gsap.fromTo(
@@ -101,9 +138,11 @@ export default function NewCollectionModal({
         ease: "power2.in",
         onComplete: () => {
           setSelectedLocationId(undefined);
+          setSelectedLocationName("");
           setLocationSearch("");
           setCabinetsForLocation([]);
           setSelectedCabinetId(undefined);
+          setSelectedMachineName("");
           setCurrentMachineIndex(0);
           setSelectedDate(new Date());
           setMetersIn("");
@@ -141,6 +180,7 @@ export default function NewCollectionModal({
         setCabinetsForLocation([]);
       }
       setSelectedCabinetId(undefined);
+      setSelectedMachineName("");
       setCurrentMachineIndex(0);
       setMetersIn("");
       setMetersOut("");
@@ -148,6 +188,7 @@ export default function NewCollectionModal({
     } else {
       setCabinetsForLocation([]);
       setSelectedCabinetId(undefined);
+      setSelectedMachineName("");
       setCurrentMachineIndex(0);
     }
   }, [selectedLocationId]);
@@ -168,6 +209,22 @@ export default function NewCollectionModal({
   }, [show]);
 
   const handleSaveReport = async () => {
+    // Validate required selections
+    if (!selectedLocationId || !selectedCabinetId) {
+      toast.error("Please select a location and a machine/cabinet.");
+      return;
+    }
+
+    // Debug logging
+    console.log("Selected location:", {
+      id: selectedLocationId,
+      name: selectedLocationName,
+    });
+    console.log("Selected machine:", {
+      id: selectedCabinetId,
+      name: selectedMachineName,
+    });
+
     const payload: CreateCollectionReportPayload = {
       variance: Number(financials.variance),
       previousBalance: Number(financials.previousBalance),
@@ -178,9 +235,9 @@ export default function NewCollectionModal({
       partnerProfit: 0,
       taxes: Number(financials.taxes),
       advance: Number(financials.advance),
-      collectorName: "",
-      locationName: selectedLocation?.name || "",
-      locationReportId: "",
+      collectorName: user?.emailAddress || "",
+      locationName: selectedLocationName,
+      locationReportId: uuidv4(),
       location: selectedLocationId || "",
       totalDrop: 0,
       totalCancelled: 0,
@@ -196,8 +253,24 @@ export default function NewCollectionModal({
       balanceCorrection: Number(financials.balanceCorrection),
       balanceCorrectionReas: financials.balanceCorrectionReason,
     };
-    await createCollectionReport(payload);
-    onClose();
+
+    const validation = validateCollectionReportPayload(payload);
+    if (!validation.isValid) {
+      // Show validation errors as toast
+      validation.errors.forEach((error) => {
+        toast.error(error);
+      });
+      return;
+    }
+
+    try {
+      await createCollectionReport(payload);
+      toast.success("Report saved successfully!");
+      onClose();
+    } catch (error) {
+      console.error("Error saving report:", error);
+      toast.error("Failed to save report. Please try again.");
+    }
   };
 
   // Helper to check if all required fields are filled
@@ -262,7 +335,16 @@ export default function NewCollectionModal({
           <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border p-4 md:p-6 flex flex-col space-y-3 md:space-y-4 overflow-y-auto">
             <Select
               value={selectedLocationId}
-              onValueChange={setSelectedLocationId}
+              onValueChange={(value) => {
+                setSelectedLocationId(value);
+                const location = locationsWithMachines.find(
+                  (loc) => String(loc._id) === value
+                );
+                if (location) {
+                  setSelectedLocationName(location.name);
+                  console.log(`Location selected: ${location.name} (${value})`);
+                }
+              }}
             >
               <SelectTrigger className="w-full bg-buttonActive text-white focus:ring-primary">
                 <SelectValue
@@ -309,7 +391,11 @@ export default function NewCollectionModal({
                     className="w-full justify-start text-left h-auto py-2 px-3 whitespace-normal"
                     onClick={() => {
                       setSelectedCabinetId(String(cabinet._id));
+                      setSelectedMachineName(cabinet.name);
                       setCurrentMachineIndex(0);
+                      console.log(
+                        `Machine selected: ${cabinet.name} (${cabinet._id})`
+                      );
                     }}
                   >
                     {cabinet.name} ({cabinet.serialNumber})
@@ -388,10 +474,13 @@ export default function NewCollectionModal({
                       Meters In:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={metersIn}
-                      onChange={(e) => setMetersIn(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val)) setMetersIn(val);
+                      }}
                       className="text-xs md:text-sm"
                     />
                     <p className="text-xs text-grayHighlight mt-1">
@@ -403,10 +492,13 @@ export default function NewCollectionModal({
                       Meters Out:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={metersOut}
-                      onChange={(e) => setMetersOut(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val)) setMetersOut(val);
+                      }}
                       className="text-xs md:text-sm"
                     />
                     <p className="text-xs text-grayHighlight mt-1">
@@ -422,12 +514,14 @@ export default function NewCollectionModal({
                       Taxes:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.taxes}
-                      onChange={(e) =>
-                        setFinancials({ ...financials, taxes: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({ ...financials, taxes: val });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -436,15 +530,14 @@ export default function NewCollectionModal({
                       Advance:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.advance}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          advance: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({ ...financials, advance: val });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -453,15 +546,14 @@ export default function NewCollectionModal({
                       Variance:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.variance}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          variance: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({ ...financials, variance: val });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -486,15 +578,17 @@ export default function NewCollectionModal({
                       Amount To Collect:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.amountToCollect}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          amountToCollect: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({
+                            ...financials,
+                            amountToCollect: val,
+                          });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -503,15 +597,17 @@ export default function NewCollectionModal({
                       Collected Amount:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.collectedAmount}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          collectedAmount: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({
+                            ...financials,
+                            collectedAmount: val,
+                          });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -520,15 +616,17 @@ export default function NewCollectionModal({
                       Balance Correction:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.balanceCorrection}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          balanceCorrection: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({
+                            ...financials,
+                            balanceCorrection: val,
+                          });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
@@ -553,15 +651,17 @@ export default function NewCollectionModal({
                       Previous Balance:
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       placeholder="0"
                       value={financials.previousBalance}
-                      onChange={(e) =>
-                        setFinancials({
-                          ...financials,
-                          previousBalance: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val))
+                          setFinancials({
+                            ...financials,
+                            previousBalance: val,
+                          });
+                      }}
                       className="text-xs md:text-sm"
                     />
                   </div>
