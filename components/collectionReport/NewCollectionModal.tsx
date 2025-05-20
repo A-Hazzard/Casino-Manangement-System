@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, RefreshCcw, XIcon } from "lucide-react";
+import { Search, RefreshCcw } from "lucide-react";
 import type { Location, CabinetData } from "@/lib/types/collections";
 import type { NewCollectionModalProps } from "@/lib/types/componentProps";
 import type {

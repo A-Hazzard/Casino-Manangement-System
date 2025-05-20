@@ -41,12 +41,27 @@ import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
 import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 
+/**
+ * Main page component for the Collection Report.
+ * Handles tab switching, data fetching, filtering, and pagination for:
+ * - Collection Reports
+ * - Monthly Reports
+ * - Manager Schedules
+ * - Collector Schedules
+ */
 export default function CollectionReportPage() {
+  // Dashboard store state
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+  // Tab state
   const [activeTab, setActiveTab] = useState<
     "collection" | "monthly" | "manager" | "collector"
   >("collection");
+
+  // Modal state
   const [showModal, setShowModal] = useState(false);
+
+  // Refs for animation and pagination
   const contentRef = useRef<HTMLDivElement>(null);
   const mobilePaginationRef = useRef<HTMLDivElement>(null);
   const desktopPaginationRef = useRef<HTMLDivElement>(null);
@@ -64,7 +79,7 @@ export default function CollectionReportPage() {
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Filter state
+  // Filter state for collection reports
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -104,6 +119,9 @@ export default function CollectionReportPage() {
   const [monthlyPage, setMonthlyPage] = useState(1);
   const monthlyItemsPerPage = 10;
 
+  /**
+   * Fetches monthly report summary and details for the selected date range and location.
+   */
   const fetchMonthlyData = useCallback(() => {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
     setMonthlyLoading(true);
@@ -130,6 +148,7 @@ export default function CollectionReportPage() {
       });
   }, [monthlyDateRange, monthlyLocation]);
 
+  // Fetch collection reports when selectedLicencee changes
   useEffect(() => {
     setLoading(true);
     let url = "/api/collectionReport";
@@ -158,12 +177,14 @@ export default function CollectionReportPage() {
       });
   }, [selectedLicencee]);
 
+  // Fetch all gaming locations for filter dropdown
   useEffect(() => {
     fetchAllGamingLocations().then((locs) =>
       setLocations(locs.map((l) => ({ _id: l.id, name: l.name })))
     );
   }, []);
 
+  // Animate content when tab changes
   useEffect(() => {
     if (contentRef.current) {
       gsap.fromTo(
@@ -174,11 +195,13 @@ export default function CollectionReportPage() {
     }
   }, [activeTab]);
 
+  // Reset pagination when filters change
   useEffect(() => {
     setDesktopPage(1);
     setMobilePage(1);
   }, [selectedLocation, search, showUncollectedOnly, selectedLicencee]);
 
+  // Animate table/cards when data changes
   useEffect(() => {
     if (!loading && !isSearching) {
       if (desktopTableRef.current && activeTab === "collection") {
@@ -215,6 +238,7 @@ export default function CollectionReportPage() {
     }
   }, [loading, isSearching, mobilePage, desktopPage, activeTab]);
 
+  // Filter reports based on location, search, and uncollected status
   const filteredReports = reports.filter((r) => {
     const matchesLocation =
       selectedLocation === "all" ||
@@ -230,6 +254,7 @@ export default function CollectionReportPage() {
     return matchesLocation && matchesSearch && matchesUncollected;
   });
 
+  // Pagination calculations for mobile and desktop
   const mobileLastItemIndex = mobilePage * itemsPerPage;
   const mobileFirstItemIndex = mobileLastItemIndex - itemsPerPage;
   const mobileCurrentItems = filteredReports.slice(
@@ -246,6 +271,7 @@ export default function CollectionReportPage() {
   );
   const desktopTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
 
+  // Pagination handlers with animation
   const paginateMobile = (pageNumber: number) => {
     setMobilePage(pageNumber);
     if (mobilePaginationRef.current && activeTab === "collection") {
@@ -278,6 +304,7 @@ export default function CollectionReportPage() {
     }
   };
 
+  // Triggers a search animation
   const handleSearch = () => {
     setIsSearching(true);
     setTimeout(() => {
@@ -285,6 +312,7 @@ export default function CollectionReportPage() {
     }, 500);
   };
 
+  // Fetch manager schedules and collectors when manager tab is active or filters change
   useEffect(() => {
     if (activeTab === "manager") {
       setLoadingSchedulers(true);
@@ -298,10 +326,12 @@ export default function CollectionReportPage() {
         status: selectedStatus !== "all" ? selectedStatus : undefined,
       })
         .then((data) => {
+          // Extract unique collectors for filter dropdown
           const uniqueCollectors = Array.from(
             new Set(data.map((item) => item.collector))
           ).filter(Boolean);
           setCollectors(uniqueCollectors);
+          // Format scheduler data for table
           const formattedData: SchedulerTableRow[] = data.map((item) => ({
             id: item._id,
             collector: item.collector,
@@ -327,12 +357,14 @@ export default function CollectionReportPage() {
     locations,
   ]);
 
+  // Reset all manager schedule filters
   const handleResetSchedulerFilters = () => {
     setSelectedSchedulerLocation("all");
     setSelectedCollector("all");
     setSelectedStatus("all");
   };
 
+  // Fetch all location names and monthly data when monthly tab is active
   useEffect(() => {
     if (activeTab === "monthly") {
       fetchAllLocationNames()
@@ -347,12 +379,14 @@ export default function CollectionReportPage() {
     }
   }, [activeTab, fetchMonthlyData]);
 
+  // Refetch monthly data when date range or location changes
   useEffect(() => {
     if (activeTab === "monthly") {
       fetchMonthlyData();
     }
   }, [monthlyDateRange, monthlyLocation, activeTab, fetchMonthlyData]);
 
+  // Set date range to last month for monthly report
   const handleLastMonth = () => {
     const now = new Date();
     const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -361,12 +395,14 @@ export default function CollectionReportPage() {
     setMonthlyDateRange({ from: first, to: last });
   };
 
+  // Apply the pending date range to the monthly report
   const applyPendingDateRange = () => {
     if (pendingRange?.from && pendingRange?.to) {
       setMonthlyDateRange(pendingRange);
     }
   };
 
+  // Pagination for monthly report
   const paginateMonthly = (pageNumber: number) => {
     setMonthlyPage(pageNumber);
     if (monthlyPaginationRef.current && activeTab === "monthly") {
@@ -383,6 +419,7 @@ export default function CollectionReportPage() {
     }
   };
 
+  // Paginated items for monthly report
   const monthlyCurrentItems = monthlyDetails.slice(
     (monthlyPage - 1) * monthlyItemsPerPage,
     monthlyPage * monthlyItemsPerPage
@@ -391,6 +428,7 @@ export default function CollectionReportPage() {
     monthlyDetails.length / monthlyItemsPerPage
   );
 
+  // Handle changes to the pending date range for monthly report
   const handlePendingRangeChange = (range?: RDPDateRange) => {
     if (range && range.from && range.to) {
       setPendingRange(range);
@@ -401,8 +439,11 @@ export default function CollectionReportPage() {
     }
   };
 
+  // --- RENDER ---
+
   return (
     <div className="flex flex-row min-h-screen">
+      {/* Sidebar for desktop */}
       <div className="hidden lg:block">
         <Sidebar />
       </div>
@@ -411,11 +452,14 @@ export default function CollectionReportPage() {
       >
         <div className={`w-full px-4 ${styles.containerLimited}`}>
           <main className="w-full min-w-0 space-y-6 mt-4">
+            {/* Header with licencee selector */}
             <Header
               selectedLicencee={selectedLicencee}
               setSelectedLicencee={setSelectedLicencee}
               pageTitle=""
             />
+
+            {/* Desktop: Title and New Collection button */}
             <div className="hidden lg:flex flex-row items-center justify-between w-full mb-2">
               <div className="flex flex-row items-center gap-2">
                 <h1 className="text-3xl font-bold">Collections</h1>
@@ -441,6 +485,8 @@ export default function CollectionReportPage() {
                 New Collection
               </button>
             </div>
+
+            {/* Mobile: Title and New Collection button */}
             <div className="flex flex-col items-center mb-2 md:mb-0 lg:hidden">
               <div className="flex items-center justify-center w-full md:w-auto">
                 <h1 className="text-3xl font-bold">Collections</h1>
@@ -455,6 +501,7 @@ export default function CollectionReportPage() {
               </div>
             </div>
 
+            {/* Mobile: Tab selector */}
             <div className="w-fit mx-auto lg:hidden mb-4">
               <Select
                 value={activeTab}
@@ -476,6 +523,7 @@ export default function CollectionReportPage() {
               </Select>
             </div>
 
+            {/* Desktop: Tab buttons */}
             <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 space-y-2 lg:space-y-0 lg:space-x-2 w-full min-w-0">
               {(["collection", "monthly", "manager", "collector"] as const).map(
                 (tabName) => (
@@ -502,6 +550,7 @@ export default function CollectionReportPage() {
               )}
             </div>
 
+            {/* Main content area: renders the selected tab's UI */}
             <div ref={contentRef} className="relative">
               {activeTab === "collection" && (
                 <>
@@ -624,6 +673,7 @@ export default function CollectionReportPage() {
               )}
             </div>
 
+            {/* Modal for creating a new collection */}
             <NewCollectionModal
               show={showModal}
               onClose={() => setShowModal(false)}
@@ -632,26 +682,6 @@ export default function CollectionReportPage() {
           </main>
         </div>
       </div>
-
-      <style jsx global>{`
-        .scale-animation {
-          transition: transform 0.2s ease-out;
-        }
-        .scale-animation:hover {
-          transform: scale(1.05);
-        }
-        @keyframes searchFlash {
-          0% {
-            background-color: #6a11cb;
-          }
-          50% {
-            background-color: #9900ff;
-          }
-          100% {
-            background-color: #6a11cb;
-          }
-        }
-      `}</style>
     </div>
   );
 }

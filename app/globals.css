@@ -169,3 +169,23 @@ input[type="checkbox"] {
     background: #555;
   }
 }
+
+/* ---- Collection Report Page Styles ---- */
+.scale-animation {
+  transition: transform 0.2s ease-out;
+}
+.scale-animation:hover {
+  transform: scale(1.05);
+}
+
+@keyframes searchFlash {
+  0% {
+    background-color: #6a11cb;
+  }
+  50% {
+    background-color: #9900ff;
+  }
+  100% {
+    background-color: #6a11cb;
+  }
+}
