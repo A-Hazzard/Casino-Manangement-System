@@ -318,16 +318,6 @@ export default function NewCollectionModal({
               : `0 of 0`}{" "}
             Machines
           </DialogTitle>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-3 right-3 md:top-4 md:right-4"
-              onClick={onClose}
-            >
-              <XIcon className="h-5 w-5 md:h-6 md:w-6" />
-            </Button>
-          </DialogClose>
         </DialogHeader>
 
         <div className="flex-grow flex flex-col md:flex-row overflow-hidden">

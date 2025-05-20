@@ -153,3 +153,4 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
 };
 
 export default CollectionDesktopUI;
+ 

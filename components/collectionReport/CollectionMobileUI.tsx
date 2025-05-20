@@ -152,3 +152,4 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
 };
 
 export default CollectionMobileUI;
+ 
