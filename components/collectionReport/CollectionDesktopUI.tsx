@@ -1,30 +1,8 @@
 import React from "react";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import type { LocationSelectItem } from "@/lib/types/location";
 import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
 import CollectionReportTable from "@/components/collectionReport/CollectionReportTable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-interface CollectionDesktopUIProps {
-  locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSearchSubmit: () => void;
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (value: boolean) => void;
-  isSearching: boolean;
-  loading: boolean;
-  filteredReports: CollectionReportRow[]; // Used for total count and empty check
-  desktopCurrentItems: CollectionReportRow[];
-  desktopTotalPages: number;
-  desktopPage: number;
-  onPaginateDesktop: (page: number) => void;
-  desktopPaginationRef: React.RefObject<HTMLDivElement | null>;
-  desktopTableRef: React.RefObject<HTMLDivElement | null>;
-  itemsPerPage: number; // Used to calculate first/last item index
-}
+import type { CollectionDesktopUIProps } from "@/lib/types/componentProps";
 
 const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   locations,
@@ -153,4 +131,3 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
 };
 
 export default CollectionDesktopUI;
- 

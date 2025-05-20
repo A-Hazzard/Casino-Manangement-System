@@ -1,9 +1,4 @@
 import React, { useState } from "react";
-import type { DateRange as RDPDateRange } from "react-day-picker";
-import type {
-  MonthlyReportSummary,
-  MonthlyReportDetailsRow,
-} from "@/lib/types/componentProps";
 import {
   Select,
   SelectTrigger,
@@ -20,18 +15,7 @@ import {
 } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import { formatDateOnly } from "@/lib/utils/dateUtils";
-
-export interface MonthlyMobileUIProps {
-  allLocationNames: string[];
-  monthlyLocation: string;
-  onMonthlyLocationChange: (value: string) => void;
-  pendingRange?: RDPDateRange;
-  onPendingRangeChange: (range?: RDPDateRange) => void;
-  onApplyDateRange: () => void;
-  monthlySummary: MonthlyReportSummary;
-  monthlyDetails: MonthlyReportDetailsRow[];
-  monthlyLoading: boolean;
-}
+import type { MonthlyMobileUIProps } from "@/lib/types/componentProps";
 
 const ITEMS_PER_PAGE = 10;
 

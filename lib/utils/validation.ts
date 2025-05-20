@@ -1,4 +1,5 @@
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import type { CollectionReportData } from "@/lib/types";
 
 /**
  * Validates if a string is a valid email address.
@@ -69,4 +70,20 @@ export function validateCollectionReportPayload(
   if (!payload.reasonShortagePayment)
     errors.push("Reason for shortage payment is required.");
   return { isValid: errors.length === 0, errors };
+}
+
+/**
+ * Validates a CollectionReportData object.
+ * @param data - The CollectionReportData object to validate.
+ * @returns True if valid, false otherwise.
+ */
+export function validateCollectionReportData(
+  data: CollectionReportData | null
+): boolean {
+  if (!data) return false;
+  if (!data.reportId || !data.locationName || !data.collectionDate)
+    return false;
+  if (!Array.isArray(data.machineMetrics) || !data.locationMetrics)
+    return false;
+  return true;
 }

@@ -1,39 +1,9 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
-
-// Define a type for the collection report schema
-export type ICollectionReport = Document & {
-  timestamp: Date;
-  collectorName: string;
-  locationName: string;
-  location: Types.ObjectId | string;
-  totalDrop: number;
-  totalCancelled: number;
-  totalGross: number;
-  totalSasGross: number;
-  previousBalance: number;
-  amountToCollect: number;
-  amountCollected: number;
-  amountUncollected: number;
-  partnerProfit: number;
-  taxes: number;
-  advance: number;
-  variance: number;
-  varianceReason?: string;
-  previousCollectionTime?: Date;
-  locationReportId: string;
-  locationProfitPerc?: number;
-  reasonShortagePayment?: string;
-  balanceCorrection?: number;
-  balanceCorrectionReas?: string;
-  currentBalance?: number;
-  notes?: string;
-  // Timestamps
-  createdAt?: Date;
-  updatedAt?: Date;
-};
+import mongoose, { Schema } from "mongoose";
+import type { ICollectionReport } from "@/lib/types/api";
 
 const collectionReportSchema = new Schema<ICollectionReport>(
   {
+    _id: { type: String, required: true },
     variance: { type: Number, required: true },
     previousBalance: { type: Number, required: true },
     currentBalance: { type: Number, required: true },
@@ -58,6 +28,10 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     reasonShortagePayment: { type: String },
     balanceCorrection: { type: Number },
     balanceCorrectionReas: { type: String },
+    machinesCollected: { type: String },
+    createdAt: { type: Date, required: true },
+    updatedAt: { type: Date, required: true },
+    __v: { type: Number, required: true },
   },
   { timestamps: true }
 );

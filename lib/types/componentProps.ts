@@ -12,6 +12,8 @@ import { TimePeriod } from "@/lib/types/api";
 import { VariantProps } from "class-variance-authority";
 import { JSX } from "react";
 import type { Location } from "./collections";
+import type { LocationSelectItem } from "./location";
+import type { DateRange as RDPDateRange } from "react-day-picker";
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
@@ -177,4 +179,108 @@ export type NewCollectionModalProps = {
   show: boolean;
   onClose: () => void;
   locations: Location[];
+};
+
+// Collection Report UI Props Types
+
+export type CollectionDesktopUIProps = {
+  locations: LocationSelectItem[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearchSubmit: () => void;
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (value: boolean) => void;
+  isSearching: boolean;
+  loading: boolean;
+  filteredReports: CollectionReportRow[];
+  desktopCurrentItems: CollectionReportRow[];
+  desktopTotalPages: number;
+  desktopPage: number;
+  onPaginateDesktop: (page: number) => void;
+  desktopPaginationRef: React.RefObject<HTMLDivElement | null>;
+  desktopTableRef: React.RefObject<HTMLDivElement | null>;
+  itemsPerPage: number;
+};
+
+export type CollectionMobileUIProps = {
+  locations: LocationSelectItem[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearchSubmit: () => void;
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (value: boolean) => void;
+  isSearching: boolean;
+  loading: boolean;
+  filteredReports: CollectionReportRow[];
+  mobileCurrentItems: CollectionReportRow[];
+  mobileTotalPages: number;
+  mobilePage: number;
+  onPaginateMobile: (page: number) => void;
+  mobilePaginationRef: React.RefObject<HTMLDivElement | null>;
+  mobileCardsRef: React.RefObject<HTMLDivElement | null>;
+  itemsPerPage: number;
+};
+
+export type MonthlyDesktopUIProps = {
+  allLocationNames: string[];
+  monthlyLocation: string;
+  onMonthlyLocationChange: (value: string) => void;
+  pendingRange?: RDPDateRange;
+  onPendingRangeChange: (range?: RDPDateRange) => void;
+  onApplyDateRange: () => void;
+  onSetLastMonth: () => void;
+  monthlySummary: MonthlyReportSummary;
+  monthlyDetails: MonthlyReportDetailsRow[];
+  monthlyCurrentItems: MonthlyReportDetailsRow[];
+  monthlyLoading: boolean;
+  monthlyTotalPages: number;
+  monthlyPage: number;
+  onPaginateMonthly: (page: number) => void;
+  monthlyPaginationRef: React.RefObject<HTMLDivElement | null>;
+  monthlyFirstItemIndex: number;
+  monthlyLastItemIndex: number;
+};
+
+export type MonthlyMobileUIProps = {
+  allLocationNames: string[];
+  monthlyLocation: string;
+  onMonthlyLocationChange: (value: string) => void;
+  pendingRange?: RDPDateRange;
+  onPendingRangeChange: (range?: RDPDateRange) => void;
+  onApplyDateRange: () => void;
+  monthlySummary: MonthlyReportSummary;
+  monthlyDetails: MonthlyReportDetailsRow[];
+  monthlyLoading: boolean;
+};
+
+export type ManagerDesktopUIProps = {
+  locations: LocationSelectItem[];
+  collectors: string[];
+  selectedSchedulerLocation: string;
+  onSchedulerLocationChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  onResetSchedulerFilters: () => void;
+  schedulers: SchedulerTableRow[];
+  loadingSchedulers: boolean;
+};
+
+export type ManagerMobileUIProps = {
+  locations: LocationSelectItem[];
+  collectors: string[];
+  selectedSchedulerLocation: string;
+  onSchedulerLocationChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  onResetSchedulerFilters: () => void;
+  schedulers: SchedulerTableRow[];
+  loadingSchedulers: boolean;
 };

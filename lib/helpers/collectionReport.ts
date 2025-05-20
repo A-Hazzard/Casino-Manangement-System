@@ -6,6 +6,7 @@ import type {
   MonthlyReportDetailsRow,
 } from "@/lib/types/componentProps";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import type { CollectionReportData } from "@/lib/types";
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
@@ -319,4 +320,40 @@ export async function createCollectionReport(
 ) {
   const { data } = await axios.post("/api/collectionReport", payload);
   return data;
+}
+
+/**
+ * Fetches collection reports for a given licencee (or all).
+ * @param licencee - The licencee name or "all" (optional)
+ * @returns Promise resolving to an array of CollectionReportRow
+ */
+export async function fetchCollectionReportsByLicencee(
+  licencee?: string
+): Promise<CollectionReportRow[]> {
+  try {
+    const params =
+      licencee && licencee.toLowerCase() !== "all" ? { licencee } : {};
+    const { data } = await axios.get("/api/collectionReport", { params });
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Failed to fetch collection reports by licencee:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetches a single collection report by its reportId from the API.
+ * @param reportId - The unique report ID to fetch.
+ * @returns Promise resolving to a CollectionReportData object or null if not found.
+ */
+export async function fetchCollectionReportById(
+  reportId: string
+): Promise<CollectionReportData | null> {
+  try {
+    const { data } = await axios.get(`/api/collection-report/${reportId}`);
+    return data as CollectionReportData;
+  } catch (error) {
+    console.error("Failed to fetch collection report by ID:", error);
+    return null;
+  }
 }

@@ -136,3 +136,10 @@ export type UserAuthPayload = {
 // Re-export types from other files
 export * from "./cabinets";
 export * from "./location";
+
+export type {
+  CollectionReportData,
+  MachineMetric,
+  LocationMetric,
+  SASMetric,
+} from "./api";

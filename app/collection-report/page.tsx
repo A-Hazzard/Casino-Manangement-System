@@ -30,6 +30,7 @@ import type {
   CollectionReportRow,
 } from "@/lib/types/componentProps";
 import { DateRange as RDPDateRange } from "react-day-picker";
+import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
 
 // Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
@@ -151,22 +152,8 @@ export default function CollectionReportPage() {
   // Fetch collection reports when selectedLicencee changes
   useEffect(() => {
     setLoading(true);
-    let url = "/api/collectionReport";
-    if (selectedLicencee && selectedLicencee.toLowerCase() !== "all") {
-      url += `?licencee=${encodeURIComponent(selectedLicencee)}`;
-    }
-
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) {
-          res
-            .text()
-            .then((text) => console.error("Server error response:", text));
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data: CollectionReportRow[]) => {
+    fetchCollectionReportsByLicencee(selectedLicencee)
+      .then((data) => {
         setReports(Array.isArray(data) ? data : []);
         setLoading(false);
       })
@@ -247,10 +234,9 @@ export default function CollectionReportPage() {
       !search ||
       r.collector.toLowerCase().includes(search.toLowerCase()) ||
       r.location.toLowerCase().includes(search.toLowerCase());
-    const uncollectedStr = String(r.uncollected);
+    const uncollectedStr = String(r.uncollected).trim();
     const matchesUncollected =
-      !showUncollectedOnly ||
-      (uncollectedStr !== "0" && uncollectedStr !== "-");
+      !showUncollectedOnly || Number(uncollectedStr) > 0;
     return matchesLocation && matchesSearch && matchesUncollected;
   });
 

@@ -14,133 +14,22 @@ import {
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import gsap from "gsap";
-
-// Define types for the report data - replace with actual types
-type ReportData = {
-  reportId: string;
-  locationName: string;
-  collectionDate: string; // Should ideally be a Date object or string that can be formatted
-  machineMetrics: MachineMetric[];
-  locationMetrics: LocationMetric;
-  sasMetrics?: SASMetric;
-};
-
-type MachineMetric = {
-  id: string;
-  machineId: string;
-  dropCancelled: string;
-  meterGross: number;
-  sasGross?: number | string;
-  variation?: number | string;
-  sasTimes?: string;
-  hasIssue?: boolean; // For the green checkmark icon
-};
-
-type LocationMetric = {
-  droppedCancelled: string;
-  metersGross: number;
-  variation: number;
-  sasGross: number;
-  locationRevenue: number;
-  amountUncollected: number;
-  amountToCollect: number;
-  machinesNumber: string;
-  collectedAmount: number;
-  reasonForShortage?: string;
-  taxes: number;
-  advance: number;
-  previousBalanceOwed: number;
-  balanceCorrection: number;
-  currentBalanceOwed: number;
-  correctionReason?: string;
-  variance?: number | string;
-  varianceReason?: string;
-};
-
-type SASMetric = {
-  dropped: number;
-  cancelled: number;
-  gross: number;
-};
-
-// Static data based on the screenshot for d5bea168480629ae02261abc
-// Moved outside the component to prevent re-creation on every render
-const staticReportData: ReportData = {
-  reportId: "d5bea168480629ae02261abc",
-  locationName: "Harry's Snack Bar",
-  collectionDate: "April 14, 04:41 pm",
-  machineMetrics: [
-    {
-      id: "1",
-      machineId: "GM8402",
-      dropCancelled: "1021 / 830",
-      meterGross: 191,
-      sasGross: "-",
-      variation: "-",
-      sasTimes: "2025, Mar 10, 13:43:45\n2025, Apr 14, 16:35:07",
-      hasIssue: true,
-    },
-    {
-      id: "2",
-      machineId: "GM6529",
-      dropCancelled: "1406 / 1680",
-      meterGross: -214,
-      sasGross: "-",
-      variation: "-",
-      sasTimes: "2025, Mar 10, 13:34:30\n2025, Apr 14, 16:35:31",
-    },
-    {
-      id: "3",
-      machineId: "GM8402",
-      dropCancelled: "1021 / 830",
-      meterGross: 191,
-      sasGross: "-",
-      variation: "-",
-      sasTimes: "2025, Mar 10, 13:43:45\n2025, Apr 14, 16:35:07",
-      hasIssue: true,
-    },
-    {
-      id: "4",
-      machineId: "GM6529",
-      dropCancelled: "1406 / 1680",
-      meterGross: -214,
-      sasGross: "-",
-      variation: "-",
-      sasTimes: "2025, Mar 10, 13:34:30\n2025, Apr 14, 16:35:31",
-    },
-  ],
-  locationMetrics: {
-    droppedCancelled: "8832/7997",
-    metersGross: 835,
-    variation: 835,
-    sasGross: 0,
-    locationRevenue: 417,
-    amountUncollected: 0,
-    amountToCollect: 418,
-    machinesNumber: "6/6",
-    collectedAmount: 309,
-    reasonForShortage: "-",
-    taxes: 0,
-    advance: 0,
-    previousBalanceOwed: 0,
-    balanceCorrection: -109,
-    currentBalanceOwed: 0,
-    correctionReason: "More than one reading included",
-    variance: "-",
-    varianceReason: "-",
-  },
-  sasMetrics: {
-    dropped: 0,
-    cancelled: 0,
-    gross: 0,
-  },
-};
+import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
+import { validateCollectionReportData } from "@/lib/utils/validation";
+import type {
+  CollectionReportData,
+  MachineMetric,
+  LocationMetric,
+  SASMetric,
+} from "@/lib/types";
 
 // Main component for the report page
 export default function CollectionReportPage() {
   const params = useParams();
   const reportId = params.reportId as string;
-  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [reportData, setReportData] = useState<CollectionReportData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
@@ -149,16 +38,24 @@ export default function CollectionReportPage() {
 
   const tabContentRef = useRef<HTMLDivElement>(null); // For desktop GSAP
 
+  // Fetch report data on mount or when reportId changes
   useEffect(() => {
     setLoading(true);
-    if (reportId === "d5bea168480629ae02261abc") {
-      setReportData(staticReportData);
-      setError(null);
-    } else {
-      setError("Report not found. Please use a valid report ID.");
-      setReportData(null);
-    }
-    setLoading(false);
+    setError(null);
+    fetchCollectionReportById(reportId)
+      .then((data) => {
+        if (!validateCollectionReportData(data)) {
+          setError("Report not found. Please use a valid report ID.");
+          setReportData(null);
+        } else {
+          setReportData(data);
+        }
+      })
+      .catch(() => {
+        setError("Failed to fetch report data.");
+        setReportData(null);
+      })
+      .finally(() => setLoading(false));
   }, [reportId]);
 
   // GSAP animation for desktop tab transitions

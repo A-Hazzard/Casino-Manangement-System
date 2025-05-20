@@ -1,22 +1,7 @@
 import React from "react";
-import type { SchedulerTableRow } from "@/lib/types/componentProps";
-import type { LocationSelectItem } from "@/lib/types/location";
 import ManagerScheduleFilters from "@/components/collectionReport/ManagerScheduleFilters";
 import ManagerScheduleCards from "@/components/collectionReport/ManagerScheduleCards";
-
-interface ManagerMobileUIProps {
-  locations: LocationSelectItem[];
-  collectors: string[];
-  selectedSchedulerLocation: string;
-  onSchedulerLocationChange: (value: string) => void;
-  selectedCollector: string;
-  onCollectorChange: (value: string) => void;
-  selectedStatus: string;
-  onStatusChange: (value: string) => void;
-  onResetSchedulerFilters: () => void;
-  schedulers: SchedulerTableRow[];
-  loadingSchedulers: boolean;
-}
+import type { ManagerMobileUIProps } from "@/lib/types/componentProps";
 
 const ManagerMobileUI: React.FC<ManagerMobileUIProps> = ({
   locations,

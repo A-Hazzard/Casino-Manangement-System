@@ -1,6 +1,4 @@
 import React from "react";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import type { LocationSelectItem } from "@/lib/types/location";
 import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
 import CollectionReportCards from "@/components/collectionReport/CollectionReportCards";
 import {
@@ -11,27 +9,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-interface CollectionMobileUIProps {
-  locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSearchSubmit: () => void; // Added for search button click or enter
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (value: boolean) => void;
-  isSearching: boolean;
-  loading: boolean;
-  filteredReports: CollectionReportRow[]; // Used for total count and empty check
-  mobileCurrentItems: CollectionReportRow[];
-  mobileTotalPages: number;
-  mobilePage: number;
-  onPaginateMobile: (page: number) => void;
-  mobilePaginationRef: React.RefObject<HTMLDivElement | null>;
-  mobileCardsRef: React.RefObject<HTMLDivElement | null>;
-  itemsPerPage: number; // Used to calculate first/last item index
-}
+import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   locations,
@@ -152,4 +130,3 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
 };
 
 export default CollectionMobileUI;
- 

@@ -6,6 +6,8 @@ import type {
   MachineEvent as MachineEventType,
 } from "@/lib/types/api";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
+import { CollectionReportData } from "@/lib/types";
+import { CollectionReport } from "../models/collectionReport";
 
 /**
  * Fetches accepted bills for a given machine ID.
@@ -417,4 +419,85 @@ export async function getAccountingDetails(machineId: string) {
     ]);
   console.log("[API] getAccountingDetails finished DB queries");
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
+}
+
+/**
+ * Fetches and formats a collection report by its reportId.
+ * @param reportId - The unique report ID to fetch.
+ * @returns Promise resolving to a CollectionReportData object or null if not found.
+ */
+export async function getCollectionReportById(
+  reportId: string
+): Promise<CollectionReportData | null> {
+  const report = await CollectionReport.findOne({
+    locationReportId: reportId,
+  }).lean();
+  if (!report) return null;
+
+  // Fetch machine metrics for this report
+  // (Assume Machine model and collectionMetersHistory are available)
+  const machines = await (global as any).mongoose.models.Machine.find({
+    "collectionMetersHistory.locationReportId": reportId,
+  }).lean();
+
+  const machineMetrics = (machines || []).map((machine: any, idx: number) => {
+    const historyEntry = (machine.collectionMetersHistory || []).find(
+      (entry: any) => entry.locationReportId === reportId
+    );
+    const metersInDiff =
+      (historyEntry?.metersIn || 0) - (historyEntry?.prevMetersIn || 0);
+    const metersOutDiff =
+      (historyEntry?.metersOut || 0) - (historyEntry?.prevMetersOut || 0);
+    const meterGross = metersInDiff - metersOutDiff;
+    return {
+      id: String(idx + 1),
+      machineId: machine.serialNumber || machine._id,
+      dropCancelled: `${metersInDiff} / 0`, // TODO: Replace 0 with actual cancelled credits if available
+      meterGross,
+      sasGross: "-", // TODO: Replace with actual SAS gross if available
+      variation: "-", // TODO: Replace with actual variation if available
+      sasTimes: historyEntry ? `${historyEntry.timestamp}` : "-",
+      hasIssue: false, // TODO: Set true if there is an issue
+    };
+  });
+
+  // Map location metrics
+  const locationMetrics = {
+    droppedCancelled: `${report.totalDrop || 0}/${report.totalCancelled || 0}`,
+    metersGross: report.totalGross || 0,
+    variation: report.variance || 0,
+    sasGross: report.totalSasGross || 0,
+    locationRevenue: report.partnerProfit || 0,
+    amountUncollected: report.amountUncollected || 0,
+    amountToCollect: report.amountToCollect || 0,
+    machinesNumber: report.machinesCollected || "-",
+    collectedAmount: report.amountCollected || 0,
+    reasonForShortage: report.reasonShortagePayment || "-",
+    taxes: report.taxes || 0,
+    advance: report.advance || 0,
+    previousBalanceOwed: report.previousBalance || 0,
+    balanceCorrection: report.balanceCorrection || 0,
+    currentBalanceOwed: report.currentBalance || 0,
+    correctionReason: report.balanceCorrectionReas || "-",
+    variance: report.variance || "-",
+    varianceReason: report.varianceReason || "-",
+  };
+
+  // Map SAS metrics
+  const sasMetrics = {
+    dropped: report.totalSasGross || 0, // TODO: Replace with actual SAS dropped if available
+    cancelled: 0, // TODO: Replace with actual SAS cancelled if available
+    gross: report.totalSasGross || 0,
+  };
+
+  return {
+    reportId: report.locationReportId,
+    locationName: report.locationName,
+    collectionDate: report.timestamp
+      ? new Date(report.timestamp).toLocaleString()
+      : "-",
+    machineMetrics,
+    locationMetrics,
+    sasMetrics,
+  };
 }

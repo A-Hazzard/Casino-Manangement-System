@@ -122,6 +122,33 @@ export default function NewCollectionModal({
     }
   }, [selectedCabinetId, selectedLocationId, locationsWithMachines]);
 
+  // Helper to reset all form fields to their initial state
+  const resetFormFields = () => {
+    setSelectedLocationId(undefined);
+    setSelectedLocationName("");
+    setLocationSearch("");
+    setCabinetsForLocation([]);
+    setSelectedCabinetId(undefined);
+    setSelectedMachineName("");
+    setCurrentMachineIndex(0);
+    setSelectedDate(new Date());
+    setMetersIn("");
+    setMetersOut("");
+    setNotes("");
+    setFinancials({
+      taxes: "",
+      advance: "",
+      variance: "",
+      varianceReason: "",
+      amountToCollect: "",
+      collectedAmount: "",
+      balanceCorrection: "",
+      balanceCorrectionReason: "",
+      previousBalance: "",
+      reasonForShortagePayment: "",
+    });
+  };
+
   useEffect(() => {
     if (show && modalRef.current) {
       gsap.fromTo(
@@ -135,19 +162,7 @@ export default function NewCollectionModal({
         scale: 0.95,
         duration: 0.2,
         ease: "power2.in",
-        onComplete: () => {
-          setSelectedLocationId(undefined);
-          setSelectedLocationName("");
-          setLocationSearch("");
-          setCabinetsForLocation([]);
-          setSelectedCabinetId(undefined);
-          setSelectedMachineName("");
-          setCurrentMachineIndex(0);
-          setSelectedDate(new Date());
-          setMetersIn("");
-          setMetersOut("");
-          setNotes("");
-        },
+        onComplete: resetFormFields,
       });
     }
   }, [show]);
@@ -417,24 +432,7 @@ export default function NewCollectionModal({
                     variant="ghost"
                     size="icon"
                     className="hover:bg-grayHighlight"
-                    onClick={() => {
-                      setSelectedDate(new Date());
-                      setMetersIn("");
-                      setMetersOut("");
-                      setNotes("");
-                      setFinancials({
-                        taxes: "",
-                        advance: "",
-                        variance: "",
-                        varianceReason: "",
-                        amountToCollect: "",
-                        collectedAmount: "",
-                        balanceCorrection: "",
-                        balanceCorrectionReason: "",
-                        previousBalance: "",
-                        reasonForShortagePayment: "",
-                      });
-                    }}
+                    onClick={resetFormFields}
                   >
                     <RefreshCcw className="h-4 w-4 md:h-5" />
                   </Button>

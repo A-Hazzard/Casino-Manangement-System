@@ -1,34 +1,17 @@
 import React from "react";
-import type { DateRange as RDPDateRange } from "react-day-picker";
-import type {
-  MonthlyReportSummary,
-  MonthlyReportDetailsRow,
-} from "@/lib/types/componentProps";
 import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
 import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-// Define Props for MonthlyDesktopUI
-interface MonthlyDesktopUIProps {
-  allLocationNames: string[];
-  monthlyLocation: string;
-  onMonthlyLocationChange: (value: string) => void;
-  pendingRange?: RDPDateRange;
-  onPendingRangeChange: (range?: RDPDateRange) => void;
-  onApplyDateRange: () => void;
-  onSetLastMonth: () => void;
-  monthlySummary: MonthlyReportSummary;
-  monthlyDetails: MonthlyReportDetailsRow[];
-  monthlyCurrentItems: MonthlyReportDetailsRow[];
-  monthlyLoading: boolean;
-  monthlyTotalPages: number;
-  monthlyPage: number;
-  onPaginateMonthly: (page: number) => void;
-  monthlyPaginationRef: React.RefObject<HTMLDivElement | null>;
-  monthlyFirstItemIndex: number;
-  monthlyLastItemIndex: number;
-}
+import type {
+  MonthlyDesktopUIProps,
+  MonthlyReportSummary,
+  MonthlyReportDetailsRow,
+} from "@/lib/types/componentProps";
+import {
+  exportMonthlyReportPDF,
+  exportMonthlyReportExcel,
+} from "@/lib/utils/export";
 
 const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   allLocationNames,
@@ -49,6 +32,11 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   monthlyFirstItemIndex,
   monthlyLastItemIndex,
 }) => {
+  // Handler to properly await the async PDF export
+  const handleExportPDF = async () => {
+    await exportMonthlyReportPDF(monthlySummary, monthlyDetails);
+  };
+
   return (
     <div className="hidden md:block bg-white rounded-lg shadow-md space-y-4">
       {/* Controls Bar */}
@@ -66,10 +54,18 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
           ))}
         </select>
         <div className="flex gap-2 ml-auto w-full md:w-auto justify-end">
-          <button className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm">
+          <button
+            className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm"
+            onClick={handleExportPDF}
+          >
             EXPORT PDF
           </button>
-          <button className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm">
+          <button
+            className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm"
+            onClick={() =>
+              exportMonthlyReportExcel(monthlySummary, monthlyDetails)
+            }
+          >
             EXPORT EXCEL
           </button>
         </div>
@@ -86,12 +82,14 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
         <span className="bg-grayHighlight text-white px-3 py-1.5 rounded-l-lg text-xs font-semibold">
           Date Range
         </span>
-        <DateRangePicker
-          value={pendingRange}
-          onChange={onPendingRangeChange}
-          maxDate={new Date()}
-          numberOfMonths={2}
-        />
+        <div style={{ width: "fit-content" }}>
+          <DateRangePicker
+            value={pendingRange}
+            onChange={onPendingRangeChange}
+            maxDate={new Date()}
+            numberOfMonths={2}
+          />
+        </div>
         <button
           className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
           onClick={onApplyDateRange}

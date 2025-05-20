@@ -1,19 +1,5 @@
-import mongoose, { Schema, Document } from "mongoose";
-
-// Define the type for the Scheduler document
-export type IScheduler = Document & {
-  licencee: string;
-  location: string;
-  collector: string;
-  creator: string;
-  startTime: Date;
-  endTime: Date;
-  status: "pending" | "completed" | "cancelled";
-  notes?: string;
-  // Timestamps
-  createdAt?: Date;
-  updatedAt?: Date;
-};
+import mongoose, { Schema } from "mongoose";
+import type { IScheduler } from "@/lib/types/api";
 
 // Define the Mongoose schema
 const SchedulerSchema: Schema = new Schema(
