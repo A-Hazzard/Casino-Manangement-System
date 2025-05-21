@@ -138,6 +138,8 @@ export type MobileLayoutProps = DashboardLayoutProps;
 
 // Represents a single row in the Collection Reports table
 export type CollectionReportRow = {
+  _id: string;
+  locationReportId: string;
   collector: string;
   location: string;
   gross: number;

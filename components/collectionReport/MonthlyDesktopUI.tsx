@@ -3,11 +3,7 @@ import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
 import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type {
-  MonthlyDesktopUIProps,
-  MonthlyReportSummary,
-  MonthlyReportDetailsRow,
-} from "@/lib/types/componentProps";
+import type { MonthlyDesktopUIProps } from "@/lib/types/componentProps";
 import {
   exportMonthlyReportPDF,
   exportMonthlyReportExcel,

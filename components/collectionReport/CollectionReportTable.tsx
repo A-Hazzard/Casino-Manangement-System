@@ -1,12 +1,14 @@
 import React from "react";
 import Image from "next/image";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
+import { useRouter } from "next/navigation";
 
 type Props = {
   data: CollectionReportRow[];
 };
 
 export default function CollectionReportTable({ data }: Props) {
+  const router = useRouter();
   return (
     <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0">
       <table className="w-full min-w-0 text-sm text-left">
@@ -38,7 +40,13 @@ export default function CollectionReportTable({ data }: Props) {
               <td className="px-4 py-2">{row.locationRevenue}</td>
               <td className="px-4 py-2">{row.time}</td>
               <td className="px-4 py-2">
-                <button className="flex items-center justify-center text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent">
+                <button
+                  className="flex items-center justify-center text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent"
+                  onClick={() =>
+                    router.push(`/collection-report/report/${row._id}`)
+                  }
+                  aria-label="View Details"
+                >
                   <span className="sr-only">View</span>
                   <Image
                     src="/details.svg"

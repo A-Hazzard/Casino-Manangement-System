@@ -1,11 +1,13 @@
 import React from "react";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
+import { useRouter } from "next/navigation";
 
 type Props = {
   data: CollectionReportRow[];
 };
 
 export default function CollectionReportCards({ data }: Props) {
+  const router = useRouter();
   return (
     <div className="flex flex-col lg:hidden mt-4 px-2 md:px-4 gap-4 w-full min-w-0">
       {data.map((row, index) => (
@@ -63,7 +65,15 @@ export default function CollectionReportCards({ data }: Props) {
               <span className="font-semibold text-sm">{row.time}</span>
             </div>
             <div className="flex justify-center mt-3">
-              <button className="border border-button text-button px-6 py-2 rounded-md text-sm font-bold tracking-wider bg-transparent">
+              <button
+                className="border border-button text-button px-6 py-2 rounded-md text-sm font-bold tracking-wider bg-transparent"
+                onClick={() =>
+                  router.push(
+                    `/collection-report/report/${row.locationReportId}`
+                  )
+                }
+                aria-label="View Details"
+              >
                 VIEW DETAILS
               </button>
             </div>

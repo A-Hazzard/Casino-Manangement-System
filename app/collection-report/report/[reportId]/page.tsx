@@ -16,16 +16,12 @@ import Header from "@/components/layout/Header";
 import gsap from "gsap";
 import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
 import { validateCollectionReportData } from "@/lib/utils/validation";
-import type {
-  CollectionReportData,
-  MachineMetric,
-  LocationMetric,
-  SASMetric,
-} from "@/lib/types";
+import type { CollectionReportData, MachineMetric } from "@/lib/types/index";
 
 // Main component for the report page
 export default function CollectionReportPage() {
   const params = useParams();
+  // reportId is the MongoDB _id (document ID)
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
@@ -165,7 +161,7 @@ export default function CollectionReportPage() {
       {/* Mobile View (existing card layout - simplified here) */}
       <div className="lg:hidden space-y-4">
         <h2 className="text-xl font-bold text-center my-4">Machine Metrics</h2>
-        {reportData.machineMetrics.map((metric) => (
+        {reportData.machineMetrics.map((metric: MachineMetric) => (
           <div
             key={metric.id}
             className="bg-white rounded-lg shadow-md overflow-hidden"
@@ -276,7 +272,7 @@ export default function CollectionReportPage() {
             </tr>
           </thead>
           <tbody>
-            {reportData.machineMetrics.map((metric) => (
+            {reportData.machineMetrics.map((metric: MachineMetric) => (
               <tr
                 key={metric.id}
                 className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"

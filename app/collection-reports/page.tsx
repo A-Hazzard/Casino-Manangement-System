@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -8,6 +8,7 @@ import CollectionReportCards from "@/components/collectionReport/CollectionRepor
 import CollectionReportTable from "@/components/collectionReport/CollectionReportTable";
 import { Button } from "@/components/ui/button";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
+import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
 
 // Tab options for the report section
 const TABS = [
@@ -15,30 +16,6 @@ const TABS = [
   { label: "Monthly Report", value: "monthly" },
   { label: "Manager Schedule", value: "manager" },
   { label: "Collectors Schedule", value: "collectors" },
-];
-
-// Mock data for demonstration (replace with real data fetching logic)
-const MOCK_DATA: CollectionReportRow[] = [
-  {
-    collector: "collector1@evo",
-    location: "Dev Lab2, Trinidad and Tobago",
-    gross: 31781,
-    machines: "2/2",
-    collected: 2223,
-    uncollected: "-",
-    locationRevenue: 15890,
-    time: "Apr 30, 11:38:07",
-  },
-  {
-    collector: "collector2@evo",
-    location: "Purple Heart Hotel, Guyana",
-    gross: 11642,
-    machines: "6/6",
-    collected: 1111,
-    uncollected: "-",
-    locationRevenue: 5821,
-    time: "Apr 29, 16:14:01",
-  },
 ];
 
 /**
@@ -129,6 +106,11 @@ export default function CollectionReportsPage() {
   const [search, setSearch] = useState("");
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState("Select Location");
+  const [reports, setReports] = useState<CollectionReportRow[]>([]);
+
+  useEffect(() => {
+    fetchCollectionReportsByLicencee().then((data) => setReports(data));
+  }, []);
 
   /**
    * Handles search input changes.
@@ -146,7 +128,7 @@ export default function CollectionReportsPage() {
   };
 
   // Filtered data (mock logic)
-  const filteredData = MOCK_DATA.filter((row) => {
+  const filteredData = reports.filter((row) => {
     const matchesSearch =
       row.collector.toLowerCase().includes(search.toLowerCase()) ||
       row.location.toLowerCase().includes(search.toLowerCase());

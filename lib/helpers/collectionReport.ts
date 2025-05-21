@@ -35,6 +35,8 @@ export async function getAllCollectionReports(
   }
   // Map to CollectionReportRow
   return rawReports.map((doc: Record<string, unknown>) => ({
+    _id: (doc._id as string) || "",
+    locationReportId: (doc.locationReportId as string) || "",
     collector: (doc.collectorName as string) || "",
     location: (doc.locationName as string) || "",
     gross: (doc.totalGross as number) || 0,

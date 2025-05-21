@@ -40,7 +40,7 @@ export async function exportMonthlyReportPDF(
     );
     // Only specify width to preserve aspect ratio (no stretching)
     doc.addImage(logoBase64, "PNG", 75, 6, 60, 0); // Centered, width=60, height auto
-  } catch (e) {
+  } catch {
     // If logo fails to load, continue without it
     doc.setFontSize(10);
     doc.text("Evolution One Solutions", 14, 16);
@@ -57,7 +57,9 @@ export async function exportMonthlyReportPDF(
     headStyles: { fillColor: [81, 25, 233] },
     styles: { fontStyle: "bold" },
   });
-  const lastY = (doc as any).lastAutoTable?.finalY || 46;
+  const lastY =
+    (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable
+      ?.finalY || 46;
   autoTable(doc, {
     startY: lastY + 10,
     head: [["LOCATION", "DROP", "WIN", "GROSS", "SAS GROSS"]],

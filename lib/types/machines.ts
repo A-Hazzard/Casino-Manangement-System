@@ -26,6 +26,7 @@ export type Machine = {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  collectionMetersHistory?: CollectionMetersHistoryEntry[];
 };
 
 export type MachineMatchStage = {

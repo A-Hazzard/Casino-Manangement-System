@@ -17,6 +17,11 @@ export default function Sidebar() {
   const isCabinetPath =
     pathname === "/cabinets" || pathname.startsWith("/cabinets/");
 
+  // Check if the current path is related to collections
+  const isCollectionsPath =
+    pathname === "/collection-report" ||
+    pathname.startsWith("/collection-report/");
+
   return (
     <aside
       className="hidden lg:flex fixed left-0 top-0 h-full bg-container shadow-md shadow-purple-500
@@ -63,6 +68,22 @@ export default function Sidebar() {
           className="w-[7rem] cursor-pointer"
           alt="Cabinets Button"
           onClick={() => router.push("/cabinets")}
+        />
+      </div>
+
+      {/* Collections button */}
+      <div className="mb-6">
+        <Image
+          src={
+            isCollectionsPath
+              ? "/collectionsButton.svg"
+              : "/collectionsButtonNoBg.svg"
+          }
+          width={50}
+          height={50}
+          className="w-[7rem] cursor-pointer"
+          alt="Collections Button"
+          onClick={() => router.push("/collection-report")}
         />
       </div>
 

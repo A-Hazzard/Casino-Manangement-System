@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import { Machine } from "@/app/api/lib/models/machines";
 import { getCollectionReportById } from "@/app/api/lib/helpers/accountingDetails";
 
 // Define a type for the route context parameters
