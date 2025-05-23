@@ -3,20 +3,20 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  ArrowLeft,
-  Edit3,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import gsap from "gsap";
 import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
 import { validateCollectionReportData } from "@/lib/utils/validation";
-import type { CollectionReportData, MachineMetric } from "@/lib/types/index";
+import type { CollectionReportData } from "@/lib/types/index";
+import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
+import type { CollectionDocument } from "@/lib/types/collections";
+import {
+  calculateSasGross,
+  calculateVariation,
+  formatSasTimes,
+} from "@/lib/utils/metrics";
 
 // Main component for the report page
 export default function CollectionReportPage() {
@@ -31,6 +31,9 @@ export default function CollectionReportPage() {
   const [activeTab, setActiveTab] = useState<
     "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
   >("Machine Metrics");
+  const [collections, setCollections] = useState<CollectionDocument[]>([]);
+  const ITEMS_PER_PAGE = 10;
+  const [machinePage, setMachinePage] = useState(1);
 
   const tabContentRef = useRef<HTMLDivElement>(null); // For desktop GSAP
 
@@ -52,6 +55,10 @@ export default function CollectionReportPage() {
         setReportData(null);
       })
       .finally(() => setLoading(false));
+    // Fetch collections for this report
+    fetchCollectionsByLocationReportId(reportId)
+      .then(setCollections)
+      .catch(() => setCollections([]));
   }, [reportId]);
 
   // GSAP animation for desktop tab transitions
@@ -156,97 +163,122 @@ export default function CollectionReportPage() {
     </button>
   );
 
+  const sortedCollections = [...collections].sort(
+    (a, b) => (b.sasMeters?.drop || 0) - (a.sasMeters?.drop || 0)
+  );
+  const machineTotalPages = Math.ceil(
+    sortedCollections.length / ITEMS_PER_PAGE
+  );
+  const machineCurrentItems = sortedCollections.slice(
+    (machinePage - 1) * ITEMS_PER_PAGE,
+    machinePage * ITEMS_PER_PAGE
+  );
+
   const MachineMetricsContent = () => (
     <>
-      {/* Mobile View (existing card layout - simplified here) */}
+      {/* Mobile View */}
       <div className="lg:hidden space-y-4">
         <h2 className="text-xl font-bold text-center my-4">Machine Metrics</h2>
-        {reportData.machineMetrics.map((metric: MachineMetric) => (
+        {machineCurrentItems.map((col) => (
           <div
-            key={metric.id}
+            key={col._id}
             className="bg-white rounded-lg shadow-md overflow-hidden"
           >
             <div className="bg-lighterBlueHighlight text-white p-3">
-              <h3 className="font-semibold">Machine ID: {metric.machineId}</h3>
+              <h3 className="font-semibold">
+                Machine ID: {col.machineCustomName}
+              </h3>
             </div>
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Dropped / Cancelled</span>
                 <span className="font-medium text-gray-800">
-                  {metric.dropCancelled}
+                  {col.movement.metersIn} / {col.movement.metersOut}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Meters Gross</span>
-                <div className="flex items-center">
-                  {metric.hasIssue && (
-                    <Edit3 size={16} className="text-button mr-1" />
-                  )}{" "}
-                  {/* Green Check placeholder */}
-                  <span className="font-medium text-gray-800">
-                    {metric.meterGross}
-                  </span>
-                </div>
+                <span className="font-medium text-gray-800">
+                  {col.movement.gross}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross</span>
                 <span className="font-medium text-gray-800">
-                  {metric.sasGross}
+                  {calculateSasGross(col)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Variation</span>
                 <span className="font-medium text-gray-800">
-                  {metric.variation}
+                  {calculateVariation(col)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Times</span>
                 <span className="font-medium text-gray-800 whitespace-pre-line text-right">
-                  {metric.sasTimes}
+                  {formatSasTimes(col)}
                 </span>
               </div>
             </div>
           </div>
         ))}
-        {/* Pagination - Mobile styled, Desktop uses existing (or could be enhanced) */}
-        <div className="flex items-center justify-center p-4 space-x-1 mt-4">
-          <button
-            className="p-2 rounded-md hover:bg-gray-200 text-lighterBlueHighlight disabled:opacity-50 disabled:text-gray-400"
-            disabled
-          >
-            <ChevronsLeft size={20} />
-          </button>
-          <button
-            className="p-2 rounded-md hover:bg-gray-200 text-lighterBlueHighlight disabled:opacity-50 disabled:text-gray-400"
-            disabled
-          >
-            <ChevronLeft size={20} />
-          </button>
-          {[1, 2, 3, 4].map((page) => (
+        {machineTotalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-4">
             <button
-              key={page}
-              className={`px-3 py-1 lg:px-4 lg:py-2 rounded-md text-sm font-medium ${
-                page === 1
-                  ? "bg-lighterBlueHighlight text-white"
-                  : "hover:bg-gray-200 text-lighterBlueHighlight"
-              }`}
-              disabled={page !== 1}
+              onClick={() => setMachinePage(1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="First page"
             >
-              {page}
+              ⏪
             </button>
-          ))}
-          <span className="text-lighterBlueHighlight">...</span>
-          <button className="p-2 rounded-md hover:bg-gray-200 text-lighterBlueHighlight">
-            <ChevronRight size={20} />
-          </button>
-          <button className="p-2 rounded-md hover:bg-gray-200 text-lighterBlueHighlight">
-            <ChevronsRight size={20} />
-          </button>
-        </div>
+            <button
+              onClick={() => setMachinePage(machinePage - 1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Previous page"
+            >
+              ◀️
+            </button>
+            <span className="text-gray-700 text-sm">Page</span>
+            <input
+              type="number"
+              min={1}
+              max={machineTotalPages}
+              value={machinePage}
+              onChange={(e) => {
+                let val = Number(e.target.value);
+                if (isNaN(val)) val = 1;
+                if (val < 1) val = 1;
+                if (val > machineTotalPages) val = machineTotalPages;
+                setMachinePage(val);
+              }}
+              className="w-16 px-2 py-1 border rounded text-center text-sm"
+            />
+            <span className="text-gray-700 text-sm">
+              of {machineTotalPages}
+            </span>
+            <button
+              onClick={() => setMachinePage(machinePage + 1)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Next page"
+            >
+              ▶️
+            </button>
+            <button
+              onClick={() => setMachinePage(machineTotalPages)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Last page"
+            >
+              ⏩
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Desktop View (Table layout to be restored/refined) */}
+      {/* Desktop View */}
       <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-button text-white">
@@ -272,64 +304,87 @@ export default function CollectionReportPage() {
             </tr>
           </thead>
           <tbody>
-            {reportData.machineMetrics.map((metric: MachineMetric) => (
+            {machineCurrentItems.map((col) => (
               <tr
-                key={metric.id}
+                key={col._id}
                 className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
               >
                 <td className="p-3 whitespace-nowrap">
                   <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                    {metric.machineId}
+                    {col.machineCustomName}
                   </span>
                 </td>
                 <td className="p-3 whitespace-nowrap">
-                  {metric.dropCancelled}
+                  {col.movement.metersIn} / {col.movement.metersOut}
                 </td>
-                <td className="p-3 whitespace-nowrap">{metric.meterGross}</td>
-                <td className="p-3 whitespace-nowrap">{metric.sasGross}</td>
-                <td className="p-3 whitespace-nowrap">{metric.variation}</td>
+                <td className="p-3 whitespace-nowrap">{col.movement.gross}</td>
+                <td className="p-3 whitespace-nowrap">
+                  {calculateSasGross(col)}
+                </td>
+                <td className="p-3 whitespace-nowrap">
+                  {calculateVariation(col)}
+                </td>
                 <td className="p-3 whitespace-pre-line text-xs">
-                  {metric.sasTimes}
+                  {formatSasTimes(col)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {/* Desktop Pagination (styled as per new screenshots) */}
-        <div className="flex items-center justify-center p-4 space-x-1 border-t border-gray-200">
-          <button
-            className="p-2 rounded-md hover:bg-gray-200 text-buttonActive disabled:opacity-50 disabled:text-gray-400"
-            disabled
-          >
-            <ChevronsLeft size={20} />
-          </button>
-          <button
-            className="p-2 rounded-md hover:bg-gray-200 text-buttonActive disabled:opacity-50 disabled:text-gray-400"
-            disabled
-          >
-            <ChevronLeft size={20} />
-          </button>
-          {[1, 2, 3, 4].map((page) => (
+        {machineTotalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-4">
             <button
-              key={page}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                page === 1
-                  ? "bg-buttonActive text-white"
-                  : "hover:bg-gray-200 text-buttonActive"
-              }`}
-              disabled={page !== 1}
+              onClick={() => setMachinePage(1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="First page"
             >
-              {page}
+              ⏪
             </button>
-          ))}
-          <span className="text-buttonActive">...</span>
-          <button className="p-2 rounded-md hover:bg-gray-200 text-buttonActive">
-            <ChevronRight size={20} />
-          </button>
-          <button className="p-2 rounded-md hover:bg-gray-200 text-buttonActive">
-            <ChevronsRight size={20} />
-          </button>
-        </div>
+            <button
+              onClick={() => setMachinePage(machinePage - 1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Previous page"
+            >
+              ◀️
+            </button>
+            <span className="text-gray-700 text-sm">Page</span>
+            <input
+              type="number"
+              min={1}
+              max={machineTotalPages}
+              value={machinePage}
+              onChange={(e) => {
+                let val = Number(e.target.value);
+                if (isNaN(val)) val = 1;
+                if (val < 1) val = 1;
+                if (val > machineTotalPages) val = machineTotalPages;
+                setMachinePage(val);
+              }}
+              className="w-16 px-2 py-1 border rounded text-center text-sm"
+            />
+            <span className="text-gray-700 text-sm">
+              of {machineTotalPages}
+            </span>
+            <button
+              onClick={() => setMachinePage(machinePage + 1)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Next page"
+            >
+              ▶️
+            </button>
+            <button
+              onClick={() => setMachinePage(machineTotalPages)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+              title="Last page"
+            >
+              ⏩
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
@@ -481,39 +536,42 @@ export default function CollectionReportPage() {
   };
 
   const SASMetricsCompareContent = () => {
-    const sm = reportData.sasMetrics;
-    if (!sm)
-      return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          SAS Metrics not available.
-        </div>
-      ); // Fallback for both mobile/desktop if no data
+    // Sum drop and cancelled from all collections
+    const totalDrop = collections.reduce(
+      (sum, col) => sum + (col.sasMeters?.drop || 0),
+      0
+    );
+    const totalCancelled = collections.reduce(
+      (sum, col) => sum + (col.sasMeters?.totalCancelledCredits || 0),
+      0
+    );
+    const totalGross = totalDrop - totalCancelled;
+
     return (
       <>
-        {/* Mobile View (existing card layout - simplified here) */}
+        {/* Mobile View */}
         <div className="lg:hidden space-y-4">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold text-center my-4">SAS Metrics</h2>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Dropped:</span>
-                <span className="font-medium text-gray-800">{sm.dropped}</span>
+                <span className="font-medium text-gray-800">{totalDrop}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Cancelled:</span>
                 <span className="font-medium text-gray-800">
-                  {sm.cancelled}
+                  {totalCancelled}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Gross:</span>
-                <span className="font-medium text-gray-800">{sm.gross}</span>
+                <span className="font-medium text-gray-800">{totalGross}</span>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Desktop View (Section layout to be restored/refined) */}
+        {/* Desktop View */}
         <div className="hidden lg:block bg-white rounded-lg shadow-md">
           <h3 className="text-lg font-semibold text-center py-3 bg-button text-white rounded-t-lg">
             SAS Metrics Compare
@@ -521,15 +579,17 @@ export default function CollectionReportPage() {
           <div className="p-6 space-y-3">
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-600">Dropped:</span>
-              <span className="font-medium text-gray-800">{sm.dropped}</span>
+              <span className="font-medium text-gray-800">{totalDrop}</span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-600">Cancelled:</span>
-              <span className="font-medium text-gray-800">{sm.cancelled}</span>
+              <span className="font-medium text-gray-800">
+                {totalCancelled}
+              </span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-600">Gross:</span>
-              <span className="font-medium text-gray-800">{sm.gross}</span>
+              <span className="font-medium text-gray-800">{totalGross}</span>
             </div>
           </div>
         </div>
@@ -564,11 +624,12 @@ export default function CollectionReportPage() {
 
         {/* "Back to Collections" Link - Adjusted padding */}
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-          <Link href="/collections" legacyBehavior>
-            <a className="inline-flex items-center text-buttonActive hover:text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm border border-buttonActive">
-              <ArrowLeft size={16} className="mr-2" />
-              Back to Collections
-            </a>
+          <Link
+            href="/collections"
+            className="inline-flex items-center text-buttonActive hover:text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm border border-buttonActive"
+          >
+            <ArrowLeft size={16} className="mr-2" />
+            Back to Collections
           </Link>
         </div>
 

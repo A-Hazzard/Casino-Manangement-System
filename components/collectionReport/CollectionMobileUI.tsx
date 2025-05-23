@@ -29,11 +29,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onPaginateMobile,
   mobilePaginationRef,
   mobileCardsRef,
-  itemsPerPage,
 }) => {
-  const mobileFirstItemIndex = (mobilePage - 1) * itemsPerPage;
-  const mobileLastItemIndex = mobilePage * itemsPerPage;
-
   return (
     <div className="w-full absolute left-0 right-0 lg:hidden bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
       <CollectionReportFilters
@@ -81,48 +77,60 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
               className="flex justify-center items-center space-x-2 mt-4"
             >
               <button
+                onClick={() => onPaginateMobile(1)}
+                disabled={mobilePage === 1}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="First page"
+              >
+                <ChevronLeft size={12} className="inline mr-[-4px]" />
+                <ChevronLeft size={12} className="inline" />
+              </button>
+              <button
                 onClick={() => onPaginateMobile(mobilePage - 1)}
                 disabled={mobilePage === 1}
                 className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Previous page"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={16} />
               </button>
-              {Array.from({ length: Math.min(5, mobileTotalPages) }, (_, i) => {
-                let pageToShow = i + 1;
-                if (mobileTotalPages > 5) {
-                  if (mobilePage > 3) pageToShow = mobilePage - 2 + i;
-                  if (mobilePage > mobileTotalPages - 2)
-                    pageToShow = mobileTotalPages - 4 + i;
-                }
-                return (
-                  <button
-                    key={pageToShow}
-                    onClick={() => onPaginateMobile(pageToShow)}
-                    className={`px-3 py-1 rounded-md ${
-                      mobilePage === pageToShow
-                        ? "bg-buttonActive text-white"
-                        : "bg-gray-200"
-                    }`}
-                  >
-                    {pageToShow}
-                  </button>
-                );
-              })}
+              <span className="text-gray-700 text-sm">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={mobileTotalPages}
+                value={mobilePage}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > mobileTotalPages) val = mobileTotalPages;
+                  onPaginateMobile(val);
+                }}
+                className="w-16 px-2 py-1 border rounded text-center text-sm"
+                aria-label="Page number"
+              />
+              <span className="text-gray-700 text-sm">
+                of {mobileTotalPages}
+              </span>
               <button
                 onClick={() => onPaginateMobile(mobilePage + 1)}
                 disabled={mobilePage === mobileTotalPages}
                 className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Next page"
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => onPaginateMobile(mobileTotalPages)}
+                disabled={mobilePage === mobileTotalPages}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Last page"
+              >
+                <ChevronRight size={12} className="inline mr-[-4px]" />
+                <ChevronRight size={12} className="inline" />
               </button>
             </div>
           )}
-
-          <p className="text-center text-gray-500 text-sm mt-3">
-            Showing {mobileFirstItemIndex + 1} -{" "}
-            {Math.min(mobileLastItemIndex, filteredReports.length)} of{" "}
-            {filteredReports.length} reports
-          </p>
         </>
       )}
     </div>

@@ -431,7 +431,7 @@ export async function getCollectionReportById(
   reportId: string
 ): Promise<CollectionReportData | null> {
   const report = await CollectionReport.findOne({
-    _id: reportId,
+    locationReportId: reportId,
   }).lean();
   if (!report) return null;
 

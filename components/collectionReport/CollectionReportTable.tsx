@@ -43,7 +43,9 @@ export default function CollectionReportTable({ data }: Props) {
                 <button
                   className="flex items-center justify-center text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent"
                   onClick={() =>
-                    router.push(`/collection-report/report/${row._id}`)
+                    router.push(
+                      `/collection-report/report/${row.locationReportId}`
+                    )
                   }
                   aria-label="View Details"
                 >

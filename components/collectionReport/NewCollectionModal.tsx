@@ -18,7 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, RefreshCcw } from "lucide-react";
-import type { Location, CabinetData } from "@/lib/types/collections";
+import type {
+  Location,
+  CabinetData,
+  CollectionReportMachineEntry,
+} from "@/lib/types/collections";
 import type { NewCollectionModalProps } from "@/lib/types/componentProps";
 import type {
   CollectionReportLocationWithMachines,
@@ -29,11 +33,14 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   getLocationsWithMachines,
   createCollectionReport,
+  fetchMachineCollectionMeters,
+  fetchPreviousCollectionTime,
 } from "@/lib/helpers/collectionReport";
 import { useUserStore } from "@/lib/store/userStore";
 import { v4 as uuidv4 } from "uuid";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils/formatting";
 
 export default function NewCollectionModal({
   show,
@@ -81,6 +88,12 @@ export default function NewCollectionModal({
     previousBalance: "",
     reasonForShortagePayment: "",
   });
+
+  const [prevIn, setPrevIn] = useState<number | null>(null);
+  const [prevOut, setPrevOut] = useState<number | null>(null);
+  const [previousCollectionTime, setPreviousCollectionTime] = useState<
+    string | Date | undefined
+  >(undefined);
 
   const selectedLocation = locations.find(
     (l: Location) => l._id === selectedLocationId
@@ -169,25 +182,19 @@ export default function NewCollectionModal({
 
   useEffect(() => {
     if (selectedLocationId) {
-      console.log(`Fetching cabinets for location: ${selectedLocationId}`);
-      if (selectedLocationId === "loc1") {
+      // Dynamically fetch cabinets for the selected location from backend
+      const location = locationsWithMachines.find(
+        (loc) => String(loc._id) === selectedLocationId
+      );
+      if (location) {
         setCabinetsForLocation([
           {
-            id: "cab1",
-            name: "Cabinet 1",
-            prevIn: 704220,
-            prevOut: 466141,
-            machines: [
-              { id: "cab1-m1", name: "Alpha Keno" },
-              { id: "cab1-m2", name: "Beta Slots" },
-            ],
-          },
-          {
-            id: "cab2",
-            name: "Cabinet 2",
-            prevIn: 12345,
-            prevOut: 67890,
-            machines: [{ id: "cab2-m1", name: "Gamma Poker" }],
+            id: String(location._id),
+            name: location.name,
+            machines: location.machines.map((m) => ({
+              id: String(m._id),
+              name: m.name,
+            })),
           },
         ]);
       } else {
@@ -205,7 +212,7 @@ export default function NewCollectionModal({
       setSelectedMachineName("");
       setCurrentMachineIndex(0);
     }
-  }, [selectedLocationId]);
+  }, [selectedLocationId, locationsWithMachines]);
 
   useEffect(() => {
     setCurrentMachineIndex(0);
@@ -221,6 +228,24 @@ export default function NewCollectionModal({
       });
     }
   }, [show]);
+
+  useEffect(() => {
+    if (selectedCabinetId) {
+      // Fetch previous meters for the selected machine
+      fetchMachineCollectionMeters(selectedCabinetId).then((meters) => {
+        setPrevIn(meters ? meters.metersIn : null);
+        setPrevOut(meters ? meters.metersOut : null);
+      });
+      // Fetch previous collection time for the selected machine
+      fetchPreviousCollectionTime(selectedCabinetId).then((prevTime) => {
+        setPreviousCollectionTime(prevTime);
+      });
+    } else {
+      setPrevIn(null);
+      setPrevOut(null);
+      setPreviousCollectionTime(undefined);
+    }
+  }, [selectedCabinetId]);
 
   const handleSaveReport = async () => {
     // Validate required selections
@@ -239,7 +264,31 @@ export default function NewCollectionModal({
       name: selectedMachineName,
     });
 
-    const payload: CreateCollectionReportPayload = {
+    const machines: CollectionReportMachineEntry[] = [
+      {
+        machineId: selectedCabinetId || "",
+        machineName: selectedMachineName,
+        collectionTime: selectedDate
+          ? selectedDate.toISOString()
+          : new Date().toISOString(),
+        metersIn: metersIn,
+        metersOut: metersOut,
+        notes: notes,
+        useCustomTime: false,
+        selectedDate: selectedDate
+          ? selectedDate.toISOString().split("T")[0]
+          : "",
+        timeHH: selectedDate
+          ? String(selectedDate.getHours()).padStart(2, "0")
+          : "",
+        timeMM: selectedDate
+          ? String(selectedDate.getMinutes()).padStart(2, "0")
+          : "",
+      },
+    ];
+    const payload: CreateCollectionReportPayload & {
+      machines: CollectionReportMachineEntry[];
+    } = {
       variance: Number(financials.variance),
       previousBalance: Number(financials.previousBalance),
       currentBalance: 0,
@@ -266,6 +315,7 @@ export default function NewCollectionModal({
       reasonShortagePayment: financials.reasonForShortagePayment,
       balanceCorrection: Number(financials.balanceCorrection),
       balanceCorrectionReas: financials.balanceCorrectionReason,
+      machines,
     };
 
     const validation = validateCollectionReportPayload(payload);
@@ -426,7 +476,11 @@ export default function NewCollectionModal({
               <>
                 <div className="flex justify-between items-center">
                   <p className="text-xs md:text-sm text-grayHighlight">
-                    {selectedLocation?.name} (prev. collection time: N/A)
+                    {selectedLocation?.name} (prev. collection time:{" "}
+                    {previousCollectionTime
+                      ? formatDate(previousCollectionTime)
+                      : "N/A"}
+                    )
                   </p>
                   <Button
                     variant="ghost"
@@ -471,7 +525,7 @@ export default function NewCollectionModal({
                       className="text-xs md:text-sm"
                     />
                     <p className="text-xs text-grayHighlight mt-1">
-                      Prev In: {selectedCabinet?.prevIn ?? "N/A"}
+                      Prev In: {prevIn !== null ? prevIn : "N/A"}
                     </p>
                   </div>
                   <div>
@@ -489,7 +543,7 @@ export default function NewCollectionModal({
                       className="text-xs md:text-sm"
                     />
                     <p className="text-xs text-grayHighlight mt-1">
-                      Prev Out: {selectedCabinet?.prevOut ?? "N/A"}
+                      Prev Out: {prevOut !== null ? prevOut : "N/A"}
                     </p>
                   </div>
                 </div>

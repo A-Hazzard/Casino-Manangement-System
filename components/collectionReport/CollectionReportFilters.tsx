@@ -114,7 +114,7 @@ export default function CollectionReportFilters({
       className="rounded-lg p-4 flex flex-col gap-4 mb-4 md:bg-buttonActive"
     >
       <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-        <div className="relative flex-1">
+        <div className="relative w-full md:w-64">
           <input
             ref={inputRef}
             type="text"

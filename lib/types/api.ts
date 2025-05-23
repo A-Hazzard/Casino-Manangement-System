@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import type { Document } from "mongoose";
+import type { CollectionReportMachineEntry } from "./collections";
 
 // Generic MongoDB types
 export type MongooseId = string | Types.ObjectId;
@@ -150,6 +151,7 @@ export type CreateCollectionReportPayload = {
   reasonShortagePayment?: string;
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
+  machines: CollectionReportMachineEntry[];
 };
 
 export type CollectionReportMachineSummary = {

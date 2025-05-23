@@ -61,15 +61,17 @@ func main() {
 	dstDB := dstClient.Database("sas-dev")
 
 	collections := []string{
-		"gaminglocations",
-		"users",
-		"machines",
+		"collections",
 		"collectionreports",
-		"licencees",
-		"acceptedbills",
-		"countries",
 		"machineevents",
+		"acceptedbills",
+		"gaminglocations",
+		"machines",
+		"countries",
+		"users",
+		"meters",
 		"schedulers",
+		"licencees",
 	}
 
 	var wg sync.WaitGroup
@@ -77,18 +79,19 @@ func main() {
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			migrateCollection(context.Background(), srcDB, dstDB, name)
+			migrateCollection(ctx, srcDB, dstDB, name)
 		}(collName)
 	}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		migrateMeters(context.Background(), srcDB, dstDB)
+		migrateMeters(ctx, srcDB, dstDB)
 	}()
 
 	wg.Wait()
 	fmt.Println("✅ All collections migrated successfully. Exiting now.")
+	os.Exit(0)
 }
 
 func connectWithRetries(ctx context.Context, uri string) (*mongo.Client, error) {

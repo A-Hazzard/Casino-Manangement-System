@@ -36,3 +36,42 @@ export type LocationSelectItem = {
   _id: string; // Or id, matching whatever is used
   name: string;
 };
+
+export type CollectionSasMeters = {
+  machine: string;
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+  gamesPlayed: number;
+  jackpot: number;
+  sasStartTime: string;
+  sasEndTime: string;
+};
+
+export type CollectionMovement = {
+  metersIn: number;
+  metersOut: number;
+  gross: number;
+};
+
+export type CollectionDocument = {
+  _id: string;
+  isCompleted: boolean;
+  metersIn: number;
+  metersOut: number;
+  prevIn: number;
+  prevOut: number;
+  softMetersIn: number;
+  softMetersOut: number;
+  notes: string;
+  timestamp: Date;
+  location: string;
+  collector: string;
+  locationReportId: string;
+  sasMeters: CollectionSasMeters;
+  movement: CollectionMovement;
+  machineCustomName: string;
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
+};

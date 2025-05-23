@@ -9,6 +9,7 @@ import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { Machine } from "@/app/api/lib/models/machines";
+import { calculateCollectionReportTotals } from "@/app/api/lib/helpers/collectionReportCalculations";
 
 export async function GET(req: NextRequest) {
   await connectDB();
@@ -81,10 +82,6 @@ export async function POST(req: NextRequest) {
       "locationName",
       "locationReportId",
       "location",
-      "totalDrop",
-      "totalCancelled",
-      "totalGross",
-      "totalSasGross",
       "timestamp",
     ];
     for (const field of requiredFields) {
@@ -114,15 +111,44 @@ export async function POST(req: NextRequest) {
         bodyRecord[field] = (bodyRecord[field] as string).trim();
       }
     });
+    // Calculate totals on backend
+    const calculated = await calculateCollectionReportTotals(body);
     // Convert timestamp fields
     const doc = {
       ...body,
+      ...calculated,
+      _id: body.locationReportId,
       timestamp: new Date(body.timestamp),
       previousCollectionTime: body.previousCollectionTime
         ? new Date(body.previousCollectionTime)
         : undefined,
     };
     const created = await CollectionReport.create(doc);
+
+    // After creating the report, update collectionMeters for each machine
+    if (body.machines && Array.isArray(body.machines)) {
+      for (const m of body.machines) {
+        if (m.machineId) {
+          await Machine.findByIdAndUpdate(
+            m.machineId,
+            {
+              $set: {
+                "collectionMeters.metersIn": Number(m.metersIn) || 0,
+                "collectionMeters.metersOut": Number(m.metersOut) || 0,
+                updatedAt: new Date(),
+              },
+            },
+            { new: true }
+          ).catch((err) => {
+            console.error(
+              `Failed to update collectionMeters for machine ${m.machineId}:`,
+              err
+            );
+          });
+        }
+      }
+    }
+
     return NextResponse.json({ success: true, data: created._id });
   } catch (err) {
     console.error("Error creating collection report:", err);

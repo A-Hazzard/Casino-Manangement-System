@@ -3,7 +3,7 @@ import type { ICollectionReport } from "@/lib/types/api";
 
 const collectionReportSchema = new Schema<ICollectionReport>(
   {
-    _id: { type: String, required: true },
+    _id: { type: String },
     variance: { type: Number, required: true },
     previousBalance: { type: Number, required: true },
     currentBalance: { type: Number, required: true },
@@ -29,9 +29,9 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     balanceCorrection: { type: Number },
     balanceCorrectionReas: { type: String },
     machinesCollected: { type: String },
-    createdAt: { type: Date, required: true },
-    updatedAt: { type: Date, required: true },
-    __v: { type: Number, required: true },
+    createdAt: { type: Date },
+    updatedAt: { type: Date },
+    __v: { type: Number },
   },
   { timestamps: true }
 );

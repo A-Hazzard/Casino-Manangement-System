@@ -22,11 +22,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   onPaginateDesktop,
   desktopPaginationRef,
   desktopTableRef,
-  itemsPerPage,
 }) => {
-  const desktopFirstItemIndex = (desktopPage - 1) * itemsPerPage;
-  const desktopLastItemIndex = desktopPage * itemsPerPage;
-
   return (
     <div className="hidden lg:block">
       <CollectionReportFilters
@@ -73,37 +69,34 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
                   onClick={() => onPaginateDesktop(desktopPage - 1)}
                   disabled={desktopPage === 1}
                   className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Previous page"
                 >
                   <ChevronLeft size={16} />
                 </button>
-                {Array.from(
-                  { length: Math.min(5, desktopTotalPages) },
-                  (_, i) => {
-                    let pageToShow = i + 1;
-                    if (desktopTotalPages > 5) {
-                      if (desktopPage > 3) pageToShow = desktopPage - 2 + i;
-                      if (desktopPage > desktopTotalPages - 2)
-                        pageToShow = desktopTotalPages - 4 + i;
-                    }
-                    return (
-                      <button
-                        key={pageToShow}
-                        onClick={() => onPaginateDesktop(pageToShow)}
-                        className={`px-3 py-1 rounded-md text-sm ${
-                          desktopPage === pageToShow
-                            ? "bg-buttonActive text-white scale-105"
-                            : "bg-gray-200"
-                        } transition-transform duration-200`}
-                      >
-                        {pageToShow}
-                      </button>
-                    );
-                  }
-                )}
+                <span className="text-gray-700 text-sm">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={desktopTotalPages}
+                  value={desktopPage}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (isNaN(val)) val = 1;
+                    if (val < 1) val = 1;
+                    if (val > desktopTotalPages) val = desktopTotalPages;
+                    onPaginateDesktop(val);
+                  }}
+                  className="w-16 px-2 py-1 border rounded text-center text-sm"
+                  aria-label="Page number"
+                />
+                <span className="text-gray-700 text-sm">
+                  of {desktopTotalPages}
+                </span>
                 <button
                   onClick={() => onPaginateDesktop(desktopPage + 1)}
                   disabled={desktopPage === desktopTotalPages}
                   className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Next page"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -118,11 +111,6 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
                 </button>
               </div>
             )}
-            <p className="text-gray-500 text-sm text-center">
-              Showing {desktopFirstItemIndex + 1} -{" "}
-              {Math.min(desktopLastItemIndex, filteredReports.length)} of{" "}
-              {filteredReports.length} reports
-            </p>
           </div>
         </>
       )}

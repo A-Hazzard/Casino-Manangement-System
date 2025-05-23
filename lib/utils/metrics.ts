@@ -1,6 +1,7 @@
 import { getMetrics } from "@/lib/helpers/metrics";
 import { ActiveFilters, dashboardData } from "../types";
 import { TimePeriod } from "@/lib/types/api";
+import type { CollectionDocument } from "@/lib/types/collections";
 
 /**
  * Handles a change in the active dashboard filter.
@@ -106,4 +107,35 @@ export function formatNumber(value: number): string {
     style: "currency",
     currency: "USD",
   }).format(value);
+}
+
+/**
+ * Calculates the SAS Gross for a collection document.
+ * @param col - The collection document.
+ * @returns The SAS Gross (drop - totalCancelledCredits).
+ */
+export function calculateSasGross(col: CollectionDocument): number {
+  if (!col.sasMeters) return 0;
+  return (col.sasMeters.drop || 0) - (col.sasMeters.totalCancelledCredits || 0);
+}
+
+/**
+ * Calculates the variation for a collection document.
+ * @param col - The collection document.
+ * @returns The variation (Meter Gross - SAS Gross).
+ */
+export function calculateVariation(col: CollectionDocument): number {
+  return (col.movement.gross || 0) - calculateSasGross(col);
+}
+
+/**
+ * Formats the SAS Times for a collection document.
+ * @param col - The collection document.
+ * @returns The SAS start and end times, each on a new line.
+ */
+export function formatSasTimes(col: CollectionDocument): string {
+  if (!col.sasMeters) return "-";
+  return `${col.sasMeters.sasStartTime || "-"}\n${
+    col.sasMeters.sasEndTime || "-"
+  }`;
 }

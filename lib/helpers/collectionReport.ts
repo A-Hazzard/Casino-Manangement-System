@@ -18,7 +18,7 @@ export async function getAllCollectionReports(
 ): Promise<CollectionReportRow[]> {
   let rawReports;
   if (!licenceeId) {
-    rawReports = await CollectionReport.find({}).lean();
+    rawReports = await CollectionReport.find({}).sort({ timestamp: -1 }).lean();
   } else {
     rawReports = await CollectionReport.aggregate([
       {
@@ -31,6 +31,7 @@ export async function getAllCollectionReports(
       },
       { $unwind: "$locationDetails" },
       { $match: { "locationDetails.rel.licencee": licenceeId } },
+      { $sort: { timestamp: -1 } },
     ]);
   }
   // Map to CollectionReportRow
@@ -49,16 +50,33 @@ export async function getAllCollectionReports(
     locationRevenue: (doc.partnerProfit as number) || 0,
     time: (() => {
       const ts = doc.timestamp;
-      if (typeof ts === "string") return new Date(ts).toLocaleString();
-      if (
-        ts &&
-        typeof ts === "object" &&
-        "$date" in ts &&
-        typeof (ts as { $date: string }).$date === "string"
-      ) {
-        return new Date((ts as { $date: string }).$date).toLocaleString();
+      if (ts) {
+        if (typeof ts === "string" || ts instanceof Date) {
+          return new Date(ts).toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+        }
+        if (
+          typeof ts === "object" &&
+          "$date" in ts &&
+          typeof ts.$date === "string"
+        ) {
+          return new Date(ts.$date).toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+        }
       }
-      return "";
+      return "-";
     })(),
   }));
 }
@@ -357,5 +375,71 @@ export async function fetchCollectionReportById(
   } catch (error) {
     console.error("Failed to fetch collection report by ID:", error);
     return null;
+  }
+}
+
+/**
+ * Fetches the collection meters (metersIn, metersOut) for a machine by its ID.
+ * @param machineId - The machine ID to fetch.
+ * @returns Promise resolving to { metersIn: number, metersOut: number } or null if not found.
+ */
+export async function fetchMachineCollectionMeters(
+  machineId: string
+): Promise<{ metersIn: number; metersOut: number } | null> {
+  try {
+    const { data } = await axios.get("/api/machines", {
+      params: { id: machineId },
+    });
+    if (data && data.success && data.data && data.data.collectionMeters) {
+      return {
+        metersIn: data.data.collectionMeters.metersIn ?? 0,
+        metersOut: data.data.collectionMeters.metersOut ?? 0,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to fetch machine collection meters:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetches the previousCollectionTime for a given machine/cabinet ID.
+ * @param machineId - The machine/cabinet ID to fetch the previous collection time for.
+ * @returns Promise resolving to previousCollectionTime (string | Date | undefined)
+ */
+export async function fetchPreviousCollectionTime(
+  machineId: string
+): Promise<string | Date | undefined> {
+  try {
+    // Try collectionReport API first
+    const { data } = await axios.get(`/api/collectionReport`, {
+      params: { machineId, latest: 1 },
+    });
+    if (data && data.success && data.data) {
+      if (data.data.previousCollectionTime) {
+        return data.data.previousCollectionTime;
+      }
+      // Sometimes the field may be nested or named differently
+      if (data.data.collectionTime) {
+        return data.data.collectionTime;
+      }
+    }
+    // Fallback: Try machines API for previousCollectionTime
+    const machineRes = await axios.get(`/api/machines`, {
+      params: { id: machineId },
+    });
+    if (
+      machineRes.data &&
+      machineRes.data.success &&
+      machineRes.data.data &&
+      machineRes.data.data.previousCollectionTime
+    ) {
+      return machineRes.data.data.previousCollectionTime;
+    }
+    return undefined;
+  } catch (error) {
+    console.error("Failed to fetch previous collection time:", error);
+    return undefined;
   }
 }
