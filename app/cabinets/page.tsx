@@ -678,22 +678,23 @@ export default function CabinetsPage() {
                   >
                     <ChevronLeftIcon className="h-4 w-4" />
                   </Button>
-
-                  {getVisiblePages().map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "ghost"}
-                      onClick={() => setCurrentPage(page)}
-                      className={
-                        currentPage === page
-                          ? "bg-buttonActive text-white px-3 py-1"
-                          : "bg-gray-300 text-black px-3 py-1 hover:bg-gray-400"
-                      }
-                    >
-                      {page + 1}
-                    </Button>
-                  ))}
-
+                  <span className="text-gray-700 text-sm">Page</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 1;
+                      if (val < 1) val = 1;
+                      if (val > totalPages) val = totalPages;
+                      setCurrentPage(val - 1);
+                    }}
+                    className="w-16 px-2 py-1 border rounded text-center text-sm"
+                    aria-label="Page number"
+                  />
+                  <span className="text-gray-700 text-sm">of {totalPages}</span>
                   <Button
                     variant="ghost"
                     size="icon"

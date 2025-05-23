@@ -103,20 +103,48 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ data }) => {
       <div className="flex justify-center items-center mt-4 gap-2">
         <button
           className="px-2 py-1 border rounded"
+          onClick={() => setPage(1)}
+          disabled={page === 1}
+        >
+          {"<<"}
+        </button>
+        <button
+          className="px-2 py-1 border rounded"
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1}
         >
-          Prev
+          {"<"}
         </button>
-        <span>
-          Page {page} of {Math.max(1, totalPages)}
-        </span>
+        <span>Page</span>
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={page}
+          onChange={(e) => {
+            let val = Number(e.target.value);
+            if (isNaN(val)) val = 1;
+            if (val < 1) val = 1;
+            if (val > totalPages) val = totalPages;
+            setPage(val);
+          }}
+          className="w-14 px-2 py-1 border rounded text-center text-sm"
+          aria-label="Page number"
+        />
+        <span>of {Math.max(1, totalPages)}</span>
         <button
           className="px-2 py-1 border rounded"
-          onClick={() => setPage((p) => Math.min(totalPages || 1, p + 1))}
-          disabled={!totalPages || page === totalPages}
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages || totalPages === 0}
         >
-          Next
+          {">"}
+        </button>
+        <button
+          className="px-2 py-1 border rounded"
+          onClick={() => setPage(totalPages)}
+          disabled={page === totalPages || totalPages === 0}
+        >
+          {">>"}
         </button>
       </div>
     </div>

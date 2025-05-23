@@ -75,9 +75,7 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
         >
           Last Month
         </button>
-        <span className="bg-grayHighlight text-white px-3 py-1.5 rounded-l-lg text-xs font-semibold">
-          Date Range
-        </span>
+
         <div style={{ width: "fit-content" }}>
           <DateRangePicker
             value={pendingRange}
@@ -110,81 +108,67 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
 
         {monthlyLoading ? (
           <div className="animate-pulse h-40 bg-gray-200 rounded w-full mt-4" />
-        ) : monthlyCurrentItems.length === 0 && !monthlyLoading ? (
-          <p className="text-center text-gray-500 mt-6">
-            No data available for the selected period or location.
-          </p>
-        ) : (
+        ) : monthlyCurrentItems.length === 0 && !monthlyLoading ? null : (
           <>
             <MonthlyReportDetailsTable details={monthlyCurrentItems} />
             {monthlyTotalPages > 1 && (
-              <div className="flex flex-col items-center mt-6 space-y-3">
-                <div
-                  ref={monthlyPaginationRef}
-                  className="flex justify-center items-center space-x-2"
+              <div
+                ref={monthlyPaginationRef}
+                className="flex justify-center items-center space-x-2 mt-4"
+              >
+                <button
+                  onClick={() => onPaginateMonthly(1)}
+                  disabled={monthlyPage === 1}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="First page"
                 >
-                  <button
-                    onClick={() => onPaginateMonthly(1)}
-                    disabled={monthlyPage === 1}
-                    className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                    title="First page"
-                  >
-                    <ChevronLeft size={12} className="inline mr-[-4px]" />
-                    <ChevronLeft size={12} className="inline" />
-                  </button>
-                  <button
-                    onClick={() => onPaginateMonthly(monthlyPage - 1)}
-                    disabled={monthlyPage === 1}
-                    className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  {Array.from(
-                    { length: Math.min(5, monthlyTotalPages) },
-                    (_, i) => {
-                      let pageToShow = i + 1;
-                      if (monthlyTotalPages > 5) {
-                        if (monthlyPage > 3) pageToShow = monthlyPage - 2 + i;
-                        if (monthlyPage > monthlyTotalPages - 2)
-                          pageToShow = monthlyTotalPages - 4 + i;
-                      }
-                      return (
-                        <button
-                          key={pageToShow}
-                          onClick={() => onPaginateMonthly(pageToShow)}
-                          className={`px-3 py-1 rounded-md text-sm ${
-                            monthlyPage === pageToShow
-                              ? "bg-buttonActive text-white scale-105"
-                              : "bg-gray-200"
-                          } transition-transform duration-200`}
-                        >
-                          {pageToShow}
-                        </button>
-                      );
-                    }
-                  )}
-                  <button
-                    onClick={() => onPaginateMonthly(monthlyPage + 1)}
-                    disabled={monthlyPage === monthlyTotalPages}
-                    className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                  <button
-                    onClick={() => onPaginateMonthly(monthlyTotalPages)}
-                    disabled={monthlyPage === monthlyTotalPages}
-                    className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                    title="Last page"
-                  >
-                    <ChevronRight size={12} className="inline mr-[-4px]" />
-                    <ChevronRight size={12} className="inline" />
-                  </button>
-                </div>
-                <p className="text-gray-500 text-sm text-center">
-                  Showing {monthlyFirstItemIndex + 1} -{" "}
-                  {Math.min(monthlyLastItemIndex, monthlyDetails.length)} of{" "}
-                  {monthlyDetails.length} records
-                </p>
+                  <ChevronLeft size={12} className="inline mr-[-4px]" />
+                  <ChevronLeft size={12} className="inline" />
+                </button>
+                <button
+                  onClick={() => onPaginateMonthly(monthlyPage - 1)}
+                  disabled={monthlyPage === 1}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-gray-700 text-sm">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={monthlyTotalPages}
+                  value={monthlyPage}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (isNaN(val)) val = 1;
+                    if (val < 1) val = 1;
+                    if (val > monthlyTotalPages) val = monthlyTotalPages;
+                    onPaginateMonthly(val);
+                  }}
+                  className="w-16 px-2 py-1 border rounded text-center text-sm"
+                  aria-label="Page number"
+                />
+                <span className="text-gray-700 text-sm">
+                  of {monthlyTotalPages}
+                </span>
+                <button
+                  onClick={() => onPaginateMonthly(monthlyPage + 1)}
+                  disabled={monthlyPage === monthlyTotalPages}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  onClick={() => onPaginateMonthly(monthlyTotalPages)}
+                  disabled={monthlyPage === monthlyTotalPages}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Last page"
+                >
+                  <ChevronRight size={12} className="inline mr-[-4px]" />
+                  <ChevronRight size={12} className="inline" />
+                </button>
               </div>
             )}
           </>

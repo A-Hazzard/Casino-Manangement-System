@@ -730,55 +730,55 @@ export default function LocationsPage() {
                 )}
               </div>
 
-              <div className="flex justify-center items-center space-x-1 lg:space-x-2 mt-6">
-                <Button
-                  onClick={handleFirstPage}
-                  disabled={currentPage === 0}
-                  className="bg-gray-300 text-black p-1 lg:p-2 hover:bg-gray-400 transition-colors"
-                >
-                  <DoubleArrowLeftIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                </Button>
-
-                <Button
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 0}
-                  className="bg-gray-300 text-black p-1 lg:p-2 hover:bg-gray-400 transition-colors"
-                >
-                  <ChevronLeftIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                </Button>
-
-                <div className="flex space-x-1 lg:space-x-2">
-                  {getVisiblePages().map((page) => (
-                    <Button
-                      key={`page-${page}`}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-2 lg:px-3 py-1 text-xs lg:text-sm ${
-                        currentPage === page
-                          ? "bg-buttonActive text-white scale-105"
-                          : "bg-gray-300 text-black hover:bg-gray-400"
-                      } transition-transform duration-200`}
-                    >
-                      {page + 1}
-                    </Button>
-                  ))}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-2 mt-6">
+                  <Button
+                    onClick={handleFirstPage}
+                    disabled={currentPage === 0}
+                    className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                  >
+                    <DoubleArrowLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 0}
+                    className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <span className="text-gray-700 text-sm">Page</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 1;
+                      if (val < 1) val = 1;
+                      if (val > totalPages) val = totalPages;
+                      setCurrentPage(val - 1);
+                    }}
+                    className="w-16 px-2 py-1 border rounded text-center text-sm"
+                    aria-label="Page number"
+                  />
+                  <span className="text-gray-700 text-sm">of {totalPages}</span>
+                  <Button
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages - 1}
+                    className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={handleLastPage}
+                    disabled={currentPage === totalPages - 1}
+                    className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                  >
+                    <DoubleArrowRightIcon className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Button
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages - 1}
-                  className="bg-gray-300 text-black p-1 lg:p-2 hover:bg-gray-400 transition-colors"
-                >
-                  <ChevronRightIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                </Button>
-
-                <Button
-                  onClick={handleLastPage}
-                  disabled={currentPage === totalPages - 1}
-                  className="bg-gray-300 text-black p-1 lg:p-2 hover:bg-gray-400 transition-colors"
-                >
-                  <DoubleArrowRightIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                </Button>
-              </div>
+              )}
             </>
           )}
 

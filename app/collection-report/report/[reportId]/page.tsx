@@ -174,222 +174,272 @@ export default function CollectionReportPage() {
     machinePage * ITEMS_PER_PAGE
   );
 
-  const MachineMetricsContent = () => (
-    <>
-      {/* Mobile View */}
-      <div className="lg:hidden space-y-4">
-        <h2 className="text-xl font-bold text-center my-4">Machine Metrics</h2>
-        {machineCurrentItems.map((col) => (
-          <div
-            key={col._id}
-            className="bg-white rounded-lg shadow-md overflow-hidden"
-          >
-            <div className="bg-lighterBlueHighlight text-white p-3">
-              <h3 className="font-semibold">
-                Machine ID: {col.machineCustomName}
-              </h3>
-            </div>
-            <div className="p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Dropped / Cancelled</span>
-                <span className="font-medium text-gray-800">
-                  {col.movement.metersIn} / {col.movement.metersOut}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Meters Gross</span>
-                <span className="font-medium text-gray-800">
-                  {col.movement.gross}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">SAS Gross</span>
-                <span className="font-medium text-gray-800">
-                  {calculateSasGross(col)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Variation</span>
-                <span className="font-medium text-gray-800">
-                  {calculateVariation(col)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">SAS Times</span>
-                <span className="font-medium text-gray-800 whitespace-pre-line text-right">
-                  {formatSasTimes(col)}
-                </span>
-              </div>
-            </div>
+  const MachineMetricsContent = ({ loading }: { loading: boolean }) => {
+    if (loading) {
+      return (
+        <>
+          <div className="lg:hidden">
+            <CardSkeleton />
           </div>
-        ))}
-        {machineTotalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 mt-4">
-            <button
-              onClick={() => setMachinePage(1)}
-              disabled={machinePage === 1}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="First page"
-            >
-              ⏪
-            </button>
-            <button
-              onClick={() => setMachinePage(machinePage - 1)}
-              disabled={machinePage === 1}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Previous page"
-            >
-              ◀️
-            </button>
-            <span className="text-gray-700 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={machineTotalPages}
-              value={machinePage}
-              onChange={(e) => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > machineTotalPages) val = machineTotalPages;
-                setMachinePage(val);
-              }}
-              className="w-16 px-2 py-1 border rounded text-center text-sm"
-            />
-            <span className="text-gray-700 text-sm">
-              of {machineTotalPages}
-            </span>
-            <button
-              onClick={() => setMachinePage(machinePage + 1)}
-              disabled={machinePage === machineTotalPages}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Next page"
-            >
-              ▶️
-            </button>
-            <button
-              onClick={() => setMachinePage(machineTotalPages)}
-              disabled={machinePage === machineTotalPages}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Last page"
-            >
-              ⏩
-            </button>
+          <div className="hidden lg:block">
+            <TableSkeleton />
           </div>
-        )}
-      </div>
-      {/* Desktop View */}
-      <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-button text-white">
-            <tr>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                MACHINE ID
-              </th>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                DROP/CANCELLED
-              </th>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                METER GROSS
-              </th>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                SAS GROSS
-              </th>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                VARIATION
-              </th>
-              <th className="p-3 text-left font-semibold whitespace-nowrap">
-                SAS TIMES
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {machineCurrentItems.map((col) => (
-              <tr
-                key={col._id}
-                className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
-              >
-                <td className="p-3 whitespace-nowrap">
-                  <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                    {col.machineCustomName}
+        </>
+      );
+    }
+    if (machineCurrentItems.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-4xl mb-4">🛠️</div>
+          <p className="text-lg text-gray-600 font-semibold mb-2">
+            No machine metrics available for this report.
+          </p>
+          <p className="text-sm text-gray-400">
+            Try another report or check back later.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <>
+        {/* Mobile View */}
+        <div className="lg:hidden space-y-4">
+          <h2 className="text-xl font-bold text-center my-4">
+            Machine Metrics
+          </h2>
+          {machineCurrentItems.map((col) => (
+            <div
+              key={col._id}
+              className="bg-white rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="bg-lighterBlueHighlight text-white p-3">
+                <h3 className="font-semibold">
+                  Machine ID: {col.machineCustomName}
+                </h3>
+              </div>
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Dropped / Cancelled</span>
+                  <span className="font-medium text-gray-800">
+                    {col.movement.metersIn} / {col.movement.metersOut}
                   </span>
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {col.movement.metersIn} / {col.movement.metersOut}
-                </td>
-                <td className="p-3 whitespace-nowrap">{col.movement.gross}</td>
-                <td className="p-3 whitespace-nowrap">
-                  {calculateSasGross(col)}
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {calculateVariation(col)}
-                </td>
-                <td className="p-3 whitespace-pre-line text-xs">
-                  {formatSasTimes(col)}
-                </td>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Meters Gross</span>
+                  <span className="font-medium text-gray-800">
+                    {col.movement.gross}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">SAS Gross</span>
+                  <span className="font-medium text-gray-800">
+                    {calculateSasGross(col)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Variation</span>
+                  <span className="font-medium text-gray-800">
+                    {calculateVariation(col)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">SAS Times</span>
+                  <span className="font-medium text-gray-800 whitespace-pre-line text-right">
+                    {formatSasTimes(col)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {machineTotalPages > 1 && (
+            <div className="flex justify-center items-center space-x-2 mt-4">
+              <button
+                onClick={() => setMachinePage(1)}
+                disabled={machinePage === 1}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="First page"
+              >
+                ⏪
+              </button>
+              <button
+                onClick={() => setMachinePage(machinePage - 1)}
+                disabled={machinePage === 1}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Previous page"
+              >
+                ◀️
+              </button>
+              <span className="text-gray-700 text-sm">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={machineTotalPages}
+                value={machinePage}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > machineTotalPages) val = machineTotalPages;
+                  setMachinePage(val);
+                }}
+                className="w-16 px-2 py-1 border rounded text-center text-sm"
+              />
+              <span className="text-gray-700 text-sm">
+                of {machineTotalPages}
+              </span>
+              <button
+                onClick={() => setMachinePage(machinePage + 1)}
+                disabled={machinePage === machineTotalPages}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Next page"
+              >
+                ▶️
+              </button>
+              <button
+                onClick={() => setMachinePage(machineTotalPages)}
+                disabled={machinePage === machineTotalPages}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Last page"
+              >
+                ⏩
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Desktop View */}
+        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-button text-white">
+              <tr>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  MACHINE ID
+                </th>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  DROP/CANCELLED
+                </th>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  METER GROSS
+                </th>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  SAS GROSS
+                </th>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  VARIATION
+                </th>
+                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                  SAS TIMES
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {machineTotalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 mt-4">
-            <button
-              onClick={() => setMachinePage(1)}
-              disabled={machinePage === 1}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="First page"
-            >
-              ⏪
-            </button>
-            <button
-              onClick={() => setMachinePage(machinePage - 1)}
-              disabled={machinePage === 1}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Previous page"
-            >
-              ◀️
-            </button>
-            <span className="text-gray-700 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={machineTotalPages}
-              value={machinePage}
-              onChange={(e) => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > machineTotalPages) val = machineTotalPages;
-                setMachinePage(val);
-              }}
-              className="w-16 px-2 py-1 border rounded text-center text-sm"
-            />
-            <span className="text-gray-700 text-sm">
-              of {machineTotalPages}
-            </span>
-            <button
-              onClick={() => setMachinePage(machinePage + 1)}
-              disabled={machinePage === machineTotalPages}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Next page"
-            >
-              ▶️
-            </button>
-            <button
-              onClick={() => setMachinePage(machineTotalPages)}
-              disabled={machinePage === machineTotalPages}
-              className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-              title="Last page"
-            >
-              ⏩
-            </button>
-          </div>
-        )}
-      </div>
-    </>
-  );
+            </thead>
+            <tbody>
+              {machineCurrentItems.map((col) => (
+                <tr
+                  key={col._id}
+                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
+                >
+                  <td className="p-3 whitespace-nowrap">
+                    <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
+                      {col.machineCustomName}
+                    </span>
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {col.movement.metersIn} / {col.movement.metersOut}
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {col.movement.gross}
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {calculateSasGross(col)}
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {calculateVariation(col)}
+                  </td>
+                  <td className="p-3 whitespace-pre-line text-xs">
+                    {formatSasTimes(col)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {machineTotalPages > 1 && (
+            <div className="flex justify-center items-center space-x-2 mt-4">
+              <button
+                onClick={() => setMachinePage(1)}
+                disabled={machinePage === 1}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="First page"
+              >
+                ⏪
+              </button>
+              <button
+                onClick={() => setMachinePage(machinePage - 1)}
+                disabled={machinePage === 1}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Previous page"
+              >
+                ◀️
+              </button>
+              <span className="text-gray-700 text-sm">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={machineTotalPages}
+                value={machinePage}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > machineTotalPages) val = machineTotalPages;
+                  setMachinePage(val);
+                }}
+                className="w-16 px-2 py-1 border rounded text-center text-sm"
+              />
+              <span className="text-gray-700 text-sm">
+                of {machineTotalPages}
+              </span>
+              <button
+                onClick={() => setMachinePage(machinePage + 1)}
+                disabled={machinePage === machineTotalPages}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Next page"
+              >
+                ▶️
+              </button>
+              <button
+                onClick={() => setMachinePage(machineTotalPages)}
+                disabled={machinePage === machineTotalPages}
+                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                title="Last page"
+              >
+                ⏩
+              </button>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  };
 
-  const LocationMetricsContent = () => {
+  const LocationMetricsContent = ({ loading }: { loading: boolean }) => {
+    if (loading) {
+      return <SectionSkeleton />;
+    }
+    if (
+      !reportData.locationMetrics ||
+      Object.keys(reportData.locationMetrics).length === 0
+    ) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-4xl mb-4">📍</div>
+          <p className="text-lg text-gray-600 font-semibold mb-2">
+            No location metrics available for this report.
+          </p>
+          <p className="text-sm text-gray-400">
+            Try another report or check back later.
+          </p>
+        </div>
+      );
+    }
     const lm = reportData.locationMetrics;
     return (
       <>
@@ -535,7 +585,28 @@ export default function CollectionReportPage() {
     );
   };
 
-  const SASMetricsCompareContent = () => {
+  const SASMetricsCompareContent = ({ loading }: { loading: boolean }) => {
+    if (loading) {
+      return <SectionSkeleton />;
+    }
+    if (
+      collections.length === 0 ||
+      collections.every(
+        (col) => !col.sasMeters || Object.values(col.sasMeters).every((v) => !v)
+      )
+    ) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-4xl mb-4">📊</div>
+          <p className="text-lg text-gray-600 font-semibold mb-2">
+            No SAS metrics available for this report.
+          </p>
+          <p className="text-sm text-gray-400">
+            Try another report or check back later.
+          </p>
+        </div>
+      );
+    }
     // Sum drop and cancelled from all collections
     const totalDrop = collections.reduce(
       (sum, col) => sum + (col.sasMeters?.drop || 0),
@@ -601,11 +672,11 @@ export default function CollectionReportPage() {
   const renderDesktopTabContent = () => {
     switch (activeTab) {
       case "Machine Metrics":
-        return <MachineMetricsContent />;
+        return <MachineMetricsContent loading={loading} />;
       case "Location Metrics":
-        return <LocationMetricsContent />;
+        return <LocationMetricsContent loading={loading} />;
       case "SAS Metrics Compare":
-        return <SASMetricsCompareContent />;
+        return <SASMetricsCompareContent loading={loading} />;
       default:
         return null;
     }
@@ -666,11 +737,37 @@ export default function CollectionReportPage() {
 
         {/* Mobile: Stacked Sections - Adjusted padding */}
         <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
-          <MachineMetricsContent />
-          <LocationMetricsContent />
-          <SASMetricsCompareContent />
+          <MachineMetricsContent loading={loading} />
+          <LocationMetricsContent loading={loading} />
+          <SASMetricsCompareContent loading={loading} />
         </div>
       </main>
     </div>
   );
 }
+
+// Add skeleton loader components at the top
+const TableSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
+    <div className="space-y-2">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="h-6 bg-gray-200 rounded w-full" />
+      ))}
+    </div>
+  </div>
+);
+const CardSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    {[...Array(2)].map((_, i) => (
+      <div key={i} className="bg-gray-200 rounded-lg h-24 w-full" />
+    ))}
+  </div>
+);
+const SectionSkeleton = () => (
+  <div className="animate-pulse bg-white rounded-lg shadow-md p-6">
+    <div className="h-6 bg-gray-200 rounded w-1/2 mb-4" />
+    <div className="h-4 bg-gray-200 rounded w-full mb-2" />
+    <div className="h-4 bg-gray-200 rounded w-2/3" />
+  </div>
+);

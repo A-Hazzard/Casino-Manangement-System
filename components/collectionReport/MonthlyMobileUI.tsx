@@ -16,6 +16,10 @@ import {
 import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import { formatDateOnly } from "@/lib/utils/dateUtils";
 import type { MonthlyMobileUIProps } from "@/lib/types/componentProps";
+import {
+  exportMonthlyReportPDF,
+  exportMonthlyReportExcel,
+} from "@/lib/utils/export";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -32,6 +36,7 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
 }) => {
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   const totalPages = Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE);
   const firstItemIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -83,12 +88,41 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
             </SelectContent>
           </Select>
 
-          <Button
-            variant="outline"
-            className="bg-gray-200 hover:bg-gray-300 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-md py-2 px-2.5 flex items-center justify-center gap-1 truncate"
-          >
-            EXPORT <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              className="bg-gray-200 hover:bg-gray-300 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-md py-2 px-2.5 flex items-center justify-center gap-1 truncate"
+              onClick={() => setShowExportDropdown((v) => !v)}
+              type="button"
+            >
+              EXPORT <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </Button>
+            {showExportDropdown && (
+              <div className="absolute z-20 right-0 mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  onClick={async () => {
+                    setShowExportDropdown(false);
+                    await exportMonthlyReportPDF(
+                      monthlySummary,
+                      monthlyDetails
+                    );
+                  }}
+                >
+                  Export PDF
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    exportMonthlyReportExcel(monthlySummary, monthlyDetails);
+                  }}
+                >
+                  Export Excel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="relative">
@@ -165,11 +199,7 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
               />
             ))}
           </div>
-        ) : currentCardsToDisplay.length === 0 && !monthlyLoading ? (
-          <p className="text-center text-gray-500 pt-4 text-sm">
-            No detailed data for this period or location.
-          </p>
-        ) : (
+        ) : currentCardsToDisplay.length === 0 && !monthlyLoading ? null : (
           <>
             <div className="space-y-4 mt-4">
               {currentCardsToDisplay.map((detail, index) => (
@@ -215,36 +245,55 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
             {totalPages > 1 && (
               <div className="flex justify-center items-center space-x-2 mt-4 pt-2 border-t border-gray-200">
                 <button
+                  onClick={() => handlePaginate(1)}
+                  disabled={currentPage === 1}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="First page"
+                >
+                  <ChevronLeft size={12} className="inline mr-[-4px]" />
+                  <ChevronLeft size={12} className="inline" />
+                </button>
+                <button
                   onClick={() => handlePaginate(currentPage - 1)}
                   disabled={currentPage === 1}
                   className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Previous page"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={16} />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .slice(
-                    Math.max(0, currentPage - 2),
-                    Math.min(totalPages, currentPage + 1)
-                  )
-                  .map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => handlePaginate(page)}
-                      className={`px-3 py-1 rounded-md text-sm ${
-                        currentPage === page
-                          ? "bg-buttonActive text-white scale-105"
-                          : "bg-gray-200"
-                      } transition-transform duration-200`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                <span className="text-gray-700 text-sm">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={currentPage}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (isNaN(val)) val = 1;
+                    if (val < 1) val = 1;
+                    if (val > totalPages) val = totalPages;
+                    handlePaginate(val);
+                  }}
+                  className="w-16 px-2 py-1 border rounded text-center text-sm"
+                  aria-label="Page number"
+                />
+                <span className="text-gray-700 text-sm">of {totalPages}</span>
                 <button
                   onClick={() => handlePaginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
                   className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Next page"
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  onClick={() => handlePaginate(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
+                  title="Last page"
+                >
+                  <ChevronRight size={12} className="inline mr-[-4px]" />
+                  <ChevronRight size={12} className="inline" />
                 </button>
               </div>
             )}

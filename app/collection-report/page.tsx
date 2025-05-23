@@ -127,6 +127,47 @@ export default function CollectionReportPage() {
     CollectionReportLocationWithMachines[]
   >([]);
 
+  // Add skeleton loader and empty state components at the top
+  const TableSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-6 bg-gray-200 rounded w-full" />
+        ))}
+      </div>
+    </div>
+  );
+  const CardSkeleton = () => (
+    <div className="animate-pulse space-y-4">
+      {[...Array(2)].map((_, i) => (
+        <div key={i} className="bg-gray-200 rounded-lg h-24 w-full" />
+      ))}
+    </div>
+  );
+  const SectionSkeleton = () => (
+    <div className="animate-pulse bg-white rounded-lg shadow-md p-6">
+      <div className="h-6 bg-gray-200 rounded w-1/2 mb-4" />
+      <div className="h-4 bg-gray-200 rounded w-full mb-2" />
+      <div className="h-4 bg-gray-200 rounded w-2/3" />
+    </div>
+  );
+  const EmptyState = ({
+    icon,
+    title,
+    message,
+  }: {
+    icon: string;
+    title: string;
+    message: string;
+  }) => (
+    <div className="flex flex-col items-center justify-center py-12">
+      <div className="text-4xl mb-4">{icon}</div>
+      <p className="text-lg text-gray-600 font-semibold mb-2">{title}</p>
+      <p className="text-sm text-gray-400">{message}</p>
+    </div>
+  );
+
   /**
    * Fetches monthly report summary and details for the selected date range and location.
    */
@@ -561,114 +602,152 @@ export default function CollectionReportPage() {
             <div ref={contentRef} className="relative">
               {activeTab === "collection" && (
                 <>
-                  <CollectionMobileUI
-                    locations={locations}
-                    selectedLocation={selectedLocation}
-                    onLocationChange={setSelectedLocation}
-                    search={search}
-                    onSearchChange={setSearch}
-                    onSearchSubmit={handleSearch}
-                    showUncollectedOnly={showUncollectedOnly}
-                    onShowUncollectedOnlyChange={setShowUncollectedOnly}
-                    isSearching={isSearching}
-                    loading={loading}
-                    filteredReports={filteredReports}
-                    mobileCurrentItems={mobileCurrentItems}
-                    mobileTotalPages={mobileTotalPages}
-                    mobilePage={mobilePage}
-                    onPaginateMobile={paginateMobile}
-                    mobilePaginationRef={mobilePaginationRef}
-                    mobileCardsRef={mobileCardsRef}
-                    itemsPerPage={itemsPerPage}
-                  />
-                  <CollectionDesktopUI
-                    locations={locations}
-                    selectedLocation={selectedLocation}
-                    onLocationChange={setSelectedLocation}
-                    search={search}
-                    onSearchChange={setSearch}
-                    onSearchSubmit={handleSearch}
-                    showUncollectedOnly={showUncollectedOnly}
-                    onShowUncollectedOnlyChange={setShowUncollectedOnly}
-                    isSearching={isSearching}
-                    loading={loading}
-                    filteredReports={filteredReports}
-                    desktopCurrentItems={desktopCurrentItems}
-                    desktopTotalPages={desktopTotalPages}
-                    desktopPage={desktopPage}
-                    onPaginateDesktop={paginateDesktop}
-                    desktopPaginationRef={desktopPaginationRef}
-                    desktopTableRef={desktopTableRef}
-                    itemsPerPage={itemsPerPage}
-                  />
+                  {loading ? (
+                    <>
+                      <div className="lg:hidden">
+                        <CardSkeleton />
+                      </div>
+                      <div className="hidden lg:block">
+                        <TableSkeleton />
+                      </div>
+                    </>
+                  ) : filteredReports.length === 0 ? (
+                    <EmptyState
+                      icon="📄"
+                      title="No collection reports found"
+                      message="Try adjusting your filters or check back later."
+                    />
+                  ) : (
+                    <>
+                      <CollectionMobileUI
+                        locations={locations}
+                        selectedLocation={selectedLocation}
+                        onLocationChange={setSelectedLocation}
+                        search={search}
+                        onSearchChange={setSearch}
+                        onSearchSubmit={handleSearch}
+                        showUncollectedOnly={showUncollectedOnly}
+                        onShowUncollectedOnlyChange={setShowUncollectedOnly}
+                        isSearching={isSearching}
+                        loading={loading}
+                        filteredReports={filteredReports}
+                        mobileCurrentItems={mobileCurrentItems}
+                        mobileTotalPages={mobileTotalPages}
+                        mobilePage={mobilePage}
+                        onPaginateMobile={paginateMobile}
+                        mobilePaginationRef={mobilePaginationRef}
+                        mobileCardsRef={mobileCardsRef}
+                        itemsPerPage={itemsPerPage}
+                      />
+                      <CollectionDesktopUI
+                        locations={locations}
+                        selectedLocation={selectedLocation}
+                        onLocationChange={setSelectedLocation}
+                        search={search}
+                        onSearchChange={setSearch}
+                        onSearchSubmit={handleSearch}
+                        showUncollectedOnly={showUncollectedOnly}
+                        onShowUncollectedOnlyChange={setShowUncollectedOnly}
+                        isSearching={isSearching}
+                        loading={loading}
+                        filteredReports={filteredReports}
+                        desktopCurrentItems={desktopCurrentItems}
+                        desktopTotalPages={desktopTotalPages}
+                        desktopPage={desktopPage}
+                        onPaginateDesktop={paginateDesktop}
+                        desktopPaginationRef={desktopPaginationRef}
+                        desktopTableRef={desktopTableRef}
+                        itemsPerPage={itemsPerPage}
+                      />
+                    </>
+                  )}
                 </>
               )}
 
               {activeTab === "monthly" && (
                 <>
-                  <MonthlyMobileUI
-                    allLocationNames={allLocationNames}
-                    monthlyLocation={monthlyLocation}
-                    onMonthlyLocationChange={setMonthlyLocation}
-                    pendingRange={pendingRange}
-                    onPendingRangeChange={handlePendingRangeChange}
-                    onApplyDateRange={applyPendingDateRange}
-                    monthlySummary={monthlySummary}
-                    monthlyDetails={monthlyDetails}
-                    monthlyLoading={monthlyLoading}
-                  />
-                  <MonthlyDesktopUI
-                    allLocationNames={allLocationNames}
-                    monthlyLocation={monthlyLocation}
-                    onMonthlyLocationChange={setMonthlyLocation}
-                    pendingRange={pendingRange}
-                    onPendingRangeChange={handlePendingRangeChange}
-                    onApplyDateRange={applyPendingDateRange}
-                    onSetLastMonth={handleLastMonth}
-                    monthlySummary={monthlySummary}
-                    monthlyDetails={monthlyDetails}
-                    monthlyCurrentItems={monthlyCurrentItems}
-                    monthlyLoading={monthlyLoading}
-                    monthlyTotalPages={monthlyTotalPages}
-                    monthlyPage={monthlyPage}
-                    onPaginateMonthly={paginateMonthly}
-                    monthlyPaginationRef={monthlyPaginationRef}
-                    monthlyFirstItemIndex={
-                      (monthlyPage - 1) * monthlyItemsPerPage
-                    }
-                    monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
-                  />
+                  {loading ? (
+                    <SectionSkeleton />
+                  ) : (
+                    <>
+                      <MonthlyMobileUI
+                        allLocationNames={allLocationNames}
+                        monthlyLocation={monthlyLocation}
+                        onMonthlyLocationChange={setMonthlyLocation}
+                        pendingRange={pendingRange}
+                        onPendingRangeChange={handlePendingRangeChange}
+                        onApplyDateRange={applyPendingDateRange}
+                        monthlySummary={monthlySummary}
+                        monthlyDetails={monthlyDetails}
+                        monthlyLoading={monthlyLoading}
+                      />
+                      <MonthlyDesktopUI
+                        allLocationNames={allLocationNames}
+                        monthlyLocation={monthlyLocation}
+                        onMonthlyLocationChange={setMonthlyLocation}
+                        pendingRange={pendingRange}
+                        onPendingRangeChange={handlePendingRangeChange}
+                        onApplyDateRange={applyPendingDateRange}
+                        onSetLastMonth={handleLastMonth}
+                        monthlySummary={monthlySummary}
+                        monthlyDetails={monthlyDetails}
+                        monthlyCurrentItems={monthlyCurrentItems}
+                        monthlyLoading={monthlyLoading}
+                        monthlyTotalPages={monthlyTotalPages}
+                        monthlyPage={monthlyPage}
+                        onPaginateMonthly={paginateMonthly}
+                        monthlyPaginationRef={monthlyPaginationRef}
+                        monthlyFirstItemIndex={
+                          (monthlyPage - 1) * monthlyItemsPerPage
+                        }
+                        monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
+                      />
+                      {monthlyDetails.length === 0 && !monthlyLoading && (
+                        <EmptyState
+                          icon="📅"
+                          title="No monthly report data found"
+                          message="No data available for the selected period or location."
+                        />
+                      )}
+                    </>
+                  )}
                 </>
               )}
 
               {activeTab === "manager" && (
                 <>
-                  <ManagerMobileUI
-                    locations={locations}
-                    collectors={collectors}
-                    selectedSchedulerLocation={selectedSchedulerLocation}
-                    onSchedulerLocationChange={setSelectedSchedulerLocation}
-                    selectedCollector={selectedCollector}
-                    onCollectorChange={setSelectedCollector}
-                    selectedStatus={selectedStatus}
-                    onStatusChange={setSelectedStatus}
-                    onResetSchedulerFilters={handleResetSchedulerFilters}
-                    schedulers={schedulers}
-                    loadingSchedulers={loadingSchedulers}
-                  />
-                  <ManagerDesktopUI
-                    locations={locations}
-                    collectors={collectors}
-                    selectedSchedulerLocation={selectedSchedulerLocation}
-                    onSchedulerLocationChange={setSelectedSchedulerLocation}
-                    selectedCollector={selectedCollector}
-                    onCollectorChange={setSelectedCollector}
-                    selectedStatus={selectedStatus}
-                    onStatusChange={setSelectedStatus}
-                    onResetSchedulerFilters={handleResetSchedulerFilters}
-                    schedulers={schedulers}
-                    loadingSchedulers={loadingSchedulers}
-                  />
+                  {loadingSchedulers ? (
+                    <SectionSkeleton />
+                  ) : (
+                    <>
+                      <ManagerMobileUI
+                        locations={locations}
+                        collectors={collectors}
+                        selectedSchedulerLocation={selectedSchedulerLocation}
+                        onSchedulerLocationChange={setSelectedSchedulerLocation}
+                        selectedCollector={selectedCollector}
+                        onCollectorChange={setSelectedCollector}
+                        selectedStatus={selectedStatus}
+                        onStatusChange={setSelectedStatus}
+                        onResetSchedulerFilters={handleResetSchedulerFilters}
+                        schedulers={schedulers}
+                        loadingSchedulers={loadingSchedulers}
+                      />
+                      <ManagerDesktopUI
+                        locations={locations}
+                        collectors={collectors}
+                        selectedSchedulerLocation={selectedSchedulerLocation}
+                        onSchedulerLocationChange={setSelectedSchedulerLocation}
+                        selectedCollector={selectedCollector}
+                        onCollectorChange={setSelectedCollector}
+                        selectedStatus={selectedStatus}
+                        onStatusChange={setSelectedStatus}
+                        onResetSchedulerFilters={handleResetSchedulerFilters}
+                        schedulers={schedulers}
+                        loadingSchedulers={loadingSchedulers}
+                      />
+                    </>
+                  )}
                 </>
               )}
 

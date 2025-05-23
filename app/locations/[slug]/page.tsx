@@ -571,7 +571,7 @@ export default function LocationPage() {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex justify-center items-center space-x-1 md:space-x-2 mt-6 pb-6">
+                <div className="flex justify-center items-center space-x-2 mt-6 pb-6">
                   <Button
                     onClick={handleFirstPage}
                     disabled={currentPage === 0}
@@ -590,18 +590,23 @@ export default function LocationPage() {
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  <div className="flex space-x-1">
-                    {getVisiblePages().map((page) => (
-                      <Button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        variant={currentPage === page ? "default" : "outline"}
-                        className="h-8 px-3 text-xs"
-                      >
-                        {page + 1}
-                      </Button>
-                    ))}
-                  </div>
+                  <span className="text-gray-700 text-sm">Page</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 1;
+                      if (val < 1) val = 1;
+                      if (val > totalPages) val = totalPages;
+                      setCurrentPage(val - 1);
+                    }}
+                    className="w-16 px-2 py-1 border rounded text-center text-sm"
+                    aria-label="Page number"
+                  />
+                  <span className="text-gray-700 text-sm">of {totalPages}</span>
                   <Button
                     onClick={handleNextPage}
                     disabled={currentPage === totalPages - 1}
