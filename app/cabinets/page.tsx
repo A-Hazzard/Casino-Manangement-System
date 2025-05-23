@@ -187,26 +187,6 @@ export default function CabinetsPage() {
   );
   const totalPages = Math.ceil(sorted.length / 10);
 
-  const getVisiblePages = () => {
-    if (totalPages <= 5) return [...Array(totalPages)].map((_, i) => i);
-    if (currentPage <= 2) return [0, 1, 2, 3, 4];
-    if (currentPage >= totalPages - 3)
-      return [
-        totalPages - 5,
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      ];
-    return [
-      currentPage - 2,
-      currentPage - 1,
-      currentPage,
-      currentPage + 1,
-      currentPage + 2,
-    ];
-  };
-
   const handleEdit = (cabinet: Cabinet) => openEditModal(cabinet);
 
   const handleDelete = (cabinet: Cabinet) => openDeleteModal(cabinet);

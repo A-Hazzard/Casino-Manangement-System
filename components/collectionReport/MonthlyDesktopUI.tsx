@@ -25,8 +25,6 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   monthlyPage,
   onPaginateMonthly,
   monthlyPaginationRef,
-  monthlyFirstItemIndex,
-  monthlyLastItemIndex,
 }) => {
   // Handler to properly await the async PDF export
   const handleExportPDF = async () => {

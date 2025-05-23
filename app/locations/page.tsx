@@ -255,29 +255,6 @@ export default function LocationsPage() {
 
   const totalPages = Math.ceil(sorted.length / 10);
 
-  const getVisiblePages = () => {
-    // Ensure totalPages is at least 1 to avoid issues
-    const safePages = Math.max(1, totalPages);
-
-    if (safePages <= 5) return Array.from({ length: safePages }, (_, i) => i);
-    if (currentPage <= 2) return [0, 1, 2, 3, 4];
-    if (currentPage >= safePages - 3)
-      return [
-        safePages - 5,
-        safePages - 4,
-        safePages - 3,
-        safePages - 2,
-        safePages - 1,
-      ];
-    return [
-      currentPage - 2,
-      currentPage - 1,
-      currentPage,
-      currentPage + 1,
-      currentPage + 2,
-    ];
-  };
-
   const handleFirstPage = () => setCurrentPage(0);
   const handleLastPage = () => setCurrentPage(totalPages - 1);
   const handlePrevPage = () =>

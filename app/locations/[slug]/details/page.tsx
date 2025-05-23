@@ -9,13 +9,7 @@ import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal"
 import { Button } from "@/components/ui/button";
 import { CabinetDetail } from "@/lib/types/cabinets";
 import { useRouter, useParams } from "next/navigation";
-import {
-  ArrowLeftIcon,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
-} from "@radix-ui/react-icons";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import LocationInfoSkeleton from "@/components/location/LocationInfoSkeleton";
@@ -90,24 +84,6 @@ export default function LocationDetailsPage() {
       });
     });
   }, [slug, activeMetricsFilter]);
-
-  const totalPages = Math.ceil(filteredCabinets.length / itemsPerPage);
-
-  const handleFirstPage = () => {
-    setCurrentPage(0);
-  };
-
-  const handlePrevPage = () => {
-    setCurrentPage((prevPage) => prevPage - 1);
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prevPage) => prevPage + 1);
-  };
-
-  const handleLastPage = () => {
-    setCurrentPage(totalPages - 1);
-  };
 
   return (
     <>
