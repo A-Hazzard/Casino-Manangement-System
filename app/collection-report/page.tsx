@@ -23,6 +23,7 @@ import type { SchedulerTableRow } from "@/lib/types/componentProps";
 import {
   fetchMonthlyReportSummaryAndDetails,
   fetchAllLocationNames,
+  getLocationsWithMachines,
 } from "@/lib/helpers/collectionReport";
 import type {
   MonthlyReportSummary,
@@ -31,6 +32,7 @@ import type {
 } from "@/lib/types/componentProps";
 import { DateRange as RDPDateRange } from "react-day-picker";
 import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
+import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 
 // Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
@@ -120,6 +122,11 @@ export default function CollectionReportPage() {
   const [monthlyPage, setMonthlyPage] = useState(1);
   const monthlyItemsPerPage = 10;
 
+  // Global locations with machines state
+  const [locationsWithMachines, setLocationsWithMachines] = useState<
+    CollectionReportLocationWithMachines[]
+  >([]);
+
   /**
    * Fetches monthly report summary and details for the selected date range and location.
    */
@@ -169,6 +176,20 @@ export default function CollectionReportPage() {
     fetchAllGamingLocations().then((locs) =>
       setLocations(locs.map((l) => ({ _id: l.id, name: l.name })))
     );
+  }, []);
+
+  // Fetch locations with machines globally on page load
+  useEffect(() => {
+    getLocationsWithMachines().then((data) => {
+      setLocationsWithMachines(data);
+      // Also set locations for the select dropdown
+      setLocations(
+        data.map((l: CollectionReportLocationWithMachines) => ({
+          _id: l._id,
+          name: l.name,
+        }))
+      );
+    });
   }, []);
 
   // Animate content when tab changes
@@ -663,7 +684,7 @@ export default function CollectionReportPage() {
             <NewCollectionModal
               show={showModal}
               onClose={() => setShowModal(false)}
-              locations={locations}
+              locations={locationsWithMachines}
             />
           </main>
         </div>

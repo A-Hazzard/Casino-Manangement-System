@@ -19,19 +19,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, RefreshCcw } from "lucide-react";
 import type {
-  Location,
   CabinetData,
   CollectionReportMachineEntry,
 } from "@/lib/types/collections";
 import type { NewCollectionModalProps } from "@/lib/types/componentProps";
 import type {
-  CollectionReportLocationWithMachines,
   CollectionReportMachineSummary,
   CreateCollectionReportPayload,
 } from "@/lib/types/api";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  getLocationsWithMachines,
   createCollectionReport,
   fetchMachineCollectionMeters,
   fetchPreviousCollectionTime,
@@ -73,9 +70,6 @@ export default function NewCollectionModal({
   const [metersOut, setMetersOut] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [locationsWithMachines, setLocationsWithMachines] = useState<
-    CollectionReportLocationWithMachines[]
-  >([]);
   const [financials, setFinancials] = useState({
     taxes: "",
     advance: "",
@@ -96,7 +90,7 @@ export default function NewCollectionModal({
   >(undefined);
 
   const selectedLocation = locations.find(
-    (l: Location) => l._id === selectedLocationId
+    (l) => String(l._id) === selectedLocationId
   );
   const selectedCabinet = cabinetsForLocation.find(
     (c) => c.id === selectedCabinetId
@@ -118,7 +112,7 @@ export default function NewCollectionModal({
   // Update selectedMachineName when selectedCabinetId changes
   useEffect(() => {
     if (selectedCabinetId) {
-      const machine = locationsWithMachines
+      const machine = locations
         .find((l) => l._id === selectedLocationId)
         ?.machines.find((m) => String(m._id) === selectedCabinetId);
 
@@ -133,7 +127,7 @@ export default function NewCollectionModal({
     } else {
       setSelectedMachineName("");
     }
-  }, [selectedCabinetId, selectedLocationId, locationsWithMachines]);
+  }, [selectedCabinetId, selectedLocationId, locations]);
 
   // Helper to reset all form fields to their initial state
   const resetFormFields = () => {
@@ -183,7 +177,7 @@ export default function NewCollectionModal({
   useEffect(() => {
     if (selectedLocationId) {
       // Dynamically fetch cabinets for the selected location from backend
-      const location = locationsWithMachines.find(
+      const location = locations.find(
         (loc) => String(loc._id) === selectedLocationId
       );
       if (location) {
@@ -212,7 +206,7 @@ export default function NewCollectionModal({
       setSelectedMachineName("");
       setCurrentMachineIndex(0);
     }
-  }, [selectedLocationId, locationsWithMachines]);
+  }, [selectedLocationId, locations]);
 
   useEffect(() => {
     setCurrentMachineIndex(0);
@@ -220,14 +214,6 @@ export default function NewCollectionModal({
     setMetersOut("");
     setNotes("");
   }, [selectedCabinetId]);
-
-  useEffect(() => {
-    if (show) {
-      getLocationsWithMachines().then((locations) => {
-        setLocationsWithMachines(locations);
-      });
-    }
-  }, [show]);
 
   useEffect(() => {
     if (selectedCabinetId) {
@@ -391,7 +377,7 @@ export default function NewCollectionModal({
               value={selectedLocationId}
               onValueChange={(value) => {
                 setSelectedLocationId(value);
-                const location = locationsWithMachines.find(
+                const location = locations.find(
                   (loc) => String(loc._id) === value
                 );
                 if (location) {
@@ -407,8 +393,8 @@ export default function NewCollectionModal({
                 />
               </SelectTrigger>
               <SelectContent>
-                {locationsWithMachines.length > 0 ? (
-                  locationsWithMachines.map((loc) => (
+                {locations.length > 0 ? (
+                  locations.map((loc) => (
                     <SelectItem key={String(loc._id)} value={String(loc._id)}>
                       {loc.name}
                     </SelectItem>
@@ -432,7 +418,7 @@ export default function NewCollectionModal({
             </div>
 
             <div className="flex-grow space-y-2 min-h-[100px]">
-              {locationsWithMachines
+              {locations
                 .find((l) => l._id === selectedLocationId)
                 ?.machines.map((cabinet: CollectionReportMachineSummary) => (
                   <Button
@@ -461,8 +447,8 @@ export default function NewCollectionModal({
                 </p>
               )}
               {selectedLocationId &&
-                locationsWithMachines.find((l) => l._id === selectedLocationId)
-                  ?.machines.length === 0 && (
+                locations.find((l) => l._id === selectedLocationId)?.machines
+                  .length === 0 && (
                   <p className="text-xs md:text-sm text-grayHighlight pt-2">
                     No cabinets for this location.
                   </p>
@@ -496,7 +482,7 @@ export default function NewCollectionModal({
                   variant="default"
                   className="w-full bg-lighterBlueHighlight text-primary-foreground text-sm md:text-base"
                 >
-                  {locationsWithMachines
+                  {locations
                     .find((l) => l._id === selectedLocationId)
                     ?.machines.find((m) => String(m._id) === selectedCabinetId)
                     ?.serialNumber || "No Machine"}

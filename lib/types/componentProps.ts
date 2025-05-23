@@ -11,9 +11,9 @@ import {
 import { TimePeriod } from "@/lib/types/api";
 import { VariantProps } from "class-variance-authority";
 import { JSX } from "react";
-import type { Location } from "./collections";
 import type { LocationSelectItem } from "./location";
 import type { DateRange as RDPDateRange } from "react-day-picker";
+import type { CollectionReportLocationWithMachines } from "./api";
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
@@ -180,7 +180,7 @@ export type MonthlyReportDetailsRow = {
 export type NewCollectionModalProps = {
   show: boolean;
   onClose: () => void;
-  locations: Location[];
+  locations: CollectionReportLocationWithMachines[];
 };
 
 // Collection Report UI Props Types
