@@ -46,6 +46,8 @@ export default function MapPreview(props: MapPreviewProps) {
         iconUrl: "/leaflet/marker-icon-image.png",
         shadowUrl: "/leaflet/marker-shadow.png",
       });
+      // Force iconUrl to be set on every render
+      L.Marker.prototype.options.icon = new L.Icon.Default();
       setMapReady(true);
     });
   }, []);
@@ -78,7 +80,9 @@ export default function MapPreview(props: MapPreviewProps) {
   }
 
   // Use default empty arrays if props are missing
-  const gamingLocations = props.gamingLocations || [];
+  const gamingLocations = Array.isArray(props.gamingLocations)
+    ? props.gamingLocations
+    : [];
 
   // Render a marker if valid latitude and a valid longitude are present.
   const renderMarker = (
@@ -116,16 +120,17 @@ export default function MapPreview(props: MapPreviewProps) {
             attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
 
-          {/* Render markers from gamingLocations */}
-          {gamingLocations.map((location) => {
-            if (!location.geoCoords) return null;
-            return renderMarker(
-              location.geoCoords.latitude,
-              location.geoCoords,
-              location.name,
-              location._id
-            );
-          })}
+          {/* Always render all valid markers if gamingLocations is not empty */}
+          {gamingLocations.length > 0 &&
+            gamingLocations.map((location) => {
+              if (!location.geoCoords) return null;
+              return renderMarker(
+                location.geoCoords.latitude,
+                location.geoCoords,
+                location.name,
+                location._id
+              );
+            })}
         </MapContainer>
       </div>
 

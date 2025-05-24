@@ -174,7 +174,9 @@ export default function PcLayout(props: PcLayoutProps) {
                           activePieChartFilter={props.activePieChartFilter}
                           activeFilters={props.activeFilters}
                           onSelect={(value) => {
-                            props.setActivePieChartFilter(value);
+                            if (!props.loadingTopPerforming) {
+                              props.setActivePieChartFilter(value);
+                            }
                           }}
                           isActive={true}
                           isTopPerforming={true}

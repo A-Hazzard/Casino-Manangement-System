@@ -1,100 +1,41 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { CustomSelectProps } from "@/lib/types/componentProps";
 import { TimePeriod } from "@/lib/types/api";
-import { cn } from "@/lib/utils";
-import { CheckIcon, CaretSortIcon } from "@radix-ui/react-icons";
-import { useState } from "react";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function CustomSelect(props: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Additional classes for disabled state:
-  const disabledClasses = props.disabled ? "opacity-50 cursor-not-allowed" : "";
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          disabled={props.disabled} // disable the button when needed
-          className={cn(
-            props.isActive ? "bg-buttonActive" : "bg-buttonInactive",
-            disabledClasses,
-            "text-white px-3 py-1 text-xs rounded-lg"
-          )}
-        >
-          {`Sort by: ${
-            props.selectedFilter === "Today"
-              ? "Today"
-              : props.selectedFilter === "Yesterday"
-              ? "Yesterday"
-              : props.selectedFilter === "7d"
-              ? "Last 7 Days"
-              : props.selectedFilter === "30d"
-              ? "Last 30 Days"
-              : "Custom"
-          }`}
-          <CaretSortIcon className="opacity-50 ml-2" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command>
-          <CommandInput placeholder="Search timeframe..." className="h-9" />
-          <CommandList>
-            <CommandEmpty>No options found.</CommandEmpty>
-            <CommandGroup>
-              {props.timeFrames.map((time) => (
-                <CommandItem
-                  key={time.time}
-                  value={time.time}
-                  onSelect={() => {
-                    if (props.disabled) return; // if disabled, do nothing
-                    props.onSelect(time.value as TimePeriod);
-                    setIsOpen(false);
-                    if (props.isMobile && props.setShowDatePicker) {
-                      if (time.value.toLowerCase() === "custom") {
-                        props.setShowDatePicker(true);
-                      } else {
-                        props.setShowDatePicker(false);
-                      }
-                    }
-                  }}
-                  className={
-                    props.disabled ? "cursor-not-allowed opacity-50" : ""
-                  }
-                >
-                  {time.time}
-                  <CheckIcon
-                    className={cn(
-                      "ml-auto",
-                      props.selectedFilter === time.time
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Select
+      value={props.selectedFilter}
+      onValueChange={(value) => {
+        props.onSelect(value as TimePeriod);
+        if (props.isMobile && props.setShowDatePicker) {
+          if (value.toLowerCase() === "custom") {
+            props.setShowDatePicker(true);
+          } else {
+            props.setShowDatePicker(false);
+          }
+        }
+      }}
+      disabled={props.disabled}
+    >
+      <SelectTrigger className="w-[180px] bg-buttonActive text-white text-xs rounded-lg border">
+        <SelectValue placeholder="Sort by..." />
+      </SelectTrigger>
+      <SelectContent>
+        {props.timeFrames.map((time: { time: string; value: string }) => (
+          <SelectItem key={time.time} value={time.value} className="text-xs">
+            {time.time}
+          </SelectItem>
+        ))} 
+      </SelectContent>
+    </Select>
   );
 }

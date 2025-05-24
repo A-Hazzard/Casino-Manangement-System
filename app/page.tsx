@@ -147,26 +147,27 @@ function DashboardContent() {
 
   // Top Performing: Fetch top performing data separately.
   useEffect(() => {
-    async function loadTopPerforming() {
-      setLoadingTopPerforming(true);
-      try {
-        const data = await fetchTopPerformingData(
-          activeTab,
-          activePieChartFilter
-        );
-        setTopPerformingData(data);
-      } catch (error) {
-        console.error("Error fetching top-performing data:", error);
-      } finally {
-        setLoadingTopPerforming(false);
-      }
-    }
-    void loadTopPerforming();
+    let isMounted = true;
+    setLoadingTopPerforming(true);
+    fetchTopPerformingData(activeTab, activePieChartFilter)
+      .then((data) => {
+        if (isMounted) setTopPerformingData(data);
+      })
+      .catch((error) => {
+        if (isMounted)
+          console.error("Error fetching top-performing data:", error);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingTopPerforming(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [
     activeTab,
     activePieChartFilter,
-    setLoadingTopPerforming,
     setTopPerformingData,
+    setLoadingTopPerforming,
   ]);
 
   // When totals update with new data, disable aggregator child skeleton loaders.
