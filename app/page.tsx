@@ -22,8 +22,6 @@ export default function Home() {
 // Separate client component that uses zustand
 function DashboardContent() {
   const {
-    initialLoading,
-    setInitialLoading,
     loadingChartData,
     setLoadingChartData,
     loadingTopPerforming,
@@ -55,6 +53,8 @@ function DashboardContent() {
   } = useDashBoardStore();
   // To compare new totals with previous ones.
   const prevTotals = useRef<dashboardData | null>(null);
+  // To prevent double fetch on initial load
+  const hasFetchedOnce = useRef(false);
 
   // Memoized custom label for Chart.
   const renderCustomizedLabel = useCallback((props: CustomizedLabelProps) => {
@@ -82,8 +82,8 @@ function DashboardContent() {
     const fetchMetrics = async () => {
       setLoadingChartData(true);
       try {
-        // On initial load, fetch locations only.
-        if (initialLoading) {
+        // On initial load, fetch locations only ONCE.
+        if (!hasFetchedOnce.current) {
           const locationsData = await getAllGamingLocations();
           const validLocations = locationsData.filter(
             (loc) =>
@@ -92,6 +92,7 @@ function DashboardContent() {
               loc.geoCoords.longitude !== 0
           );
           setGamingLocations(validLocations);
+          hasFetchedOnce.current = true;
         }
         // Fetch metrics
         if (selectedLicencee) {
@@ -129,9 +130,6 @@ function DashboardContent() {
         console.error("Error fetching metrics:", error);
       } finally {
         setLoadingChartData(false);
-        if (initialLoading) {
-          setInitialLoading(false);
-        }
       }
     };
     fetchMetrics();
@@ -139,10 +137,8 @@ function DashboardContent() {
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
-    initialLoading,
     setTotals,
     setChartData,
-    setInitialLoading,
     setLoadingChartData,
     setGamingLocations,
     setActiveFilters,
