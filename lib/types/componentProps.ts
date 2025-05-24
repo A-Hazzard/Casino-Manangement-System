@@ -47,10 +47,7 @@ export type DashboardLayoutProps = {
   selectedLicencee: string;
 };
 
-export type PcLayoutProps = DashboardLayoutProps & {
-  onRefresh: () => Promise<void>;
-  refreshing: boolean;
-};
+export type PcLayoutProps = DashboardLayoutProps;
 
 export type ChartProps = {
   loadingChartData: boolean;
@@ -66,10 +63,10 @@ export type MapPreviewProps = {
 export type DateRangeProps = {
   CustomDateRange: dateRange;
   setCustomDateRange: (_state: dateRange) => void;
-  setTotals: (_state: dashboardData | null) => void;
-  setChartData: (_state: dashboardData[]) => void;
+  setTotals?: (_state: dashboardData | null) => void;
+  setChartData?: (_state: dashboardData[]) => void;
   selectedLicencee?: string;
-  setActiveFilters?: (_state: ActiveFilters) => void;
+  setActiveFilters: (_state: ActiveFilters) => void;
   setShowDatePicker?: (_state: boolean) => void;
 };
 
@@ -134,7 +131,9 @@ export type PageParamsWithSlug = {
 };
 
 // Restore MobileLayoutProps as a type alias for DashboardLayoutProps
-export type MobileLayoutProps = DashboardLayoutProps;
+export type MobileLayoutProps = DashboardLayoutProps & {
+  isChangingDateFilter: boolean;
+};
 
 // Represents a single row in the Collection Reports table
 export type CollectionReportRow = {

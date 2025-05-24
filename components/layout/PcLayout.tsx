@@ -34,19 +34,16 @@ export default function PcLayout(props: PcLayoutProps) {
             <DateRange
               CustomDateRange={props.CustomDateRange}
               setCustomDateRange={props.setCustomDateRange}
-              setTotals={props.setTotals}
-              setChartData={props.setChartData}
-              selectedLicencee={props.selectedLicencee}
               setActiveFilters={props.setActiveFilters}
-              setShowDatePicker={props.setShowDatePicker}
             />
           )}
 
           <div className="flex justify-between items-center">
             <h2 className="text-lg">Total for all Locations and Machines</h2>
             <RefreshButton
-              onClick={props.onRefresh}
-              isRefreshing={props.refreshing}
+              onClick={() => {}}
+              isRefreshing={false}
+              disabled={props.loadingChartData}
             />
           </div>
           {/* Metrics Cards */}

@@ -9,7 +9,7 @@ import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import { dashboardData } from "@/lib/types";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
 import { switchFilter } from "@/lib/utils/metrics";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -55,7 +55,6 @@ function DashboardContent() {
   } = useDashBoardStore();
   // To compare new totals with previous ones.
   const prevTotals = useRef<dashboardData | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Memoized custom label for Chart.
   const renderCustomizedLabel = useCallback((props: CustomizedLabelProps) => {
@@ -78,70 +77,77 @@ function DashboardContent() {
     );
   }, []);
 
-  // Derive the active time period from activeFilters.
-  const getTimeFrame = useCallback(() => {
-    if (activeFilters.Today) return "Today";
-    if (activeFilters.Yesterday) return "Yesterday";
-    if (activeFilters.last7days) return "7d";
-    if (activeFilters.last30days) return "30d";
-    if (activeFilters.Custom) return "Custom";
-    return "Today";
-  }, [activeFilters]);
-
-  // Aggregator: Fetch chartData and totals.
-  const loadData = useCallback(async () => {
-    setLoadingChartData(true);
-    try {
-      // On initial load, fetch locations only.
-      if (initialLoading) {
-        const locationsData = await getAllGamingLocations();
-        const validLocations = locationsData.filter(
-          (loc) =>
-            loc.geoCoords &&
-            loc.geoCoords.latitude !== 0 &&
-            loc.geoCoords.longitude !== 0
-        );
-        setGamingLocations(validLocations);
+  // Replace with a single useEffect:
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setLoadingChartData(true);
+      try {
+        // On initial load, fetch locations only.
+        if (initialLoading) {
+          const locationsData = await getAllGamingLocations();
+          const validLocations = locationsData.filter(
+            (loc) =>
+              loc.geoCoords &&
+              loc.geoCoords.latitude !== 0 &&
+              loc.geoCoords.longitude !== 0
+          );
+          setGamingLocations(validLocations);
+        }
+        // Fetch metrics
+        if (selectedLicencee) {
+          await switchFilter(
+            activeMetricsFilter,
+            setTotals,
+            setChartData,
+            activeMetricsFilter === "Custom"
+              ? customDateRange.startDate
+              : undefined,
+            activeMetricsFilter === "Custom"
+              ? customDateRange.endDate
+              : undefined,
+            selectedLicencee,
+            setActiveFilters,
+            setShowDatePicker
+          );
+        } else {
+          await switchFilter(
+            activeMetricsFilter,
+            setTotals,
+            setChartData,
+            activeMetricsFilter === "Custom"
+              ? customDateRange.startDate
+              : undefined,
+            activeMetricsFilter === "Custom"
+              ? customDateRange.endDate
+              : undefined,
+            undefined,
+            setActiveFilters,
+            setShowDatePicker
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching metrics:", error);
+      } finally {
+        setLoadingChartData(false);
+        if (initialLoading) {
+          setInitialLoading(false);
+        }
       }
-      const timeFrame = getTimeFrame() as TimePeriod;
-      setActiveMetricsFilter(timeFrame);
-
-      // Only pass licencee if selected.
-      if (selectedLicencee) {
-        await switchFilter(
-          timeFrame,
-          setTotals,
-          setChartData,
-          undefined,
-          undefined,
-          selectedLicencee
-        );
-      } else {
-        await switchFilter(timeFrame, setTotals, setChartData);
-      }
-    } catch (error) {
-      console.error("Error fetching metrics:", error);
-    } finally {
-      setLoadingChartData(false);
-      if (initialLoading) {
-        setInitialLoading(false);
-      }
-    }
+    };
+    fetchMetrics();
   }, [
+    activeMetricsFilter,
+    customDateRange,
     selectedLicencee,
     initialLoading,
-    getTimeFrame,
-    setActiveMetricsFilter,
     setTotals,
     setChartData,
     setInitialLoading,
     setLoadingChartData,
     setGamingLocations,
+    setActiveFilters,
+    setShowDatePicker,
   ]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   // Top Performing: Fetch top performing data separately.
   useEffect(() => {
@@ -180,69 +186,6 @@ function DashboardContent() {
       prevTotals.current = totals;
     }
   }, [totals, setLoadingChartData]);
-
-  useEffect(() => {
-    // When user selects different filter through UI
-    if (!initialLoading) {
-      const loadFilteredData = async () => {
-        setLoadingChartData(true);
-
-        try {
-          // Query data with selected filter
-          if (selectedLicencee) {
-            await switchFilter(
-              activeMetricsFilter,
-              setTotals,
-              setChartData,
-              customDateRange.startDate,
-              customDateRange.endDate,
-              selectedLicencee,
-              setActiveFilters,
-              setShowDatePicker
-            );
-          } else {
-            await switchFilter(
-              activeMetricsFilter,
-              setTotals,
-              setChartData,
-              activeMetricsFilter === "Custom"
-                ? customDateRange.startDate
-                : undefined,
-              activeMetricsFilter === "Custom"
-                ? customDateRange.endDate
-                : undefined,
-              undefined,
-              setActiveFilters,
-              setShowDatePicker
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching metrics data:", error);
-        } finally {
-          setLoadingChartData(false);
-        }
-      };
-
-      loadFilteredData();
-    }
-  }, [
-    activeMetricsFilter,
-    initialLoading,
-    selectedLicencee,
-    setActiveFilters,
-    setChartData,
-    setLoadingChartData,
-    setShowDatePicker,
-    setTotals,
-    customDateRange,
-  ]);
-
-  // Handler for refresh button
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
 
   return (
     <>
@@ -328,8 +271,6 @@ function DashboardContent() {
             renderCustomizedLabel={renderCustomizedLabel}
             selectedLicencee={selectedLicencee}
             loadingTopPerforming={loadingTopPerforming}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
           />
           <MobileLayout
             activeFilters={activeFilters}
@@ -358,6 +299,7 @@ function DashboardContent() {
             renderCustomizedLabel={renderCustomizedLabel}
             selectedLicencee={selectedLicencee}
             loadingTopPerforming={loadingTopPerforming}
+            isChangingDateFilter={false}
           />
         </main>
       </div>
