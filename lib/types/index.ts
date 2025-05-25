@@ -79,6 +79,7 @@ export type Metrics = {
   totalCancelledCredits: number; // Total cancelled credits
   gross: number; // Gross calculation
   location?: string; // Optional - Location name (if applicable)
+  locationName?: string;
   machine?: string; // Optional - Machine ID (if applicable)
   geoCoords?: dashboardData["geoCoords"];
 };
@@ -116,6 +117,14 @@ export type locations = {
     latitude: number;
     longitude: number;
   };
+  totalMachines?: number;
+  onlineMachines?: number;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+  isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
+  hasSmib?: boolean;
 };
 
 export type UserAuthPayload = {

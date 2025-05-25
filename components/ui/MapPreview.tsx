@@ -6,7 +6,11 @@ import gsap from "gsap";
 import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import "leaflet/dist/leaflet.css";
 import { MapPreviewProps } from "@/lib/types/componentProps";
+import { locations } from "@/lib/types";
 import MapSkeleton from "@/components/ui/MapSkeleton";
+import { fetchLocationMetricsForMap } from "@/lib/helpers/locations";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useRouter } from "next/navigation";
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -37,6 +41,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [locationMetrics, setLocationMetrics] = useState<locations[]>([]);
+  const { activeMetricsFilter, selectedLicencee } = useDashBoardStore();
+  const router = useRouter();
 
   // Initialize Leaflet on client side
   useEffect(() => {
@@ -51,6 +58,26 @@ export default function MapPreview(props: MapPreviewProps) {
       setMapReady(true);
     });
   }, []);
+
+  // Fetch location metrics when component mounts or filters change
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const metrics = await fetchLocationMetricsForMap(
+          activeMetricsFilter,
+          selectedLicencee
+        );
+        setLocationMetrics(metrics);
+      } catch (error) {
+        console.error("Error fetching location metrics:", error);
+        setLocationMetrics([]);
+      }
+    };
+
+    if (mapReady) {
+      fetchMetrics();
+    }
+  }, [activeMetricsFilter, selectedLicencee, mapReady]);
 
   // Modal animation using GSAP
   useEffect(() => {
@@ -84,18 +111,92 @@ export default function MapPreview(props: MapPreviewProps) {
     ? props.gamingLocations
     : [];
 
+  // Helper to get stats for a location from metrics or chartData
+  const getLocationStats = (location: locations) => {
+    // First try to get from fetched metrics
+    const metricsData = locationMetrics.find(
+      (metric) =>
+        metric._id === location._id ||
+        metric.name === location.name ||
+        metric.locationName === location.locationName
+    );
+
+    if (metricsData) {
+      return {
+        moneyIn: metricsData.moneyIn ?? 0,
+        moneyOut: metricsData.moneyOut ?? 0,
+        gross: metricsData.gross ?? 0,
+        totalMachines: metricsData.totalMachines ?? 0,
+        onlineMachines: metricsData.onlineMachines ?? 0,
+      };
+    }
+
+    // Fallback to chartData if metrics not available
+    const stats = Array.isArray(props.chartData)
+      ? props.chartData.find(
+          (d) =>
+            (d.locationName &&
+              (d.locationName === location.locationName ||
+                d.locationName === location.name)) ||
+            (d.location &&
+              (d.location === location.locationName ||
+                d.location === location.name))
+        )
+      : undefined;
+    return {
+      moneyIn: stats?.moneyIn ?? location.moneyIn ?? 0,
+      moneyOut: stats?.moneyOut ?? location.moneyOut ?? 0,
+      gross: stats?.gross ?? location.gross ?? 0,
+      totalMachines: location.totalMachines ?? 0,
+      onlineMachines: location.onlineMachines ?? 0,
+    };
+  };
+
+  // Handle navigation to location details
+  const handleLocationClick = (locationId: string) => {
+    router.push(`/locations/${locationId}`);
+  };
+
   // Render a marker if valid latitude and a valid longitude are present.
   const renderMarker = (
     lat: number,
     geo: { longitude?: number; longtitude?: number },
     label: string,
-    key: string | number
+    key: string | number,
+    locationObj: locations
   ) => {
     const lon = getValidLongitude(geo);
     if (lon === undefined || lat === 0 || lon === 0) return null;
+    const stats = getLocationStats(locationObj);
     return (
       <Marker key={key} position={[lat, lon]}>
-        <Popup>{label}</Popup>
+        <Popup>
+          <div className="min-w-[180px]">
+            <div className="font-bold text-base mb-2">{label}</div>
+            <div className="text-xs mb-1">
+              <span className="font-semibold">Machines Online:</span>{" "}
+              {stats.onlineMachines} / {stats.totalMachines}
+            </div>
+            <div className="text-xs mb-1">
+              <span className="font-semibold">Money In:</span> $
+              {stats.moneyIn.toLocaleString()}
+            </div>
+            <div className="text-xs mb-1">
+              <span className="font-semibold">Money Out:</span> $
+              {stats.moneyOut.toLocaleString()}
+            </div>
+            <div className="text-xs mb-2">
+              <span className="font-semibold">Gross:</span> $
+              {stats.gross.toLocaleString()}
+            </div>
+            <button
+              onClick={() => handleLocationClick(locationObj._id)}
+              className="w-full bg-buttonActive text-white px-3 py-1 rounded text-xs hover:bg-buttonActive/90 transition-colors"
+            >
+              View Details
+            </button>
+          </div>
+        </Popup>
       </Marker>
     );
   };
@@ -124,11 +225,14 @@ export default function MapPreview(props: MapPreviewProps) {
           {gamingLocations.length > 0 &&
             gamingLocations.map((location) => {
               if (!location.geoCoords) return null;
+              const locationName =
+                location.name || location.locationName || "Unknown Location";
               return renderMarker(
                 location.geoCoords.latitude,
                 location.geoCoords,
-                location.name,
-                location._id
+                locationName,
+                location._id,
+                location
               );
             })}
         </MapContainer>
@@ -159,11 +263,14 @@ export default function MapPreview(props: MapPreviewProps) {
 
               {gamingLocations.map((location) => {
                 if (!location.geoCoords) return null;
+                const locationName =
+                  location.name || location.locationName || "Unknown Location";
                 return renderMarker(
                   location.geoCoords.latitude,
                   location.geoCoords,
-                  location.name,
-                  `modal-${location._id}`
+                  locationName,
+                  `modal-${location._id}`,
+                  location
                 );
               })}
             </MapContainer>

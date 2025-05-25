@@ -236,3 +236,59 @@ export async function searchLocations(
     return [];
   }
 }
+
+/**
+ * Fetches location metrics for map display, including machine counts and financial data.
+ *
+ * @param timePeriod - The time period to fetch data for.
+ * @param licencee - (Optional) Licencee filter.
+ * @returns Promise resolving to location metrics array with machine and financial data.
+ */
+export async function fetchLocationMetricsForMap(
+  timePeriod: string,
+  licencee?: string
+) {
+  try {
+    const url =
+      `/api/locationAggregation?timePeriod=${timePeriod}` +
+      (licencee ? `&licencee=${licencee}` : "");
+
+    const response = await axios.get(url);
+
+    if (!response.data) {
+      console.error("No data returned from location metrics API");
+      return [];
+    }
+
+    // Transform the data to include the required fields for map display
+    return response.data.map(
+      (location: {
+        location?: string;
+        _id?: string;
+        locationName?: string;
+        moneyIn?: number;
+        moneyOut?: number;
+        gross?: number;
+        totalMachines?: number;
+        onlineMachines?: number;
+        isLocalServer?: boolean;
+        noSMIBLocation?: boolean;
+      }) => ({
+        _id: location.location || location._id,
+        locationName: location.locationName,
+        name: location.locationName, // Fallback for name field
+        moneyIn: location.moneyIn || 0,
+        moneyOut: location.moneyOut || 0,
+        gross: location.gross || 0,
+        totalMachines: location.totalMachines || 0,
+        onlineMachines: location.onlineMachines || 0,
+        isLocalServer: location.isLocalServer || false,
+        noSMIBLocation: location.noSMIBLocation || false,
+        hasSmib: !location.noSMIBLocation,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching location metrics for map:", error);
+    return [];
+  }
+}
