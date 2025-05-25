@@ -41,9 +41,9 @@ export default function PcLayout(props: PcLayoutProps) {
           <div className="flex justify-between items-center">
             <h2 className="text-lg">Total for all Locations and Machines</h2>
             <RefreshButton
-              onClick={() => {}}
-              isRefreshing={false}
-              disabled={props.loadingChartData}
+              onClick={props.onRefresh}
+              isRefreshing={props.refreshing}
+              disabled={props.loadingChartData || props.refreshing}
             />
           </div>
           {/* Metrics Cards */}

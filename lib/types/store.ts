@@ -19,6 +19,9 @@ export type DashBoardStore = {
   loadingTopPerforming: boolean;
   setLoadingTopPerforming: (_state: boolean) => void;
 
+  refreshing: boolean;
+  setRefreshing: (_state: boolean) => void;
+
   pieChartSortIsOpen: boolean;
   setPieChartSortIsOpen: (_state: boolean) => void;
 

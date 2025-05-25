@@ -26,6 +26,8 @@ function DashboardContent() {
     setLoadingChartData,
     loadingTopPerforming,
     setLoadingTopPerforming,
+    refreshing,
+    setRefreshing,
     activeFilters,
     setActiveFilters,
     activeMetricsFilter,
@@ -184,6 +186,75 @@ function DashboardContent() {
     }
   }, [totals, setLoadingChartData]);
 
+  // Handle refresh functionality
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setLoadingChartData(true);
+    setLoadingTopPerforming(true);
+
+    try {
+      // Fetch metrics
+      if (selectedLicencee) {
+        await switchFilter(
+          activeMetricsFilter,
+          setTotals,
+          setChartData,
+          activeMetricsFilter === "Custom"
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === "Custom"
+            ? customDateRange.endDate
+            : undefined,
+          selectedLicencee,
+          setActiveFilters,
+          setShowDatePicker
+        );
+      } else {
+        await switchFilter(
+          activeMetricsFilter,
+          setTotals,
+          setChartData,
+          activeMetricsFilter === "Custom"
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === "Custom"
+            ? customDateRange.endDate
+            : undefined,
+          undefined,
+          setActiveFilters,
+          setShowDatePicker
+        );
+      }
+
+      // Fetch top performing data
+      const topPerformingDataResult = await fetchTopPerformingData(
+        activeTab,
+        activePieChartFilter
+      );
+      setTopPerformingData(topPerformingDataResult);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+      setLoadingChartData(false);
+      setLoadingTopPerforming(false);
+    }
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    activeTab,
+    activePieChartFilter,
+    setRefreshing,
+    setLoadingChartData,
+    setLoadingTopPerforming,
+    setTotals,
+    setChartData,
+    setActiveFilters,
+    setShowDatePicker,
+    setTopPerformingData,
+  ]);
+
   return (
     <>
       <Sidebar />
@@ -193,6 +264,7 @@ function DashboardContent() {
             selectedLicencee={selectedLicencee}
             pageTitle="Dashboard"
             setSelectedLicencee={setSelectedLicencee}
+            disabled={loadingChartData || refreshing}
           />
 
           {/* Date Filter Controls (Desktop) */}
@@ -210,11 +282,16 @@ function DashboardContent() {
                   activeMetricsFilter === filter.value
                     ? "bg-buttonActive text-white"
                     : "bg-button text-white hover:bg-buttonActive"
-                } ${loadingChartData ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${
+                  loadingChartData || refreshing
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
                 onClick={() =>
-                  !loadingChartData && setActiveMetricsFilter(filter.value)
+                  !(loadingChartData || refreshing) &&
+                  setActiveMetricsFilter(filter.value)
                 }
-                disabled={loadingChartData}
+                disabled={loadingChartData || refreshing}
               >
                 {filter.label}
               </button>
@@ -224,13 +301,15 @@ function DashboardContent() {
           <div className="flex lg:hidden justify-center my-4">
             <select
               className={`px-4 py-2 rounded-full text-sm bg-buttonActive text-white ${
-                loadingChartData ? "opacity-50 cursor-not-allowed" : ""
+                loadingChartData || refreshing
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
               value={activeMetricsFilter}
               onChange={(e) =>
                 setActiveMetricsFilter(e.target.value as TimePeriod)
               }
-              disabled={loadingChartData}
+              disabled={loadingChartData || refreshing}
             >
               <option value="Today">Today</option>
               <option value="Yesterday">Yesterday</option>
@@ -248,12 +327,14 @@ function DashboardContent() {
             chartData={chartData}
             gamingLocations={gamingLocations}
             loadingChartData={loadingChartData}
+            refreshing={refreshing}
             pieChartSortIsOpen={pieChartSortIsOpen}
             activeMetricsFilter={activeMetricsFilter}
             activePieChartFilter={activePieChartFilter}
             topPerformingData={topPerformingData}
             showDatePicker={showDatePicker}
             setLoadingChartData={setLoadingChartData}
+            setRefreshing={setRefreshing}
             CustomDateRange={customDateRange}
             setCustomDateRange={setCustomDateRange}
             setActiveFilters={setActiveFilters}
@@ -268,6 +349,7 @@ function DashboardContent() {
             renderCustomizedLabel={renderCustomizedLabel}
             selectedLicencee={selectedLicencee}
             loadingTopPerforming={loadingTopPerforming}
+            onRefresh={handleRefresh}
           />
           <MobileLayout
             activeFilters={activeFilters}
@@ -276,12 +358,14 @@ function DashboardContent() {
             chartData={chartData}
             gamingLocations={gamingLocations}
             loadingChartData={loadingChartData}
+            refreshing={refreshing}
             pieChartSortIsOpen={pieChartSortIsOpen}
             activeMetricsFilter={activeMetricsFilter}
             activePieChartFilter={activePieChartFilter}
             topPerformingData={topPerformingData}
             showDatePicker={showDatePicker}
             setLoadingChartData={setLoadingChartData}
+            setRefreshing={setRefreshing}
             CustomDateRange={customDateRange}
             setCustomDateRange={setCustomDateRange}
             setActiveFilters={setActiveFilters}
@@ -296,6 +380,7 @@ function DashboardContent() {
             renderCustomizedLabel={renderCustomizedLabel}
             selectedLicencee={selectedLicencee}
             loadingTopPerforming={loadingTopPerforming}
+            onRefresh={handleRefresh}
             isChangingDateFilter={false}
           />
         </main>

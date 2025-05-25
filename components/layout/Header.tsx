@@ -25,6 +25,7 @@ export default function Header({
   hideOptions,
   hideLicenceeFilter,
   containerPaddingMobile,
+  disabled = false,
 }: HeaderProps) {
   const pathname = usePathname();
   const params = useParams();
@@ -86,6 +87,7 @@ export default function Header({
               <LicenceeSelect
                 selected={selectedLicencee || ""}
                 onChange={setSelectedLicencee || (() => {})}
+                disabled={disabled}
               />
             </div>
           )}

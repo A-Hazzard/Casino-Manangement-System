@@ -29,8 +29,10 @@ export type DashboardLayoutProps = {
   gamingLocations: locations[];
   loadingChartData: boolean;
   loadingTopPerforming?: boolean;
+  refreshing: boolean;
   initialLoading?: boolean;
   setLoadingChartData: (_state: boolean) => void;
+  setRefreshing: (_state: boolean) => void;
   setCustomDateRange: (_state: dateRange) => void;
   setActiveTab: (_state: ActiveTab) => void;
   setActivePieChartFilter: (_state: TimePeriod) => void;
@@ -41,6 +43,7 @@ export type DashboardLayoutProps = {
   setPieChartSortIsOpen: (_state: boolean) => void;
   setShowDatePicker: (_state: boolean) => void;
   setTopPerformingData: (_state: TopPerformingData[]) => void;
+  onRefresh: () => void;
   renderCustomizedLabel: (_props: CustomizedLabelProps) => JSX.Element;
   queryType?: "user" | "all";
   userId?: string | null;
@@ -101,6 +104,7 @@ export type CustomizedLabelProps = {
 export type licenceeSelectProps = {
   selected: string;
   onChange: (_value: string) => void;
+  disabled?: boolean;
 };
 
 export type HeaderProps = {
@@ -110,6 +114,7 @@ export type HeaderProps = {
   hideOptions?: boolean;
   hideLicenceeFilter?: boolean;
   containerPaddingMobile?: string;
+  disabled?: boolean;
 };
 
 // Next.js page parameter types for dynamic routes
