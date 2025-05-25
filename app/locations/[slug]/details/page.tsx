@@ -19,6 +19,7 @@ import MetricsSummary from "@/components/locationDetails/MetricsSummary";
 import CabinetFilterBar from "@/components/locationDetails/CabinetFilterBar";
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { TimePeriod } from "@/lib/types/api";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 type LocationInfo = {
   _id: string;
@@ -71,6 +72,9 @@ export default function LocationDetailsPage() {
   const [selectedCabinet, setSelectedCabinet] =
     useState<ExtendedCabinetDetail | null>(null);
 
+  // Add refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
   // Use helpers to fetch data
   useEffect(() => {
     setMetricsLoading(true);
@@ -84,6 +88,25 @@ export default function LocationDetailsPage() {
       });
     });
   }, [slug, activeMetricsFilter]);
+
+  // Add refresh function
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setMetricsLoading(true);
+    try {
+      const location = await fetchLocationDetails(slug);
+      if (location) setLocationInfo(location);
+      const cabinets = await fetchCabinets(slug, activeMetricsFilter);
+      setCabinets(cabinets);
+      setFilteredCabinets(cabinets);
+      setSelectedCabinet(cabinets[0] || null);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setMetricsLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   return (
     <>
@@ -99,6 +122,7 @@ export default function LocationDetailsPage() {
             pageTitle=""
             hideOptions={true}
             hideLicenceeFilter={false}
+            disabled={metricsLoading || refreshing}
           />
 
           <div className="flex items-center mb-6">
@@ -111,6 +135,13 @@ export default function LocationDetailsPage() {
               </Button>
             </Link>
             <h1 className="text-2xl font-bold">Location Details</h1>
+            <div className="ml-auto">
+              <RefreshButton
+                onClick={handleRefresh}
+                isRefreshing={refreshing}
+                disabled={metricsLoading || refreshing}
+              />
+            </div>
           </div>
 
           {/* Time Period Filter Buttons */}
@@ -129,8 +160,16 @@ export default function LocationDetailsPage() {
                     activeMetricsFilter === filter.value
                       ? "bg-buttonActive text-white"
                       : "bg-button text-white hover:bg-buttonActive"
+                  } ${
+                    metricsLoading || refreshing
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
-                  onClick={() => setActiveMetricsFilter(filter.value)}
+                  disabled={metricsLoading || refreshing}
+                  onClick={() =>
+                    !(metricsLoading || refreshing) &&
+                    setActiveMetricsFilter(filter.value)
+                  }
                 >
                   {filter.label}
                 </Button>

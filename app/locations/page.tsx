@@ -314,8 +314,14 @@ export default function LocationsPage() {
   // Handler for refresh button
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
+    setLoading(true);
+    try {
+      await fetchData();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -329,6 +335,7 @@ export default function LocationsPage() {
             pageTitle=""
             hideOptions={false}
             hideLicenceeFilter={false}
+            disabled={loading || refreshing}
           />
 
           {/* Page title and Add Location button */}
@@ -363,47 +370,64 @@ export default function LocationsPage() {
             {/* Desktop Add New button */}
             <Button
               onClick={() => openLocationModal()}
-              className="hidden md:flex bg-button text-white px-4 py-2 rounded-md items-center"
+              className="hidden md:flex bg-button text-white px-4 py-2 rounded-md items-center gap-2"
             >
               <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
                 <Plus className="w-4 h-4 text-white" />
               </div>
-              Add New Location
+              <span>Add New Location</span>
             </Button>
           </div>
 
           {/* Desktop Time Period Filters */}
-          <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap justify-start mt-4">
-            {[
-              { label: "Today", value: "Today" as TimePeriod },
-              { label: "Yesterday", value: "Yesterday" as TimePeriod },
-              { label: "Last 7 days", value: "7d" as TimePeriod },
-              { label: "30 days", value: "30d" as TimePeriod },
-              { label: "Custom", value: "Custom" as TimePeriod },
-            ].map((filter) => (
-              <Button
-                key={filter.label}
-                className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
-                  activeMetricsFilter === filter.value
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-buttonActive"
-                } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                onClick={() => !loading && setActiveMetricsFilter(filter.value)}
-                disabled={loading}
-              >
-                {filter.label}
-              </Button>
-            ))}
+          <div className="hidden lg:flex items-center mt-4 w-full">
+            <div className="flex space-x-2 overflow-x-auto flex-wrap justify-start">
+              {[
+                { label: "Today", value: "Today" as TimePeriod },
+                { label: "Yesterday", value: "Yesterday" as TimePeriod },
+                { label: "Last 7 days", value: "7d" as TimePeriod },
+                { label: "30 days", value: "30d" as TimePeriod },
+                { label: "Custom", value: "Custom" as TimePeriod },
+              ].map((filter) => (
+                <Button
+                  key={filter.label}
+                  className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
+                    activeMetricsFilter === filter.value
+                      ? "bg-buttonActive text-white"
+                      : "bg-button text-white hover:bg-buttonActive"
+                  } ${
+                    loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  onClick={() =>
+                    !(loading || refreshing) &&
+                    setActiveMetricsFilter(filter.value)
+                  }
+                  disabled={loading || refreshing}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex-1"></div>
+            <div className="ml-8">
+              <RefreshButton
+                onClick={handleRefresh}
+                isRefreshing={refreshing}
+                disabled={loading || refreshing}
+              />
+            </div>
           </div>
 
           {/* Mobile Time Period Button - Show only on md screens, re-implemented like dashboard */}
           <div className="hidden md:flex lg:hidden justify-center mb-4 relative">
             <Button
               className={`bg-buttonActive hover:bg-buttonActive/90 text-white px-4 py-2 rounded-full text-sm flex items-center ${
-                loading ? "opacity-50 cursor-not-allowed" : ""
+                loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
               }`}
-              onClick={() => !loading && setFilterOpen((open) => !open)}
-              disabled={loading}
+              onClick={() =>
+                !(loading || refreshing) && setFilterOpen((open) => !open)
+              }
+              disabled={loading || refreshing}
             >
               <span className="mr-2">Sort by: {activeMetricsFilter}</span>
               <ChevronRightIcon className="w-4 h-4 -rotate-90" />
@@ -426,14 +450,18 @@ export default function LocationsPage() {
                       activeMetricsFilter === filter.value
                         ? "bg-purple-50 text-purple-700 font-medium"
                         : "text-gray-700 hover:bg-gray-100"
-                    } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    } ${
+                      loading || refreshing
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
                     onClick={async () => {
-                      if (loading) return;
+                      if (loading || refreshing) return;
                       setActiveMetricsFilter(filter.value);
                       await fetchData();
                       setFilterOpen(false);
                     }}
-                    disabled={loading}
+                    disabled={loading || refreshing}
                   >
                     {filter.label}
                   </button>
@@ -446,10 +474,10 @@ export default function LocationsPage() {
           <div className="flex justify-center md:hidden mb-4">
             <Button
               className={`bg-buttonActive hover:bg-buttonActive/90 text-white px-4 py-2 rounded-full text-sm flex items-center ${
-                loading ? "opacity-50 cursor-not-allowed" : ""
+                loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
               }`}
               onClick={() => {
-                if (loading) return;
+                if (loading || refreshing) return;
                 const dropdown = document.getElementById(
                   "mobile-filter-dropdown-sm"
                 );
@@ -457,7 +485,7 @@ export default function LocationsPage() {
                   dropdown.classList.toggle("hidden");
                 }
               }}
-              disabled={loading}
+              disabled={loading || refreshing}
             >
               <span className="mr-2">Sort by: {activeMetricsFilter}</span>
               <ChevronRightIcon className="w-4 h-4 -rotate-90" />
@@ -480,31 +508,23 @@ export default function LocationsPage() {
                     activeMetricsFilter === filter.value
                       ? "bg-purple-50 text-purple-700 font-medium"
                       : "text-gray-700 hover:bg-gray-100"
-                  } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  } ${
+                    loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                   onClick={() => {
-                    if (loading) return;
+                    if (loading || refreshing) return;
                     setActiveMetricsFilter(filter.value);
                     document
                       .getElementById("mobile-filter-dropdown-sm")
                       ?.classList.add("hidden");
                   }}
-                  disabled={loading}
+                  disabled={loading || refreshing}
                 >
                   {filter.label}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Only show RefreshButton after data is finished loading, below the date filters */}
-          {!loading && (
-            <div className="w-full flex lg:justify-start justify-center my-4">
-              <RefreshButton
-                onClick={handleRefresh}
-                isRefreshing={refreshing}
-              />
-            </div>
-          )}
 
           {/* Desktop Search and Filter Area (Hidden until md) */}
           <div
@@ -668,7 +688,7 @@ export default function LocationsPage() {
               </div>
 
               <div
-                className="block lg:hidden mt-4 px-2 md:px-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"
+                className="lg:hidden mt-4 px-2 md:px-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"
                 ref={cardsRef}
               >
                 {paginatedLocations.map((loc, index) =>

@@ -17,6 +17,7 @@ import {
   calculateVariation,
   formatSasTimes,
 } from "@/lib/utils/metrics";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 // Main component for the report page
 export default function CollectionReportPage() {
@@ -34,6 +35,9 @@ export default function CollectionReportPage() {
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
+
+  // Add refresh state
+  const [refreshing, setRefreshing] = useState(false);
 
   const tabContentRef = useRef<HTMLDivElement>(null); // For desktop GSAP
 
@@ -61,6 +65,34 @@ export default function CollectionReportPage() {
       .catch(() => setCollections([]));
   }, [reportId]);
 
+  // Add refresh function
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchCollectionReportById(reportId);
+      if (!validateCollectionReportData(data)) {
+        setError("Report not found. Please use a valid report ID.");
+        setReportData(null);
+      } else {
+        setReportData(data);
+      }
+
+      const collectionsData = await fetchCollectionsByLocationReportId(
+        reportId
+      );
+      setCollections(collectionsData);
+    } catch {
+      setError("Failed to fetch report data.");
+      setReportData(null);
+      setCollections([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   // GSAP animation for desktop tab transitions
   useEffect(() => {
     if (tabContentRef.current && window.innerWidth >= 1024) {
@@ -84,6 +116,7 @@ export default function CollectionReportPage() {
             hideOptions={true}
             hideLicenceeFilter={true}
             containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
+            disabled={loading || refreshing}
           />
           <div className="p-4 flex justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-lg text-gray-700">Loading report...</p>
@@ -104,6 +137,7 @@ export default function CollectionReportPage() {
             hideOptions={true}
             hideLicenceeFilter={true}
             containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
+            disabled={loading || refreshing}
           />
           <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-red-600 mb-4">Error: {error}</p>
@@ -130,6 +164,7 @@ export default function CollectionReportPage() {
             hideOptions={true}
             hideLicenceeFilter={true}
             containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
+            disabled={loading || refreshing}
           />
           <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-gray-700 mb-4">Report not found.</p>
@@ -152,12 +187,13 @@ export default function CollectionReportPage() {
     label: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare";
   }) => (
     <button
-      onClick={() => setActiveTab(label)}
+      onClick={() => !(loading || refreshing) && setActiveTab(label)}
+      disabled={loading || refreshing}
       className={`px-4 py-3 text-sm font-medium rounded-md transition-colors w-full text-left ${
         activeTab === label
           ? "bg-buttonActive text-white"
           : "text-gray-700 hover:bg-gray-100"
-      }`}
+      } ${loading || refreshing ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       {label}
     </button>
@@ -691,17 +727,25 @@ export default function CollectionReportPage() {
           hideOptions={true}
           hideLicenceeFilter={true}
           containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
+          disabled={loading || refreshing}
         />
 
         {/* "Back to Collections" Link - Adjusted padding */}
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-          <Link
-            href="/collections"
-            className="inline-flex items-center text-buttonActive hover:text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm border border-buttonActive"
-          >
-            <ArrowLeft size={16} className="mr-2" />
-            Back to Collections
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link
+              href="/collections"
+              className="inline-flex items-center text-buttonActive hover:text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm border border-buttonActive"
+            >
+              <ArrowLeft size={16} className="mr-2" />
+              Back to Collections
+            </Link>
+            <RefreshButton
+              onClick={handleRefresh}
+              isRefreshing={refreshing}
+              disabled={loading || refreshing}
+            />
+          </div>
         </div>
 
         {/* Collection Header Card - Adjusted padding */}
@@ -716,6 +760,15 @@ export default function CollectionReportPage() {
               <p className="text-sm text-gray-600 lg:text-base">
                 {reportData.collectionDate}
               </p>
+              {/* Mobile refresh button */}
+              <div className="lg:hidden mt-4">
+                <RefreshButton
+                  onClick={handleRefresh}
+                  isRefreshing={refreshing}
+                  disabled={loading || refreshing}
+                  size="sm"
+                />
+              </div>
             </div>
           </div>
         </div>

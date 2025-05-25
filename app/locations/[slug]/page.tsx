@@ -87,6 +87,12 @@ export default function LocationPage() {
   // Add back error state
   const [error, setError] = useState<string | null>(null);
 
+  // Add refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  // To prevent double fetch on initial load
+  const hasFetchedOnce = useRef(false);
+
   // Function to navigate back to locations list
   const handleBackToLocations = () => {
     router.push("/locations");
@@ -104,55 +110,6 @@ export default function LocationPage() {
     setCurrentPage(0); // Reset to first page when filters change
   }, [allCabinets, searchTerm, sortOption, sortOrder]);
 
-  // Load cabinets data
-  const loadCabinets = useCallback(async () => {
-    setCabinetsLoading(true);
-    try {
-      const cabinetsData = await fetchCabinetsForLocation(
-        locationId,
-        selectedLicencee,
-        activeMetricsFilter
-      );
-
-      setAllCabinets(cabinetsData);
-      if (cabinetsData.length > 0 && !locationName) {
-        setLocationName(cabinetsData[0].locationName || "Location");
-      }
-    } catch {
-      setAllCabinets([]);
-      setError("Failed to load cabinets. Please try again later.");
-    } finally {
-      setCabinetsLoading(false);
-    }
-  }, [locationId, selectedLicencee, activeMetricsFilter, locationName]);
-
-  // Fetch initial location details
-  const fetchLocationDetails = useCallback(async () => {
-    setLoading(true);
-    try {
-      const locationData = await fetchLocationDetailsById(locationId);
-      setLocationName(locationData.name);
-
-      // Fetch cabinets immediately after getting location name
-      await loadCabinets();
-    } catch {
-      setLocationName("Location"); // Default name on error
-      setError("Failed to load location details. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }, [locationId, loadCabinets]);
-
-  // Fetch locations for dropdown
-  const fetchLocations = useCallback(async () => {
-    try {
-      const formattedLocations = await fetchAllGamingLocations();
-      setLocations(formattedLocations);
-    } catch {
-      setError("Failed to load locations. Please try again later.");
-    }
-  }, []);
-
   // Handle location change
   const handleLocationChange = (locationId: string, locationName: string) => {
     setSelectedLocation(locationName);
@@ -169,11 +126,52 @@ export default function LocationPage() {
     }
   }, [locationName]);
 
-  // Initial data fetch
+  // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
-    fetchLocationDetails();
-    fetchLocations();
-  }, [fetchLocationDetails, fetchLocations]);
+    const fetchData = async () => {
+      setLoading(true);
+      setCabinetsLoading(true);
+      try {
+        // On initial load, fetch locations only ONCE
+        if (!hasFetchedOnce.current) {
+          try {
+            const formattedLocations = await fetchAllGamingLocations();
+            setLocations(formattedLocations);
+          } catch {
+            setError("Failed to load locations. Please try again later.");
+          }
+          hasFetchedOnce.current = true;
+        }
+
+        // Fetch location details
+        try {
+          const locationData = await fetchLocationDetailsById(locationId);
+          setLocationName(locationData.name);
+        } catch {
+          setLocationName("Location"); // Default name on error
+          setError("Failed to load location details. Please try again later.");
+        }
+
+        // Fetch cabinets data
+        try {
+          const cabinetsData = await fetchCabinetsForLocation(
+            locationId,
+            selectedLicencee,
+            activeMetricsFilter
+          );
+          setAllCabinets(cabinetsData);
+        } catch {
+          setAllCabinets([]);
+          setError("Failed to load cabinets. Please try again later.");
+        }
+      } finally {
+        setLoading(false);
+        setCabinetsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [locationId, selectedLicencee, activeMetricsFilter]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -252,13 +250,37 @@ export default function LocationPage() {
 
   // Add a refresh function
   const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setLoading(true);
     setCabinetsLoading(true);
     try {
-      await loadCabinets();
-    } catch {
-      setError("Failed to refresh cabinets. Please try again later.");
+      // Fetch location details
+      try {
+        const locationData = await fetchLocationDetailsById(locationId);
+        setLocationName(locationData.name);
+      } catch {
+        setLocationName("Location"); // Default name on error
+        setError("Failed to load location details. Please try again later.");
+      }
+
+      // Fetch cabinets data
+      try {
+        const cabinetsData = await fetchCabinetsForLocation(
+          locationId,
+          selectedLicencee,
+          activeMetricsFilter
+        );
+        setAllCabinets(cabinetsData);
+      } catch {
+        setAllCabinets([]);
+        setError("Failed to refresh cabinets. Please try again later.");
+      }
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+      setCabinetsLoading(false);
     }
-  }, [loadCabinets]);
+  }, [locationId, selectedLicencee, activeMetricsFilter]);
 
   return (
     <>
@@ -271,6 +293,7 @@ export default function LocationPage() {
             pageTitle=""
             hideOptions={true}
             hideLicenceeFilter={false}
+            disabled={loading || cabinetsLoading || refreshing}
           />
 
           <div className="mt-4 flex items-center justify-between">
@@ -286,7 +309,8 @@ export default function LocationPage() {
             <div className="hidden md:block">
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={cabinetsLoading}
+                isRefreshing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
               />
             </div>
           </div>
@@ -298,9 +322,15 @@ export default function LocationPage() {
               <Input
                 type="text"
                 placeholder="Search machines (Asset, SMID, Serial, Game)..."
-                className="w-full pr-10 bg-white border-border rounded-md" // Ensure input is rounded
+                className={`w-full pr-10 bg-white border-border rounded-md ${
+                  loading || cabinetsLoading || refreshing
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
                 value={searchTerm}
+                disabled={loading || cabinetsLoading || refreshing}
                 onChange={(e) => {
+                  if (loading || cabinetsLoading || refreshing) return;
                   setSearchTerm(e.target.value);
 
                   // Highlight matched items when searching
@@ -331,8 +361,14 @@ export default function LocationPage() {
             <div className="relative md:w-1/3" ref={locationDropdownRef}>
               <Button
                 variant="outline"
-                className="w-full md:w-auto flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                className={`w-full md:w-auto flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+                  loading || cabinetsLoading || refreshing
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                disabled={loading || cabinetsLoading || refreshing}
                 onClick={() =>
+                  !(loading || cabinetsLoading || refreshing) &&
                   setIsLocationDropdownOpen(!isLocationDropdownOpen)
                 }
               >
@@ -406,7 +442,8 @@ export default function LocationPage() {
 
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={cabinetsLoading}
+                isRefreshing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
                 size="sm"
                 className="px-3"
               />

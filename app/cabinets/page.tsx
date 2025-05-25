@@ -30,7 +30,6 @@ import {
 } from "@radix-ui/react-icons";
 import gsap from "gsap";
 import { Plus } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
 
@@ -309,91 +308,57 @@ export default function CabinetsPage() {
             pageTitle=""
             hideOptions={false}
             hideLicenceeFilter={false}
+            disabled={loading || refreshing}
           />
 
           {/* Header with title and "Add Cabinet" button */}
-          <div className="flex flex-col md:flex-row justify-between items-center mt-6">
-            <div className="flex flex-col md:flex-row items-center">
-              {/* Cabinets Icon (mobile only) */}
-              <Image
-                src="/cabinetsIcon.svg"
-                width={30}
-                height={30}
-                alt="Cabinets"
-                className="mb-1 md:hidden"
-              />
-
-              {/* Title and plus button row */}
-              <div className="flex items-center justify-center">
-                <h1 className="text-2xl font-bold text-center md:text-left">
-                  Cabinets
-                </h1>
-                {/* Date Filter Controls (Desktop) */}
-                <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap ml-4">
-                  {[
-                    { label: "Today", value: "Today" as TimePeriod },
-                    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-                    { label: "Last 7 days", value: "7d" as TimePeriod },
-                    { label: "30 days", value: "30d" as TimePeriod },
-                    { label: "Custom", value: "Custom" as TimePeriod },
-                  ].map((filter) => (
-                    <button
-                      key={filter.label}
-                      className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
-                        activeMetricsFilter === filter.value
-                          ? "bg-buttonActive text-white"
-                          : "bg-button text-white hover:bg-buttonActive"
-                      } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                      onClick={() =>
-                        !loading && setActiveMetricsFilter(filter.value)
-                      }
-                      disabled={loading}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Mobile Add Button (green circle with plus) */}
-                <Image
-                  src="/plusButton.svg"
-                  width={20}
-                  height={20}
-                  alt="Add"
-                  className="cursor-pointer md:hidden ml-2"
-                  onClick={() => openCabinetModal()}
-                />
-              </div>
-              {/* Date Filter Controls (Mobile) - below title, above search */}
-              <div className="flex lg:hidden justify-center my-2">
-                <select
-                  className={`px-4 py-2 rounded-full text-sm bg-buttonActive text-white ${
-                    loading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  value={activeMetricsFilter}
-                  onChange={(e) =>
-                    setActiveMetricsFilter(e.target.value as TimePeriod)
-                  }
-                  disabled={loading}
-                >
-                  <option value="Today">Today</option>
-                  <option value="Yesterday">Yesterday</option>
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">30 days</option>
-                  <option value="Custom">Custom</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Desktop Add New Cabinet button (rectangle) */}
+          <div className="flex items-center justify-between mt-6 w-full">
+            <h1 className="text-2xl font-bold">Cabinets</h1>
             <Button
               onClick={() => openCabinetModal()}
-              className="hidden md:flex bg-button text-white px-4 py-2 rounded-md items-center"
+              className="hidden md:flex bg-button text-white px-4 py-2 rounded-md items-center gap-2"
             >
               <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
                 <Plus className="w-4 h-4 text-white" />
               </div>
-              Add New Cabinet
+              <span>Add New Cabinet</span>
             </Button>
+          </div>
+
+          {/* Desktop Time Period Filters */}
+          <div className="hidden lg:flex items-center mt-4 w-full">
+            <div className="flex space-x-2 overflow-x-auto flex-wrap justify-start">
+              {[
+                { label: "Today", value: "Today" as TimePeriod },
+                { label: "Yesterday", value: "Yesterday" as TimePeriod },
+                { label: "Last 7 days", value: "7d" as TimePeriod },
+                { label: "30 days", value: "30d" as TimePeriod },
+                { label: "Custom", value: "Custom" as TimePeriod },
+              ].map((filter) => (
+                <Button
+                  key={filter.label}
+                  className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
+                    activeMetricsFilter === filter.value
+                      ? "bg-buttonActive text-white"
+                      : "bg-button text-white hover:bg-buttonActive"
+                  } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() =>
+                    !loading && setActiveMetricsFilter(filter.value)
+                  }
+                  disabled={loading}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex-1"></div>
+            <div className="ml-8">
+              <RefreshButton
+                onClick={handleRefresh}
+                isRefreshing={refreshing}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           {/* Mobile Search */}
