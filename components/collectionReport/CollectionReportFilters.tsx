@@ -111,14 +111,14 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="rounded-lg p-4 flex flex-col gap-4 mb-4 md:bg-buttonActive"
+      className="rounded-lg p-4 mb-4 w-full border border-gray-200 bg-white md:bg-buttonActive flex flex-col gap-y-3"
     >
-      <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-        <div className="relative w-full md:w-64">
+      <div className="flex flex-col gap-y-2 w-full">
+        <div className="relative w-full">
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search Collector or Location..."
+            placeholder="Search Collector..."
             className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -130,7 +130,7 @@ export default function CollectionReportFilters({
         </div>
         <select
           ref={selectRef}
-          className="px-4 py-2 rounded-md text-sm w-full md:w-auto border border-black"
+          className="w-full px-4 py-2 rounded-md text-sm border border-black"
           value={selectedLocation}
           onChange={(e) => onLocationChange(e.target.value)}
         >
@@ -141,38 +141,18 @@ export default function CollectionReportFilters({
             </option>
           ))}
         </select>
-        <div ref={checkboxRef} className="hidden md:flex items-center ml-4">
-          <label className="flex items-center gap-2 text-black font-medium">
-            <Checkbox
-              id="uncollected-only-desktop"
-              checked={showUncollectedOnly}
-              onCheckedChange={(checked) =>
-                onShowUncollectedOnlyChange(!!checked)
-              }
-              className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
-            />
-            <span className="text-sm font-medium text-white">
-              SHOW UNCOLLECTED ONLY
-            </span>
-          </label>
-        </div>
       </div>
-      <div
-        ref={checkboxRef}
-        className="mx-auto flex items-center mt-2 md:hidden"
-      >
-        <label className="flex items-center gap-2 text-black font-medium">
+      <div ref={checkboxRef} className="flex items-center justify-center mt-1">
+        <label className="flex items-center gap-2 font-medium w-auto text-black md:text-white">
           <Checkbox
-            id="uncollected-only-mobile"
+            id="uncollected-only"
             checked={showUncollectedOnly}
             onCheckedChange={(checked) =>
               onShowUncollectedOnlyChange(!!checked)
             }
-            className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+            className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
           />
-          <span className="text-sm font-medium text-black">
-            SHOW UNCOLLECTED ONLY
-          </span>
+          <span className="text-sm font-medium">SHOW UNCOLLECTED ONLY</span>
         </label>
       </div>
     </div>

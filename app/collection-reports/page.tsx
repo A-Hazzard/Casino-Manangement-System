@@ -9,6 +9,7 @@ import CollectionReportTable from "@/components/collectionReport/CollectionRepor
 import { Button } from "@/components/ui/button";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
+import { usePathname } from "next/navigation";
 
 // Tab options for the report section
 const TABS = [
@@ -100,6 +101,7 @@ function ReportTabs({
 }
 
 export default function CollectionReportsPage() {
+  const pathname = usePathname();
   // State for active tab and dropdown
   const [activeTab, setActiveTab] = useState<string>(TABS[0].value);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -138,7 +140,7 @@ export default function CollectionReportsPage() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <div className="flex-1 flex flex-col w-full max-w-full">
         <Header
           selectedLicencee={"All Licensees"}

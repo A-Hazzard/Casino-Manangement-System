@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
 import {
@@ -24,7 +24,6 @@ import {
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { Input } from "@/components/ui/input";
 import gsap from "gsap";
-import { differenceInMinutes } from "date-fns";
 import { RefreshButton } from "@/components/ui/RefreshButton";
 import {
   fetchAllGamingLocations,
@@ -55,6 +54,7 @@ export default function LocationPage() {
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
+  const pathname = usePathname();
 
   const { selectedLicencee, setSelectedLicencee, activeMetricsFilter } =
     useDashBoardStore();
@@ -225,25 +225,17 @@ export default function LocationPage() {
   const handleFilterChange = (status: "All" | "Online" | "Offline") => {
     setSelectedStatus(status);
 
-    if (!filteredCabinets) return;
+    if (!allCabinets) return;
 
     if (status === "All") {
-      setFilteredCabinets(filteredCabinets);
+      setFilteredCabinets(allCabinets);
     } else if (status === "Online") {
       setFilteredCabinets(
-        filteredCabinets.filter(
-          (cabinet) =>
-            cabinet.lastActivity &&
-            differenceInMinutes(new Date(), new Date(cabinet.lastActivity)) <= 3
-        )
+        allCabinets.filter((cabinet) => cabinet.online === true)
       );
     } else if (status === "Offline") {
       setFilteredCabinets(
-        filteredCabinets.filter(
-          (cabinet) =>
-            !cabinet.lastActivity ||
-            differenceInMinutes(new Date(), new Date(cabinet.lastActivity)) > 3
-        )
+        allCabinets.filter((cabinet) => cabinet.online === false)
       );
     }
   };
@@ -284,7 +276,7 @@ export default function LocationPage() {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-6 w-full max-w-full overflow-x-hidden">
           <Header
@@ -577,9 +569,12 @@ export default function LocationPage() {
               <div ref={tableRef}>
                 <CabinetGrid
                   filteredCabinets={
-                    filteredCabinets.filter(
-                      (cab) => cab.serialNumber
-                    ) as ExtendedCabinetDetail[]
+                    filteredCabinets
+                      .filter((cab) => cab.serialNumber)
+                      .map((cab) => ({
+                        ...cab,
+                        isOnline: cab.online,
+                      })) as ExtendedCabinetDetail[]
                   }
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}

@@ -52,6 +52,7 @@ export type Cabinet = {
   cancelledCredits?: number;
   gross?: number;
   sasMeters?: SasMeters;
+  online?: boolean;
   meterData?: {
     _id?: string;
     machine?: string;

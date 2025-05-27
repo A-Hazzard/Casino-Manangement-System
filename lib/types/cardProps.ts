@@ -38,4 +38,5 @@ export type LocationCardProps = {
   hasSmib: boolean;
   onEdit: (_locationId: string) => void;
   onDelete: (_locationId: string) => void;
+  online?: boolean;
 };

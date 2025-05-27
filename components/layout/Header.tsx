@@ -68,7 +68,7 @@ export default function Header({
         <div className="flex items-center justify-start">
           <button
             onClick={toggleMobileMenu}
-            className="lg:hidden cursor-pointer text-grayHighlight p-0"
+            className="md:hidden cursor-pointer text-grayHighlight p-0"
             aria-label="Toggle mobile menu"
           >
             {mobileMenuOpen ? (
@@ -102,7 +102,7 @@ export default function Header({
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-30 lg:hidden"
+              className="fixed inset-0 bg-black z-30 md:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.div
@@ -110,7 +110,7 @@ export default function Header({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-0 max-w-[300px] bg-container z-40 lg:hidden shadow-lg"
+              className="fixed inset-0 max-w-[300px] bg-container z-40 md:hidden shadow-lg"
             >
               <button
                 className="absolute top-4 right-4 p-2 bg-muted rounded-full"
@@ -172,6 +172,26 @@ export default function Header({
                     }}
                   >
                     <span className="text-lg font-medium">Cabinets</span>
+                  </motion.button>
+
+                  {/* Collection Reports button */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                    className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                      pathname === "/collection-report"
+                        ? "bg-buttonActive text-container shadow-md"
+                        : "bg-muted text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => {
+                      router.push("/collection-report");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <span className="text-lg font-medium">
+                      Collection Reports
+                    </span>
                   </motion.button>
                 </div>
 

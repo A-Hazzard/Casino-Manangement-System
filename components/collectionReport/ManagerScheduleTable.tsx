@@ -9,7 +9,7 @@ type Props = {
 export default function ManagerScheduleTable({ data, loading }: Props) {
   if (loading) {
     return (
-      <div className="hidden lg:flex justify-center items-center py-8">
+      <div className="hidden md:flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-buttonActive"></div>
       </div>
     );
@@ -17,14 +17,19 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
 
   if (data.length === 0) {
     return (
-      <div className="hidden lg:block text-center py-8 text-gray-500">
-        No scheduled visits found.
+      <div className="hidden md:flex justify-center items-center py-8">
+        <div className="bg-white rounded-lg shadow-md p-8 flex flex-col items-center w-full max-w-md mx-auto">
+          <div className="text-gray-500 text-lg mb-2">No Data Available</div>
+          <div className="text-gray-400 text-sm text-center">
+            No scheduled visits found.
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 max-w-[90vw]">
+    <div className="hidden md:block overflow-x-auto bg-white shadow w-full min-w-0 max-w-[90vw]">
       <table className="w-full min-w-0 text-sm text-left">
         <thead className="bg-button">
           <tr>

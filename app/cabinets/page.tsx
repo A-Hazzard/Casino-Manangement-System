@@ -32,6 +32,7 @@ import gsap from "gsap";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
+import { usePathname } from "next/navigation";
 
 export default function CabinetsPage() {
   const {
@@ -44,6 +45,8 @@ export default function CabinetsPage() {
 
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
   const { openCabinetModal } = useNewCabinetStore();
+
+  const pathname = usePathname();
 
   // Add initialLoading state to control first load
   const [initialLoading, setInitialLoading] = useState(true);
@@ -295,7 +298,7 @@ export default function CabinetsPage() {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <EditCabinetModal />
       <DeleteCabinetModal />
       <NewCabinetModal />

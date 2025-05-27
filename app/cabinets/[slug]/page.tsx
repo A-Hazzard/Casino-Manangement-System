@@ -306,7 +306,7 @@ export default function CabinetDetailPage() {
   if (loading || (!cabinet && !loading && !error)) {
     return (
       <>
-        <Sidebar />
+        <Sidebar pathname={pathname} />
         <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
           <main className="flex flex-col flex-1 p-6">
             <Header
@@ -330,7 +330,7 @@ export default function CabinetDetailPage() {
   if (error) {
     return (
       <>
-        <Sidebar />
+        <Sidebar pathname={pathname} />
         <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
           <main className="flex flex-col flex-1 p-6">
             <Header
@@ -358,7 +358,7 @@ export default function CabinetDetailPage() {
   // Main return statement should be here, AFTER all conditional returns
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <EditCabinetModal />
       <DeleteCabinetModal />
 

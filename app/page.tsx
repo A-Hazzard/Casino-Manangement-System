@@ -13,6 +13,8 @@ import { useCallback, useEffect, useRef } from "react";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -53,6 +55,7 @@ function DashboardContent() {
     pieChartSortIsOpen,
     setPieChartSortIsOpen,
   } = useDashBoardStore();
+  const pathname = usePathname();
   // To compare new totals with previous ones.
   const prevTotals = useRef<dashboardData | null>(null);
   // To prevent double fetch on initial load
@@ -257,18 +260,28 @@ function DashboardContent() {
 
   return (
     <>
-      <Sidebar />
-      <div className="md:w-[80%] md:mx-auto md:pl-20 lg:pl-10 min-h-screen bg-background flex">
+      <Sidebar pathname={pathname} />
+      <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex-1 p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
-            pageTitle="Dashboard"
             setSelectedLicencee={setSelectedLicencee}
             disabled={loadingChartData || refreshing}
           />
 
+          <div className="flex flex-col lg:hidden items-center justify-center">
+            <Image
+              src="/dashboardIcon.svg"
+              alt="Dashboard Icon"
+              width={20}
+              height={20}
+            />
+            <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left">
+              Dashboard
+            </h1>
+          </div>
           {/* Date Filter Controls (Desktop) */}
-          <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap justify-start mt-4">
+          <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap justify-start mt-2">
             {[
               { label: "Today", value: "Today" as TimePeriod },
               { label: "Yesterday", value: "Yesterday" as TimePeriod },

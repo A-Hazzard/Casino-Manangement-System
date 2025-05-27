@@ -48,6 +48,7 @@ export type LocationTableItem = {
   onlineMachines: number;
   isSmibLocation?: boolean;
   isLocalServer?: boolean;
+  online?: boolean;
 };
 
 export type LocationSortOption =

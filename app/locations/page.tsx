@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useLocationStore } from "@/lib/store/locationStore";
@@ -20,6 +26,8 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@radix-ui/react-icons";
 
 import Header from "@/components/layout/Header";
@@ -36,14 +44,6 @@ import { NewLocationModal } from "@/components/ui/locations/NewLocationModal";
 import Image from "next/image";
 import { Plus } from "lucide-react";
 import RefreshButton from "@/components/ui/RefreshButton";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectLabel,
-  SelectGroup,
-} from "@/components/ui/select";
 
 export default function LocationsPage() {
   const {
@@ -66,6 +66,7 @@ export default function LocationsPage() {
   const cardsRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const { openLocationModal } = useLocationStore();
 
@@ -226,27 +227,30 @@ export default function LocationsPage() {
     }
   };
 
-  const filtered = locationData.filter((loc) => {
-    // If no filters are selected, show all locations
-    if (selectedFilters.length === 0) return true;
+  const filtered = useMemo(
+    () =>
+      locationData.filter((loc) => {
+        if (selectedFilters.length === 0) return true;
+        return selectedFilters.some((filter) => {
+          if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
+          if (filter === "SMIBLocationsOnly" && loc.isSmibLocation) return true;
+          if (filter === "NoSMIBLocation" && !loc.isSmibLocation) return true;
+          return false;
+        });
+      }),
+    [locationData, selectedFilters]
+  );
 
-    // Check each filter condition
-    return selectedFilters.some((filter) => {
-      if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
-      if (filter === "SMIBLocationsOnly" && loc.isSmibLocation) return true;
-      if (filter === "NoSMIBLocation" && !loc.isSmibLocation) return true;
-      return false;
-    });
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => {
     const order = sortOrder === "desc" ? -1 : 1;
-    if (sortOption === "locationName") {
-      return a.locationName.localeCompare(b.locationName) * order;
-    } else {
-      return ((a[sortOption] as number) - (b[sortOption] as number)) * order;
-    }
-  });
+    return [...filtered].sort((a, b) => {
+      if (sortOption === "locationName") {
+        return a.locationName.localeCompare(b.locationName) * order;
+      } else {
+        return ((a[sortOption] as number) - (b[sortOption] as number)) * order;
+      }
+    });
+  }, [filtered, sortOption, sortOrder]);
 
   const paginatedLocations = sorted.slice(
     currentPage * 10,
@@ -324,9 +328,44 @@ export default function LocationsPage() {
     }
   };
 
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const sortBtnRef = useRef<HTMLButtonElement>(null);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        sortDropdownOpen &&
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target as Node) &&
+        sortBtnRef.current &&
+        !sortBtnRef.current.contains(event.target as Node)
+      ) {
+        setSortDropdownOpen(false);
+      }
+      if (
+        filterDropdownOpen &&
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target as Node) &&
+        filterBtnRef.current &&
+        !filterBtnRef.current.contains(event.target as Node)
+      ) {
+        setFilterDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [sortDropdownOpen, filterDropdownOpen]);
+
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <div className="w-full md:pl-[8rem] min-h-screen bg-background flex overflow-hidden mt-8">
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
           <Header
@@ -430,7 +469,11 @@ export default function LocationsPage() {
               disabled={loading || refreshing}
             >
               <span className="mr-2">Sort by: {activeMetricsFilter}</span>
-              <ChevronRightIcon className="w-4 h-4 -rotate-90" />
+              {filterOpen ? (
+                <ChevronUpIcon className="w-4 h-4" />
+              ) : (
+                <ChevronDownIcon className="w-4 h-4" />
+              )}
             </Button>
             {filterOpen && (
               <div
@@ -554,46 +597,200 @@ export default function LocationsPage() {
               </div>
 
               {/* Filter Checkboxes - PC Version */}
-              <div className="flex items-center space-x-6 md:mt-2 lg:mt-0">
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
-                  <Checkbox
-                    id="noSMIBLocation-desktop"
-                    checked={selectedFilters.includes("NoSMIBLocation")}
-                    onCheckedChange={() => handleFilterChange("NoSMIBLocation")}
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
-                  />
-                  <span className="text-sm font-medium text-white">
-                    NO SMIB LOCATION
-                  </span>
-                </label>
+              <div className="flex flex-col w-full md:mt-2 lg:mt-0">
+                <div className="flex flex-row items-center space-x-6 justify-center w-full">
+                  <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                    <Checkbox
+                      id="noSMIBLocation-desktop"
+                      checked={selectedFilters.includes("NoSMIBLocation")}
+                      onCheckedChange={() =>
+                        handleFilterChange("NoSMIBLocation")
+                      }
+                      className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    />
+                    <span className="text-sm font-medium text-white">
+                      NO SMIB LOCATION
+                    </span>
+                  </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
-                  <Checkbox
-                    id="SMIBLocationsOnly-desktop"
-                    checked={selectedFilters.includes("SMIBLocationsOnly")}
-                    onCheckedChange={() =>
-                      handleFilterChange("SMIBLocationsOnly")
-                    }
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
-                  />
-                  <span className="text-sm font-medium text-white">
-                    SMIB LOCATIONS ONLY
-                  </span>
-                </label>
+                  <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                    <Checkbox
+                      id="SMIBLocationsOnly-desktop"
+                      checked={selectedFilters.includes("SMIBLocationsOnly")}
+                      onCheckedChange={() =>
+                        handleFilterChange("SMIBLocationsOnly")
+                      }
+                      className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    />
+                    <span className="text-sm font-medium text-white">
+                      SMIB LOCATIONS ONLY
+                    </span>
+                  </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
-                  <Checkbox
-                    id="LocalServersOnly-desktop"
-                    checked={selectedFilters.includes("LocalServersOnly")}
-                    onCheckedChange={() =>
-                      handleFilterChange("LocalServersOnly")
-                    }
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
-                  />
-                  <span className="text-sm font-medium text-white">
-                    LOCAL SERVERS ONLY
-                  </span>
-                </label>
+                  <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                    <Checkbox
+                      id="LocalServersOnly-desktop"
+                      checked={selectedFilters.includes("LocalServersOnly")}
+                      onCheckedChange={() =>
+                        handleFilterChange("LocalServersOnly")
+                      }
+                      className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    />
+                    <span className="text-sm font-medium text-white">
+                      LOCAL SERVERS ONLY
+                    </span>
+                  </label>
+                </div>
+                <div className="flex flex-row justify-center items-center space-x-4 my-4 relative md:flex lg:hidden">
+                  <div className="relative">
+                    <button
+                      ref={sortBtnRef}
+                      className="flex items-center bg-button text-white rounded-full px-4 py-2 text-base font-semibold shadow hover:opacity-90 focus:outline-none lg:px-8 lg:py-3 lg:text-lg"
+                      style={{ minWidth: 0 }}
+                      onClick={() => {
+                        setSortDropdownOpen((open) => !open);
+                        setFilterDropdownOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <Image
+                        src="/sortIcon.svg"
+                        alt="Sort"
+                        width={20}
+                        height={20}
+                        className="mr-2 lg:w-6 lg:h-6"
+                      />
+                      Sort
+                    </button>
+                    {sortDropdownOpen && (
+                      <div
+                        ref={sortDropdownRef}
+                        className="absolute left-0 right-0 z-10 mt-2 bg-white rounded-lg shadow-lg py-2 w-full min-w-[160px]"
+                      >
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOrder === "asc"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOrder !== "asc") setSortOrder("asc");
+                            setSortDropdownOpen(false);
+                          }}
+                        >
+                          Ascending
+                        </button>
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOrder === "desc"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOrder !== "desc") setSortOrder("desc");
+                            setSortDropdownOpen(false);
+                          }}
+                        >
+                          Descending
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <button
+                      ref={filterBtnRef}
+                      className="flex items-center bg-button text-white rounded-full px-4 py-2 text-base font-semibold shadow hover:opacity-90 focus:outline-none lg:px-8 lg:py-3 lg:text-lg"
+                      style={{ minWidth: 0 }}
+                      onClick={() => {
+                        setFilterDropdownOpen((open) => !open);
+                        setSortDropdownOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <Image
+                        src="/filterIcon.svg"
+                        alt="Filter"
+                        width={20}
+                        height={20}
+                        className="mr-2 lg:w-6 lg:h-6"
+                      />
+                      Filter
+                    </button>
+                    {filterDropdownOpen && (
+                      <div
+                        ref={filterDropdownRef}
+                        className="absolute left-0 right-0 z-10 mt-2 bg-white rounded-lg shadow-lg py-2 w-full min-w-[160px]"
+                      >
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOption === "moneyIn"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOption !== "moneyIn")
+                              setSortOption("moneyIn");
+                            setFilterDropdownOpen(false);
+                          }}
+                        >
+                          Money In
+                        </button>
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOption === "moneyOut"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOption !== "moneyOut")
+                              setSortOption("moneyOut");
+                            setFilterDropdownOpen(false);
+                          }}
+                        >
+                          Money Out
+                        </button>
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOption === "gross"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOption !== "gross") setSortOption("gross");
+                            setFilterDropdownOpen(false);
+                          }}
+                        >
+                          Gross
+                        </button>
+                        <button
+                          className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                            sortOption === "locationName"
+                              ? "text-[#5119e9]"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => {
+                            if (sortOption !== "locationName")
+                              setSortOption("locationName");
+                            setFilterDropdownOpen(false);
+                          }}
+                        >
+                          Location (Alphabetical)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Mobile & md-only Refresh Button */}
+                  {!loading && !refreshing && (
+                    <div className="md:inline-flex lg:hidden">
+                      <RefreshButton
+                        onClick={handleRefresh}
+                        isRefreshing={refreshing}
+                        disabled={loading || refreshing}
+                        iconOnly
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -618,57 +815,198 @@ export default function LocationsPage() {
               </button>
             </div>
 
-            {/* Mobile Sort/Filter Buttons - Keep until lg */}
-            <div className="grid grid-cols-2 gap-2 mb-4 max-w-xs mx-auto">
-              {/* Sort Dropdown */}
-              <Select
-                value={sortOption + "-" + sortOrder}
-                onValueChange={(val) => {
-                  if (val === "asc-order") setSortOrder("asc");
-                  else if (val === "desc-order") setSortOrder("desc");
-                  else setSortOption(val as LocationSortOption);
-                }}
-              >
-                <SelectTrigger className="bg-buttonActive text-white flex items-center justify-center px-4 py-2 rounded-lg text-sm w-full">
-                  <span>Sort</span>
-                </SelectTrigger>
-                <SelectContent align="center">
-                  <SelectGroup>
-                    <SelectLabel>Sort by</SelectLabel>
-                    <SelectItem value="moneyIn">Money In</SelectItem>
-                    <SelectItem value="moneyOut">Money Out</SelectItem>
-                    <SelectItem value="gross">Gross</SelectItem>
-                    <SelectItem value="locationName">Location Name</SelectItem>
-                  </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>Order</SelectLabel>
-                    <SelectItem value="asc-order">Ascending</SelectItem>
-                    <SelectItem value="desc-order">Descending</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {/* Filter Dropdown */}
-              <Select
-                value={activeMetricsFilter}
-                onValueChange={async (val) => {
-                  setActiveMetricsFilter(val as TimePeriod);
-                  await fetchData();
-                }}
-              >
-                <SelectTrigger className="bg-buttonActive text-white flex items-center justify-center px-4 py-2 rounded-lg text-sm w-full mt-2 col-span-2">
-                  <span>Filter</span>
-                </SelectTrigger>
-                <SelectContent align="center">
-                  <SelectGroup>
-                    <SelectLabel>Date Filter</SelectLabel>
-                    <SelectItem value="Today">Today</SelectItem>
-                    <SelectItem value="Yesterday">Yesterday</SelectItem>
-                    <SelectItem value="7d">Last 7 days</SelectItem>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                    <SelectItem value="Custom">Custom</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+            {/* Mobile Filter Checkboxes */}
+            <div className="flex flex-col items-center mb-4">
+              <div className="flex flex-row justify-center items-center space-x-6 mb-2">
+                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                  <Checkbox
+                    id="noSMIBLocation-mobile"
+                    checked={selectedFilters.includes("NoSMIBLocation")}
+                    onCheckedChange={() => handleFilterChange("NoSMIBLocation")}
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                  />
+                  <span className="text-base font-medium text-black">
+                    No SMIB Location
+                  </span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                  <Checkbox
+                    id="SMIBLocationsOnly-mobile"
+                    checked={selectedFilters.includes("SMIBLocationsOnly")}
+                    onCheckedChange={() =>
+                      handleFilterChange("SMIBLocationsOnly")
+                    }
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                  />
+                  <span className="text-base font-medium text-black">
+                    SMIB Locations Only
+                  </span>
+                </label>
+              </div>
+              <div className="flex justify-center">
+                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                  <Checkbox
+                    id="LocalServersOnly-mobile"
+                    checked={selectedFilters.includes("LocalServersOnly")}
+                    onCheckedChange={() =>
+                      handleFilterChange("LocalServersOnly")
+                    }
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                  />
+                  <span className="text-base font-medium text-black">
+                    Local Servers Only
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Mobile Sort and Filter Buttons */}
+            <div className="flex justify-center items-center space-x-4 mb-4 relative md:flex lg:hidden">
+              <div className="relative">
+                <button
+                  ref={sortBtnRef}
+                  className="flex items-center bg-button text-white rounded-full px-4 py-2 text-base font-semibold shadow hover:opacity-90 focus:outline-none lg:px-8 lg:py-3 lg:text-lg"
+                  style={{ minWidth: 0 }}
+                  onClick={() => {
+                    setSortDropdownOpen((open) => !open);
+                    setFilterDropdownOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Image
+                    src="/sortIcon.svg"
+                    alt="Sort"
+                    width={20}
+                    height={20}
+                    className="mr-2 lg:w-6 lg:h-6"
+                  />
+                  Sort
+                </button>
+                {sortDropdownOpen && (
+                  <div
+                    ref={sortDropdownRef}
+                    className="absolute left-0 right-0 z-10 mt-2 bg-white rounded-lg shadow-lg py-2 w-full min-w-[160px]"
+                  >
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOrder === "asc" ? "text-[#5119e9]" : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOrder !== "asc") setSortOrder("asc");
+                        setSortDropdownOpen(false);
+                      }}
+                    >
+                      Ascending
+                    </button>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOrder === "desc"
+                          ? "text-[#5119e9]"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOrder !== "desc") setSortOrder("desc");
+                        setSortDropdownOpen(false);
+                      }}
+                    >
+                      Descending
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  ref={filterBtnRef}
+                  className="flex items-center bg-button text-white rounded-full px-4 py-2 text-base font-semibold shadow hover:opacity-90 focus:outline-none lg:px-8 lg:py-3 lg:text-lg"
+                  style={{ minWidth: 0 }}
+                  onClick={() => {
+                    setFilterDropdownOpen((open) => !open);
+                    setSortDropdownOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Image
+                    src="/filterIcon.svg"
+                    alt="Filter"
+                    width={20}
+                    height={20}
+                    className="mr-2 lg:w-6 lg:h-6"
+                  />
+                  Filter
+                </button>
+                {filterDropdownOpen && (
+                  <div
+                    ref={filterDropdownRef}
+                    className="absolute left-0 right-0 z-10 mt-2 bg-white rounded-lg shadow-lg py-2 w-full min-w-[160px]"
+                  >
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOption === "moneyIn"
+                          ? "text-[#5119e9]"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOption !== "moneyIn") setSortOption("moneyIn");
+                        setFilterDropdownOpen(false);
+                      }}
+                    >
+                      Money In
+                    </button>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOption === "moneyOut"
+                          ? "text-[#5119e9]"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOption !== "moneyOut")
+                          setSortOption("moneyOut");
+                        setFilterDropdownOpen(false);
+                      }}
+                    >
+                      Money Out
+                    </button>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOption === "gross"
+                          ? "text-[#5119e9]"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOption !== "gross") setSortOption("gross");
+                        setFilterDropdownOpen(false);
+                      }}
+                    >
+                      Gross
+                    </button>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base font-medium hover:bg-gray-100 ${
+                        sortOption === "locationName"
+                          ? "text-[#5119e9]"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        if (sortOption !== "locationName")
+                          setSortOption("locationName");
+                        setFilterDropdownOpen(false);
+                      }}
+                    >
+                      Location (Alphabetical)
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Mobile & md-only Refresh Button */}
+              {!loading && !refreshing && (
+                <div className="md:inline-flex lg:hidden">
+                  <RefreshButton
+                    onClick={handleRefresh}
+                    isRefreshing={refreshing}
+                    disabled={loading || refreshing}
+                    iconOnly
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -709,6 +1047,11 @@ export default function LocationsPage() {
                         totalMachines={loc.totalMachines}
                         onlineMachines={loc.onlineMachines}
                         hasSmib={loc.isSmibLocation ?? false}
+                        online={
+                          typeof loc.online === "boolean"
+                            ? loc.online
+                            : undefined
+                        }
                         onEdit={(id: string) => {
                           const location = paginatedLocations.find(
                             (l) => l.location === id

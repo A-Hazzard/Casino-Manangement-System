@@ -61,7 +61,6 @@ All contributors must adhere to the following rules, which are enforced througho
 - **API-related logic should reside in [`lib/helpers/`](mdc:lib/helpers) or specific feature directories.**
 - **Shared utilities should reside in [`lib/utils/`](mdc:lib/utils) or [`utils/`](mdc:utils).**
 - **Context providers should be in [`lib/contexts/`](mdc:lib/contexts) or [`context/`](mdc:context).**
-- Organize feature-specific code within their related directories in `lib/` (e.g., `lib/chat/`, `lib/profile/`).
 - Do not mix API logic with UI or utility logic.
 
 **References:**  

@@ -33,6 +33,8 @@ import type {
 import { DateRange as RDPDateRange } from "react-day-picker";
 import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
+import { usePathname } from "next/navigation";
+import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 // Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
@@ -53,6 +55,7 @@ import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI
  * - Collector Schedules
  */
 export default function CollectionReportPage() {
+  const pathname = usePathname();
   // Dashboard store state
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
@@ -492,281 +495,277 @@ export default function CollectionReportPage() {
   return (
     <div className="flex flex-row min-h-screen">
       {/* Sidebar for desktop */}
-      <div className="hidden lg:block">
-        <Sidebar />
+      <div className="hidden md:block">
+        <Sidebar pathname={pathname} />
       </div>
-      <div
-        className={`w-full p-6 lg:p-0 flex-grow bg-background flex flex-col items-center ${styles.containerCustom}`}
-      >
-        <div className={`w-full px-4 ${styles.containerLimited}`}>
-          <main className="w-full min-w-0 space-y-6 mt-4">
-            {/* Header with licencee selector */}
-            <Header
-              selectedLicencee={selectedLicencee}
-              setSelectedLicencee={setSelectedLicencee}
-              pageTitle=""
-            />
+      <div className="w-full max-w-4xl lg:max-w-5xl mx-auto px-2 md:w-[95%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
+        <main className="flex-1 p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
+          {/* Header with licencee selector */}
+          <Header
+            selectedLicencee={selectedLicencee}
+            setSelectedLicencee={setSelectedLicencee}
+            pageTitle=""
+          />
 
-            {/* Desktop: Title and New Collection button */}
-            <div className="hidden lg:flex flex-row items-center justify-between w-full mb-2">
-              <div className="flex flex-row items-center gap-2">
-                <h1 className="text-3xl font-bold">Collections</h1>
-                <Image
-                  src="/details.svg"
-                  alt="Details"
-                  className="h-8 w-8"
-                  width={20}
-                  height={20}
-                />
-              </div>
-              <button
-                className="bg-button text-white px-4 py-2 rounded-lg font-bold text-lg flex items-center"
+          {/* Desktop: Title and New Collection button */}
+          <div className="hidden lg:flex flex-row items-center justify-between w-full mb-2">
+            <div className="flex flex-row items-center gap-2">
+              <h1 className="text-3xl font-bold">Collections</h1>
+              <Image
+                src="/details.svg"
+                alt="Details"
+                className="h-8 w-8"
+                width={20}
+                height={20}
+              />
+            </div>
+            <button
+              className="bg-button text-white px-4 py-2 rounded-lg font-bold text-lg flex items-center"
+              onClick={() => setShowModal(true)}
+            >
+              <Image
+                src="/plusButtonWhite.svg"
+                alt="Add"
+                width={16}
+                height={16}
+                className="mr-2 filter-white"
+              />
+              New Collection
+            </button>
+          </div>
+
+          {/* Mobile: Title and New Collection button */}
+          <div className="flex flex-col items-center mb-2 md:mb-0 lg:hidden">
+            <div className="flex items-center justify-center w-full md:w-auto">
+              <h1 className="text-3xl font-bold">Collections</h1>
+              <Image
+                src="/plusButton.svg"
+                alt="Add New Collection"
+                width={28}
+                height={28}
+                className="ml-2 cursor-pointer md:hidden"
                 onClick={() => setShowModal(true)}
-              >
-                <Image
-                  src="/plusButtonWhite.svg"
-                  alt="Add"
-                  width={16}
-                  height={16}
-                  className="mr-2 filter-white"
-                />
-                New Collection
-              </button>
+              />
             </div>
+          </div>
 
-            {/* Mobile: Title and New Collection button */}
-            <div className="flex flex-col items-center mb-2 md:mb-0 lg:hidden">
-              <div className="flex items-center justify-center w-full md:w-auto">
-                <h1 className="text-3xl font-bold">Collections</h1>
-                <Image
-                  src="/plusButton.svg"
-                  alt="Add New Collection"
-                  width={28}
-                  height={28}
-                  className="ml-2 cursor-pointer md:hidden"
-                  onClick={() => setShowModal(true)}
-                />
-              </div>
-            </div>
+          {/* Mobile: Tab selector */}
+          <div className="w-fit mx-auto lg:hidden mb-4">
+            <Select
+              value={activeTab}
+              onValueChange={(value) => {
+                setActiveTab(
+                  value as "collection" | "monthly" | "manager" | "collector"
+                );
+              }}
+            >
+              <SelectTrigger className=" bg-buttonActive text-white text-lg font-semibold py-3 px-4 rounded-md h-auto">
+                <SelectValue placeholder="Select a report" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="collection">Collection Reports</SelectItem>
+                <SelectItem value="monthly">Monthly Report</SelectItem>
+                <SelectItem value="manager">Manager Schedule</SelectItem>
+                <SelectItem value="collector">Collectors Schedule</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Mobile: Tab selector */}
-            <div className="w-fit mx-auto lg:hidden mb-4">
-              <Select
-                value={activeTab}
-                onValueChange={(value) => {
-                  setActiveTab(
-                    value as "collection" | "monthly" | "manager" | "collector"
-                  );
-                }}
-              >
-                <SelectTrigger className=" bg-buttonActive text-white text-lg font-semibold py-3 px-4 rounded-md h-auto">
-                  <SelectValue placeholder="Select a report" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="collection">Collection Reports</SelectItem>
-                  <SelectItem value="monthly">Monthly Report</SelectItem>
-                  <SelectItem value="manager">Manager Schedule</SelectItem>
-                  <SelectItem value="collector">Collectors Schedule</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Desktop: Tab buttons */}
+          <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 space-y-2 lg:space-y-0 lg:space-x-2 w-full min-w-0">
+            {(["collection", "monthly", "manager", "collector"] as const).map(
+              (tabName) => (
+                <button
+                  key={tabName}
+                  className={`${
+                    activeTab === tabName ? "bg-buttonActive" : "bg-button"
+                  } text-white px-4 py-2 rounded-md font-semibold ${
+                    tabName === "collector"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    setActiveTab(tabName);
+                  }}
+                  disabled={tabName === "collector"}
+                >
+                  {tabName === "collection" && "Collection Reports"}
+                  {tabName === "monthly" && "Monthly Report"}
+                  {tabName === "manager" && "Manager Schedule"}
+                  {tabName === "collector" && "Collectors Schedule"}
+                </button>
+              )
+            )}
+          </div>
 
-            {/* Desktop: Tab buttons */}
-            <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 space-y-2 lg:space-y-0 lg:space-x-2 w-full min-w-0">
-              {(["collection", "monthly", "manager", "collector"] as const).map(
-                (tabName) => (
-                  <button
-                    key={tabName}
-                    className={`${
-                      activeTab === tabName ? "bg-buttonActive" : "bg-button"
-                    } text-white px-4 py-2 rounded-md font-semibold ${
-                      tabName === "collector"
-                        ? "opacity-50 cursor-not-allowed"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setActiveTab(tabName);
-                    }}
-                    disabled={tabName === "collector"}
-                  >
-                    {tabName === "collection" && "Collection Reports"}
-                    {tabName === "monthly" && "Monthly Report"}
-                    {tabName === "manager" && "Manager Schedule"}
-                    {tabName === "collector" && "Collectors Schedule"}
-                  </button>
-                )
-              )}
-            </div>
-
-            {/* Main content area: renders the selected tab's UI */}
-            <div ref={contentRef} className="relative">
-              {activeTab === "collection" && (
-                <>
-                  {loading ? (
-                    <>
-                      <div className="lg:hidden">
-                        <CardSkeleton />
-                      </div>
-                      <div className="hidden lg:block">
-                        <TableSkeleton />
-                      </div>
-                    </>
-                  ) : filteredReports.length === 0 ? (
-                    <EmptyState
-                      icon="📄"
-                      title="No collection reports found"
-                      message="Try adjusting your filters or check back later."
+          {/* Main content area: renders the selected tab's UI */}
+          <div ref={contentRef} className="relative">
+            {activeTab === "collection" && (
+              <>
+                {loading ? (
+                  <>
+                    <div className="lg:hidden">
+                      <CardSkeleton />
+                    </div>
+                    <div className="hidden lg:block">
+                      <TableSkeleton />
+                    </div>
+                  </>
+                ) : filteredReports.length === 0 ? (
+                  <EmptyState
+                    icon="📄"
+                    title="No collection reports found"
+                    message="Try adjusting your filters or check back later."
+                  />
+                ) : (
+                  <>
+                    <CollectionMobileUI
+                      locations={locations}
+                      selectedLocation={selectedLocation}
+                      onLocationChange={setSelectedLocation}
+                      search={search}
+                      onSearchChange={setSearch}
+                      onSearchSubmit={handleSearch}
+                      showUncollectedOnly={showUncollectedOnly}
+                      onShowUncollectedOnlyChange={setShowUncollectedOnly}
+                      isSearching={isSearching}
+                      loading={loading}
+                      filteredReports={filteredReports}
+                      mobileCurrentItems={mobileCurrentItems}
+                      mobileTotalPages={mobileTotalPages}
+                      mobilePage={mobilePage}
+                      onPaginateMobile={paginateMobile}
+                      mobilePaginationRef={mobilePaginationRef}
+                      mobileCardsRef={mobileCardsRef}
+                      itemsPerPage={itemsPerPage}
                     />
-                  ) : (
-                    <>
-                      <CollectionMobileUI
-                        locations={locations}
-                        selectedLocation={selectedLocation}
-                        onLocationChange={setSelectedLocation}
-                        search={search}
-                        onSearchChange={setSearch}
-                        onSearchSubmit={handleSearch}
-                        showUncollectedOnly={showUncollectedOnly}
-                        onShowUncollectedOnlyChange={setShowUncollectedOnly}
-                        isSearching={isSearching}
-                        loading={loading}
-                        filteredReports={filteredReports}
-                        mobileCurrentItems={mobileCurrentItems}
-                        mobileTotalPages={mobileTotalPages}
-                        mobilePage={mobilePage}
-                        onPaginateMobile={paginateMobile}
-                        mobilePaginationRef={mobilePaginationRef}
-                        mobileCardsRef={mobileCardsRef}
-                        itemsPerPage={itemsPerPage}
-                      />
-                      <CollectionDesktopUI
-                        locations={locations}
-                        selectedLocation={selectedLocation}
-                        onLocationChange={setSelectedLocation}
-                        search={search}
-                        onSearchChange={setSearch}
-                        onSearchSubmit={handleSearch}
-                        showUncollectedOnly={showUncollectedOnly}
-                        onShowUncollectedOnlyChange={setShowUncollectedOnly}
-                        isSearching={isSearching}
-                        loading={loading}
-                        filteredReports={filteredReports}
-                        desktopCurrentItems={desktopCurrentItems}
-                        desktopTotalPages={desktopTotalPages}
-                        desktopPage={desktopPage}
-                        onPaginateDesktop={paginateDesktop}
-                        desktopPaginationRef={desktopPaginationRef}
-                        desktopTableRef={desktopTableRef}
-                        itemsPerPage={itemsPerPage}
-                      />
-                    </>
-                  )}
-                </>
-              )}
+                    <CollectionDesktopUI
+                      locations={locations}
+                      selectedLocation={selectedLocation}
+                      onLocationChange={setSelectedLocation}
+                      search={search}
+                      onSearchChange={setSearch}
+                      onSearchSubmit={handleSearch}
+                      showUncollectedOnly={showUncollectedOnly}
+                      onShowUncollectedOnlyChange={setShowUncollectedOnly}
+                      isSearching={isSearching}
+                      loading={loading}
+                      filteredReports={filteredReports}
+                      desktopCurrentItems={desktopCurrentItems}
+                      desktopTotalPages={desktopTotalPages}
+                      desktopPage={desktopPage}
+                      onPaginateDesktop={paginateDesktop}
+                      desktopPaginationRef={desktopPaginationRef}
+                      desktopTableRef={desktopTableRef}
+                      itemsPerPage={itemsPerPage}
+                    />
+                  </>
+                )}
+              </>
+            )}
 
-              {activeTab === "monthly" && (
-                <>
-                  {loading ? (
-                    <SectionSkeleton />
-                  ) : (
-                    <>
-                      <MonthlyMobileUI
-                        allLocationNames={allLocationNames}
-                        monthlyLocation={monthlyLocation}
-                        onMonthlyLocationChange={setMonthlyLocation}
-                        pendingRange={pendingRange}
-                        onPendingRangeChange={handlePendingRangeChange}
-                        onApplyDateRange={applyPendingDateRange}
-                        monthlySummary={monthlySummary}
-                        monthlyDetails={monthlyDetails}
-                        monthlyLoading={monthlyLoading}
+            {activeTab === "monthly" && (
+              <>
+                {loading ? (
+                  <SectionSkeleton />
+                ) : (
+                  <>
+                    <MonthlyMobileUI
+                      allLocationNames={allLocationNames}
+                      monthlyLocation={monthlyLocation}
+                      onMonthlyLocationChange={setMonthlyLocation}
+                      pendingRange={pendingRange}
+                      onPendingRangeChange={handlePendingRangeChange}
+                      onApplyDateRange={applyPendingDateRange}
+                      monthlySummary={monthlySummary}
+                      monthlyDetails={monthlyDetails}
+                      monthlyLoading={monthlyLoading}
+                    />
+                    <MonthlyDesktopUI
+                      allLocationNames={allLocationNames}
+                      monthlyLocation={monthlyLocation}
+                      onMonthlyLocationChange={setMonthlyLocation}
+                      pendingRange={pendingRange}
+                      onPendingRangeChange={handlePendingRangeChange}
+                      onApplyDateRange={applyPendingDateRange}
+                      onSetLastMonth={handleLastMonth}
+                      monthlySummary={monthlySummary}
+                      monthlyDetails={monthlyDetails}
+                      monthlyCurrentItems={monthlyCurrentItems}
+                      monthlyLoading={monthlyLoading}
+                      monthlyTotalPages={monthlyTotalPages}
+                      monthlyPage={monthlyPage}
+                      onPaginateMonthly={paginateMonthly}
+                      monthlyPaginationRef={monthlyPaginationRef}
+                      monthlyFirstItemIndex={
+                        (monthlyPage - 1) * monthlyItemsPerPage
+                      }
+                      monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
+                    />
+                    {monthlyDetails.length === 0 && !monthlyLoading && (
+                      <EmptyState
+                        icon="📅"
+                        title="No monthly report data found"
+                        message="No data available for the selected period or location."
                       />
-                      <MonthlyDesktopUI
-                        allLocationNames={allLocationNames}
-                        monthlyLocation={monthlyLocation}
-                        onMonthlyLocationChange={setMonthlyLocation}
-                        pendingRange={pendingRange}
-                        onPendingRangeChange={handlePendingRangeChange}
-                        onApplyDateRange={applyPendingDateRange}
-                        onSetLastMonth={handleLastMonth}
-                        monthlySummary={monthlySummary}
-                        monthlyDetails={monthlyDetails}
-                        monthlyCurrentItems={monthlyCurrentItems}
-                        monthlyLoading={monthlyLoading}
-                        monthlyTotalPages={monthlyTotalPages}
-                        monthlyPage={monthlyPage}
-                        onPaginateMonthly={paginateMonthly}
-                        monthlyPaginationRef={monthlyPaginationRef}
-                        monthlyFirstItemIndex={
-                          (monthlyPage - 1) * monthlyItemsPerPage
-                        }
-                        monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
-                      />
-                      {monthlyDetails.length === 0 && !monthlyLoading && (
-                        <EmptyState
-                          icon="📅"
-                          title="No monthly report data found"
-                          message="No data available for the selected period or location."
-                        />
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+                    )}
+                  </>
+                )}
+              </>
+            )}
 
-              {activeTab === "manager" && (
-                <>
-                  {loadingSchedulers ? (
-                    <SectionSkeleton />
-                  ) : (
-                    <>
-                      <ManagerMobileUI
-                        locations={locations}
-                        collectors={collectors}
-                        selectedSchedulerLocation={selectedSchedulerLocation}
-                        onSchedulerLocationChange={setSelectedSchedulerLocation}
-                        selectedCollector={selectedCollector}
-                        onCollectorChange={setSelectedCollector}
-                        selectedStatus={selectedStatus}
-                        onStatusChange={setSelectedStatus}
-                        onResetSchedulerFilters={handleResetSchedulerFilters}
-                        schedulers={schedulers}
-                        loadingSchedulers={loadingSchedulers}
-                      />
-                      <ManagerDesktopUI
-                        locations={locations}
-                        collectors={collectors}
-                        selectedSchedulerLocation={selectedSchedulerLocation}
-                        onSchedulerLocationChange={setSelectedSchedulerLocation}
-                        selectedCollector={selectedCollector}
-                        onCollectorChange={setSelectedCollector}
-                        selectedStatus={selectedStatus}
-                        onStatusChange={setSelectedStatus}
-                        onResetSchedulerFilters={handleResetSchedulerFilters}
-                        schedulers={schedulers}
-                        loadingSchedulers={loadingSchedulers}
-                      />
-                    </>
-                  )}
-                </>
-              )}
+            {activeTab === "manager" && (
+              <>
+                {loadingSchedulers ? (
+                  <SectionSkeleton />
+                ) : (
+                  <>
+                    <ManagerMobileUI
+                      locations={locations}
+                      collectors={collectors}
+                      selectedSchedulerLocation={selectedSchedulerLocation}
+                      onSchedulerLocationChange={setSelectedSchedulerLocation}
+                      selectedCollector={selectedCollector}
+                      onCollectorChange={setSelectedCollector}
+                      selectedStatus={selectedStatus}
+                      onStatusChange={setSelectedStatus}
+                      onResetSchedulerFilters={handleResetSchedulerFilters}
+                      schedulers={schedulers}
+                      loadingSchedulers={loadingSchedulers}
+                    />
+                    <ManagerDesktopUI
+                      locations={locations}
+                      collectors={collectors}
+                      selectedSchedulerLocation={selectedSchedulerLocation}
+                      onSchedulerLocationChange={setSelectedSchedulerLocation}
+                      selectedCollector={selectedCollector}
+                      onCollectorChange={setSelectedCollector}
+                      selectedStatus={selectedStatus}
+                      onStatusChange={setSelectedStatus}
+                      onResetSchedulerFilters={handleResetSchedulerFilters}
+                      schedulers={schedulers}
+                      loadingSchedulers={loadingSchedulers}
+                    />
+                  </>
+                )}
+              </>
+            )}
 
-              {activeTab === "collector" && (
-                <>
-                  <CollectorMobileUI />
-                  <CollectorDesktopUI />
-                </>
-              )}
-            </div>
+            {activeTab === "collector" && (
+              <>
+                <CollectorMobileUI />
+                <CollectorDesktopUI />
+              </>
+            )}
+          </div>
 
-            {/* Modal for creating a new collection */}
-            <NewCollectionModal
-              show={showModal}
-              onClose={() => setShowModal(false)}
-              locations={locationsWithMachines}
-            />
-          </main>
-        </div>
+          {/* Modal for creating a new collection */}
+          <NewCollectionModal
+            show={showModal}
+            onClose={() => setShowModal(false)}
+            locations={locationsWithMachines}
+          />
+        </main>
       </div>
     </div>
   );

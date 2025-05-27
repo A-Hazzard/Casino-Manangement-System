@@ -35,7 +35,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
           ) : (
             <>
               {/* Metrics Cards */}
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
                 <p className="text-gray-500 text-sm lg:text-lg font-medium">
                   Money In
                 </p>
@@ -45,7 +45,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                   {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
                 </p>
               </div>
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
                 <p className="text-gray-500 text-sm lg:text-lg font-medium">
                   Money Out
                 </p>
@@ -55,7 +55,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                   {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
                 </p>
               </div>
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
                 <p className="text-gray-500 text-sm lg:text-lg font-medium">
                   Gross
                 </p>

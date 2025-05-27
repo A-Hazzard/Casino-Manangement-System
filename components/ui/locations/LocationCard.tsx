@@ -69,6 +69,18 @@ export default function LocationCard(props: LocationCardProps) {
         }
       }}
     >
+      {/* Online/Offline Status Circle */}
+      {typeof props.onlineMachines === "number" && (
+        <span
+          className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white z-10 \
+            ${
+              props.onlineMachines > 0
+                ? "bg-green-500 animate-pulse-slow"
+                : "bg-red-500"
+            }`}
+          title={props.onlineMachines > 0 ? "Online" : "Offline"}
+        />
+      )}
       {/* Title + Action Icons */}
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-base font-semibold">{props.name}</h3>

@@ -7,6 +7,7 @@ type RefreshButtonProps = ButtonProps & {
   isRefreshing: boolean;
   onClick: () => void;
   label?: string;
+  iconOnly?: boolean;
 };
 
 export const RefreshButton: React.FC<RefreshButtonProps> = ({
@@ -14,6 +15,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
   isRefreshing = false,
   className = "",
   label = "Refresh",
+  iconOnly = false,
   ...props
 }) => (
   <Button
@@ -30,7 +32,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
       className={cn("w-4 h-4", isRefreshing ? "animate-spin" : "")}
       aria-hidden="true"
     />
-    <span className="hidden lg:inline">{label}</span>
+    <span className={iconOnly ? "hidden" : "hidden lg:inline"}>{label}</span>
   </Button>
 );
 

@@ -304,6 +304,12 @@ export async function GET(request: NextRequest) {
               }
             : null,
           sasMeters: machine.sasMeters || null,
+          // Add online status based on lastActivity
+          online:
+            machine.lastActivity &&
+            (new Date().getTime() - new Date(machine.lastActivity).getTime()) /
+              60000 <=
+              3,
         };
       })
     );
@@ -558,17 +564,22 @@ export async function POST(request: NextRequest) {
               }
             : null,
           sasMeters: sasMeters,
+          // Add online status based on lastActivity
+          online:
+            machine.lastActivity &&
+            (new Date().getTime() - new Date(machine.lastActivity).getTime()) /
+              60000 <=
+              3,
         };
       })
     );
 
-    console.log(`📤 Returning ${cabinetsWithMeters.length} cabinet records`);
-    // Return the machines data
+    console.log(`Returning ${cabinetsWithMeters.length} cabinets`);
     return NextResponse.json(cabinetsWithMeters);
   } catch (error) {
-    console.error("❌ Error fetching machines:", error);
+    console.error("Error processing location request:", error);
     return NextResponse.json(
-      { error: "Failed to fetch machines" },
+      { error: "Failed to fetch location data" },
       { status: 500 }
     );
   }

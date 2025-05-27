@@ -9,6 +9,7 @@ import type {
 // import type { CabinetCardProps } from "@/lib/types/cardProps"; // Removed as unused
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import CabinetTable from "@/components/ui/cabinets/CabinetTable";
+import gsap from "gsap";
 
 // Define ExtendedCabinetDetail as a type alias
 type ExtendedCabinetDetail = CabinetDetail & {
@@ -29,6 +30,75 @@ type CabinetGridProps = {
   itemsPerPage: number;
   router: AppRouterInstance;
 };
+
+function CabinetCardMobile({ cabinet, router }: { cabinet: ExtendedCabinetDetail; router: AppRouterInstance }) {
+  const statusRef = React.useRef<HTMLSpanElement>(null);
+  React.useEffect(() => {
+    if (cabinet.isOnline && statusRef.current) {
+      const tl = gsap.timeline({ repeat: -1, yoyo: true });
+      tl.to(statusRef.current, {
+        scale: 1.3,
+        opacity: 0.7,
+        duration: 1,
+        ease: "power1.inOut",
+      }).to(statusRef.current, {
+        scale: 1,
+        opacity: 1,
+        duration: 1,
+        ease: "power1.inOut",
+      });
+      return () => {
+        tl.kill();
+      };
+    }
+  }, [cabinet.isOnline]);
+  return (
+    <div
+      key={cabinet._id}
+      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => router.push(`/cabinets/${cabinet._id}`)}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold truncate max-w-[80%]">
+          {cabinet.serialNumber || "Unknown"}
+        </h3>
+        <span
+          ref={statusRef}
+          className={`inline-flex items-center justify-center w-3 h-3 rounded-full ${
+            cabinet.isOnline ? "bg-green-500" : "bg-red-500"
+          }`}
+          title={cabinet.isOnline ? "Online" : "Offline"}
+        ></span>
+      </div>
+      <p className="text-sm text-gray-600 mb-1">
+        Game: {cabinet.game || cabinet.installedGame || "Unknown"}
+      </p>
+      <p className="text-sm text-gray-600 mb-1">
+        SMIB: {cabinet.smibBoard || cabinet.smbId || "N/A"}
+      </p>
+      <div className="border-t border-gray-200 mt-2 pt-2">
+        <div className="flex justify-between mb-1">
+          <span className="text-xs text-gray-500">Money In:</span>
+          <span className="text-xs font-medium">
+            {formatCurrency(cabinet.moneyIn || 0)}
+          </span>
+        </div>
+        <div className="flex justify-between mb-1">
+          <span className="text-xs text-gray-500">Money Out:</span>
+          <span className="text-xs font-medium">
+            {formatCurrency(cabinet.moneyOut || 0)}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Gross:</span>
+          <span className="text-xs font-medium">
+            {formatCurrency(cabinet.gross || 0)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CabinetGrid({
   filteredCabinets,
@@ -87,49 +157,7 @@ export default function CabinetGrid({
           {filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet: ExtendedCabinetDetail) => (
-              <div
-                key={cabinet._id}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/cabinets/${cabinet._id}`)}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold truncate max-w-[80%]">
-                    {cabinet.serialNumber || "Unknown"}
-                  </h3>
-                  <span
-                    className={`inline-flex items-center justify-center w-3 h-3 rounded-full ${
-                      cabinet.isOnline ? "bg-green-500" : "bg-red-500"
-                    }`}
-                    title={cabinet.isOnline ? "Online" : "Offline"}
-                  ></span>
-                </div>
-                <p className="text-sm text-gray-600 mb-1">
-                  Game: {cabinet.game || cabinet.installedGame || "Unknown"}
-                </p>
-                <p className="text-sm text-gray-600 mb-1">
-                  SMIB: {cabinet.smibBoard || cabinet.smbId || "N/A"}
-                </p>
-                <div className="border-t border-gray-200 mt-2 pt-2">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs text-gray-500">Money In:</span>
-                    <span className="text-xs font-medium">
-                      {formatCurrency(cabinet.moneyIn || 0)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs text-gray-500">Money Out:</span>
-                    <span className="text-xs font-medium">
-                      {formatCurrency(cabinet.moneyOut || 0)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Gross:</span>
-                    <span className="text-xs font-medium">
-                      {formatCurrency(cabinet.gross || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <CabinetCardMobile key={cabinet._id} cabinet={cabinet} router={router} />
             ))}
         </div>
       </div>

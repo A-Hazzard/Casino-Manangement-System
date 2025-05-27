@@ -8,7 +8,7 @@ import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
 import { CabinetDetail } from "@/lib/types/cabinets";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -47,6 +47,7 @@ export default function LocationDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
+  const pathname = usePathname();
 
   const {
     selectedLicencee,
@@ -110,7 +111,7 @@ export default function LocationDetailsPage() {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <EditCabinetModal />
       <DeleteCabinetModal />
 

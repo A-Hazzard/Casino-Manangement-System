@@ -465,10 +465,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     {loading ? (
                       <CollectionHistorySkeleton />
                     ) : (
-                      <CollectionHistoryTable
-                        data={collectionHistory}
-                        machineId={cabinet._id}
-                      />
+                      <CollectionHistoryTable data={collectionHistory} />
                     )}
                   </motion.div>
                 ) : activeMetricsTabContent === "Configurations" ? (

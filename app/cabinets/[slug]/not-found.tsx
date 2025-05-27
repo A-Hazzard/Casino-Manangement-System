@@ -14,7 +14,7 @@ export default function CabinetDetailNotFound() {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
           <Header

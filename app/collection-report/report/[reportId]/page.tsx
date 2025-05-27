@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
@@ -22,6 +22,7 @@ import RefreshButton from "@/components/ui/RefreshButton";
 // Main component for the report page
 export default function CollectionReportPage() {
   const params = useParams();
+  const pathname = usePathname();
   // reportId is the MongoDB _id (document ID)
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
@@ -108,8 +109,8 @@ export default function CollectionReportPage() {
   if (loading) {
     // Common loader for both mobile and desktop
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar /> {/* Sidebar hidden on mobile by its own classes */}
+      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+        <Sidebar pathname={pathname} />
         <main className="flex-1 lg:ml-[calc(7rem+1rem)]">
           <Header
             pageTitle=""
@@ -129,8 +130,8 @@ export default function CollectionReportPage() {
   if (error) {
     // Common error display
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
+      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+        <Sidebar pathname={pathname} />
         <main className="flex-1 lg:ml-[calc(7rem+1rem)]">
           <Header
             pageTitle=""
@@ -156,8 +157,8 @@ export default function CollectionReportPage() {
   if (!reportData) {
     // Common not found display
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
+      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+        <Sidebar pathname={pathname} />
         <main className="flex-1 lg:ml-[calc(7rem+1rem)]">
           <Header
             pageTitle=""
@@ -287,60 +288,6 @@ export default function CollectionReportPage() {
               </div>
             </div>
           ))}
-          {machineTotalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-4">
-              <button
-                onClick={() => setMachinePage(1)}
-                disabled={machinePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="First page"
-              >
-                ⏪
-              </button>
-              <button
-                onClick={() => setMachinePage(machinePage - 1)}
-                disabled={machinePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Previous page"
-              >
-                ◀️
-              </button>
-              <span className="text-gray-700 text-sm">Page</span>
-              <input
-                type="number"
-                min={1}
-                max={machineTotalPages}
-                value={machinePage}
-                onChange={(e) => {
-                  let val = Number(e.target.value);
-                  if (isNaN(val)) val = 1;
-                  if (val < 1) val = 1;
-                  if (val > machineTotalPages) val = machineTotalPages;
-                  setMachinePage(val);
-                }}
-                className="w-16 px-2 py-1 border rounded text-center text-sm"
-              />
-              <span className="text-gray-700 text-sm">
-                of {machineTotalPages}
-              </span>
-              <button
-                onClick={() => setMachinePage(machinePage + 1)}
-                disabled={machinePage === machineTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Next page"
-              >
-                ▶️
-              </button>
-              <button
-                onClick={() => setMachinePage(machineTotalPages)}
-                disabled={machinePage === machineTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Last page"
-              >
-                ⏩
-              </button>
-            </div>
-          )}
         </div>
         {/* Desktop View */}
         <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
@@ -397,61 +344,62 @@ export default function CollectionReportPage() {
               ))}
             </tbody>
           </table>
-          {machineTotalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-4">
-              <button
-                onClick={() => setMachinePage(1)}
-                disabled={machinePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="First page"
-              >
-                ⏪
-              </button>
-              <button
-                onClick={() => setMachinePage(machinePage - 1)}
-                disabled={machinePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Previous page"
-              >
-                ◀️
-              </button>
-              <span className="text-gray-700 text-sm">Page</span>
-              <input
-                type="number"
-                min={1}
-                max={machineTotalPages}
-                value={machinePage}
-                onChange={(e) => {
-                  let val = Number(e.target.value);
-                  if (isNaN(val)) val = 1;
-                  if (val < 1) val = 1;
-                  if (val > machineTotalPages) val = machineTotalPages;
-                  setMachinePage(val);
-                }}
-                className="w-16 px-2 py-1 border rounded text-center text-sm"
-              />
-              <span className="text-gray-700 text-sm">
-                of {machineTotalPages}
-              </span>
-              <button
-                onClick={() => setMachinePage(machinePage + 1)}
-                disabled={machinePage === machineTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Next page"
-              >
-                ▶️
-              </button>
-              <button
-                onClick={() => setMachinePage(machineTotalPages)}
-                disabled={machinePage === machineTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Last page"
-              >
-                ⏩
-              </button>
-            </div>
-          )}
         </div>
+        {/* Pagination Controls (shared for mobile and desktop) */}
+        {machineTotalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-6">
+            <button
+              onClick={() => setMachinePage(1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-300"
+              title="First page"
+            >
+              ⏪
+            </button>
+            <button
+              onClick={() => setMachinePage(machinePage - 1)}
+              disabled={machinePage === 1}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-300"
+              title="Previous page"
+            >
+              ◀️
+            </button>
+            <span className="text-gray-700 text-sm">Page</span>
+            <input
+              type="number"
+              min={1}
+              max={machineTotalPages}
+              value={machinePage}
+              onChange={(e) => {
+                let val = Number(e.target.value);
+                if (isNaN(val)) val = 1;
+                if (val < 1) val = 1;
+                if (val > machineTotalPages) val = machineTotalPages;
+                setMachinePage(val);
+              }}
+              className="w-16 px-2 py-1 border rounded text-center text-sm"
+            />
+            <span className="text-gray-700 text-sm">
+              of {machineTotalPages}
+            </span>
+            <button
+              onClick={() => setMachinePage(machinePage + 1)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-300"
+              title="Next page"
+            >
+              ▶️
+            </button>
+            <button
+              onClick={() => setMachinePage(machineTotalPages)}
+              disabled={machinePage === machineTotalPages}
+              className="p-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-300"
+              title="Last page"
+            >
+              ⏩
+            </button>
+          </div>
+        )}
       </>
     );
   };
@@ -719,8 +667,8 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar /> {/* Hidden on mobile via its own classes */}
+    <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col overflow-hidden">
+      <Sidebar pathname={pathname} />
       <main className="flex-1 lg:ml-[calc(7rem+1rem)]">
         <Header
           pageTitle=""

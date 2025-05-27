@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 /**
  * Renders the Collection History table.
  * @param data - Array of CollectionMetersHistoryEntry objects.
- * @param machineId - The unique identifier for the machine/cabinet (used for navigation).
  * @returns Collection history table component.
  */
 export function CollectionHistoryTable({
   data,
-  machineId,
 }: {
   data: CollectionMetersHistoryEntry[];
-  machineId: string;
 }) {
   const router = useRouter();
   const sortedData = [...data].sort((a, b) => b.metersIn - a.metersIn);
@@ -53,7 +50,10 @@ export function CollectionHistoryTable({
                   <button
                     className="border px-3 py-1 rounded text-buttonActive border-buttonActive"
                     onClick={() =>
-                      router.push(`/collection-report/report/${machineId}`)
+                      row.locationReportId &&
+                      router.push(
+                        `/collection-report/report/${row.locationReportId}`
+                      )
                     }
                   >
                     VIEW REPORT
@@ -95,7 +95,10 @@ export function CollectionHistoryTable({
                 <button
                   className="border border-buttonActive text-buttonActive px-3 py-1 rounded font-medium text-xs"
                   onClick={() =>
-                    router.push(`/collection-report/report/${machineId}`)
+                    row.locationReportId &&
+                    router.push(
+                      `/collection-report/report/${row.locationReportId}`
+                    )
                   }
                 >
                   VIEW REPORT
@@ -104,7 +107,10 @@ export function CollectionHistoryTable({
               <button
                 className="block sm:hidden border border-buttonActive text-buttonActive w-full mt-3 py-2 rounded font-medium text-xs"
                 onClick={() =>
-                  router.push(`/collection-report/report/${machineId}`)
+                  row.locationReportId &&
+                  router.push(
+                    `/collection-report/report/${row.locationReportId}`
+                  )
                 }
               >
                 VIEW REPORT

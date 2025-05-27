@@ -67,7 +67,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
         </p>
       ) : (
         <>
-          <div ref={mobileCardsRef}>
+          <div ref={mobileCardsRef} className="grid grid-cols-1 gap-4">
             <CollectionReportCards data={mobileCurrentItems} />
           </div>
 

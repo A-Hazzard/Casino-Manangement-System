@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { usePathname } from "next/navigation";
 
 export default function CabinetsNotFound() {
   // Add client-side initialization
@@ -39,10 +40,11 @@ export default function CabinetsNotFound() {
 // Client component with store access
 function CabinetsNotFoundContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const pathname = usePathname();
 
   return (
     <>
-      <Sidebar />
+      <Sidebar pathname={pathname} />
       <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
           <Header
