@@ -30,6 +30,7 @@
 ├── app/                    # Main application logic
 │   ├── layout.tsx         # Global layout (header, footer, etc.)
 │   ├── page.tsx           # Dashboard page
+│   ├── not-found.tsx      # Global 404 page
 │   ├── components/        # Reusable UI components
 │   │   ├── layout/       # Layout components (Header, Sidebar, etc.)
 │   │   ├── charts/       # Chart components for data visualization
@@ -120,3 +121,34 @@ docker push registry.gitlab.com/sunny-group/sas/dynamic-cms
 | `pnpm run build` | Build the production app |
 | `pnpm run lint` | Check for linting issues |
 | `pnpm run format` | Format code using Prettier |
+
+---
+
+## 🔄 Architectural Updates
+
+### Server-Rendered Sidebar
+- The Sidebar component is now a server component, optimized for instant icon rendering and no hydration delay.
+- It accepts a `pathname` prop from client pages to determine the current section (Dashboard, Locations, Cabinets, Collections, Administration).
+- This architectural change improves performance and user experience by rendering the Sidebar on the server.
+
+### Dynamic Routing & Error Handling
+- The application uses dynamic routing for various sections:
+  - `/locations/[slug]` - Location details
+  - `/cabinets/[slug]` - Cabinet details
+  - `/collection-report/report/[reportId]` - Collection report details
+- Each dynamic route includes a `not-found.tsx` file for error handling, ensuring a consistent user experience even when resources are not found.
+
+### Client-Side Pages
+- Main pages (e.g., `app/page.tsx`, `app/locations/page.tsx`, `app/cabinets/page.tsx`, `app/collection-report/page.tsx`, `app/administration/page.tsx`) are client components.
+- They use `usePathname` to pass the current pathname to the Sidebar, ensuring accurate section highlighting.
+
+### Error Handling
+- Global 404 page (`app/not-found.tsx`) provides a fallback for unmatched routes.
+- Section-specific 404 pages (e.g., `app/locations/not-found.tsx`, `app/cabinets/not-found.tsx`) offer tailored error messages and navigation options.
+
+---
+
+## 📝 Additional Notes
+- Ensure all pages pass the `pathname` prop to the Sidebar for consistent navigation.
+- Follow the established code style and TypeScript discipline for maintainability.
+- Regularly run `pnpm build` and `pnpm lint` to catch and fix any issues.

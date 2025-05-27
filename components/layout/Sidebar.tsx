@@ -33,7 +33,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
             }
             width={50}
             height={50}
-            className="w-[7rem] cursor-pointer"
+            className={`w-[7rem] cursor-pointer ${!isDashboardPath ? "-ml-2" : ""}`}
             alt="Dashboard Button"
           />
         </Link>
@@ -100,7 +100,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
             width={50}
             height={50}
             className={`w-[7rem] cursor-pointer ${
-              !isAdminPath ? "w-[5.8rem] -ml-6" : ""
+              !isAdminPath ? "w-[6rem] -ml-6" : ""
             }`}
             alt="Administration Button"
           />

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import styles from "./ReportPage.module.css";
 import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
 import { gsap } from "gsap";
 import {
@@ -34,7 +33,6 @@ import { DateRange as RDPDateRange } from "react-day-picker";
 import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 import { usePathname } from "next/navigation";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 // Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
