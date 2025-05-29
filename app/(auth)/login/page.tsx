@@ -42,6 +42,35 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  function getFriendlyErrorMessage(errorMsg: string): string {
+    if (!errorMsg) return "An unexpected error occurred. Please try again.";
+    if (errorMsg.includes("401"))
+      return "Your session has expired or you are not authorized. Please log in again.";
+    if (errorMsg.includes("403"))
+      return "You are not authorized to access this resource.";
+    if (errorMsg.includes("500"))
+      return "A server error occurred. Please try again later.";
+    if (errorMsg.toLowerCase().includes("network"))
+      return "Unable to connect. Please check your internet connection.";
+    if (errorMsg.toLowerCase().includes("credential"))
+      return "Invalid email or password. Please try again.";
+    if (errorMsg.toLowerCase().includes("user not found"))
+      return "No account found with this email address.";
+    if (errorMsg.toLowerCase().includes("invalid"))
+      return "Invalid email or password. Please try again.";
+    return "An error occurred. Please try again.";
+  }
+
+  // Type guard to check if error has a message property
+  function hasErrorMessage(error: unknown): error is { message: string } {
+    return (
+      error !== null &&
+      typeof error === "object" &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string"
+    );
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -72,12 +101,18 @@ function LoginForm() {
         router.push("/");
       } else {
         setMessageType("error");
-        setMessage(response.message || "Invalid Credentials.");
+        if (response.message) console.error("Login error:", response.message);
+        setMessage(getFriendlyErrorMessage(response.message));
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setMessageType("error");
-      setMessage("An unexpected error occurred.");
-      console.error(error);
+      if (hasErrorMessage(error)) {
+        console.error("Login error:", error.message);
+        setMessage(getFriendlyErrorMessage(error.message));
+      } else {
+        console.error("Login error:", error);
+        setMessage(getFriendlyErrorMessage(""));
+      }
     } finally {
       setLoading(false);
     }
@@ -103,12 +138,19 @@ function LoginForm() {
         setMessage("Password reset instructions have been sent to your email.");
       } else {
         setMessageType("error");
-        setMessage(response.message || "Request failed.");
+        if (response.message)
+          console.error("Forgot password error:", response.message);
+        setMessage(getFriendlyErrorMessage(response.message));
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setMessageType("error");
-      setMessage("An unexpected error occurred.");
-      console.error(error);
+      if (hasErrorMessage(error)) {
+        console.error("Forgot password error:", error.message);
+        setMessage(getFriendlyErrorMessage(error.message));
+      } else {
+        console.error("Forgot password error:", error);
+        setMessage(getFriendlyErrorMessage(""));
+      }
     } finally {
       setLoading(false);
     }
@@ -119,7 +161,7 @@ function LoginForm() {
       <Card className="w-full max-w-md shadow-2xl border border-gray-200">
         <CardHeader className="flex flex-col items-center gap-2 pb-2">
           <Image
-            src="/Evolution_one_Solutions_logo.png"
+            src="/EOS_Logo.png"
             alt="Evolution One Solutions Logo"
             width={120}
             height={60}
@@ -127,7 +169,9 @@ function LoginForm() {
             priority
           />
           <CardTitle className="text-center text-2xl font-bold text-buttonActive">
-            {isForgot ? "Forgot Password" : "Casino Management Login"}
+            {isForgot
+              ? "Forgot Password"
+              : "Evolution One Solutions Casino Management System"}
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -1,245 +1,283 @@
 "use client";
-import { usePathname } from "next/navigation";
+import SearchFilterBar from "@/components/administration/SearchFilterBar";
+import UserCard from "@/components/administration/UserCard";
+import UserTable from "@/components/administration/UserTable";
 import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import PaginationControls from "@/components/ui/PaginationControls";
+import { fetchUsers, filterAndSortUsers } from "@/lib/helpers/administration";
+import type { SortKey, User } from "@/lib/types/administration";
+import { ChevronDownIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
-import { useState } from "react";
-import {
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@radix-ui/react-icons";
-
-const mockUsers = [
-  {
-    name: "Sadmin",
-    username: "admin",
-    email: "example1@example.com",
-    enabled: true,
-    roles: ["admin"],
-  },
-  {
-    name: "App Reviewer",
-    username: "reviewer",
-    email: "example2@example.com",
-    enabled: false,
-    roles: ["reviewer"],
-  },
-  {
-    name: "Manager T",
-    username: "manager",
-    email: "example3@example.com",
-    enabled: true,
-    roles: ["manager"],
-  },
-  {
-    name: "TTG Collector 1",
-    username: "collector 1",
-    email: "example4@example.com",
-    enabled: false,
-    roles: ["collector"],
-  },
-  {
-    name: "TTG Collector 2",
-    username: "collector 2",
-    email: "example5@example.com",
-    enabled: true,
-    roles: ["collector", "collectormeters"],
-  },
-];
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import Header from "@/components/layout/Header";
 
 export default function AdministrationPage() {
   const pathname = usePathname();
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const totalPages = 24; // Placeholder for total pages
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeSection, setActiveSection] = useState<"users" | "countries">(
+    "users"
+  );
+  const [searchValue, setSearchValue] = useState("");
+  const [searchMode, setSearchMode] = useState<"username" | "email">(
+    "username"
+  );
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey;
+    direction: "ascending" | "descending";
+  } | null>(null);
+  const [mobileSectionDropdownOpen, setMobileSectionDropdownOpen] =
+    useState(false);
 
-  // For now, just use the mockUsers for the current page
-  const paginatedUsers = mockUsers;
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      setIsLoading(true);
+      try {
+        const usersData = await fetchUsers();
+        setAllUsers(usersData);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+      setIsLoading(false);
+    };
+    loadUsers();
+  }, []);
+
+  const processedUsers = useMemo(() => {
+    return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
+  }, [allUsers, searchValue, searchMode, sortConfig]);
+
+  const paginatedUsers = useMemo(() => {
+    return processedUsers.slice(
+      currentPage * itemsPerPage,
+      (currentPage + 1) * itemsPerPage
+    );
+  }, [processedUsers, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(processedUsers.length / itemsPerPage);
+  }, [processedUsers, itemsPerPage]);
+
+  const requestSort = (key: SortKey) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(0);
+  };
+
+  const renderSectionContent = () => {
+    if (activeSection === "countries") {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-md mt-8 p-6">
+          <div className="text-5xl mb-4">🚧</div>
+          <h2 className="text-2xl font-bold mb-2">Coming Soon</h2>
+          <p className="text-gray-600 text-center">
+            The Countries management section is currently under development.{" "}
+            <br />
+            Please check back later!
+          </p>
+        </div>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <div className="text-center py-10">
+          <p>Loading users...</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <SearchFilterBar
+          isMobile={isMobile}
+          searchValue={searchValue}
+          setSearchValue={setSearchValue}
+          searchMode={searchMode}
+          setSearchMode={setSearchMode}
+          searchDropdownOpen={searchDropdownOpen}
+          setSearchDropdownOpen={setSearchDropdownOpen}
+          filterDropdownOpen={filterDropdownOpen}
+          setFilterDropdownOpen={setFilterDropdownOpen}
+          sortConfig={sortConfig}
+          requestSort={requestSort}
+        />
+        {isMobile ? (
+          <div className="space-y-3 mt-4">
+            {paginatedUsers.length > 0 ? (
+              paginatedUsers.map((user) => (
+                <UserCard key={user.username} user={user} />
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-4">
+                No users found matching your criteria.
+              </p>
+            )}
+          </div>
+        ) : paginatedUsers.length > 0 ? (
+          <UserTable
+            users={paginatedUsers}
+            sortConfig={sortConfig}
+            requestSort={requestSort}
+          />
+        ) : (
+          <p className="text-center text-gray-500 py-10">
+            No users found matching your criteria.
+          </p>
+        )}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          setCurrentPage={setCurrentPage}
+        />
+      </>
+    );
+  };
 
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full md:pl-[8rem] min-h-screen bg-background flex overflow-hidden mt-8">
-        <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
-          <Header
-            pageTitle="Administration"
-            hideOptions={false}
-            hideLicenceeFilter={false}
-            disabled={false}
-          />
-
-          {/* Top navigation buttons */}
-          <div className="flex gap-4 mt-6">
-            <Button className="bg-buttonActive text-white flex-1">Users</Button>
-            <Button className="bg-button text-white flex-1">Countries</Button>
-            <Button className="bg-button text-white flex-1">
-              SMIB Management
-            </Button>
-            <Button className="bg-button text-white flex-1">
-              SMIB Firmware
-            </Button>
-          </div>
-
-          {/* Search and filter bar */}
-          <div className="bg-buttonActive rounded-t-lg p-4 mt-6 flex flex-col md:flex-row gap-4 items-center">
-            <div className="flex-1 flex items-center relative">
-              <Input
-                type="text"
-                placeholder="Search by...."
-                className="w-full pr-10 bg-white border-none h-10 px-4 shadow-sm text-sm rounded-md lg:rounded-full"
-              />
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors">
-                <Image
-                  src="/searchIcon.svg"
-                  alt="Search"
-                  width={20}
-                  height={20}
-                />
-              </button>
-            </div>
-            <Button className="bg-white text-buttonActive font-semibold px-6 py-2 rounded-full flex items-center gap-2">
-              Username
+      <div
+        className={`w-full min-h-screen bg-background flex ${
+          isMobile ? "" : "md:pl-[8rem]"
+        }`}
+      >
+        <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
+          <Header />
+          {/* Admin icon and title layout, matching original design */}
+          <div
+            className={`flex items-center ${
+              isMobile ? "flex-col mt-4" : "mt-6"
+            }`}
+          >
+            {isMobile && (
               <Image
-                src="/chevronDown.svg"
-                alt="Dropdown"
-                width={16}
-                height={16}
+                src="/adminIcon.svg"
+                alt="Admin Icon"
+                width={40}
+                height={40}
+                className="mb-2"
               />
-            </Button>
+            )}
+            <h1
+              className={`text-3xl font-bold ${
+                isMobile ? "text-center" : "mr-2"
+              }`}
+            >
+              Administration
+            </h1>
+            {!isMobile && (
+              <Image
+                src="/adminIcon.svg"
+                alt="Admin Icon"
+                width={32}
+                height={32}
+              />
+            )}
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white rounded-b-lg shadow-md">
-              <thead>
-                <tr className="bg-[#19C900] text-white">
-                  <th className="py-3 px-4 text-left font-bold">NAME</th>
-                  <th className="py-3 px-4 text-left font-bold">USERNAME</th>
-                  <th className="py-3 px-4 text-left font-bold">
-                    EMAIL ADDRESS
-                  </th>
-                  <th className="py-3 px-4 text-left font-bold">ENABLED</th>
-                  <th className="py-3 px-4 text-left font-bold">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedUsers.map((user) => (
-                  <tr
-                    key={user.username}
-                    className="border-b last:border-b-0 hover:bg-gray-50"
-                  >
-                    <td className="py-3 px-4 font-bold">
-                      {user.name}
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {user.roles.map((role) => (
-                          <span
-                            key={role}
-                            className="bg-blue-200 text-blue-800 text-xs rounded px-2 py-0.5 mr-1"
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-bold">
-                      {user.username}
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {user.roles.map((role) => (
-                          <span
-                            key={role}
-                            className="bg-blue-200 text-blue-800 text-xs rounded px-2 py-0.5 mr-1"
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">{user.email}</td>
-                    <td className="py-3 px-4">
-                      {user.enabled ? "true" : "false"}
-                    </td>
-                    <td className="py-3 px-4 flex gap-3 items-center">
-                      <Image
-                        src="/details.svg"
-                        alt="Details"
-                        width={24}
-                        height={24}
-                        className="cursor-pointer"
-                      />
-                      <Image
-                        src="/editIcon.svg"
-                        alt="Edit"
-                        width={24}
-                        height={24}
-                        className="cursor-pointer"
-                      />
-                      <Image
-                        src="/deleteIcon.svg"
-                        alt="Delete"
-                        width={24}
-                        height={24}
-                        className="cursor-pointer"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={`mt-6 ${isMobile ? "w-full" : "flex gap-4"}`}>
+            {isMobile ? (
+              <div className="relative w-full">
+                <button
+                  className="w-full bg-buttonActive text-white rounded-lg px-4 py-3 font-bold text-lg flex justify-between items-center"
+                  onClick={() => setMobileSectionDropdownOpen((o) => !o)}
+                >
+                  {activeSection === "users" ? "Users" : "Countries"}
+                  <ChevronDownIcon
+                    className={`w-5 h-5 transition-transform ${
+                      mobileSectionDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {mobileSectionDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg">
+                    <button
+                      className={`block w-full text-left px-4 py-3 text-lg hover:bg-gray-100 ${
+                        activeSection === "users"
+                          ? "font-semibold text-buttonActive"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        setActiveSection("users");
+                        setMobileSectionDropdownOpen(false);
+                        setCurrentPage(0);
+                      }}
+                    >
+                      Users
+                    </button>
+                    <button
+                      className={`block w-full text-left px-4 py-3 text-lg hover:bg-gray-100 ${
+                        activeSection === "countries"
+                          ? "font-semibold text-buttonActive"
+                          : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        setActiveSection("countries");
+                        setMobileSectionDropdownOpen(false);
+                        setCurrentPage(0);
+                      }}
+                    >
+                      Countries
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Button
+                  className={`flex-1 py-3 text-lg ${
+                    activeSection === "users"
+                      ? "bg-buttonActive text-white"
+                      : "bg-button text-white"
+                  }`}
+                  onClick={() => {
+                    setActiveSection("users");
+                    setCurrentPage(0);
+                  }}
+                >
+                  Users
+                </Button>
+                <Button
+                  className={`flex-1 py-3 text-lg ${
+                    activeSection === "countries"
+                      ? "bg-buttonActive text-white"
+                      : "bg-button text-white"
+                  }`}
+                  onClick={() => {
+                    setActiveSection("countries");
+                    setCurrentPage(0);
+                  }}
+                >
+                  Countries
+                </Button>
+              </>
+            )}
           </div>
 
-          {/* Pagination */}
-          <div className="flex justify-center items-center space-x-2 mt-6">
-            <Button
-              onClick={() => setCurrentPage(0)}
-              disabled={currentPage === 0}
-              className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-            >
-              <DoubleArrowLeftIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-              disabled={currentPage === 0}
-              className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-            >
-              <ChevronLeftIcon className="h-4 w-4" />
-            </Button>
-            <span className="text-gray-700 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={currentPage + 1}
-              onChange={(e) => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > totalPages) val = totalPages;
-                setCurrentPage(val - 1);
-              }}
-              className="w-16 px-2 py-1 border rounded text-center text-sm"
-              aria-label="Page number"
-            />
-            <span className="text-gray-700 text-sm">of {totalPages}</span>
-            <Button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
-              }
-              disabled={currentPage === totalPages - 1}
-              className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-            >
-              <ChevronRightIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={() => setCurrentPage(totalPages - 1)}
-              disabled={currentPage === totalPages - 1}
-              className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-            >
-              <DoubleArrowRightIcon className="h-4 w-4" />
-            </Button>
-          </div>
+          {renderSectionContent()}
         </main>
       </div>
     </>

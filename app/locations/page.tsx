@@ -817,43 +817,43 @@ export default function LocationsPage() {
 
             {/* Mobile Filter Checkboxes */}
             <div className="flex flex-col items-center mb-4">
-              <div className="flex flex-row justify-center items-center space-x-6 mb-2">
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+              <div className="flex flex-row justify-center items-center space-x-2 xs:space-x-1 sm:space-x-6 mb-2 px-2">
+                <label className="flex items-center space-x-1 xs:space-x-1 sm:space-x-2 cursor-pointer whitespace-nowrap">
                   <Checkbox
                     id="noSMIBLocation-mobile"
                     checked={selectedFilters.includes("NoSMIBLocation")}
                     onCheckedChange={() => handleFilterChange("NoSMIBLocation")}
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9] flex-shrink-0"
                   />
-                  <span className="text-base font-medium text-black">
+                  <span className="text-xs xs:text-xs sm:text-base font-medium text-black">
                     No SMIB Location
                   </span>
                 </label>
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+                <label className="flex items-center space-x-1 xs:space-x-1 sm:space-x-2 cursor-pointer whitespace-nowrap">
                   <Checkbox
                     id="SMIBLocationsOnly-mobile"
                     checked={selectedFilters.includes("SMIBLocationsOnly")}
                     onCheckedChange={() =>
                       handleFilterChange("SMIBLocationsOnly")
                     }
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9] flex-shrink-0"
                   />
-                  <span className="text-base font-medium text-black">
+                  <span className="text-xs xs:text-xs sm:text-base font-medium text-black">
                     SMIB Locations Only
                   </span>
                 </label>
               </div>
-              <div className="flex justify-center">
-                <label className="flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+              <div className="flex justify-center px-2">
+                <label className="flex items-center space-x-1 xs:space-x-1 sm:space-x-2 cursor-pointer whitespace-nowrap">
                   <Checkbox
                     id="LocalServersOnly-mobile"
                     checked={selectedFilters.includes("LocalServersOnly")}
                     onCheckedChange={() =>
                       handleFilterChange("LocalServersOnly")
                     }
-                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9]"
+                    className="bg-white data-[state=checked]:bg-[#5119e9] border border-[#5119e9] flex-shrink-0"
                   />
-                  <span className="text-base font-medium text-black">
+                  <span className="text-xs xs:text-xs sm:text-base font-medium text-black">
                     Local Servers Only
                   </span>
                 </label>

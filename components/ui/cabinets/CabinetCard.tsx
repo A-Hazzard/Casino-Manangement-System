@@ -58,7 +58,7 @@ export default function CabinetCard(props: CabinetCardProps) {
   return (
     <div
       ref={cardRef}
-      className="bg-white shadow-sm rounded-lg p-4 w-full mx-auto relative cursor-pointer hover:shadow-md transition-shadow border border-gray-100 mb-4"
+      className="bg-white shadow-sm rounded-lg p-2 xs:p-2 sm:p-4 w-full mx-auto relative cursor-pointer hover:shadow-md transition-shadow border border-gray-100 mb-4 max-w-full"
       onClick={(e) => {
         // Only handle card click if not clicking action buttons
         if (!(e.target as HTMLElement).closest(".action-buttons")) {
@@ -68,12 +68,12 @@ export default function CabinetCard(props: CabinetCardProps) {
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-base font-semibold flex items-center gap-1">
+        <h3 className="text-sm xs:text-xs sm:text-base font-semibold flex items-center gap-1 truncate flex-1 pr-2">
           {props.assetNumber || "(No Asset #)"}
           <motion.span
             className={`w-2 h-2 rounded-full ${
               isOnline ? "bg-green-500" : "bg-red-500"
-            } ml-1`}
+            } ml-1 flex-shrink-0`}
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           ></motion.span>
@@ -83,49 +83,55 @@ export default function CabinetCard(props: CabinetCardProps) {
             e.stopPropagation();
             props.onEdit?.(props);
           }}
-          className="text-green-500"
+          className="text-green-500 flex-shrink-0"
         >
           <Image
             src="/editIcon.svg"
             width={20}
             height={20}
             alt="Edit"
-            className="w-5 h-5"
+            className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5"
           />
         </button>
       </div>
 
       {/* SMIB ID and Details */}
       <div className="mb-3">
-        <p className="text-sm text-green-500">
+        <p className="text-xs xs:text-xs sm:text-sm text-green-500 truncate">
           SMIB ID: {props.smbId || "N/A"}
         </p>
-        <p className="text-sm text-gray-600">
+        <p className="text-xs xs:text-xs sm:text-sm text-gray-600 truncate">
           {props.locationName || "No Location"}
         </p>
-        <p className="text-sm text-gray-600">
+        <p className="text-xs xs:text-xs sm:text-sm text-gray-600 truncate">
           {props.serialNumber || "No S/N"}
         </p>
       </div>
 
       {/* Financial Data - Simple List Layout */}
-      <div className="text-sm">
+      <div className="text-xs xs:text-xs sm:text-sm">
         <div className="flex justify-between py-1">
-          <span>Wager</span>
-          <span>{formatCurrency(props.moneyIn || 0)}</span>
+          <span className="truncate flex-1 pr-2">Wager</span>
+          <span className="text-right flex-shrink-0">
+            {formatCurrency(props.moneyIn || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
-          <span>Cancelled Credits</span>
-          <span>{formatCurrency(props.cancelledCredits || 0)}</span>
+          <span className="truncate flex-1 pr-2">Cancelled Credits</span>
+          <span className="text-right flex-shrink-0">
+            {formatCurrency(props.cancelledCredits || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
-          <span>Jackpot</span>
-          <span>{formatCurrency(props.jackpot || 0)}</span>
+          <span className="truncate flex-1 pr-2">Jackpot</span>
+          <span className="text-right flex-shrink-0">
+            {formatCurrency(props.jackpot || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
-          <span>Gross</span>
+          <span className="truncate flex-1 pr-2">Gross</span>
           <span
-            className={`${
+            className={`text-right flex-shrink-0 ${
               (props.gross || 0) < 0 ? "text-red-500" : "text-green-500"
             }`}
           >
@@ -148,7 +154,7 @@ export default function CabinetCard(props: CabinetCardProps) {
             width={20}
             height={20}
             alt="Delete"
-            className="w-5 h-5"
+            className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5"
           />
         </button>
       </div>

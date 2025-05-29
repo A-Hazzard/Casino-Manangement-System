@@ -178,7 +178,7 @@ export default function Header({
                   <motion.button
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35 }}
+                    transition={{ delay: 0.4 }}
                     className={`flex items-center justify-center w-full p-4 rounded-lg ${
                       pathname === "/collection-report"
                         ? "bg-buttonActive text-container shadow-md"
@@ -193,13 +193,31 @@ export default function Header({
                       Collection Reports
                     </span>
                   </motion.button>
+
+                  {/* Administration button */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                    className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                      pathname === "/administration"
+                        ? "bg-buttonActive text-container shadow-md"
+                        : "bg-muted text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => {
+                      router.push("/administration");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <span className="text-lg font-medium">Administration</span>
+                  </motion.button>
                 </div>
 
                 {/* Logout button */}
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.5 }}
                   onClick={() => {
                     logoutUser();
                     setMobileMenuOpen(false);

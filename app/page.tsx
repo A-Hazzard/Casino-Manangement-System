@@ -261,22 +261,22 @@ function DashboardContent() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
-        <main className="flex-1 p-6 space-y-6 mt-4">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36">
+        <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
             disabled={loadingChartData || refreshing}
           />
 
-          <div className="flex flex-col lg:hidden items-center justify-center">
+          <div className="flex flex-col lg:hidden items-center justify-center w-full max-w-full">
             <Image
               src="/dashboardIcon.svg"
               alt="Dashboard Icon"
               width={20}
               height={20}
             />
-            <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left">
+            <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left w-full max-w-full">
               Dashboard
             </h1>
           </div>

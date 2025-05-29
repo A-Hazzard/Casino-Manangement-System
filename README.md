@@ -81,8 +81,6 @@ This command runs the container based on the image built in the previous step.
 docker run --rm -p 3000:3000 \\
   -e MONGO_URI="your_mongodb_connection_string" \\
   -e JWT_SECRET="your_jwt_secret" \\
-  -e EMAIL_USER="your_sendgrid_verified_email" \\
-  -e SENDGRID_API_KEY="your_sendgrid_api_key" \\
   -e NODE_ENV="production" \\
   evolution1-cms:local
 ```
@@ -103,6 +101,37 @@ Then, push the image:
 ```sh
 docker push registry.gitlab.com/sunny-group/sas/dynamic-cms
 ```
+
+---
+
+## 🐙 Container Registry (GitLab)
+
+You can build and push the Docker image to the GitLab container registry for this project.
+
+### **1️⃣ Authenticate with GitLab Container Registry**
+```sh
+docker login registry.gitlab.com
+```
+
+### **2️⃣ Build the Docker Image for GitLab Registry**
+```sh
+docker build -t registry.gitlab.com/sunny-group/sas/dynamic-cms .
+```
+
+### **3️⃣ Push the Image to the Registry**
+```sh
+docker push registry.gitlab.com/sunny-group/sas/dynamic-cms
+```
+
+### **4️⃣ Run the Image from the Registry**
+```sh
+docker run --rm -p 3000:3000 ^
+  -e MONGO_URI="your_mongodb_connection_string" ^
+  -e JWT_SECRET="your_jwt_secret" ^
+  -e NODE_ENV="production" ^
+  registry.gitlab.com/sunny-group/sas/dynamic-cms
+```
+> **Note:** Replace the environment variable values with your actual credentials.
 
 ---
 

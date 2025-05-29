@@ -65,7 +65,8 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ data }) => {
           </div>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-lg">
+      {/* Desktop Table View */}
+      <div className="hidden lg:block w-full overflow-x-auto rounded-lg">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-blue-500 text-white">
@@ -99,6 +100,47 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ data }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Cards View */}
+      <div className="block lg:hidden space-y-4 w-full">
+        {paged.map((row, idx) => (
+          <div
+            key={row._id || idx}
+            className="bg-white rounded-xl shadow-md overflow-hidden w-full"
+          >
+            <div className="bg-blue-500 text-white px-4 py-2 font-semibold text-sm">
+              {row.date ? new Date(row.date).toLocaleString() : "No Date"}
+            </div>
+            <div className="p-4 flex flex-col gap-2">
+              <div className="flex justify-between items-start">
+                <span className="text-gray-700">Command</span>
+                <span className="font-mono font-medium text-right break-all ml-2">
+                  {row.command || "N/A"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Type</span>
+                <span className="font-medium">{row.commandType || "N/A"}</span>
+              </div>
+              {row.description && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-gray-700">Description</span>
+                  <span className="font-medium text-sm text-gray-800 break-words">
+                    {row.description}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-700">Relay ID</span>
+                <span className="font-mono font-medium">
+                  {row.relay || "N/A"}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Pagination controls */}
       <div className="flex justify-center items-center mt-4 gap-2">
         <button
