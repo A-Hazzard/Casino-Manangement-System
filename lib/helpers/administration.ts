@@ -1,48 +1,9 @@
-import type { User, SortKey } from "@/lib/types/administration";
-
-// Copied from app/administration/page.tsx - ensure this matches your User type definition
-const mockUsersData: User[] = [
-  {
-    name: "Sadmin",
-    username: "admin",
-    email: "example1@example.com",
-    enabled: true,
-    roles: ["admin"],
-    profilePicture: null,
-  },
-  {
-    name: "App Reviewer",
-    username: "reviewer",
-    email: "example2@example.com",
-    enabled: false,
-    roles: ["reviewer"],
-    profilePicture: null,
-  },
-  {
-    name: "Manager T",
-    username: "manager",
-    email: "example3@example.com",
-    enabled: true,
-    roles: ["manager"],
-    profilePicture: null,
-  },
-  {
-    name: "TTG Collector 1",
-    username: "collector 1",
-    email: "example4@example.com",
-    enabled: false,
-    roles: ["collector"],
-    profilePicture: null,
-  },
-  {
-    name: "TTG Collector 2",
-    username: "collector 2",
-    email: "example5@example.com",
-    enabled: true,
-    roles: ["collector", "collectormeters"],
-    profilePicture: null,
-  },
-];
+import axios from "axios";
+import type {
+  User,
+  SortKey,
+  ResourcePermissions,
+} from "@/lib/types/administration";
 
 /**
  * Fetches a list of users.
@@ -51,9 +12,25 @@ const mockUsersData: User[] = [
  *          Replace with actual API call in the future.
  */
 export const fetchUsers = async (): Promise<User[]> => {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return [...mockUsersData]; // Return a copy to prevent direct mutation if an API call would
+  const response = await axios.get("/api/users");
+  return response.data.users.map((user: User) => ({
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    enabled: user.enabled,
+    roles: user.roles,
+    profilePicture: user.profilePicture ?? null,
+  }));
+};
+
+export const updateUser = async (
+  user: Partial<User> & {
+    password?: string;
+    resourcePermissions: ResourcePermissions;
+  }
+) => {
+  return axios.put("/api/users", user);
 };
 
 /**
@@ -71,9 +48,7 @@ export const filterAndSortUsers = (
   searchMode: "username" | "email",
   sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null
 ): User[] => {
-  let processedUsers = [...users]; // Start with a copy to avoid mutating the original array
-
-  // Apply search filter
+  let processedUsers = [...users];
   if (searchValue) {
     const lowerSearchValue = searchValue.toLowerCase();
     processedUsers = processedUsers.filter((user) =>
@@ -82,27 +57,38 @@ export const filterAndSortUsers = (
         : user.email.toLowerCase().includes(lowerSearchValue)
     );
   }
-
-  // Apply sorting
   if (sortConfig !== null && sortConfig.key) {
     const { key, direction } = sortConfig;
     processedUsers.sort((a, b) => {
       const valA = a[key!];
       const valB = b[key!];
-
-      // Handle null/undefined values consistently
       if (valA == null && valB != null)
         return direction === "ascending" ? -1 : 1;
       if (valA != null && valB == null)
         return direction === "ascending" ? 1 : -1;
       if (valA == null && valB == null) return 0;
-
-      // Perform comparison
       if (valA! < valB!) return direction === "ascending" ? -1 : 1;
       if (valA! > valB!) return direction === "ascending" ? 1 : -1;
       return 0;
     });
   }
-
   return processedUsers;
+};
+
+export const createUser = async (user: {
+  username: string;
+  emailAddress: string;
+  password: string;
+  roles: string[];
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    gender?: string;
+  };
+  isEnabled?: boolean;
+  profilePicture?: string | null;
+  resourcePermissions?: ResourcePermissions;
+}) => {
+  const response = await axios.post("/api/users", user);
+  return response.data.user;
 };

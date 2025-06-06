@@ -6,6 +6,7 @@ import type {
   MonthlyReportSummary,
   MonthlyReportDetailsRow,
 } from "@/lib/types/componentProps";
+import axios from "axios";
 
 /**
  * Loads an image from a URL and returns a base64 data URL.
@@ -13,8 +14,8 @@ import type {
  * @returns Promise<string> - The base64 data URL.
  */
 async function getBase64FromUrl(url: string): Promise<string> {
-  const response = await fetch(url);
-  const blob = await response.blob();
+  const response = await axios.get(url, { responseType: "blob" });
+  const blob = response.data;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);

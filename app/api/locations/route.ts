@@ -7,11 +7,10 @@ import { UpdateLocationData } from "@/lib/types/location";
 
 export async function GET() {
   try {
-    // Fetch locations, only include `geoCoords`, `name`, and `_id`
-    const locations = await GamingLocations.find(
-      {},
-      "geoCoords name _id"
-    ).lean();
+    // Fetch locations, only include `geoCoords`, `name`, and `_id`, sorted alphabetically by name
+    const locations = await GamingLocations.find({}, "geoCoords name _id")
+      .sort({ name: 1 })
+      .lean();
 
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];

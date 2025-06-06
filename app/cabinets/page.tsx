@@ -17,7 +17,6 @@ import { fetchCabinetLocations, fetchCabinets } from "@/lib/helpers/cabinets";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
-import { TimePeriod } from "@/lib/types/api";
 import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
 import {
   ArrowDownIcon,
@@ -33,6 +32,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import SMIBManagement from "./SMIBManagement";
+import MovementRequests from "./MovementRequests";
+import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
+import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
 
 export default function CabinetsPage() {
   const {
@@ -40,11 +43,24 @@ export default function CabinetsPage() {
     setSelectedLicencee,
     setLoadingChartData,
     activeMetricsFilter,
-    setActiveMetricsFilter,
   } = useDashBoardStore();
 
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
   const { openCabinetModal } = useNewCabinetStore();
+
+  // State for New Movement Request Modal
+  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
+    useState(false);
+  const openNewMovementRequestModal = () =>
+    setIsNewMovementRequestModalOpen(true);
+  const closeNewMovementRequestModal = () =>
+    setIsNewMovementRequestModalOpen(false);
+
+  // State for Upload SMIB Data Modal
+  const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
+    useState(false);
+  const openUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(true);
+  const closeUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(false);
 
   const pathname = usePathname();
 
@@ -73,7 +89,7 @@ export default function CabinetsPage() {
 
   // Section navigation state
   const [activeSection, setActiveSection] = useState<
-    "cabinets" | "smib" | "firmware"
+    "cabinets" | "smib" | "movement"
   >("cabinets");
 
   const loadLocations = useCallback(async () => {
@@ -111,7 +127,8 @@ export default function CabinetsPage() {
           (cab) =>
             cab.assetNumber?.toLowerCase().includes(searchLower) ||
             cab.smbId?.toLowerCase().includes(searchLower) ||
-            cab.locationName?.toLowerCase().includes(searchLower)
+            cab.locationName?.toLowerCase().includes(searchLower) ||
+            cab.serialNumber?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -307,6 +324,15 @@ export default function CabinetsPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
       <NewCabinetModal />
+      <NewMovementRequestModal
+        isOpen={isNewMovementRequestModalOpen}
+        onClose={closeNewMovementRequestModal}
+        locations={locations}
+      />
+      <UploadSmibDataModal
+        isOpen={isUploadSmibDataModalOpen}
+        onClose={closeUploadSmibDataModal}
+      />
 
       <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
@@ -321,26 +347,40 @@ export default function CabinetsPage() {
 
           {/* Title and icon layout */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold">Cabinets</h1>
+            <div className="flex items-center gap-3 w-full">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Cabinets
+              </h1>
               <Image
                 src="/cabinetsIcon.svg"
                 alt="Cabinets Icon"
                 width={32}
                 height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8"
+                className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
               />
             </div>
-            {/* Add New Cabinet button (desktop only) */}
-            <Button
-              onClick={() => openCabinetModal()}
-              className="hidden md:flex bg-button hover:bg-green-700 text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
-            >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
-              <span>Add New Cabinet</span>
-            </Button>
+            {/* Add New Cabinet button (desktop only, only on cabinets tab) */}
+            {(activeSection === "cabinets" || activeSection === "movement") && (
+              <Button
+                onClick={() => {
+                  if (activeSection === "cabinets") {
+                    openCabinetModal();
+                  } else if (activeSection === "movement") {
+                    openNewMovementRequestModal();
+                  }
+                }}
+                className="hidden md:flex bg-button hover:bg-button/90 text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              >
+                <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
+                  <Plus className="w-4 h-4 text-white" />
+                </div>
+                <span>
+                  {activeSection === "cabinets"
+                    ? "Add New Cabinet"
+                    : "Create Movement Request"}
+                </span>
+              </Button>
+            )}
           </div>
 
           {/* Section Navigation: Dropdown on mobile, button bar on desktop */}
@@ -348,15 +388,28 @@ export default function CabinetsPage() {
             {/* Mobile: Dropdown */}
             <div className="md:hidden w-full">
               <select
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-base font-semibold bg-white shadow-sm"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                 value={activeSection}
-                onChange={(e) =>
-                  setActiveSection(e.target.value as typeof activeSection)
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "firmware_trigger") {
+                    openUploadSmibDataModal();
+                    e.target.value = activeSection;
+                  } else {
+                    setActiveSection(value as "cabinets" | "smib" | "movement");
+                  }
+                }}
               >
                 <option value="cabinets">Machines</option>
-                <option value="smib">SMIB Management</option>
-                <option value="firmware">SMIB Firmware</option>
+                {/* Hidden for future use - SMIB Management */}
+                <option value="smib" className="hidden">
+                  SMIB Management
+                </option>
+                <option value="movement">Movement Requests</option>
+                {/* Hidden for future use - Firmware Management */}
+                <option value="firmware_trigger" className="hidden">
+                  Firmware Management
+                </option>
               </select>
             </div>
             {/* Desktop: Button bar */}
@@ -365,17 +418,18 @@ export default function CabinetsPage() {
                 className={`px-6 py-2 font-semibold ${
                   activeSection === "cabinets"
                     ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-green-700"
+                    : "bg-button text-white hover:bg-button/90"
                 }`}
                 onClick={() => setActiveSection("cabinets")}
               >
                 Machines
               </Button>
+              {/* Hidden for future use - SMIB Management */}
               <Button
-                className={`px-6 py-2 font-semibold ${
+                className={`hidden px-6 py-2 font-semibold ${
                   activeSection === "smib"
                     ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-green-700"
+                    : "bg-button text-white hover:bg-button/90"
                 }`}
                 onClick={() => setActiveSection("smib")}
               >
@@ -383,28 +437,26 @@ export default function CabinetsPage() {
               </Button>
               <Button
                 className={`px-6 py-2 font-semibold ${
-                  activeSection === "firmware"
+                  activeSection === "movement"
                     ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-green-700"
+                    : "bg-button text-white hover:bg-button/90"
                 }`}
-                onClick={() => setActiveSection("firmware")}
+                onClick={() => setActiveSection("movement")}
               >
                 Movement Requests
               </Button>
+              {/* Hidden for future use - Firmware Management */}
               <Button
-                className={`px-6 py-2 font-semibold ${
-                  activeSection === "firmware"
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-green-700"
-                }`}
-                onClick={() => setActiveSection("firmware")}
+                className={`hidden px-6 py-2 font-semibold bg-button text-white hover:bg-button/90`}
+                onClick={openUploadSmibDataModal}
               >
                 Firmware Management
               </Button>
             </div>
           </div>
 
-          {/* Desktop Time Period Filters */}
+          {/* Desktop Time Period Filters - HIDDEN */}
+          {/* 
           <div className="hidden lg:flex items-center mt-4 w-full">
             <div className="flex space-x-2 overflow-x-auto flex-wrap justify-start">
               {[
@@ -439,6 +491,7 @@ export default function CabinetsPage() {
               />
             </div>
           </div>
+          */}
 
           {/* Section Content */}
           {activeSection === "cabinets" ? (
@@ -448,7 +501,7 @@ export default function CabinetsPage() {
                 <Input
                   type="text"
                   placeholder="Search machines..."
-                  className="w-full pr-10 bg-white border-none rounded-full h-11 px-4 shadow-sm"
+                  className="w-full pr-10 bg-white border-none rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -460,7 +513,7 @@ export default function CabinetsPage() {
                 {/* Sort Button */}
                 <div className="flex-1 min-w-0 w-full sm:w-auto">
                   <button
-                    className="w-full bg-buttonActive text-white rounded-full flex items-center justify-center gap-2 py-2 px-4"
+                    className="w-full bg-buttonActive text-white rounded-full flex items-center justify-center gap-2 py-2 px-4 hover:bg-buttonActive/90"
                     onClick={() => {
                       const dropdown = document.getElementById(
                         "mobile-sort-dropdown"
@@ -518,7 +571,7 @@ export default function CabinetsPage() {
                 {/* Location Select */}
                 <div className="flex-1 min-w-0 w-full sm:w-auto relative">
                   <select
-                    className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none"
+                    className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive"
                     value={selectedLocation}
                     onChange={(e) => handleLocationChange(e.target.value)}
                   >
@@ -537,7 +590,7 @@ export default function CabinetsPage() {
                     <RefreshButton
                       onClick={handleRefresh}
                       isRefreshing={refreshing}
-                      className="bg-buttonActive text-white rounded-full p-2 ml-2 w-full sm:w-auto"
+                      className="bg-buttonActive text-white rounded-full p-2 ml-2 w-full sm:w-auto hover:bg-buttonActive/90"
                     />
                   </div>
                 )}
@@ -553,7 +606,7 @@ export default function CabinetsPage() {
                   <Input
                     type="text"
                     placeholder="Search machines..."
-                    className="w-full pr-10 bg-white border border-gray-300 rounded-md h-10 px-4"
+                    className="w-full pr-10 bg-white border border-gray-300 rounded-md h-10 px-4 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -561,7 +614,7 @@ export default function CabinetsPage() {
                 </div>
                 <div className="w-1/3">
                   <select
-                    className="w-full h-10 bg-white border border-gray-300 rounded-md px-3 text-gray-700 appearance-none"
+                    className="w-full h-10 bg-white border border-gray-300 rounded-md px-3 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive"
                     value={selectedLocation}
                     onChange={(e) => handleLocationChange(e.target.value)}
                   >
@@ -668,22 +721,22 @@ export default function CabinetsPage() {
                   {totalPages > 1 && (
                     <div className="mt-6 flex items-center justify-center space-x-2">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() => setCurrentPage(0)}
                         disabled={currentPage === 0}
-                        className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
                       >
                         <DoubleArrowLeftIcon className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() =>
                           setCurrentPage((p) => Math.max(0, p - 1))
                         }
                         disabled={currentPage === 0}
-                        className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
                       >
                         <ChevronLeftIcon className="h-4 w-4" />
                       </Button>
@@ -700,29 +753,29 @@ export default function CabinetsPage() {
                           if (val > totalPages) val = totalPages;
                           setCurrentPage(val - 1);
                         }}
-                        className="w-16 px-2 py-1 border rounded text-center text-sm"
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                         aria-label="Page number"
                       />
                       <span className="text-gray-700 text-sm">
                         of {totalPages}
                       </span>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() =>
                           setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
                         }
                         disabled={currentPage === totalPages - 1}
-                        className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
                       >
                         <ChevronRightIcon className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() => setCurrentPage(totalPages - 1)}
                         disabled={currentPage === totalPages - 1}
-                        className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
+                        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
                       >
                         <DoubleArrowRightIcon className="h-4 w-4" />
                       </Button>
@@ -731,22 +784,14 @@ export default function CabinetsPage() {
                 </>
               )}
             </>
+          ) : activeSection === "smib" ? (
+            <SMIBManagement />
+          ) : activeSection === "movement" ? (
+            <MovementRequests locations={locations} />
+          ) : activeSection === "cabinets" ? (
+            <>{/* Cabinets content duplicate for safety, review this logic*/}</>
           ) : (
-            <div className="flex flex-col items-center justify-center mx-auto my-12 max-w-xs p-4 bg-white rounded-lg shadow-md">
-              <Image
-                src="/coming-soon.svg"
-                alt="Coming Soon"
-                width={48}
-                height={48}
-                className="mb-4"
-              />
-              <h2 className="text-lg font-bold mb-2 text-center">
-                Coming Soon
-              </h2>
-              <p className="text-gray-500 text-sm text-center">
-                This feature is under development.
-              </p>
-            </div>
+            <SMIBManagement />
           )}
         </main>
       </div>

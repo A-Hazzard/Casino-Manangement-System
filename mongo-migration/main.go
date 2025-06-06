@@ -25,7 +25,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
 	// Set up signal handling to gracefully shut down

@@ -125,7 +125,8 @@ export async function fetchAllGamingLocations() {
         id: loc._id,
         name: loc.name || loc.locationName || "Unknown Location",
       }));
-      return formattedLocations;
+      // Sort alphabetically by name as additional safeguard
+      return formattedLocations.sort((a, b) => a.name.localeCompare(b.name));
     }
     return [];
   } catch (err) {

@@ -71,6 +71,10 @@ export type CollectionDocument = {
   sasMeters: CollectionSasMeters;
   movement: CollectionMovement;
   machineCustomName: string;
+  machineId: string;
+  machineName: string;
+  ramClear?: boolean;
+  serialNumber?: string;
   createdAt: Date;
   updatedAt: Date;
   __v: number;

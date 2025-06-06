@@ -111,39 +111,40 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="rounded-lg p-4 mb-4 w-full border border-gray-200 bg-white md:bg-buttonActive flex flex-col gap-y-3"
+      className="rounded-lg p-4 mb-2 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col lg:flex-row lg:items-center lg:justify-start gap-y-3 lg:gap-2"
     >
-      <div className="flex flex-col gap-y-2 w-full">
-        <div className="relative w-full">
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Search Collector..."
-            className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyPress={handleSearchKeyPress}
-          />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors">
-            <MagnifyingGlassIcon className="w-5 h-5 text-black" />
-          </button>
-        </div>
-        <select
-          ref={selectRef}
-          className="w-full px-4 py-2 rounded-md text-sm border border-black"
-          value={selectedLocation}
-          onChange={(e) => onLocationChange(e.target.value)}
+      <div className="relative w-full lg:w-[280px]">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search Collector or Location..."
+          className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onKeyPress={handleSearchKeyPress}
+        />
+        <button
+          onClick={onSearchSubmit}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
         >
-          <option value="all">Select Location</option>
-          {locations.map((loc) => (
-            <option key={loc._id} value={loc._id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
+          <MagnifyingGlassIcon className="w-5 h-5 text-black" />
+        </button>
       </div>
-      <div ref={checkboxRef} className="flex items-center justify-center mt-1">
-        <label className="flex items-center gap-2 font-medium w-auto text-black md:text-white">
+      <select
+        ref={selectRef}
+        className="w-full lg:w-[240px] px-4 py-2 rounded-md text-sm border border-black"
+        value={selectedLocation}
+        onChange={(e) => onLocationChange(e.target.value)}
+      >
+        <option value="all">Select Location</option>
+        {locations.map((loc) => (
+          <option key={loc._id} value={loc._id}>
+            {loc.name}
+          </option>
+        ))}
+      </select>
+      <div ref={checkboxRef} className="flex items-center w-full lg:w-auto">
+        <label className="flex items-center gap-2 font-medium text-black lg:text-white cursor-pointer">
           <Checkbox
             id="uncollected-only"
             checked={showUncollectedOnly}
@@ -152,7 +153,9 @@ export default function CollectionReportFilters({
             }
             className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
           />
-          <span className="text-sm font-medium">SHOW UNCOLLECTED ONLY</span>
+          <span className="text-sm font-medium whitespace-nowrap">
+            SHOW UNCOLLECTED ONLY
+          </span>
         </label>
       </div>
     </div>

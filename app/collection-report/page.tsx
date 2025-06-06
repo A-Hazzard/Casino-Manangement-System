@@ -491,13 +491,14 @@ export default function CollectionReportPage() {
   // --- RENDER ---
 
   return (
-    <div className="flex flex-row min-h-screen">
+    <div className="flex flex-row min-h-screen bg-background">
       {/* Sidebar for desktop */}
       <div className="hidden md:block">
         <Sidebar pathname={pathname} />
       </div>
-      <div className="w-full max-w-4xl lg:max-w-5xl mx-auto px-2 md:w-[95%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
-        <main className="flex-1 p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
+      {/* Adjusted main content wrapper: use ml-36 (9rem) based on sidebar's apparent width */}
+      <div className="flex-1 md:ml-36 flex flex-col overflow-hidden">
+        <main className="flex-1 p-4 lg:p-6 w-full overflow-x-auto">
           {/* Header with licencee selector */}
           <Header
             selectedLicencee={selectedLicencee}
@@ -505,46 +506,52 @@ export default function CollectionReportPage() {
             pageTitle=""
           />
 
-          {/* Desktop: Title and New Collection button */}
-          <div className="hidden lg:flex flex-row items-center justify-between w-full mb-2">
-            <div className="flex flex-row items-center gap-2">
-              <h1 className="text-3xl font-bold">Collections</h1>
+          {/* Page Title and "New Collection" Button Section */}
+          {/* Mobile: Centered column. Desktop: Row with title/icon left, button right */}
+          <div className="flex w-full mb-4 mt-4 px-1 flex-col items-center lg:flex-row lg:justify-between lg:items-center">
+            {/* Content Block: (Icon + (Title + PlusIcon)) */}
+            {/* This entire block is centered on mobile. On desktop, it's the left part of justify-between. */}
+            <div className="flex flex-col items-center lg:flex-row lg:items-center lg:gap-2">
+              {/* Document Icon - Centered above text on mobile, next to on desktop */}
               <Image
-                src="/details.svg"
-                alt="Details"
-                className="h-8 w-8"
-                width={20}
-                height={20}
+                src="/details.svg" // Assuming this is the green document icon from your image
+                alt="Collections Icon"
+                width={32} // Adjusted size to better match mobile image impression
+                height={32}
+                className="mb-1 lg:mb-0 h-8 w-8" // h-8 w-8 for consistent sizing if width/height props are for aspect ratio
               />
+              {/* Title + Plus Icon (always together next to each other) */}
+              <div className="flex flex-row items-center gap-2">
+                <h1 className="text-3xl font-bold text-gray-800">
+                  Collections
+                </h1>
+                {/* Plus icon is always visible next to the title now, acting as main "add" for mobile too */}
+                <Image
+                  src="/plusButton.svg" // Green plus icon from your image
+                  alt="Add New Collection"
+                  width={28}
+                  height={28}
+                  className="cursor-pointer h-7 w-7" // h-7 w-7 for consistent sizing
+                  onClick={() => setShowModal(true)} // Make the icon itself trigger modal
+                />
+              </div>
             </div>
+
+            {/* Desktop: Separate "New Collection" Button (on the right) */}
+            {/* This button is only for desktop, providing a larger click target with text */}
             <button
-              className="bg-button text-white px-4 py-2 rounded-lg font-bold text-lg flex items-center"
+              className="hidden lg:flex bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-lg items-center gap-2 mt-4 lg:mt-0"
               onClick={() => setShowModal(true)}
             >
               <Image
                 src="/plusButtonWhite.svg"
                 alt="Add"
-                width={16}
-                height={16}
-                className="mr-2 filter-white"
+                width={20}
+                height={20}
+                className="filter-white"
               />
               New Collection
             </button>
-          </div>
-
-          {/* Mobile: Title and New Collection button */}
-          <div className="flex flex-col items-center mb-2 md:mb-0 lg:hidden">
-            <div className="flex items-center justify-center w-full md:w-auto">
-              <h1 className="text-3xl font-bold">Collections</h1>
-              <Image
-                src="/plusButton.svg"
-                alt="Add New Collection"
-                width={28}
-                height={28}
-                className="ml-2 cursor-pointer md:hidden"
-                onClick={() => setShowModal(true)}
-              />
-            </div>
           </div>
 
           {/* Mobile: Tab selector */}
@@ -570,7 +577,7 @@ export default function CollectionReportPage() {
           </div>
 
           {/* Desktop: Tab buttons */}
-          <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 space-y-2 lg:space-y-0 lg:space-x-2 w-full min-w-0">
+          <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 w-full min-w-0">
             {(["collection", "monthly", "manager", "collector"] as const).map(
               (tabName) => (
                 <button
@@ -597,7 +604,7 @@ export default function CollectionReportPage() {
           </div>
 
           {/* Main content area: renders the selected tab's UI */}
-          <div ref={contentRef} className="relative">
+          <div ref={contentRef} className="relative w-full">
             {activeTab === "collection" && (
               <>
                 {loading ? (

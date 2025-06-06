@@ -40,17 +40,21 @@ export default function PaginationControls({
   return (
     <div className="flex justify-center items-center space-x-2 mt-8">
       <Button
+        variant="outline"
+        size="icon"
         onClick={() => handlePageChange(0)}
         disabled={currentPage === 0}
-        className="p-2 bg-gray-200 hover:bg-gray-300 text-black disabled:opacity-50"
+        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
         aria-label="Go to first page"
       >
         <DoubleArrowLeftIcon className="h-4 w-4" />
       </Button>
       <Button
+        variant="outline"
+        size="icon"
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={currentPage === 0}
-        className="p-2 bg-gray-200 hover:bg-gray-300 text-black disabled:opacity-50"
+        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
         aria-label="Go to previous page"
       >
         <ChevronLeftIcon className="h-4 w-4" />
@@ -62,22 +66,26 @@ export default function PaginationControls({
         max={totalPages}
         value={currentPage + 1}
         onChange={handleInputChange}
-        className="w-12 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:ring-1 focus:ring-buttonActive focus:border-buttonActive"
+        className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
         aria-label="Page number"
       />
       <span className="text-gray-700 text-sm">of {totalPages}</span>
       <Button
+        variant="outline"
+        size="icon"
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={currentPage === totalPages - 1}
-        className="p-2 bg-gray-200 hover:bg-gray-300 text-black disabled:opacity-50"
+        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
         aria-label="Go to next page"
       >
         <ChevronRightIcon className="h-4 w-4" />
       </Button>
       <Button
+        variant="outline"
+        size="icon"
         onClick={() => handlePageChange(totalPages - 1)}
         disabled={currentPage === totalPages - 1}
-        className="p-2 bg-gray-200 hover:bg-gray-300 text-black disabled:opacity-50"
+        className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
         aria-label="Go to last page"
       >
         <DoubleArrowRightIcon className="h-4 w-4" />

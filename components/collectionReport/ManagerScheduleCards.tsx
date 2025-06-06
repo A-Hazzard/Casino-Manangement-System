@@ -64,11 +64,6 @@ export default function ManagerScheduleCards({ data, loading }: Props) {
                 {row.status}
               </span>
             </div>
-            <div className="flex justify-end mt-2">
-              <button className="border border-buttonActive text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent">
-                VIEW
-              </button>
-            </div>
           </div>
         </div>
       ))}

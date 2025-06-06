@@ -39,7 +39,6 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
             <th className="px-4 py-2 text-white font-bold">VISIT TIME</th>
             <th className="px-4 py-2 text-white font-bold">CREATED AT</th>
             <th className="px-4 py-2 text-white font-bold">STATUS</th>
-            <th className="px-4 py-2 text-white font-bold">ACTIONS</th>
           </tr>
         </thead>
         <tbody>
@@ -62,11 +61,6 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
                 >
                   {row.status}
                 </span>
-              </td>
-              <td className="px-4 py-2">
-                <button className="border border-buttonActive text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent">
-                  VIEW
-                </button>
               </td>
             </tr>
           ))}

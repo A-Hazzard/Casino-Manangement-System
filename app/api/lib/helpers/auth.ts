@@ -1,8 +1,8 @@
-import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { getUserByEmail } from "./users";
 import { sendEmail } from "../../lib/utils/email";
 import { UserAuthPayload } from "@/lib/types";
+import { comparePassword } from "../utils/validation";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
@@ -17,7 +17,7 @@ export async function authenticateUser(email: string, password: string) {
   const user = await getUserByEmail(email);
   if (!user) return { success: false, message: "User not found." };
 
-  const isMatch = await bcrypt.compare(password, user.password || "");
+  const isMatch = await comparePassword(password, user.password || "");
   if (!isMatch) return { success: false, message: "Incorrect password." };
 
   const userObject = user.toObject({ getters: true });

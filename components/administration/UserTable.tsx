@@ -5,15 +5,21 @@ type UserTableProps = {
   users: User[];
   sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null;
   requestSort: (key: SortKey) => void;
+  onEdit?: (user: User) => void;
+  onDelete?: (user: User) => void;
+  onMenu?: (user: User) => void;
 };
 
 export default function UserTable({
   users,
   sortConfig,
   requestSort,
+  onEdit,
+  onDelete,
+  onMenu,
 }: UserTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto hidden lg:block">
       <table className="min-w-full bg-white rounded-lg shadow-md">
         <thead className="bg-button text-white">
           <tr>
@@ -74,13 +80,14 @@ export default function UserTable({
               <td className="py-3 px-4 text-gray-600">
                 {user.enabled ? "True" : "False"}
               </td>
-              <td className="py-3 px-4 flex gap-3 items-center">
+              <td className="py-3 px-4 flex gap-2 items-center max-w-[120px]">
                 <Image
                   src="/leftHamburgerMenu.svg"
                   alt="Menu"
                   width={20}
                   height={20}
                   className="cursor-pointer opacity-70 hover:opacity-100"
+                  onClick={() => onMenu?.(user)}
                 />
                 <Image
                   src="/editIcon.svg"
@@ -88,13 +95,15 @@ export default function UserTable({
                   width={20}
                   height={20}
                   className="cursor-pointer opacity-70 hover:opacity-100"
+                  onClick={() => onEdit?.(user)}
                 />
                 <Image
                   src="/deleteIcon.svg"
                   alt="Delete"
                   width={20}
                   height={20}
-                  className="cursor-pointer opacity-70 hover:opacity-100"
+                  className="cursor-pointer opacity-70 hover:opacity-100 max-w-[24px] max-h-[24px]"
+                  onClick={() => onDelete?.(user)}
                 />
               </td>
             </tr>
