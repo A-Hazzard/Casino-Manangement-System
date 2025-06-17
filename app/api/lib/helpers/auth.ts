@@ -24,6 +24,7 @@ export async function authenticateUser(email: string, password: string) {
 
   const jwtPayload = {
     _id: userObject._id.toString(),
+    emailAddress: userObject.emailAddress,
     isEnabled: userObject.isEnabled,
     roles: userObject.roles || [],
     permissions: userObject.permissions || [],

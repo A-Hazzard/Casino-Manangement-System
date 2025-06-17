@@ -1,17 +1,28 @@
 import type { NextConfig } from "next";
 
-const isProd = process.env.NODE_ENV === "production";
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverRuntimeConfig: {
-    mongoUri: process.env.MONGO_URI,
-    jwtSecret: process.env.JWT_SECRET,
-    emailUser: process.env.EMAIL_USER,
-    sendgridApiKey: process.env.SENDGRID_API_KEY,
+  images: {
+    loader: "default",
   },
-  publicRuntimeConfig: {
-    appEnv: process.env.NODE_ENV,
+  webpack: (config) => {
+    // Fix for react-day-picker internal module resolution issues
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      os: false,
+    };
+
+    // Ignore problematic internal module requests from react-day-picker
+    config.module.rules.push({
+      test: /\.js$/,
+      resolve: {
+        fullySpecified: false,
+      },
+    });
+
+    return config;
   },
 };
 

@@ -145,6 +145,7 @@ export type UserAuthPayload = {
 // Re-export types from other files
 export * from "./cabinets";
 export * from "./location";
+export * from "./firmware";
 
 export type {
   CollectionReportData,

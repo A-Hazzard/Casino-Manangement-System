@@ -115,6 +115,9 @@ export function DateTimePicker({
             initialFocus
             disabled={disabled}
             showOutsideDays
+            captionLayout="dropdown"
+            fromYear={1950}
+            toYear={2050}
           />
           <div className="p-3 border-t border-border">
             <div className="flex items-center justify-between">

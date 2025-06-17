@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   MixerHorizontalIcon,
 } from "@radix-ui/react-icons";
+import Image from "next/image";
 import type { SortKey } from "@/lib/types/administration"; // Assuming SortKey is needed for mobile filter display
 
 type SearchFilterBarProps = {
@@ -19,6 +20,8 @@ type SearchFilterBarProps = {
   // Props for mobile filter functionality (sorting)
   sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null;
   requestSort: (key: SortKey) => void;
+  // Optional prop for User Activity Log
+  onActivityLogClick?: () => void;
 };
 
 export default function SearchFilterBar({
@@ -33,6 +36,7 @@ export default function SearchFilterBar({
   setFilterDropdownOpen,
   sortConfig,
   requestSort,
+  onActivityLogClick,
 }: SearchFilterBarProps) {
   if (isMobile) {
     // Mobile Search and Filter layout
@@ -46,15 +50,15 @@ export default function SearchFilterBar({
               placeholder="Search.."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              className="w-0 flex-1 min-w-0 px-3 text-base h-full border-none outline-none rounded-l-md"
+              className="w-0 flex-1 min-w-0 px-3 text-base h-full border-none outline-none rounded-l-md cursor-text"
             />
-            <span className="flex items-center px-2 text-gray-400 border-l border-gray-300">
+            <span className="flex items-center px-2 text-gray-400 border-l border-gray-300 cursor-pointer hover:text-gray-600 transition-colors">
               <MagnifyingGlassIcon className="w-5 h-5" />
             </span>
             <div className="relative">
               <button
                 type="button"
-                className={`flex items-center h-full px-3 font-medium text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 border-l border-gray-300 rounded-r-md whitespace-nowrap`}
+                className={`flex items-center h-full px-3 font-medium text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 border-l border-gray-300 rounded-r-md whitespace-nowrap cursor-pointer transition-colors`}
                 onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
               >
                 {searchMode === "username" ? "User" : "Email"}
@@ -67,9 +71,9 @@ export default function SearchFilterBar({
               {searchDropdownOpen && (
                 <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg w-auto min-w-[150px]">
                   <button
-                    className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                      sortConfig?.key === "username"
-                        ? "font-semibold bg-gray-100"
+                    className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
+                      searchMode === "username"
+                        ? "font-semibold text-buttonActive"
                         : "text-gray-700"
                     }`}
                     onClick={() => {
@@ -80,9 +84,9 @@ export default function SearchFilterBar({
                     Username
                   </button>
                   <button
-                    className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                      sortConfig?.key === "email"
-                        ? "font-semibold bg-gray-100"
+                    className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
+                      searchMode === "email"
+                        ? "font-semibold text-buttonActive"
                         : "text-gray-700"
                     }`}
                     onClick={() => {
@@ -100,7 +104,7 @@ export default function SearchFilterBar({
         {/* Filter Button - can wrap, can be full width when wrapped */}
         <div className="relative w-full sm:w-auto flex-shrink-0 min-w-0 max-w-full">
           <Button
-            className="bg-buttonActive text-white px-3 py-2.5 rounded-md flex items-center justify-center text-sm h-11 w-full sm:w-auto"
+            className="bg-buttonActive text-white px-3 py-2.5 rounded-md flex items-center justify-center text-sm h-11 w-full sm:w-auto hover:bg-button transition-colors"
             onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
           >
             <MixerHorizontalIcon className="mr-1 w-4 h-4" />
@@ -114,9 +118,9 @@ export default function SearchFilterBar({
           {filterDropdownOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg w-full min-w-[180px]">
               <button
-                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                   sortConfig?.key === "name"
-                    ? "font-semibold bg-gray-100"
+                    ? "font-semibold text-buttonActive"
                     : "text-gray-700"
                 }`}
                 onClick={() => {
@@ -129,9 +133,9 @@ export default function SearchFilterBar({
                   (sortConfig.direction === "ascending" ? "▲" : "▼")}
               </button>
               <button
-                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                   sortConfig?.key === "username"
-                    ? "font-semibold bg-gray-100"
+                    ? "font-semibold text-buttonActive"
                     : "text-gray-700"
                 }`}
                 onClick={() => {
@@ -144,9 +148,9 @@ export default function SearchFilterBar({
                   (sortConfig.direction === "ascending" ? "▲" : "▼")}
               </button>
               <button
-                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                   sortConfig?.key === "email"
-                    ? "font-semibold bg-gray-100"
+                    ? "font-semibold text-buttonActive"
                     : "text-gray-700"
                 }`}
                 onClick={() => {
@@ -159,9 +163,9 @@ export default function SearchFilterBar({
                   (sortConfig.direction === "ascending" ? "▲" : "▼")}
               </button>
               <button
-                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                   sortConfig?.key === "enabled"
-                    ? "font-semibold bg-gray-100"
+                    ? "font-semibold text-buttonActive"
                     : "text-gray-700"
                 }`}
                 onClick={() => {
@@ -189,16 +193,16 @@ export default function SearchFilterBar({
               placeholder="Search by...."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              className="flex-1 px-3 text-base h-full border-none outline-none rounded-l-md bg-white"
+              className="flex-1 px-3 text-base h-full border-none outline-none rounded-l-md bg-white cursor-text"
             />
-            <span className="flex items-center px-2 text-gray-400 bg-white border-l border-gray-300">
+            <span className="flex items-center px-2 text-gray-400 bg-white border-l border-gray-300 cursor-pointer hover:text-gray-600 transition-colors">
               <MagnifyingGlassIcon className="w-5 h-5" />
             </span>
           </div>
           <div className="relative ml-2">
             <button
               type="button"
-              className={`flex items-center h-11 px-4 font-medium text-sm text-white bg-blue-400 hover:bg-blue-500 rounded-md whitespace-nowrap`}
+              className={`flex items-center h-11 px-4 font-medium text-sm text-white bg-blue-400 hover:bg-blue-500 rounded-md whitespace-nowrap cursor-pointer transition-colors`}
               onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
             >
               {searchMode === "username" ? "Username" : "Email Address"}
@@ -211,7 +215,7 @@ export default function SearchFilterBar({
             {searchDropdownOpen && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg w-auto min-w-[150px]">
                 <button
-                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                     searchMode === "username"
                       ? "font-semibold text-buttonActive"
                       : "text-gray-700"
@@ -224,7 +228,7 @@ export default function SearchFilterBar({
                   Username
                 </button>
                 <button
-                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
                     searchMode === "email"
                       ? "font-semibold text-buttonActive"
                       : "text-gray-700"
@@ -240,6 +244,20 @@ export default function SearchFilterBar({
             )}
           </div>
         </div>
+        {onActivityLogClick && (
+          <Button
+            onClick={onActivityLogClick}
+            className="bg-button text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-buttonActive transition-colors"
+          >
+            <Image
+              src="/activityLogIcon.svg"
+              alt="User Activity Log"
+              width={20}
+              height={20}
+            />
+            <span>User Activity Log</span>
+          </Button>
+        )}
       </div>
     );
   }

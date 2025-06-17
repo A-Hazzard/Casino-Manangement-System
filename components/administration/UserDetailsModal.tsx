@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { X } from "lucide-react";
@@ -14,6 +14,46 @@ export default function UserDetailsModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // Form state
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    otherName: "",
+    gender: "",
+    street: "",
+    town: "",
+    region: "",
+    country: "",
+    postalCode: "",
+    dateOfBirth: "",
+    idType: "",
+    idNumber: "",
+    notes: "",
+  });
+
+  // Initialize form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.profile?.firstName || "",
+        lastName: user.profile?.lastName || "",
+        middleName: user.profile?.middleName || "",
+        otherName: user.profile?.otherName || "",
+        gender: user.profile?.gender || "",
+        street: user.profile?.address?.street || "",
+        town: user.profile?.address?.town || "",
+        region: user.profile?.address?.region || "",
+        country: user.profile?.address?.country || "",
+        postalCode: user.profile?.address?.postalCode || "",
+        dateOfBirth: user.profile?.identification?.dateOfBirth || "",
+        idType: user.profile?.identification?.idType || "",
+        idNumber: user.profile?.identification?.idNumber || "",
+        notes: user.profile?.identification?.notes || "",
+      });
+    }
+  }, [user]);
+
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -28,6 +68,18 @@ export default function UserDetailsModal({
       );
     }
   }, [open]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
 
   if (!open || !user) return null;
 
@@ -56,13 +108,7 @@ export default function UserDetailsModal({
             User Details
           </h2>
         </div>
-        <form
-          className="w-full flex flex-col gap-8"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSave({});
-          }}
-        >
+        <form className="w-full flex flex-col gap-8" onSubmit={handleSubmit}>
           {/* Top section: Profile pic + username (left), user info fields (right) */}
           <div className="w-full flex flex-col lg:flex-row lg:gap-12 items-start lg:items-center">
             {/* Left: Profile pic and username */}
@@ -105,6 +151,10 @@ export default function UserDetailsModal({
                 <input
                   className="w-full rounded-md p-3 bg-white border border-border"
                   placeholder="Enter First Name"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    handleInputChange("firstName", e.target.value)
+                  }
                 />
               </div>
               <div>
@@ -114,6 +164,10 @@ export default function UserDetailsModal({
                 <input
                   className="w-full rounded-md p-3 bg-white border border-border"
                   placeholder="Enter Last Name"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    handleInputChange("lastName", e.target.value)
+                  }
                 />
               </div>
               <div>
@@ -123,6 +177,10 @@ export default function UserDetailsModal({
                 <input
                   className="w-full rounded-md p-3 bg-white border border-border"
                   placeholder="Enter Middle Name"
+                  value={formData.middleName}
+                  onChange={(e) =>
+                    handleInputChange("middleName", e.target.value)
+                  }
                 />
               </div>
               <div>
@@ -132,13 +190,21 @@ export default function UserDetailsModal({
                 <input
                   className="w-full rounded-md p-3 bg-white border border-border"
                   placeholder="Enter Other Name"
+                  value={formData.otherName}
+                  onChange={(e) =>
+                    handleInputChange("otherName", e.target.value)
+                  }
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Gender:
                 </label>
-                <select className="w-full rounded-md p-3 bg-white border border-border">
+                <select
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.gender}
+                  onChange={(e) => handleInputChange("gender", e.target.value)}
+                >
                   <option value="">Select</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -159,31 +225,58 @@ export default function UserDetailsModal({
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Street:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.street}
+                  onChange={(e) => handleInputChange("street", e.target.value)}
+                  placeholder="Enter Street Address"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Town:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.town}
+                  onChange={(e) => handleInputChange("town", e.target.value)}
+                  placeholder="Enter Town"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Region:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.region}
+                  onChange={(e) => handleInputChange("region", e.target.value)}
+                  placeholder="Enter Region"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Country:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.country}
+                  onChange={(e) => handleInputChange("country", e.target.value)}
+                  placeholder="Enter Country"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Postal Code:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.postalCode}
+                  onChange={(e) =>
+                    handleInputChange("postalCode", e.target.value)
+                  }
+                  placeholder="Enter Postal Code"
+                />
               </div>
             </div>
           </div>
@@ -199,25 +292,49 @@ export default function UserDetailsModal({
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   D.O.B:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) =>
+                    handleInputChange("dateOfBirth", e.target.value)
+                  }
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   ID Type:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.idType}
+                  onChange={(e) => handleInputChange("idType", e.target.value)}
+                  placeholder="Enter ID Type"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   ID Number:
                 </label>
-                <input className="w-full rounded-md p-3 bg-white border border-border" />
+                <input
+                  className="w-full rounded-md p-3 bg-white border border-border"
+                  value={formData.idNumber}
+                  onChange={(e) =>
+                    handleInputChange("idNumber", e.target.value)
+                  }
+                  placeholder="Enter ID Number"
+                />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold mb-1 text-gray-900">
                   Notes:
                 </label>
-                <textarea className="w-full rounded-md p-3 min-h-[56px] bg-white border border-border" />
+                <textarea
+                  className="w-full rounded-md p-3 min-h-[56px] bg-white border border-border"
+                  value={formData.notes}
+                  onChange={(e) => handleInputChange("notes", e.target.value)}
+                  placeholder="Enter any additional notes"
+                />
               </div>
             </div>
           </div>

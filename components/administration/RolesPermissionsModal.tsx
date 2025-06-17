@@ -46,30 +46,46 @@ export default function RolesPermissionsModal({
   );
   const [locationSearch, setLocationSearch] = useState("");
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+  const [allLocationsSelected, setAllLocationsSelected] = useState(false);
 
   useEffect(() => {
     if (open) {
       setRoles(user?.roles || []);
-      setSelectedLocationIds(
-        user?.resourcePermissions?.["gaming-locations"]?.resources || []
-      );
+      const userLocationIds =
+        user?.resourcePermissions?.["gaming-locations"]?.resources || [];
+      setSelectedLocationIds(userLocationIds);
       setPassword("");
       setConfirmPassword("");
+
+      // Check if all locations are selected
+      if (userLocationIds.length > 0 && locations.length > 0) {
+        setAllLocationsSelected(userLocationIds.length === locations.length);
+      } else {
+        setAllLocationsSelected(false);
+      }
     }
-  }, [open, user]);
+  }, [open, user, locations]);
 
   useEffect(() => {
     fetchAllGamingLocations().then((locs) => {
-      setLocations(
-        locs.map((loc) => {
-          let _id = "";
-          if ("id" in loc && typeof loc.id === "string") _id = loc.id;
-          else if ("_id" in loc && typeof loc._id === "string") _id = loc._id;
-          return { _id, name: loc.name };
-        })
-      );
+      const formattedLocs = locs.map((loc) => {
+        let _id = "";
+        if ("id" in loc && typeof loc.id === "string") _id = loc.id;
+        else if ("_id" in loc && typeof loc._id === "string") _id = loc._id;
+        return { _id, name: loc.name };
+      });
+      setLocations(formattedLocs);
+
+      // Check if all locations are selected
+      const userLocationIds =
+        user?.resourcePermissions?.["gaming-locations"]?.resources || [];
+      if (userLocationIds.length > 0 && formattedLocs.length > 0) {
+        setAllLocationsSelected(
+          userLocationIds.length === formattedLocs.length
+        );
+      }
     });
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -94,12 +110,31 @@ export default function RolesPermissionsModal({
 
   const handleLocationSelect = (id: string) => {
     if (!selectedLocationIds.includes(id)) {
-      setSelectedLocationIds([...selectedLocationIds, id]);
+      const newSelectedIds = [...selectedLocationIds, id];
+      setSelectedLocationIds(newSelectedIds);
+
+      // Check if all locations are now selected
+      if (newSelectedIds.length === locations.length) {
+        setAllLocationsSelected(true);
+      }
     }
   };
 
   const handleLocationRemove = (id: string) => {
-    setSelectedLocationIds(selectedLocationIds.filter((locId) => locId !== id));
+    const newSelectedIds = selectedLocationIds.filter((locId) => locId !== id);
+    setSelectedLocationIds(newSelectedIds);
+    setAllLocationsSelected(false);
+  };
+
+  const handleAllLocationsChange = (checked: boolean) => {
+    setAllLocationsSelected(checked);
+    if (checked) {
+      // Select all locations
+      setSelectedLocationIds(locations.map((loc) => loc._id));
+    } else {
+      // Deselect all locations
+      setSelectedLocationIds([]);
+    }
   };
 
   const filteredLocations = locations.filter((loc) =>
@@ -198,6 +233,21 @@ export default function RolesPermissionsModal({
             <h3 className="text-lg font-semibold text-buttonActive text-center mb-2">
               Allowed Locations
             </h3>
+
+            {/* All Locations Checkbox */}
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-buttonActive text-base font-medium">
+                <Checkbox
+                  checked={allLocationsSelected}
+                  onCheckedChange={(checked) =>
+                    handleAllLocationsChange(checked === true)
+                  }
+                  className="border-2 border-buttonActive text-buttonActive focus:ring-buttonActive"
+                />
+                All Locations
+              </label>
+            </div>
+
             <div className="relative mb-2">
               <Input
                 value={locationSearch}
@@ -209,12 +259,18 @@ export default function RolesPermissionsModal({
                 onBlur={() =>
                   setTimeout(() => setLocationDropdownOpen(false), 150)
                 }
-                placeholder="Select Location.."
+                placeholder={
+                  allLocationsSelected
+                    ? "All locations are selected"
+                    : "Select Location.."
+                }
                 className="w-full rounded-md pr-10"
                 autoComplete="off"
+                disabled={allLocationsSelected}
               />
               {/* Dropdown of filtered locations, or all if no search */}
-              {locationDropdownOpen &&
+              {!allLocationsSelected &&
+                locationDropdownOpen &&
                 (filteredLocations.length > 0 || locationSearch === "") && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                     {(locationSearch ? filteredLocations : locations).map(
@@ -237,24 +293,38 @@ export default function RolesPermissionsModal({
                 )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {selectedLocationIds.map((id) => {
-                const loc = locations.find((l) => l._id === id);
-                return loc ? (
-                  <span
-                    key={id}
-                    className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
+              {allLocationsSelected ? (
+                <span className="bg-green-500 text-white rounded-full px-4 py-2 flex items-center text-sm font-medium">
+                  All Locations Selected ({locations.length} locations)
+                  <button
+                    className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                    onClick={() => handleAllLocationsChange(false)}
+                    type="button"
+                    title="Remove all locations"
                   >
-                    {loc.name}
-                    <button
-                      className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
-                      onClick={() => handleLocationRemove(id)}
-                      type="button"
+                    <X className="w-4 h-4" />
+                  </button>
+                </span>
+              ) : (
+                selectedLocationIds.map((id) => {
+                  const loc = locations.find((l) => l._id === id);
+                  return loc ? (
+                    <span
+                      key={id}
+                      className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
                     >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </span>
-                ) : null;
-              })}
+                      {loc.name}
+                      <button
+                        className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                        onClick={() => handleLocationRemove(id)}
+                        type="button"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </span>
+                  ) : null;
+                })
+              )}
             </div>
           </div>
           <div className="flex justify-center mt-4">

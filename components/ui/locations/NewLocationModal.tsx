@@ -16,6 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
+import { getNames } from "country-list";
 
 export const NewLocationModal = () => {
   const { isLocationModalOpen, closeLocationModal } = useLocationStore();
@@ -37,6 +38,8 @@ export const NewLocationModal = () => {
   });
 
   const [loading, setLoading] = useState(false);
+
+  const countryNames = getNames();
 
   // Check if we're on mobile
   useEffect(() => {
@@ -242,13 +245,14 @@ export const NewLocationModal = () => {
                   }
                 >
                   <SelectTrigger className="bg-container border-border">
-                    <SelectValue placeholder="Guyana" />
+                    <SelectValue placeholder="Country" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Guyana">Guyana</SelectItem>
-                    <SelectItem value="Trinidad & Tobago">
-                      Trinidad & Tobago
-                    </SelectItem>
+                    {countryNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -435,11 +439,11 @@ export const NewLocationModal = () => {
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Guyana">Guyana</SelectItem>
-                  <SelectItem value="Trinidad & Tobago">
-                    Trinidad & Tobago
-                  </SelectItem>
-                  <SelectItem value="Barbados">Barbados</SelectItem>
+                  {countryNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

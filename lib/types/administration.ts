@@ -18,7 +18,26 @@ export type User = {
   profilePicture: string | null;
   resourcePermissions?: ResourcePermissions;
   password?: string;
-  // Add any other user-specific fields that might come from an API
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    otherName?: string;
+    gender?: string;
+    address?: {
+      street?: string;
+      town?: string;
+      region?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    identification?: {
+      dateOfBirth?: string;
+      idType?: string;
+      idNumber?: string;
+      notes?: string;
+    };
+  };
 };
 
 export type SortKey = keyof User | null;
@@ -34,22 +53,20 @@ export type UserDetailsModalProps = {
   open: boolean;
   user: User | null;
   onClose: () => void;
-  onSave: (
-    data: Partial<User> & {
-      firstName?: string;
-      lastName?: string;
-      middleName?: string;
-      otherName?: string;
-      gender?: string;
-      street?: string;
-      town?: string;
-      region?: string;
-      country?: string;
-      postalCode?: string;
-      dateOfBirth?: string;
-      idType?: string;
-      idNumber?: string;
-      notes?: string;
-    }
-  ) => void;
+  onSave: (data: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    otherName?: string;
+    gender?: string;
+    street?: string;
+    town?: string;
+    region?: string;
+    country?: string;
+    postalCode?: string;
+    dateOfBirth?: string;
+    idType?: string;
+    idNumber?: string;
+    notes?: string;
+  }) => void;
 };

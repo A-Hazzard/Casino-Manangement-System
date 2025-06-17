@@ -142,7 +142,7 @@ export default function CollectionReportPage() {
           />
           <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-red-600 mb-4">Error: {error}</p>
-            <Link href="/collections" legacyBehavior>
+            <Link href="/collection-report" legacyBehavior>
               <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
                 <ArrowLeft size={18} className="mr-2" />
                 Back to Collections
@@ -169,7 +169,7 @@ export default function CollectionReportPage() {
           />
           <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-gray-700 mb-4">Report not found.</p>
-            <Link href="/collections" legacyBehavior>
+            <Link href="/collection-report" legacyBehavior>
               <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
                 <ArrowLeft size={18} className="mr-2" />
                 Back to Collections
@@ -682,7 +682,7 @@ export default function CollectionReportPage() {
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
           <div className="flex items-center justify-between">
             <Link
-              href="/collections"
+              href="/collection-report"
               className="inline-flex items-center text-buttonActive hover:text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm border border-buttonActive"
             >
               <ArrowLeft size={16} className="mr-2" />

@@ -18,7 +18,37 @@ import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
+  const [urlErrorMessage, setUrlErrorMessage] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    // Check for error messages in the URL
+    const query = new URLSearchParams(window.location.search);
+    const error = query.get("error");
+
+    if (error) {
+      switch (error) {
+        case "server_config":
+          setUrlErrorMessage(
+            "Server configuration error. Please contact support."
+          );
+          break;
+        case "invalid_token":
+          setUrlErrorMessage("Your session has expired. Please log in again.");
+          break;
+        case "unauthorized":
+          setUrlErrorMessage("You are not authorized to access this resource.");
+          break;
+        case "token_expired":
+          setUrlErrorMessage("Your session has expired. Please log in again.");
+          break;
+        default:
+          setUrlErrorMessage("An unexpected error occurred. Please try again.");
+      }
+    }
+  }, []);
+
   if (!isMounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -26,10 +56,15 @@ export default function LoginPage() {
       </div>
     );
   }
-  return <LoginForm />;
+
+  return <LoginForm urlErrorMessage={urlErrorMessage} />;
 }
 
-function LoginForm() {
+type LoginFormProps = {
+  urlErrorMessage: string;
+};
+
+function LoginForm({ urlErrorMessage }: LoginFormProps) {
   const [isForgot, setIsForgot] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
@@ -40,6 +75,7 @@ function LoginForm() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success" | "">("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
   function getFriendlyErrorMessage(errorMsg: string): string {
@@ -98,7 +134,18 @@ function LoginForm() {
       if (response.success) {
         setMessageType("success");
         setMessage("Login successful. Redirecting...");
-        router.push("/");
+        setRedirecting(true);
+
+        // Add a delay to show the success message, then redirect
+        setTimeout(() => {
+          // Try Next.js router first, then fallback to window.location
+          try {
+            router.push("/");
+          } catch (error) {
+            console.warn("Router.push failed, using window.location:", error);
+            window.location.href = "/";
+          }
+        }, 1500); // 1.5 second delay to show success message
       } else {
         setMessageType("error");
         if (response.message) console.error("Login error:", response.message);
@@ -175,6 +222,15 @@ function LoginForm() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {urlErrorMessage && (
+            <div
+              className="mb-4 text-center text-sm font-medium text-destructive"
+              role="alert"
+              aria-live="polite"
+            >
+              {urlErrorMessage}
+            </div>
+          )}
           {message && (
             <div
               className={`mb-4 text-center text-sm font-medium ${
@@ -203,7 +259,7 @@ function LoginForm() {
                 placeholder="you@example.com"
                 value={emailAddress}
                 onChange={(e) => setEmailAddress(e.target.value)}
-                disabled={loading}
+                disabled={loading || redirecting}
                 aria-invalid={!!errors.emailAddress}
                 aria-describedby={
                   errors.emailAddress ? "email-error" : undefined
@@ -228,7 +284,7 @@ function LoginForm() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || redirecting}
                   aria-invalid={!!errors.password}
                   aria-describedby={
                     errors.password ? "password-error" : undefined
@@ -247,11 +303,11 @@ function LoginForm() {
             )}
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || redirecting}
               className="w-full bg-buttonActive text-white hover:bg-button transition-colors mt-2"
-              aria-busy={loading}
+              aria-busy={loading || redirecting}
             >
-              {loading ? (
+              {loading || redirecting ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-white"
@@ -272,7 +328,11 @@ function LoginForm() {
                       d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                     />
                   </svg>
-                  {isForgot ? "Sending..." : "Logging in..."}
+                  {redirecting
+                    ? "Redirecting..."
+                    : isForgot
+                    ? "Sending..."
+                    : "Logging in..."}
                 </span>
               ) : isForgot ? (
                 "Reset Password"
@@ -287,6 +347,7 @@ function LoginForm() {
             type="button"
             variant="link"
             className="text-blueHighlight text-sm p-0 h-auto"
+            disabled={loading || redirecting}
             onClick={() => {
               setIsForgot(!isForgot);
               setMessage("");

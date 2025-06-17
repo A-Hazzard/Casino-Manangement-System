@@ -29,18 +29,25 @@ import UserDetailsModal from "@/components/administration/UserDetailsModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
 import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
-import CountryTable from "@/components/administration/CountryTable";
-import CountryCard from "@/components/administration/CountryCard";
-import AddCountryModal from "@/components/administration/AddCountryModal";
-import EditCountryModal from "@/components/administration/EditCountryModal";
-import DeleteCountryModal from "@/components/administration/DeleteCountryModal";
+import LicenseeTable from "@/components/administration/LicenseeTable";
+import LicenseeCard from "@/components/administration/LicenseeCard";
+import AddLicenseeModal from "@/components/administration/AddLicenseeModal";
+import EditLicenseeModal from "@/components/administration/EditLicenseeModal";
+import DeleteLicenseeModal from "@/components/administration/DeleteLicenseeModal";
 import {
-  fetchCountries,
-  createCountry,
-  updateCountry,
-  deleteCountry,
-} from "@/lib/helpers/countries";
-import type { Country } from "@/lib/types/country";
+  fetchLicensees,
+  createLicensee,
+  updateLicensee,
+  deleteLicensee,
+} from "@/lib/helpers/licensees";
+import type { Licensee } from "@/lib/types/licensee";
+import LicenseeSearchBar from "@/components/administration/LicenseeSearchBar";
+import ActivityLogModal from "@/components/administration/ActivityLogModal";
+import PaymentHistoryModal from "@/components/administration/PaymentHistoryModal";
+import UserActivityLogModal from "@/components/administration/UserActivityLogModal";
+import LicenseeSuccessModal from "@/components/administration/LicenseeSuccessModal";
+import PaymentStatusConfirmModal from "@/components/administration/PaymentStatusConfirmModal";
+import { getNext30Days } from "@/lib/utils/licensee";
 
 type AddUserForm = {
   username?: string;
@@ -55,11 +62,15 @@ type AddUserForm = {
   allowedLocations: string[];
 };
 
-type AddCountryForm = {
+type AddLicenseeForm = {
+  _id?: string;
   name?: string;
-  alpha2?: string;
-  alpha3?: string;
-  isoNumeric?: string;
+  description?: string;
+  country?: string;
+  startDate?: Date | string;
+  expiryDate?: Date | string;
+  prevStartDate?: Date | string;
+  prevExpiryDate?: Date | string;
 };
 
 export default function AdministrationPage() {
@@ -70,7 +81,7 @@ export default function AdministrationPage() {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
-  const [activeSection, setActiveSection] = useState<"users" | "countries">(
+  const [activeSection, setActiveSection] = useState<"users" | "licensees">(
     "users"
   );
   const [searchValue, setSearchValue] = useState("");
@@ -100,14 +111,36 @@ export default function AdministrationPage() {
     roles: [],
     allowedLocations: [],
   });
-  const [allCountries, setAllCountries] = useState<Country[]>([]);
-  const [isCountriesLoading, setIsCountriesLoading] = useState(true);
-  const [isAddCountryModalOpen, setIsAddCountryModalOpen] = useState(false);
-  const [isEditCountryModalOpen, setIsEditCountryModalOpen] = useState(false);
-  const [isDeleteCountryModalOpen, setIsDeleteCountryModalOpen] =
+  const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
+  const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
+  const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
+  const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
+  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
     useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [countryForm, setCountryForm] = useState<AddCountryForm>({});
+  const [selectedLicensee, setSelectedLicensee] = useState<Licensee | null>(
+    null
+  );
+  const [licenseeForm, setLicenseeForm] = useState<AddLicenseeForm>({});
+  const [licenseeSearchValue, setLicenseeSearchValue] = useState("");
+  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
+    useState(false);
+  const [selectedLicenseeForPayment, setSelectedLicenseeForPayment] =
+    useState<Licensee | null>(null);
+  const [isUserActivityLogModalOpen, setIsUserActivityLogModalOpen] =
+    useState(false);
+  const [createdLicensee, setCreatedLicensee] = useState<{
+    name: string;
+    licenseKey: string;
+  } | null>(null);
+  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] =
+    useState(false);
+  const [isPaymentConfirmModalOpen, setIsPaymentConfirmModalOpen] =
+    useState(false);
+  const [
+    selectedLicenseeForPaymentChange,
+    setSelectedLicenseeForPaymentChange,
+  ] = useState<Licensee | null>(null);
 
   const itemsPerPage = 5;
 
@@ -133,14 +166,19 @@ export default function AdministrationPage() {
   }, []);
 
   useEffect(() => {
-    if (activeSection === "countries") {
-      setIsCountriesLoading(true);
-      fetchCountries()
-        .then((data) => setAllCountries(data))
-        .catch(() => setAllCountries([]))
-        .finally(() => setIsCountriesLoading(false));
-    }
-  }, [activeSection]);
+    const loadLicensees = async () => {
+      setIsLicenseesLoading(true);
+      try {
+        const licenseesData = await fetchLicensees();
+        setAllLicensees(licenseesData);
+      } catch (error) {
+        console.error("Failed to fetch licensees:", error);
+        setAllLicensees([]);
+      }
+      setIsLicenseesLoading(false);
+    };
+    loadLicensees();
+  }, []);
 
   const processedUsers = useMemo(() => {
     return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
@@ -279,33 +317,39 @@ export default function AdministrationPage() {
   const handleAddUserFormChange = (data: Partial<AddUserForm>) =>
     setAddUserForm((prev) => ({ ...prev, ...data }));
 
-  const handleOpenAddCountry = () => {
-    setCountryForm({});
-    setIsAddCountryModalOpen(true);
+  const handleOpenAddLicensee = () => {
+    setLicenseeForm({});
+    setIsAddLicenseeModalOpen(true);
   };
-  const handleSaveAddCountry = async () => {
-    if (
-      !countryForm.name ||
-      !countryForm.alpha2 ||
-      !countryForm.alpha3 ||
-      !countryForm.isoNumeric
-    ) {
-      alert("All fields are required");
+  const handleSaveAddLicensee = async () => {
+    if (!licenseeForm.name || !licenseeForm.country) {
+      alert("Name and country are required");
       return;
     }
     try {
-      await createCountry({
-        name: countryForm.name,
-        alpha2: countryForm.alpha2,
-        alpha3: countryForm.alpha3,
-        isoNumeric: countryForm.isoNumeric,
+      const result = await createLicensee({
+        name: licenseeForm.name,
+        description: licenseeForm.description,
+        country: licenseeForm.country,
+        startDate: licenseeForm.startDate,
+        expiryDate: licenseeForm.expiryDate,
       });
-      setIsAddCountryModalOpen(false);
-      setCountryForm({});
-      setIsCountriesLoading(true);
-      const data = await fetchCountries();
-      setAllCountries(data);
-      setIsCountriesLoading(false);
+
+      // Show success modal with license key
+      if (result.licensee && result.licensee.licenseKey) {
+        setCreatedLicensee({
+          name: result.licensee.name,
+          licenseKey: result.licensee.licenseKey,
+        });
+        setIsLicenseeSuccessModalOpen(true);
+      }
+
+      setIsAddLicenseeModalOpen(false);
+      setLicenseeForm({});
+      setIsLicenseesLoading(true);
+      const data = await fetchLicensees();
+      setAllLicensees(data);
+      setIsLicenseesLoading(false);
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -313,34 +357,49 @@ export default function AdministrationPage() {
       alert(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to add country"
+          "Failed to add licensee"
       );
     }
   };
-  const handleOpenEditCountry = (country: Country) => {
-    setSelectedCountry(country);
-    setCountryForm({
-      name: country.name,
-      alpha2: country.alpha2,
-      alpha3: country.alpha3,
-      isoNumeric: country.isoNumeric,
+  const handleOpenEditLicensee = (licensee: Licensee) => {
+    setSelectedLicensee(licensee);
+    setLicenseeForm({
+      _id: licensee._id,
+      name: licensee.name,
+      description: licensee.description,
+      country: licensee.country,
+      startDate: licensee.startDate ? new Date(licensee.startDate) : undefined,
+      expiryDate: licensee.expiryDate
+        ? new Date(licensee.expiryDate)
+        : undefined,
+      prevStartDate: licensee.prevStartDate
+        ? new Date(licensee.prevStartDate)
+        : undefined,
+      prevExpiryDate: licensee.prevExpiryDate
+        ? new Date(licensee.prevExpiryDate)
+        : undefined,
     });
-    setIsEditCountryModalOpen(true);
+    setIsEditLicenseeModalOpen(true);
   };
-  const handleSaveEditCountry = async () => {
+  const handleSaveEditLicensee = async () => {
     try {
-      if (!selectedCountry) return;
-      await updateCountry({
-        ...countryForm,
-        _id: selectedCountry._id,
-      } as Country);
-      setIsEditCountryModalOpen(false);
-      setSelectedCountry(null);
-      setCountryForm({});
-      setIsCountriesLoading(true);
-      const data = await fetchCountries();
-      setAllCountries(data);
-      setIsCountriesLoading(false);
+      if (!selectedLicensee) return;
+
+      // Include the current isPaid value to preserve payment status
+      const updateData = {
+        ...licenseeForm,
+        _id: selectedLicensee._id,
+        isPaid: selectedLicensee.isPaid, // Preserve current payment status
+      };
+
+      await updateLicensee(updateData);
+      setIsEditLicenseeModalOpen(false);
+      setSelectedLicensee(null);
+      setLicenseeForm({});
+      setIsLicenseesLoading(true);
+      const data = await fetchLicensees();
+      setAllLicensees(data);
+      setIsLicenseesLoading(false);
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -348,24 +407,24 @@ export default function AdministrationPage() {
       alert(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to update country"
+          "Failed to update licensee"
       );
     }
   };
-  const handleOpenDeleteCountry = (country: Country) => {
-    setSelectedCountry(country);
-    setIsDeleteCountryModalOpen(true);
+  const handleOpenDeleteLicensee = (licensee: Licensee) => {
+    setSelectedLicensee(licensee);
+    setIsDeleteLicenseeModalOpen(true);
   };
-  const handleDeleteCountry = async () => {
-    if (!selectedCountry) return;
+  const handleDeleteLicensee = async () => {
+    if (!selectedLicensee) return;
     try {
-      await deleteCountry(selectedCountry._id);
-      setIsDeleteCountryModalOpen(false);
-      setSelectedCountry(null);
-      setIsCountriesLoading(true);
-      const data = await fetchCountries();
-      setAllCountries(data);
-      setIsCountriesLoading(false);
+      await deleteLicensee(selectedLicensee._id);
+      setIsDeleteLicenseeModalOpen(false);
+      setSelectedLicensee(null);
+      setIsLicenseesLoading(true);
+      const data = await fetchLicensees();
+      setAllLicensees(data);
+      setIsLicenseesLoading(false);
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -373,65 +432,209 @@ export default function AdministrationPage() {
       alert(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to delete country"
+          "Failed to delete licensee"
       );
     }
   };
 
+  const filteredLicensees = useMemo(() => {
+    if (!licenseeSearchValue) return allLicensees;
+    return allLicensees.filter((licensee) =>
+      licensee.name.toLowerCase().includes(licenseeSearchValue.toLowerCase())
+    );
+  }, [allLicensees, licenseeSearchValue]);
+
+  const paginatedLicensees = useMemo(() => {
+    return filteredLicensees.slice(
+      currentPage * itemsPerPage,
+      (currentPage + 1) * itemsPerPage
+    );
+  }, [filteredLicensees, currentPage, itemsPerPage]);
+
+  const totalLicenseePages = useMemo(() => {
+    return Math.ceil(filteredLicensees.length / itemsPerPage);
+  }, [filteredLicensees, itemsPerPage]);
+
+  const handlePaymentHistory = (licensee: Licensee) => {
+    setSelectedLicenseeForPayment(licensee);
+    setIsPaymentHistoryModalOpen(true);
+  };
+
+  const handleTogglePaymentStatus = (licensee: Licensee) => {
+    setSelectedLicenseeForPaymentChange(licensee);
+    setIsPaymentConfirmModalOpen(true);
+  };
+
+  const handleConfirmPaymentStatusChange = async () => {
+    if (!selectedLicenseeForPaymentChange) return;
+
+    try {
+      // Determine current payment status
+      const currentIsPaid =
+        selectedLicenseeForPaymentChange.isPaid !== undefined
+          ? selectedLicenseeForPaymentChange.isPaid
+          : selectedLicenseeForPaymentChange.expiryDate
+          ? new Date(selectedLicenseeForPaymentChange.expiryDate) > new Date()
+          : false;
+
+      const newIsPaid = !currentIsPaid;
+
+      // Prepare update data
+      const updateData: {
+        _id: string;
+        isPaid: boolean;
+        expiryDate?: Date;
+        prevExpiryDate?: Date;
+      } = {
+        _id: selectedLicenseeForPaymentChange._id,
+        isPaid: newIsPaid,
+      };
+
+      // If changing from unpaid to paid, extend expiry date by 30 days
+      if (!currentIsPaid && newIsPaid) {
+        updateData.prevExpiryDate = selectedLicenseeForPaymentChange.expiryDate
+          ? new Date(selectedLicenseeForPaymentChange.expiryDate)
+          : undefined;
+        updateData.expiryDate = getNext30Days();
+      }
+
+      const response = await fetch("/api/licensees", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.message || "Failed to update payment status");
+        return;
+      }
+
+      // Refresh licensees list
+      setIsLicenseesLoading(true);
+      const data = await fetchLicensees();
+      setAllLicensees(data);
+      setIsLicenseesLoading(false);
+
+      // Close modal
+      setIsPaymentConfirmModalOpen(false);
+      setSelectedLicenseeForPaymentChange(null);
+    } catch (error) {
+      console.error("Failed to update payment status:", error);
+      alert("Failed to update payment status");
+    }
+  };
+
   const renderSectionContent = () => {
-    if (activeSection === "countries") {
-      if (isCountriesLoading) {
+    if (activeSection === "licensees") {
+      if (isLicenseesLoading) {
         return (
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <div className="loader mb-4" />
-            <p className="text-gray-600">Loading countries...</p>
+            <p className="text-gray-600">Loading licensees...</p>
           </div>
         );
       }
       return (
         <>
+          <LicenseeSearchBar
+            searchValue={licenseeSearchValue}
+            setSearchValue={setLicenseeSearchValue}
+            onActivityLogClick={() => setIsActivityLogModalOpen(true)}
+          />
           <div className="block lg:hidden space-y-3 mt-6">
-            {allCountries.length > 0 ? (
-              allCountries.map((country) => (
-                <CountryCard
-                  key={country._id}
-                  country={country}
-                  onEdit={handleOpenEditCountry}
-                  onDelete={handleOpenDeleteCountry}
+            {paginatedLicensees.length > 0 ? (
+              paginatedLicensees.map((licensee) => (
+                <LicenseeCard
+                  key={licensee._id}
+                  licensee={licensee}
+                  onEdit={handleOpenEditLicensee}
+                  onDelete={handleOpenDeleteLicensee}
+                  onPaymentHistory={handlePaymentHistory}
+                  onTogglePaymentStatus={handleTogglePaymentStatus}
                 />
               ))
             ) : (
               <p className="text-center text-gray-500 py-4">
-                No countries found.
+                No licensees found.
               </p>
             )}
           </div>
           <div className="hidden lg:block">
-            <CountryTable
-              countries={allCountries}
-              onEdit={handleOpenEditCountry}
-              onDelete={handleOpenDeleteCountry}
+            <LicenseeTable
+              licensees={paginatedLicensees}
+              onEdit={handleOpenEditLicensee}
+              onDelete={handleOpenDeleteLicensee}
+              onPaymentHistory={handlePaymentHistory}
+              onTogglePaymentStatus={handleTogglePaymentStatus}
             />
           </div>
-          <AddCountryModal
-            open={isAddCountryModalOpen}
-            onClose={() => setIsAddCountryModalOpen(false)}
-            onSave={handleSaveAddCountry}
-            formState={countryForm}
-            setFormState={setCountryForm}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalLicenseePages}
+            setCurrentPage={setCurrentPage}
           />
-          <EditCountryModal
-            open={isEditCountryModalOpen}
-            onClose={() => setIsEditCountryModalOpen(false)}
-            onSave={handleSaveEditCountry}
-            formState={countryForm}
-            setFormState={setCountryForm}
+          <AddLicenseeModal
+            open={isAddLicenseeModalOpen}
+            onClose={() => setIsAddLicenseeModalOpen(false)}
+            onSave={handleSaveAddLicensee}
+            formState={licenseeForm}
+            setFormState={(data) =>
+              setLicenseeForm((prev) => ({ ...prev, ...data }))
+            }
           />
-          <DeleteCountryModal
-            open={isDeleteCountryModalOpen}
-            onClose={() => setIsDeleteCountryModalOpen(false)}
-            onDelete={handleDeleteCountry}
-            country={selectedCountry}
+          <EditLicenseeModal
+            open={isEditLicenseeModalOpen}
+            onClose={() => setIsEditLicenseeModalOpen(false)}
+            onSave={handleSaveEditLicensee}
+            formState={licenseeForm}
+            setFormState={(data) =>
+              setLicenseeForm((prev) => ({ ...prev, ...data }))
+            }
+          />
+          <DeleteLicenseeModal
+            open={isDeleteLicenseeModalOpen}
+            onClose={() => setIsDeleteLicenseeModalOpen(false)}
+            onDelete={handleDeleteLicensee}
+            licensee={selectedLicensee}
+          />
+          <ActivityLogModal
+            open={isActivityLogModalOpen}
+            onClose={() => setIsActivityLogModalOpen(false)}
+          />
+          <PaymentHistoryModal
+            open={isPaymentHistoryModalOpen}
+            onClose={() => {
+              setIsPaymentHistoryModalOpen(false);
+              setSelectedLicenseeForPayment(null);
+            }}
+            licensee={selectedLicenseeForPayment}
+          />
+          <LicenseeSuccessModal
+            open={isLicenseeSuccessModalOpen}
+            onClose={() => {
+              setIsLicenseeSuccessModalOpen(false);
+              setCreatedLicensee(null);
+            }}
+            licensee={createdLicensee}
+          />
+          <PaymentStatusConfirmModal
+            open={isPaymentConfirmModalOpen}
+            onClose={() => {
+              setIsPaymentConfirmModalOpen(false);
+              setSelectedLicenseeForPaymentChange(null);
+            }}
+            onConfirm={handleConfirmPaymentStatusChange}
+            currentStatus={
+              selectedLicenseeForPaymentChange?.isPaid !== undefined
+                ? selectedLicenseeForPaymentChange.isPaid
+                : selectedLicenseeForPaymentChange?.expiryDate
+                ? new Date(selectedLicenseeForPaymentChange.expiryDate) >
+                  new Date()
+                : false
+            }
+            licenseeName={selectedLicenseeForPaymentChange?.name || ""}
+            currentExpiryDate={selectedLicenseeForPaymentChange?.expiryDate}
           />
         </>
       );
@@ -464,6 +667,7 @@ export default function AdministrationPage() {
           setFilterDropdownOpen={setFilterDropdownOpen}
           sortConfig={sortConfig}
           requestSort={requestSort}
+          onActivityLogClick={() => setIsUserActivityLogModalOpen(true)}
         />
         <div className="block lg:hidden md:block space-y-3 mt-4">
           {paginatedUsers.length > 0 ? (
@@ -549,9 +753,36 @@ export default function AdministrationPage() {
             setIsUserDetailsModalOpen(false);
             setSelectedUserForDetails(null);
           }}
-          onSave={() => {
-            setIsUserDetailsModalOpen(false);
-            setSelectedUserForDetails(null);
+          onSave={async (profileData) => {
+            if (!selectedUserForDetails) return;
+            try {
+              // Call the API to update user profile
+              const response = await fetch("/api/users", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  _id: selectedUserForDetails._id,
+                  ...profileData,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                alert(errorData.message || "Failed to update user profile");
+                return;
+              }
+
+              // Close modal and refresh users
+              setIsUserDetailsModalOpen(false);
+              setSelectedUserForDetails(null);
+
+              // Refresh users list
+              const usersData = await fetchUsers();
+              setAllUsers(usersData);
+            } catch (error) {
+              console.error("Failed to update user profile:", error);
+              alert("Failed to update user profile");
+            }
           }}
         />
         <AddUserDetailsModal
@@ -568,6 +799,10 @@ export default function AdministrationPage() {
           onSave={handleAddUserSave}
           formState={addUserForm}
           setFormState={handleAddUserFormChange}
+        />
+        <UserActivityLogModal
+          open={isUserActivityLogModalOpen}
+          onClose={() => setIsUserActivityLogModalOpen(false)}
         />
       </>
     );
@@ -618,7 +853,7 @@ export default function AdministrationPage() {
                       height={20}
                       alt="Add"
                       className="cursor-pointer ml-2"
-                      onClick={handleOpenAddCountry}
+                      onClick={handleOpenAddLicensee}
                     />
                   )}
                 </div>
@@ -649,7 +884,7 @@ export default function AdministrationPage() {
                   </Button>
                 ) : (
                   <Button
-                    onClick={handleOpenAddCountry}
+                    onClick={handleOpenAddLicensee}
                     className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
                   >
                     <Image
@@ -658,21 +893,25 @@ export default function AdministrationPage() {
                       height={16}
                       alt="Add"
                     />
-                    <span>Add Country</span>
+                    <span>Add Licensee</span>
                   </Button>
                 )}
               </>
             )}
           </div>
 
-          <div className={`mt-6 ${isMobile ? "w-full" : "flex gap-4"}`}>
+          <div
+            className={`mt-6 ${
+              isMobile ? "w-full" : "flex gap-3 justify-start"
+            }`}
+          >
             {isMobile ? (
               <div className="relative w-full">
                 <button
                   className="w-full bg-buttonActive text-white rounded-lg px-4 py-3 font-bold text-lg flex justify-between items-center"
                   onClick={() => setMobileSectionDropdownOpen((o) => !o)}
                 >
-                  {activeSection === "users" ? "Users" : "Countries"}
+                  {activeSection === "users" ? "Users" : "Licensees"}
                   <ChevronDownIcon
                     className={`w-5 h-5 transition-transform ${
                       mobileSectionDropdownOpen ? "rotate-180" : ""
@@ -697,17 +936,17 @@ export default function AdministrationPage() {
                     </button>
                     <button
                       className={`block w-full text-left px-4 py-3 text-lg hover:bg-gray-100 ${
-                        activeSection === "countries"
+                        activeSection === "licensees"
                           ? "font-semibold text-buttonActive"
                           : "text-gray-700"
                       }`}
                       onClick={() => {
-                        setActiveSection("countries");
+                        setActiveSection("licensees");
                         setMobileSectionDropdownOpen(false);
                         setCurrentPage(0);
                       }}
                     >
-                      Countries
+                      Licensees
                     </button>
                   </div>
                 )}
@@ -715,7 +954,7 @@ export default function AdministrationPage() {
             ) : (
               <>
                 <Button
-                  className={`flex-1 py-3 text-lg ${
+                  className={`px-6 py-2 text-sm font-medium ${
                     activeSection === "users"
                       ? "bg-buttonActive text-white"
                       : "bg-button text-white"
@@ -728,17 +967,17 @@ export default function AdministrationPage() {
                   Users
                 </Button>
                 <Button
-                  className={`flex-1 py-3 text-lg ${
-                    activeSection === "countries"
+                  className={`px-6 py-2 text-sm font-medium ${
+                    activeSection === "licensees"
                       ? "bg-buttonActive text-white"
                       : "bg-button text-white"
                   }`}
                   onClick={() => {
-                    setActiveSection("countries");
+                    setActiveSection("licensees");
                     setCurrentPage(0);
                   }}
                 >
-                  Countries
+                  Licensees
                 </Button>
               </>
             )}

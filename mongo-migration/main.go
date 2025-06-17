@@ -72,6 +72,7 @@ func main() {
 		"meters",
 		"schedulers",
 		"licencees",
+		"movementrequests",
 	}
 
 	var wg sync.WaitGroup

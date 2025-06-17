@@ -19,5 +19,5 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
 
 export async function getUserIdFromServer(): Promise<string | null> {
   const user: JWTPayload | null = await getUserFromServer();
-  return user ? (user.userId as string) : null;
+  return user ? (user._id as string) : null;
 }

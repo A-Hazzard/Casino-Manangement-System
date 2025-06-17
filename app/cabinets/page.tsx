@@ -36,6 +36,7 @@ import SMIBManagement from "./SMIBManagement";
 import MovementRequests from "./MovementRequests";
 import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
 import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
+import SMIBFirmwareSection from "@/components/ui/firmware/SMIBFirmwareSection";
 
 export default function CabinetsPage() {
   const {
@@ -89,7 +90,7 @@ export default function CabinetsPage() {
 
   // Section navigation state
   const [activeSection, setActiveSection] = useState<
-    "cabinets" | "smib" | "movement"
+    "cabinets" | "smib" | "movement" | "firmware"
   >("cabinets");
 
   const loadLocations = useCallback(async () => {
@@ -359,7 +360,7 @@ export default function CabinetsPage() {
                 className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
               />
             </div>
-            {/* Add New Cabinet button (desktop only, only on cabinets tab) */}
+            {/* Add New Cabinet button (desktop only, only on certain tabs) */}
             {(activeSection === "cabinets" || activeSection === "movement") && (
               <Button
                 onClick={() => {
@@ -396,7 +397,9 @@ export default function CabinetsPage() {
                     openUploadSmibDataModal();
                     e.target.value = activeSection;
                   } else {
-                    setActiveSection(value as "cabinets" | "smib" | "movement");
+                    setActiveSection(
+                      value as "cabinets" | "smib" | "movement" | "firmware"
+                    );
                   }
                 }}
               >
@@ -406,10 +409,7 @@ export default function CabinetsPage() {
                   SMIB Management
                 </option>
                 <option value="movement">Movement Requests</option>
-                {/* Hidden for future use - Firmware Management */}
-                <option value="firmware_trigger" className="hidden">
-                  Firmware Management
-                </option>
+                <option value="firmware">SMIB Firmware</option>
               </select>
             </div>
             {/* Desktop: Button bar */}
@@ -445,12 +445,15 @@ export default function CabinetsPage() {
               >
                 Movement Requests
               </Button>
-              {/* Hidden for future use - Firmware Management */}
               <Button
-                className={`hidden px-6 py-2 font-semibold bg-button text-white hover:bg-button/90`}
-                onClick={openUploadSmibDataModal}
+                className={`px-6 py-2 font-semibold ${
+                  activeSection === "firmware"
+                    ? "bg-buttonActive text-white"
+                    : "bg-button text-white hover:bg-button/90"
+                }`}
+                onClick={() => setActiveSection("firmware")}
               >
-                Firmware Management
+                SMIB Firmware
               </Button>
             </div>
           </div>
@@ -788,8 +791,8 @@ export default function CabinetsPage() {
             <SMIBManagement />
           ) : activeSection === "movement" ? (
             <MovementRequests locations={locations} />
-          ) : activeSection === "cabinets" ? (
-            <>{/* Cabinets content duplicate for safety, review this logic*/}</>
+          ) : activeSection === "firmware" ? (
+            <SMIBFirmwareSection />
           ) : (
             <SMIBManagement />
           )}
