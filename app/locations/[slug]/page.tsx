@@ -301,8 +301,9 @@ export default function LocationPage() {
             <div className="hidden md:block">
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={refreshing}
+                isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
               />
             </div>
           </div>
@@ -434,8 +435,9 @@ export default function LocationPage() {
 
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={refreshing}
+                isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
                 size="sm"
                 className="px-3"
               />

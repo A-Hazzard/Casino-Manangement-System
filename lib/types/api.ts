@@ -1,80 +1,21 @@
-import { Types } from "mongoose";
 import type { Document } from "mongoose";
 import type { CollectionReportMachineEntry } from "./collections";
+import type { MongooseId } from "@shared/types";
 
-// Generic MongoDB types
-export type MongooseId = string | Types.ObjectId;
-
-// MongoDB stages for aggregation pipelines
-export type MongoMatchStage = {
-  _id?: MongooseId | { $in: MongooseId[] };
-  deletedAt?: { $in: (Date | null)[] };
-};
-
-// Database model related types
-export type WithTimestamps = {
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
-};
-
-// Common API response types
-export type ApiResponse<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-};
-
-// Date range type for filtering
-export type DateRange = {
-  start: Date;
-  end: Date;
-};
-
-// Helper type for MongoDB filtering
-export type RegexFilter = {
-  $regex: string;
-  $options: string;
-};
-
-// Helper type for getting multiple date ranges
-export type TimePeriod =
-  | "Today"
-  | "Yesterday"
-  | "last7days"
-  | "7d"
-  | "last30days"
-  | "30d"
-  | "Custom";
-
-// Add PipelineStage type
-export type PipelineStage = {
-  [key: string]: unknown;
-};
-
-// Add QueryFilter from app/api/lib/types/index.ts
-export type QueryFilter = {
-  userId?: string;
-  location?: string;
-  machine?: string;
-  readAt?: {
-    $gte: Date;
-    $lte: Date;
-  };
-};
-
-// Add ParamsType from app/api/lib/types/index.ts
-export type ApiParamsType = {
-  timePeriod: "Today" | "Yesterday" | "7d" | "30d" | "Custom";
-  licencee: string;
-};
-
-// Add CustomDate from app/api/lib/types/index.ts
-export type CustomDate = {
-  startDate: Date;
-  endDate: Date;
-};
+// Re-export shared types for convenience
+export type {
+  MongooseId,
+  MongoMatchStage,
+  WithTimestamps,
+  ApiResponse,
+  DateRange,
+  RegexFilter,
+  TimePeriod,
+  PipelineStage,
+  QueryFilter,
+  ApiParamsType,
+  CustomDate,
+} from "@shared/types";
 
 export type AcceptedBill = {
   _id: string;

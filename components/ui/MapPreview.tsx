@@ -205,6 +205,8 @@ export default function MapPreview(props: MapPreviewProps) {
     <>
       {/* Small Map Preview */}
       <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Map Preview</h3>
+
         <button
           className="absolute top-8 right-5 z-[1000] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
           onClick={() => setIsModalOpen(true)}
@@ -245,6 +247,9 @@ export default function MapPreview(props: MapPreviewProps) {
             ref={modalRef}
             className="relative bg-white rounded-lg shadow-lg w-[90vw] max-w-5xl p-4"
           >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Casino Locations Map
+            </h3>
             <button
               className="absolute top-3 right-3 p-2 bg-gray-200 rounded-full shadow-md hover:scale-110 transition-all duration-200 ease-in-out z-[1000]"
               onClick={closeModal}

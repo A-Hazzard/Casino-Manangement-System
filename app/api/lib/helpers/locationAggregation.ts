@@ -1,7 +1,7 @@
 import { Db, Filter, Document } from "mongodb";
 import {
   AggregatedLocation,
-  DateRange,
+  LocationDateRange,
   LocationFilter,
   GamingLocation,
 } from "@/lib/types/location";
@@ -19,7 +19,7 @@ import {
  */
 export const getLocationsWithMetrics = async (
   db: Db,
-  { startDate, endDate }: DateRange,
+  { startDate, endDate }: LocationDateRange,
   includeAllLocations = true,
   licencee?: string,
   machineTypeFilter?: LocationFilter

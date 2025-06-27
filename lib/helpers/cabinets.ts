@@ -140,37 +140,19 @@ export const createCabinet = async (
   data: NewCabinetFormData | CabinetFormData
 ) => {
   try {
-    // Check if data is of type NewCabinetFormData (from the new cabinet form)
+    let apiData;
+    let endpoint = "/api/machines";
+
     if ("serialNumber" in data) {
-      // Check if we have a specific location ID
+      apiData = data;
       if (
         data.gamingLocation &&
         mongoose.Types.ObjectId.isValid(data.gamingLocation)
       ) {
-        // Use the location-specific endpoint
-        const response = await axios.post(
-          `/api/locations/${data.gamingLocation}/cabinets`,
-          data
-        );
-
-        if (response.data && response.data.success) {
-          return response.data.data;
-        }
-
-        throw new Error("Failed to create cabinet for location");
-      } else {
-        // Use the general endpoint
-        const response = await axios.post("/api/machines", data);
-
-        if (response.data && response.data.success) {
-          return response.data.data;
-        }
-
-        throw new Error("Failed to create cabinet");
+        endpoint = `/api/locations/${data.gamingLocation}/cabinets`;
       }
     } else {
-      // It's CabinetFormData, convert it to the format expected by the API
-      const convertedData = {
+      apiData = {
         serialNumber: data.assetNumber,
         game: data.installedGame,
         gameType: "",
@@ -187,30 +169,18 @@ export const createCabinet = async (
         },
       };
 
-      // Check if we have a specific location ID
       if (data.location && mongoose.Types.ObjectId.isValid(data.location)) {
-        // Use the location-specific endpoint
-        const response = await axios.post(
-          `/api/locations/${data.location}/cabinets`,
-          convertedData
-        );
-
-        if (response.data && response.data.success) {
-          return response.data.data;
-        }
-
-        throw new Error("Failed to create cabinet for location");
-      } else {
-        // Use the general endpoint
-        const response = await axios.post("/api/machines", convertedData);
-
-        if (response.data && response.data.success) {
-          return response.data.data;
-        }
-
-        throw new Error("Failed to create cabinet");
+        endpoint = `/api/locations/${data.location}/cabinets`;
       }
     }
+
+    const response = await axios.post(endpoint, apiData);
+
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+
+    throw new Error("Failed to create cabinet");
   } catch (error) {
     console.error("Error creating cabinet:", error);
     throw error;

@@ -4,17 +4,20 @@ import Header from "@/components/layout/Header";
 import MobileLayout from "@/components/layout/MobileLayout";
 import PcLayout from "@/components/layout/PcLayout";
 import Sidebar from "@/components/layout/Sidebar";
-import { RADIAN } from "@/lib/constants/uiConstants";
-import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import { dashboardData } from "@/lib/types";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import { switchFilter } from "@/lib/utils/metrics";
 import { useCallback, useEffect, useRef } from "react";
-import getAllGamingLocations from "@/lib/helpers/locations";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import {
+  renderCustomizedLabel,
+  loadGamingLocations,
+  fetchMetricsData,
+  fetchTopPerformingDataHelper,
+  handleDashboardRefresh,
+  getTimeFilterButtons,
+} from "@/lib/helpers/dashboard";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -61,76 +64,24 @@ function DashboardContent() {
   // To prevent double fetch on initial load
   const hasFetchedOnce = useRef(false);
 
-  // Memoized custom label for Chart.
-  const renderCustomizedLabel = useCallback((props: CustomizedLabelProps) => {
-    const radius =
-      props.innerRadius + (props.outerRadius - props.innerRadius) * 0.7;
-    const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-    const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={props.percent < 0.1 ? "12px" : "14px"}
-        fontWeight="bold"
-      >
-        {(props.percent * 100).toFixed(0)}%
-      </text>
-    );
-  }, []);
-
-  // Replace with a single useEffect:
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoadingChartData(true);
       try {
-        // On initial load, fetch locations only ONCE.
         if (!hasFetchedOnce.current) {
-          const locationsData = await getAllGamingLocations();
-          const validLocations = locationsData.filter(
-            (loc) =>
-              loc.geoCoords &&
-              loc.geoCoords.latitude !== 0 &&
-              loc.geoCoords.longitude !== 0
-          );
-          setGamingLocations(validLocations);
+          await loadGamingLocations(setGamingLocations);
           hasFetchedOnce.current = true;
         }
-        // Fetch metrics
-        if (selectedLicencee) {
-          await switchFilter(
-            activeMetricsFilter,
-            setTotals,
-            setChartData,
-            activeMetricsFilter === "Custom"
-              ? customDateRange.startDate
-              : undefined,
-            activeMetricsFilter === "Custom"
-              ? customDateRange.endDate
-              : undefined,
-            selectedLicencee,
-            setActiveFilters,
-            setShowDatePicker
-          );
-        } else {
-          await switchFilter(
-            activeMetricsFilter,
-            setTotals,
-            setChartData,
-            activeMetricsFilter === "Custom"
-              ? customDateRange.startDate
-              : undefined,
-            activeMetricsFilter === "Custom"
-              ? customDateRange.endDate
-              : undefined,
-            undefined,
-            setActiveFilters,
-            setShowDatePicker
-          );
-        }
+
+        await fetchMetricsData(
+          activeMetricsFilter,
+          customDateRange,
+          selectedLicencee,
+          setTotals,
+          setChartData,
+          setActiveFilters,
+          setShowDatePicker
+        );
       } catch (error) {
         console.error("Error fetching metrics:", error);
       } finally {
@@ -153,18 +104,16 @@ function DashboardContent() {
   // Top Performing: Fetch top performing data separately.
   useEffect(() => {
     let isMounted = true;
-    setLoadingTopPerforming(true);
-    fetchTopPerformingData(activeTab, activePieChartFilter)
-      .then((data) => {
-        if (isMounted) setTopPerformingData(data);
-      })
-      .catch((error) => {
-        if (isMounted)
-          console.error("Error fetching top-performing data:", error);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingTopPerforming(false);
-      });
+    fetchTopPerformingDataHelper(
+      activeTab,
+      activePieChartFilter,
+      setTopPerformingData,
+      setLoadingTopPerforming
+    ).catch((error) => {
+      if (isMounted)
+        console.error("Error fetching top-performing data:", error);
+    });
+
     return () => {
       isMounted = false;
     };
@@ -191,57 +140,21 @@ function DashboardContent() {
 
   // Handle refresh functionality
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setLoadingChartData(true);
-    setLoadingTopPerforming(true);
-
-    try {
-      // Fetch metrics
-      if (selectedLicencee) {
-        await switchFilter(
-          activeMetricsFilter,
-          setTotals,
-          setChartData,
-          activeMetricsFilter === "Custom"
-            ? customDateRange.startDate
-            : undefined,
-          activeMetricsFilter === "Custom"
-            ? customDateRange.endDate
-            : undefined,
-          selectedLicencee,
-          setActiveFilters,
-          setShowDatePicker
-        );
-      } else {
-        await switchFilter(
-          activeMetricsFilter,
-          setTotals,
-          setChartData,
-          activeMetricsFilter === "Custom"
-            ? customDateRange.startDate
-            : undefined,
-          activeMetricsFilter === "Custom"
-            ? customDateRange.endDate
-            : undefined,
-          undefined,
-          setActiveFilters,
-          setShowDatePicker
-        );
-      }
-
-      // Fetch top performing data
-      const topPerformingDataResult = await fetchTopPerformingData(
-        activeTab,
-        activePieChartFilter
-      );
-      setTopPerformingData(topPerformingDataResult);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setRefreshing(false);
-      setLoadingChartData(false);
-      setLoadingTopPerforming(false);
-    }
+    await handleDashboardRefresh(
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      activeTab,
+      activePieChartFilter,
+      setRefreshing,
+      setLoadingChartData,
+      setLoadingTopPerforming,
+      setTotals,
+      setChartData,
+      setActiveFilters,
+      setShowDatePicker,
+      setTopPerformingData
+    );
   }, [
     activeMetricsFilter,
     customDateRange,
@@ -257,6 +170,8 @@ function DashboardContent() {
     setShowDatePicker,
     setTopPerformingData,
   ]);
+
+  const timeFilterButtons = getTimeFilterButtons();
 
   return (
     <>
@@ -282,13 +197,7 @@ function DashboardContent() {
           </div>
           {/* Date Filter Controls (Desktop) */}
           <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap justify-start mt-2">
-            {[
-              { label: "Today", value: "Today" as TimePeriod },
-              { label: "Yesterday", value: "Yesterday" as TimePeriod },
-              { label: "Last 7 days", value: "7d" as TimePeriod },
-              { label: "30 days", value: "30d" as TimePeriod },
-              { label: "Custom", value: "Custom" as TimePeriod },
-            ].map((filter) => (
+            {timeFilterButtons.map((filter) => (
               <button
                 key={filter.label}
                 className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
@@ -324,11 +233,11 @@ function DashboardContent() {
               }
               disabled={loadingChartData || refreshing}
             >
-              <option value="Today">Today</option>
-              <option value="Yesterday">Yesterday</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">30 days</option>
-              <option value="Custom">Custom</option>
+              {timeFilterButtons.map((filter) => (
+                <option key={filter.value} value={filter.value}>
+                  {filter.label}
+                </option>
+              ))}
             </select>
           </div>
 

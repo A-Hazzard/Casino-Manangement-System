@@ -37,6 +37,7 @@ import MovementRequests from "./MovementRequests";
 import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
 import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
 import SMIBFirmwareSection from "@/components/ui/firmware/SMIBFirmwareSection";
+import { Toaster } from "sonner";
 
 export default function CabinetsPage() {
   const {
@@ -489,7 +490,7 @@ export default function CabinetsPage() {
             <div className="ml-8">
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={refreshing}
+                isSyncing={refreshing}
                 disabled={loading}
               />
             </div>
@@ -592,8 +593,9 @@ export default function CabinetsPage() {
                   <div className="flex items-center w-full sm:w-auto">
                     <RefreshButton
                       onClick={handleRefresh}
-                      isRefreshing={refreshing}
+                      isSyncing={refreshing}
                       className="bg-buttonActive text-white rounded-full p-2 ml-2 w-full sm:w-auto hover:bg-buttonActive/90"
+                      label="Refresh"
                     />
                   </div>
                 )}
@@ -798,6 +800,7 @@ export default function CabinetsPage() {
           )}
         </main>
       </div>
+      <Toaster position="top-right" richColors />
     </>
   );
 }

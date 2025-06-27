@@ -3,121 +3,36 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { loginUser, sendForgotPasswordEmail } from "@/lib/helpers/auth";
+import { loginUser } from "@/lib/helpers/auth";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import LiquidGradient from "@/components/ui/LiquidGradient";
+import LoginForm from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
-  const [urlErrorMessage, setUrlErrorMessage] = useState("");
-
-  useEffect(() => {
-    setIsMounted(true);
-
-    // Check for error messages in the URL
-    const query = new URLSearchParams(window.location.search);
-    const error = query.get("error");
-
-    if (error) {
-      switch (error) {
-        case "server_config":
-          setUrlErrorMessage(
-            "Server configuration error. Please contact support."
-          );
-          break;
-        case "invalid_token":
-          setUrlErrorMessage("Your session has expired. Please log in again.");
-          break;
-        case "unauthorized":
-          setUrlErrorMessage("You are not authorized to access this resource.");
-          break;
-        case "token_expired":
-          setUrlErrorMessage("Your session has expired. Please log in again.");
-          break;
-        default:
-          setUrlErrorMessage("An unexpected error occurred. Please try again.");
-      }
-    }
-  }, []);
-
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p>Loading login...</p>
-      </div>
-    );
-  }
-
-  return <LoginForm urlErrorMessage={urlErrorMessage} />;
-}
-
-type LoginFormProps = {
-  urlErrorMessage: string;
-};
-
-function LoginForm({ urlErrorMessage }: LoginFormProps) {
-  const [isForgot, setIsForgot] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{
-    emailAddress?: string;
-    password?: string;
-  }>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {}
+  );
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success" | "">("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
-  function getFriendlyErrorMessage(errorMsg: string): string {
-    if (!errorMsg) return "An unexpected error occurred. Please try again.";
-    if (errorMsg.includes("401"))
-      return "Your session has expired or you are not authorized. Please log in again.";
-    if (errorMsg.includes("403"))
-      return "You are not authorized to access this resource.";
-    if (errorMsg.includes("500"))
-      return "A server error occurred. Please try again later.";
-    if (errorMsg.toLowerCase().includes("network"))
-      return "Unable to connect. Please check your internet connection.";
-    if (errorMsg.toLowerCase().includes("credential"))
-      return "Invalid email or password. Please try again.";
-    if (errorMsg.toLowerCase().includes("user not found"))
-      return "No account found with this email address.";
-    if (errorMsg.toLowerCase().includes("invalid"))
-      return "Invalid email or password. Please try again.";
-    return "An error occurred. Please try again.";
-  }
-
-  // Type guard to check if error has a message property
-  function hasErrorMessage(error: unknown): error is { message: string } {
-    return (
-      error !== null &&
-      typeof error === "object" &&
-      "message" in error &&
-      typeof (error as { message: unknown }).message === "string"
-    );
-  }
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    setMessage("");
-    setMessageType("");
     let valid = true;
-    if (!validateEmail(emailAddress)) {
-      setErrors((prev) => ({
-        ...prev,
-        emailAddress: "Invalid email address.",
-      }));
+    if (!validateEmail(email)) {
+      setErrors((prev) => ({ ...prev, email: "Invalid email address." }));
       valid = false;
     }
     if (!validatePassword(password)) {
@@ -130,237 +45,89 @@ function LoginForm({ urlErrorMessage }: LoginFormProps) {
     if (!valid) return;
     setLoading(true);
     try {
-      const response = await loginUser({ emailAddress, password });
+      const response = await loginUser({ emailAddress: email, password });
       if (response.success) {
-        setMessageType("success");
-        setMessage("Login successful. Redirecting...");
+        toast.success("Login successful. Redirecting...");
         setRedirecting(true);
-
-        // Add a delay to show the success message, then redirect
-        setTimeout(() => {
-          // Try Next.js router first, then fallback to window.location
-          try {
-            router.push("/");
-          } catch (error) {
-            console.warn("Router.push failed, using window.location:", error);
-            window.location.href = "/";
-          }
-        }, 1500); // 1.5 second delay to show success message
+        router.push("/");
       } else {
+        const backendMsg =
+          response.message || "Invalid email or password. Please try again.";
+        setMessage(backendMsg);
         setMessageType("error");
-        if (response.message) console.error("Login error:", response.message);
-        setMessage(getFriendlyErrorMessage(response.message));
+        toast.error(backendMsg);
       }
-    } catch (error: unknown) {
+    } catch {
+      const fallbackMsg = "An unexpected error occurred. Please try again.";
+      setMessage(fallbackMsg);
       setMessageType("error");
-      if (hasErrorMessage(error)) {
-        console.error("Login error:", error.message);
-        setMessage(getFriendlyErrorMessage(error.message));
-      } else {
-        console.error("Login error:", error);
-        setMessage(getFriendlyErrorMessage(""));
-      }
+      toast.error(fallbackMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-    setMessage("");
-    setMessageType("");
-    if (!validateEmail(emailAddress)) {
-      setErrors((prev) => ({
-        ...prev,
-        emailAddress: "Invalid email address.",
-      }));
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await sendForgotPasswordEmail({ emailAddress });
-      if (response.success) {
-        setMessageType("success");
-        setMessage("Password reset instructions have been sent to your email.");
-      } else {
-        setMessageType("error");
-        if (response.message)
-          console.error("Forgot password error:", response.message);
-        setMessage(getFriendlyErrorMessage(response.message));
-      }
-    } catch (error: unknown) {
-      setMessageType("error");
-      if (hasErrorMessage(error)) {
-        console.error("Forgot password error:", error.message);
-        setMessage(getFriendlyErrorMessage(error.message));
-      } else {
-        console.error("Forgot password error:", error);
-        setMessage(getFriendlyErrorMessage(""));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p>Loading login...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md shadow-2xl border border-gray-200">
-        <CardHeader className="flex flex-col items-center gap-2 pb-2">
-          <Image
-            src="/EOS_Logo.png"
-            alt="Evolution One Solutions Logo"
-            width={120}
-            height={60}
-            className="mb-2"
-            priority
-          />
-          <CardTitle className="text-center text-2xl font-bold text-buttonActive">
-            {isForgot
-              ? "Forgot Password"
-              : "Evolution One Solutions Casino Management System"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {urlErrorMessage && (
-            <div
-              className="mb-4 text-center text-sm font-medium text-destructive"
-              role="alert"
-              aria-live="polite"
-            >
-              {urlErrorMessage}
-            </div>
-          )}
-          {message && (
-            <div
-              className={`mb-4 text-center text-sm font-medium ${
-                messageType === "error"
-                  ? "text-destructive"
-                  : "text-greenHighlight"
-              }`}
-              role="alert"
-              aria-live="polite"
-            >
-              {message}
-            </div>
-          )}
-          <form
-            onSubmit={isForgot ? handleForgotPassword : handleLogin}
-            className="space-y-4"
-          >
-            <div>
-              <Label htmlFor="email" className="text-grayHighlight">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                placeholder="you@example.com"
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-                disabled={loading || redirecting}
-                aria-invalid={!!errors.emailAddress}
-                aria-describedby={
-                  errors.emailAddress ? "email-error" : undefined
-                }
-                className="mt-1"
-              />
-              {errors.emailAddress && (
-                <p className="text-destructive text-xs mt-1" id="email-error">
-                  {errors.emailAddress}
-                </p>
-              )}
-            </div>
-            {!isForgot && (
-              <div>
-                <Label htmlFor="password" className="text-grayHighlight">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading || redirecting}
-                  aria-invalid={!!errors.password}
-                  aria-describedby={
-                    errors.password ? "password-error" : undefined
-                  }
-                  className="mt-1"
+    <>
+      <LiquidGradient />
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
+        <div className="w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl bg-white">
+          <div className="flex flex-col md:flex-row">
+            <div className="w-full md:w-1/2 p-12">
+              <div className="mx-auto w-full max-w-sm">
+                <div className="text-center">
+                  <Image
+                    src="/EOS_Logo.png"
+                    alt="Evolution One Solutions Logo"
+                    width={150}
+                    height={75}
+                    className="mb-6 inline-block"
+                  />
+                </div>
+                <LoginForm
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  showPassword={showPassword}
+                  setShowPassword={setShowPassword}
+                  errors={errors}
+                  message={message}
+                  messageType={messageType}
+                  loading={loading}
+                  redirecting={redirecting}
+                  handleLogin={handleLogin}
+                  setErrors={setErrors}
+                  setMessage={setMessage}
+                  setMessageType={setMessageType}
                 />
-                {errors.password && (
-                  <p
-                    className="text-destructive text-xs mt-1"
-                    id="password-error"
-                  >
-                    {errors.password}
-                  </p>
-                )}
               </div>
-            )}
-            <Button
-              type="submit"
-              disabled={loading || redirecting}
-              className="w-full bg-buttonActive text-white hover:bg-button transition-colors mt-2"
-              aria-busy={loading || redirecting}
-            >
-              {loading || redirecting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    />
-                  </svg>
-                  {redirecting
-                    ? "Redirecting..."
-                    : isForgot
-                    ? "Sending..."
-                    : "Logging in..."}
-                </span>
-              ) : isForgot ? (
-                "Reset Password"
-              ) : (
-                "Login"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-2 items-center">
-          <Button
-            type="button"
-            variant="link"
-            className="text-blueHighlight text-sm p-0 h-auto"
-            disabled={loading || redirecting}
-            onClick={() => {
-              setIsForgot(!isForgot);
-              setMessage("");
-              setMessageType("");
-              setErrors({});
-              setPassword("");
-            }}
-            tabIndex={0}
-          >
-            {isForgot ? "Back to Login" : "Forgot Password?"}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+            </div>
+            <div className="relative w-full md:w-1/2 min-h-[250px] md:min-h-0">
+              <Image
+                src="/slotMachine.png"
+                alt="Casino Slot Machine"
+                layout="fill"
+                objectFit="cover"
+              />
+              <div className="absolute inset-0" />
+              <div className="absolute bottom-10 left-10 pr-4">
+                <h2 className="text-2xl font-bold text-white whitespace-nowrap">
+                  Casino Management System
+                </h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

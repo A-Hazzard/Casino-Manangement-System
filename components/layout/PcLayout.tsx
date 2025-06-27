@@ -13,7 +13,8 @@ import StatCardSkeleton, {
 } from "@/components/ui/SkeletonLoader";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import Chart from "@/components/ui/dashboard/Chart";
-import RefreshButton from "@/components/ui/RefreshButton";
+import { RefreshCw } from "lucide-react";
+import OnlineOfflineIndicator from "@/components/ui/OnlineOfflineIndicator";
 
 dayjs.extend(customParseFormat);
 
@@ -38,22 +39,37 @@ export default function PcLayout(props: PcLayoutProps) {
             />
           )}
 
-          <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 mb-2">
             <h2 className="text-lg">Total for all Locations and Machines</h2>
-            <RefreshButton
-              onClick={props.onRefresh}
-              isRefreshing={props.refreshing}
-              disabled={props.loadingChartData || props.refreshing}
-            />
+            <div
+              className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
+                props.loadingChartData || props.refreshing
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-buttonActive/90"
+              }`}
+              onClick={() => {
+                if (!(props.loadingChartData || props.refreshing))
+                  props.onRefresh();
+              }}
+              aria-disabled={props.loadingChartData || props.refreshing}
+              tabIndex={0}
+              role="button"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              <span className="font-semibold">Refresh</span>
+            </div>
           </div>
           {/* Metrics Cards */}
-          <div className="flex justify-between lg:flex-wrap lg:justify-around lg:gap-4 h-full">
+          <div className="flex justify-between lg:flex-wrap lg:justify-around lg:gap-4">
             {props.loadingChartData ? (
               <StatCardSkeleton count={3} />
             ) : (
               <>
                 {/* Metrics Cards */}
-                <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+                <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
                   <p className="text-gray-500 text-sm lg:text-lg font-medium">
                     Money In
                   </p>
@@ -63,7 +79,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
                   </p>
                 </div>
-                <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+                <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
                   <p className="text-gray-500 text-sm lg:text-lg font-medium">
                     Money Out
                   </p>
@@ -73,7 +89,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
                   </p>
                 </div>
-                <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center">
+                <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
                   <p className="text-gray-500 text-sm lg:text-lg font-medium">
                     Gross
                   </p>
@@ -105,6 +121,15 @@ export default function PcLayout(props: PcLayoutProps) {
             <NoDataMessage message="No top performing data available for the selected period" />
           ) : (
             <>
+              {/* Online/Offline Machines Indicator */}
+              <div className="mb-4">
+                <OnlineOfflineIndicator
+                  showTitle={true}
+                  size="lg"
+                  className="bg-container p-4 rounded-lg shadow-md"
+                />
+              </div>
+
               <MapPreview
                 chartData={props.chartData}
                 gamingLocations={props.gamingLocations}

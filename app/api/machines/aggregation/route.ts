@@ -2,7 +2,7 @@ import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "../../lib/middleware/db";
-import { DateRange, TimePeriod } from "@/lib/types/api";
+import { DateRange, TimePeriod } from "@shared/types";
 import {
   MachineMatchStage,
   MachineAggregationMatchStage,

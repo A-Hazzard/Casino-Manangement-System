@@ -8,8 +8,8 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
+import PaginationControls from "@/components/ui/PaginationControls";
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   locations,
@@ -27,7 +27,6 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   mobileTotalPages,
   mobilePage,
   onPaginateMobile,
-  mobilePaginationRef,
   mobileCardsRef,
 }) => {
   return (
@@ -72,64 +71,11 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
           </div>
 
           {mobileTotalPages > 1 && (
-            <div
-              ref={mobilePaginationRef}
-              className="flex justify-center items-center space-x-2 mt-4"
-            >
-              <button
-                onClick={() => onPaginateMobile(1)}
-                disabled={mobilePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="First page"
-              >
-                <ChevronLeft size={12} className="inline mr-[-4px]" />
-                <ChevronLeft size={12} className="inline" />
-              </button>
-              <button
-                onClick={() => onPaginateMobile(mobilePage - 1)}
-                disabled={mobilePage === 1}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Previous page"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-gray-700 text-sm">Page</span>
-              <input
-                type="number"
-                min={1}
-                max={mobileTotalPages}
-                value={mobilePage}
-                onChange={(e) => {
-                  let val = Number(e.target.value);
-                  if (isNaN(val)) val = 1;
-                  if (val < 1) val = 1;
-                  if (val > mobileTotalPages) val = mobileTotalPages;
-                  onPaginateMobile(val);
-                }}
-                className="w-16 px-2 py-1 border rounded text-center text-sm"
-                aria-label="Page number"
-              />
-              <span className="text-gray-700 text-sm">
-                of {mobileTotalPages}
-              </span>
-              <button
-                onClick={() => onPaginateMobile(mobilePage + 1)}
-                disabled={mobilePage === mobileTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Next page"
-              >
-                <ChevronRight size={16} />
-              </button>
-              <button
-                onClick={() => onPaginateMobile(mobileTotalPages)}
-                disabled={mobilePage === mobileTotalPages}
-                className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                title="Last page"
-              >
-                <ChevronRight size={12} className="inline mr-[-4px]" />
-                <ChevronRight size={12} className="inline" />
-              </button>
-            </div>
+            <PaginationControls
+              currentPage={mobilePage - 1}
+              totalPages={mobileTotalPages}
+              setCurrentPage={(page) => onPaginateMobile(page + 1)}
+            />
           )}
         </>
       )}

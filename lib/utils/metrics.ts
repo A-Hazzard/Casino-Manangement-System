@@ -1,6 +1,6 @@
 import { getMetrics } from "@/lib/helpers/metrics";
 import { ActiveFilters, dashboardData } from "../types";
-import { TimePeriod } from "@/lib/types/api";
+import { TimePeriod } from "@shared/types";
 import type { CollectionDocument } from "@/lib/types/collections";
 
 /**

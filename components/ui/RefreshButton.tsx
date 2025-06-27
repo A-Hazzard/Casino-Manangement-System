@@ -1,39 +1,59 @@
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
 
-type RefreshButtonProps = ButtonProps & {
-  isRefreshing: boolean;
+type SyncButtonProps = ButtonProps & {
+  isSyncing: boolean;
   onClick: () => void;
   label?: string;
   iconOnly?: boolean;
+  variant?: "refresh" | "sync";
 };
 
-export const RefreshButton: React.FC<RefreshButtonProps> = ({
+export const SyncButton: React.FC<SyncButtonProps> = ({
   onClick,
-  isRefreshing = false,
+  isSyncing = false,
   className = "",
-  label = "Refresh",
+  label = "Sync Meters",
   iconOnly = false,
+  variant = "sync",
   ...props
-}) => (
-  <Button
-    onClick={onClick}
-    className={cn(
-      "flex items-center gap-2 bg-buttonActive text-white hover:bg-buttonActive/90 transition-colors",
-      className
-    )}
-    disabled={isRefreshing}
-    aria-label={label}
-    {...props}
-  >
-    <RefreshCw
-      className={cn("w-4 h-4", isRefreshing ? "animate-spin" : "")}
-      aria-hidden="true"
-    />
-    <span className={iconOnly ? "hidden" : "hidden lg:inline"}>{label}</span>
-  </Button>
-);
+}) => {
+  const Icon = variant === "sync" ? RotateCcw : RefreshCw;
 
-export default RefreshButton;
+  return (
+    <Button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 bg-buttonActive text-white hover:bg-buttonActive/90 transition-colors",
+        className
+      )}
+      disabled={isSyncing}
+      aria-label={label}
+      {...props}
+    >
+      <Icon
+        className={cn("w-4 h-4", isSyncing ? "animate-spin" : "")}
+        aria-hidden="true"
+      />
+      <span className={iconOnly ? "hidden" : "hidden lg:inline"}>{label}</span>
+    </Button>
+  );
+};
+
+// Keep the old RefreshButton for backward compatibility
+export const RefreshButton: React.FC<SyncButtonProps> = (props) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { variant, ...otherProps } = props;
+  return (
+    <SyncButton
+      {...otherProps}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variant={"refresh" as any}
+      label={props.label || "Refresh"}
+    />
+  );
+};
+
+export default SyncButton;

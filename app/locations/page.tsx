@@ -44,6 +44,8 @@ import { NewLocationModal } from "@/components/ui/locations/NewLocationModal";
 import Image from "next/image";
 import { Plus } from "lucide-react";
 import RefreshButton from "@/components/ui/RefreshButton";
+import { Toaster } from "sonner";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 
 export default function LocationsPage() {
   const {
@@ -241,6 +243,17 @@ export default function LocationsPage() {
     [locationData, selectedFilters]
   );
 
+  // Calculate online/offline counts from filtered data
+  const totalOnline = filtered.reduce(
+    (sum, loc) => sum + (loc.onlineMachines || 0),
+    0
+  );
+  const totalMachines = filtered.reduce(
+    (sum, loc) => sum + (loc.totalMachines || 0),
+    0
+  );
+  const totalOffline = totalMachines - totalOnline;
+
   const sorted = useMemo(() => {
     const order = sortOrder === "desc" ? -1 : 1;
     return [...filtered].sort((a, b) => {
@@ -377,6 +390,14 @@ export default function LocationsPage() {
             disabled={loading || refreshing}
           />
 
+          {/* Machine Status Widget */}
+          <div className="mt-6 mb-4">
+            <MachineStatusWidget
+              onlineCount={totalOnline}
+              offlineCount={totalOffline}
+            />
+          </div>
+
           {/* Page title and Add Location button */}
           <div className="flex flex-col md:flex-row justify-between items-center mt-6">
             <div className="flex flex-col md:flex-row items-center">
@@ -448,13 +469,16 @@ export default function LocationsPage() {
               ))}
             </div>
             <div className="flex-1"></div>
-            <div className="ml-8">
-              <RefreshButton
-                onClick={handleRefresh}
-                isRefreshing={refreshing}
-                disabled={loading || refreshing}
-              />
-            </div>
+            {!loading && !refreshing && (
+              <div className="ml-8">
+                <RefreshButton
+                  onClick={handleRefresh}
+                  isSyncing={refreshing}
+                  disabled={loading || refreshing}
+                  label="Refresh"
+                />
+              </div>
+            )}
           </div>
 
           {/* Mobile Time Period Button - Show only on md screens, re-implemented like dashboard */}
@@ -784,9 +808,9 @@ export default function LocationsPage() {
                     <div className="md:inline-flex lg:hidden">
                       <RefreshButton
                         onClick={handleRefresh}
-                        isRefreshing={refreshing}
+                        isSyncing={refreshing}
                         disabled={loading || refreshing}
-                        iconOnly
+                        label="Refresh"
                       />
                     </div>
                   )}
@@ -1001,9 +1025,9 @@ export default function LocationsPage() {
                 <div className="md:inline-flex lg:hidden">
                   <RefreshButton
                     onClick={handleRefresh}
-                    isRefreshing={refreshing}
+                    isSyncing={refreshing}
                     disabled={loading || refreshing}
-                    iconOnly
+                    label="Refresh"
                   />
                 </div>
               )}
@@ -1127,6 +1151,7 @@ export default function LocationsPage() {
           <DeleteLocationModal />
         </main>
       </div>
+      <Toaster position="top-right" richColors />
       <style jsx global>{`
         .search-flash {
           animation: searchFlash 1s ease-in-out;

@@ -41,7 +41,13 @@ export async function authenticateUser(email: string, password: string) {
     isEnabled: userObject.isEnabled,
     roles: userObject.roles || [],
     permissions: userObject.permissions || [],
-    resourcePermissions: userObject.resourcePermissions || {},
+    resourcePermissions:
+      (userObject.resourcePermissions as {
+        [key: string]: {
+          entity: string;
+          resources: string[];
+        };
+      }) || {},
   };
 
   return { success: true, token, user: userPayload };
@@ -54,7 +60,7 @@ export async function authenticateUser(email: string, password: string) {
  * @returns Promise resolving to an object indicating success or failure, and an optional message.
  */
 export async function sendResetPasswordEmail(email: string) {
-  const user: UserAuthPayload | null = await getUserByEmail(email);
+  const user = await getUserByEmail(email);
   if (!user) {
     return { success: false, message: "User not found." };
   }

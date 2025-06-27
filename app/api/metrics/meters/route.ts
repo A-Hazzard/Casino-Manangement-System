@@ -2,7 +2,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { NextRequest, NextResponse } from "next/server";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { getMetricsForLocations } from "@/app/api/lib/helpers/meters/aggregations";
-import type { ApiParamsType } from "@/lib/types/api";
+import type { ApiParamsType } from "@shared/types";
 
 /**
  * Retrieves **meter trend data** for gaming locations based on a specified **time period** or a **Custom date range**.

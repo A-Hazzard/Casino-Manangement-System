@@ -365,7 +365,11 @@ export default function CabinetDetailPage() {
       <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
           <div className="flex justify-end mb-2">
-            <RefreshButton onClick={handleRefresh} isRefreshing={refreshing} />
+            <RefreshButton
+              onClick={handleRefresh}
+              isSyncing={refreshing}
+              label="Refresh"
+            />
           </div>
           <Header
             selectedLicencee={selectedLicencee}

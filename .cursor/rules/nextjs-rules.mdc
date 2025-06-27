@@ -45,12 +45,11 @@ All contributors must adhere to the following rules, which are enforced througho
 - **Never ignore ESLint rule violations.**
 - Address all ESLint warnings and errors immediately.
 - Run `pnpm lint` regularly to catch and fix style issues.
-- Use the project's Prettier configuration for consistent formatting by running `pnpm format`.
 - Follow the established code style in the existing files for consistency.
+- Use ESLint's auto-fix feature when possible: `pnpm lint --fix`.
 
 **Reference:**  
-- [.eslintrc.json](mdc:.eslintrc.json)
-- [.prettierrc](mdc:.prettierrc)
+- [eslint.config.mjs](mdc:eslint.config.mjs)
 
 ---
 
@@ -86,15 +85,16 @@ All contributors must adhere to the following rules, which are enforced througho
 
 ## 6. Security & Authentication/Authorization
 
-- **Implement secure authentication practices** through Firebase Authentication.
+- **Implement secure authentication practices** using JWT tokens with `jose` library.
 - **Follow OWASP standards** to safeguard code from vulnerabilities.
 - Never expose sensitive information (API keys, tokens) in client-side code.
 - Always validate and sanitize user input, especially in form submissions.
 - Use middleware for route protection where necessary.
+- Store JWT tokens in secure HTTP-only cookies with proper expiration.
 
 **References:**  
 - [middleware.ts](mdc:middleware.ts)
-- [lib/firebaseConfig.ts](mdc:lib/firebaseConfig.ts)
+- [app/api/lib/helpers/auth.ts](mdc:app/api/lib/helpers/auth.ts)
 
 ---
 
@@ -122,14 +122,13 @@ All contributors must adhere to the following rules, which are enforced througho
 
 ## 9. Testing Best Practices
 
-- Write Cypress tests for critical user flows.
-- Run tests before pushing code to the repository.
-- Use `pnpm test` or `pnpm test:open` for running Cypress tests.
-- Ensure tests are deterministic and not flaky.
+- Testing framework setup is planned for future implementation.
+- Focus on manual testing of critical user flows during development.
+- Implement proper error handling and logging for debugging.
+- Use TypeScript for compile-time error catching.
 
 **Reference:**  
-- [cypress/](mdc:cypress)
-- [cypress.config.ts](mdc:cypress.config.ts)
+- [package.json](mdc:package.json) - Jest configuration for future testing setup
 
 ---
 

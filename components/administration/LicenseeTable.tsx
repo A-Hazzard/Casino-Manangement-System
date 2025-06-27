@@ -42,7 +42,7 @@ export default function LicenseeTable({
     };
   }, []);
   return (
-    <div ref={tableRef} className="overflow-x-auto hidden lg:block">
+    <div ref={tableRef} className="hidden lg:block">
       <table className="min-w-full bg-white rounded-lg shadow-md">
         <thead className="bg-button text-white">
           <tr>

@@ -1,16 +1,15 @@
 import type { Licensee } from "@/lib/types/licensee";
 
 /**
- * Determines if a licensee is paid based on isPaid field or expiry date
- * @param licensee - The licensee object
- * @returns boolean indicating if the licensee is paid
+ * Determines if a licensee is paid based on the isPaid field from the API.
+ * The backend is the source of truth and already contains fallback logic for the expiry date.
+ * @param licensee - The licensee object, which should have an `isPaid` boolean.
+ * @returns boolean indicating if the licensee is paid.
  */
 export function isLicenseePaid(licensee: Licensee): boolean {
-  if (typeof licensee.isPaid === "boolean") {
-    return licensee.isPaid;
-  }
-  if (!licensee.expiryDate) return false;
-  return new Date(licensee.expiryDate) > new Date();
+  // The backend now provides a definitive isPaid boolean.
+  // This function simply returns that value, with a fallback to false if it's missing.
+  return licensee.isPaid ?? false;
 }
 
 /**

@@ -193,7 +193,7 @@ export type LocationData = {
   noSMIBLocation: boolean;
 };
 
-export type DateRange = {
+export type LocationDateRange = {
   startDate: Date;
   endDate: Date;
 };

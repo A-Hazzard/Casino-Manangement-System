@@ -12,6 +12,8 @@ import StatCardSkeleton, {
 import dayjs from "dayjs";
 import Chart from "@/components/ui/dashboard/Chart";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import OnlineOfflineIndicator from "@/components/ui/OnlineOfflineIndicator";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 dayjs.extend(customParseFormat);
 
@@ -27,6 +29,16 @@ export default function MobileLayout(props: MobileLayoutProps) {
     <>
       <div className="lg:hidden flex flex-col space-y-6">
         {/* Metrics Cards */}
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-lg">Total for all Locations and Machines</h2>
+          <RefreshButton
+            onClick={props.onRefresh}
+            isSyncing={props.refreshing}
+            disabled={props.loadingChartData || props.refreshing}
+            iconOnly
+            className="ml-2"
+          />
+        </div>
         <div className="flex flex-wrap gap-4">
           {props.loadingChartData ? (
             <StatCardSkeleton count={3} />
@@ -200,10 +212,21 @@ export default function MobileLayout(props: MobileLayoutProps) {
         {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
           <NoDataMessage message="No top performing data available for the selected period" />
         ) : (
-          <MapPreview
-            chartData={props.chartData}
-            gamingLocations={props.gamingLocations}
-          />
+          <>
+            {/* Online/Offline Machines Indicator for Mobile */}
+            <div className="mb-4">
+              <OnlineOfflineIndicator
+                showTitle={true}
+                size="md"
+                className="bg-container p-4 rounded-lg shadow-md"
+              />
+            </div>
+
+            <MapPreview
+              chartData={props.chartData}
+              gamingLocations={props.gamingLocations}
+            />
+          </>
         )}
       </div>
     </>

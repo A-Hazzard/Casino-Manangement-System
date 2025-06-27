@@ -1,0 +1,67 @@
+User Flow: Casino Analytics Module
+Version 1.0
+Date: June 23, 2025
+1. Introduction
+This document describes the primary user flows for the Casino Analytics Module. It illustrates the step-by-step paths that different user roles will take to accomplish key tasks within the system. These flows are derived from the functional requirements outlined in the Software Requirements Document (v1.1).
+User Roles:
+Analyst: Read-only access to all data and reports.
+Manager: Read access, plus the ability to log and track machine movements.
+Administrator: Full system access (flows are generally the same as the Manager, but with added administrative rights not covered in these flows).
+2. Core User Flows
+Flow 2.1: Login and Dashboard Overview (All Roles)
+This flow describes the initial entry into the system and the user's first view of the overall performance data.
+User navigates to the CMS login page and enters their credentials.
+System authenticates the user via the core CMS authentication service.
+Upon successful login, the User is directed to the main CMS portal.
+User clicks on the "Analytics" tab in the main navigation menu.
+System loads the Analytics Module Dashboard, defaulting to the "Last 7 Days" view.
+User sees the four main KPI cards (Total Handle, Total Win/Loss, etc.) and the interactive map with colored pins representing each location's performance.
+User hovers over a pin on the map.
+System displays a tooltip with the Location Name and its Total Handle.
+User clicks the date filter and selects "Last 30 Days."
+System refreshes all dashboard components (KPI cards, map pin colors) to reflect the new date range.
+Flow 2.2: Comparative Location Performance Analysis (Analyst/Manager)
+This flow describes how a user compares the performance of several locations against each other.
+From the main navigation, User clicks on the "Location Analytics" section.
+System displays an empty state, prompting the user to select locations.
+User clicks into the "Add Location" search bar and starts typing "Red Dragon."
+System displays an autocomplete list showing "Red Dragon Casino."
+User clicks on "Red Dragon Casino" to add it to the comparison.
+System loads the Summary Table and Trend Charts for the "Red Dragon" location.
+User repeats steps 3-5 to add "Strikey's Funhouse" and "Ocean's Edge Gaming" to the comparison.
+System updates the Summary Table and Trend Charts. The charts now show three distinct colored lines, one for each location.
+User examines the "Top 5 Machines" table for the "Strikey's Funhouse" location and clicks on the "Actual Hold" column header.
+System sorts the machine list for that location by "Actual Hold" in descending order and displays a "down arrow" icon in the header.
+User clicks the "Export" button and selects "PDF."
+System generates and initiates a download for a PDF file containing a visual snapshot of the current comparison view.
+Flow 2.3: Detailed Machine Performance Comparison (Analyst/Manager)
+This flow describes how a user drills down to compare specific machines within a single location.
+From the main navigation, User clicks on the "Machine Analytics" section.
+System prompts the user to select a location.
+User selects "Red Dragon Casino" from a dropdown list.
+System loads a table displaying all EGMs at the "Red Dragon Casino," showing key metrics for each.
+User clicks the checkbox next to three different machines (e.g., GM1, GM5, GM12) to select them for comparison.
+System opens a detailed comparison view, showing a metric table and performance charts for only the three selected machines.
+User reviews the "Contribution Summary" section, which displays statements like "15% of the machines contribute to 65% of the Total Handle."
+User clicks the "Export" button and selects "RAW (CSV)."
+System generates and initiates a download for a CSV file containing the detailed time-series data for the three selected machines.
+Flow 2.4: Logging a New Machine Move (Manager Role)
+This flow is restricted to Managers and Administrators.
+Manager clicks on the "Machine Logistics" or "Audit" section in the main navigation.
+System displays the machine movement history log and a "Log New Move" button.
+Manager clicks the "Log New Move" button.
+System displays a form.
+Manager selects the Machine ID from a searchable dropdown. The "From" location field is auto-populated and made read-only.
+Manager selects the "To" Location from a dropdown list.
+Manager selects the "Date of Move" using the calendar picker.
+Manager enters the name of the staff member who physically moved the machine in the "User who moved the machine" text field.
+Manager adds a note: "Machine moved to a higher traffic area as per Q2 strategy."
+Manager clicks the "Save Move" button.
+System validates the form, saves the record to the immutable audit log, and displays a success message. The new entry is now visible at the top of the movement history log.
+Flow 2.5: Auditing a Machine's Movement History (Manager/Administrator)
+This flow describes how a user reviews the historical movements of a specific machine.
+Manager navigates to the "Machine Logistics" section.
+System displays the complete, paginated list of all machine movements, sorted by date descending.
+Manager uses the search bar at the top of the table and types in a specific Machine ID.
+System filters the table in real-time to show only the movement records for that specific Machine ID.
+Manager can now see the complete chronological history of where that machine has been, when it was moved, and by whom, providing a full audit trail.

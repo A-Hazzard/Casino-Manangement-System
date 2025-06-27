@@ -443,3 +443,26 @@ export async function fetchPreviousCollectionTime(
     return undefined;
   }
 }
+
+/**
+ * Syncs meter data with collections for a specific report
+ * Recalculates SAS metrics based on meter data within SAS time periods
+ * @param reportId - The collection report ID
+ * @returns Promise resolving to sync result
+ */
+export async function syncMeterDataWithCollections(reportId: string) {
+  try {
+    const response = await axios.post("/api/collection-report/sync-meters", {
+      reportId,
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || "Failed to sync meter data");
+    }
+
+    return response.data.data;
+  } catch (error) {
+    console.error("Error syncing meter data:", error);
+    throw error;
+  }
+}

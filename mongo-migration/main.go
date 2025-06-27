@@ -61,18 +61,20 @@ func main() {
 	dstDB := dstClient.Database("sas-dev")
 
 	collections := []string{
-		"collections",
+		// "collections",
 		"collectionreports",
-		"machineevents",
-		"acceptedbills",
-		"gaminglocations",
-		"machines",
-		"countries",
-		"users",
-		"meters",
-		"schedulers",
-		"licencees",
-		"movementrequests",
+		// "machineevents",
+		// "acceptedbills",
+		// "gaminglocations",
+		// "machines",
+		// "countries",
+		// "users",
+		// "meters",
+		// "schedulers",
+		// "licencees",
+		// "movementrequests",
+		// "activitylogs",
+		// "firmwares",
 	}
 
 	var wg sync.WaitGroup
@@ -121,6 +123,19 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 	srcColl := srcDB.Collection(collName)
 	dstColl := dstDB.Collection(collName)
 
+	// Check if source collection exists and has documents
+	count, countErr := srcColl.CountDocuments(ctx, bson.D{})
+	if countErr != nil {
+		log.Printf("❌ Error counting docs in source %s: %v\n", collName, countErr)
+		return
+	}
+	fmt.Printf("📊 Source collection %s has %d documents\n", collName, count)
+
+	if count == 0 {
+		fmt.Printf("⚠️ Source collection %s is empty, skipping migration\n", collName)
+		return
+	}
+
 	cursor, err := srcColl.Find(ctx, bson.D{})
 	if err != nil {
 		log.Printf("❌ Error finding docs in %s: %v\n", collName, err)
@@ -128,7 +143,7 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 	}
 	defer cursor.Close(ctx)
 
-	count := 0
+	migratedCount := 0
 	for cursor.Next(ctx) {
 		var doc bson.M
 		if err := cursor.Decode(&doc); err != nil {
@@ -145,9 +160,9 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 			log.Printf("❌ Error upserting into %s: %v\n", collName, err)
 			continue
 		}
-		count++
+		migratedCount++
 	}
-	fmt.Printf("✅ Migrated %d documents from %s\n", count, collName)
+	fmt.Printf("✅ Migrated %d documents from %s\n", migratedCount, collName)
 }
 
 func migrateMeters(ctx context.Context, srcDB, dstDB *mongo.Database) {

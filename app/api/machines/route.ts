@@ -4,10 +4,6 @@ import { Machine } from "@/app/api/lib/models/machines";
 import mongoose from "mongoose";
 import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
 
-/**
- * GET /api/machines
- * Get a machine by ID
- */
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -43,10 +39,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/machines
- * Create a new machine/cabinet
- */
 export async function POST(request: NextRequest) {
   try {
     const db = await connectDB();
@@ -118,10 +110,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * PUT /api/machines
- * Update a machine/cabinet
- */
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();
@@ -167,10 +155,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-/**
- * DELETE /api/machines
- * Delete a machine/cabinet (soft delete)
- */
 export async function DELETE(request: NextRequest) {
   try {
     await connectDB();

@@ -7,12 +7,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  CalendarIcon,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import { formatDateOnly } from "@/lib/utils/dateUtils";
 import type { MonthlyMobileUIProps } from "@/lib/types/componentProps";
@@ -20,6 +15,7 @@ import {
   exportMonthlyReportPDF,
   exportMonthlyReportExcel,
 } from "@/lib/utils/export";
+import PaginationControls from "@/components/ui/PaginationControls";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -243,59 +239,11 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-2 mt-4 pt-2 border-t border-gray-200">
-                <button
-                  onClick={() => handlePaginate(1)}
-                  disabled={currentPage === 1}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="First page"
-                >
-                  <ChevronLeft size={12} className="inline mr-[-4px]" />
-                  <ChevronLeft size={12} className="inline" />
-                </button>
-                <button
-                  onClick={() => handlePaginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Previous page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-gray-700 text-sm">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={currentPage}
-                  onChange={(e) => {
-                    let val = Number(e.target.value);
-                    if (isNaN(val)) val = 1;
-                    if (val < 1) val = 1;
-                    if (val > totalPages) val = totalPages;
-                    handlePaginate(val);
-                  }}
-                  className="w-16 px-2 py-1 border rounded text-center text-sm"
-                  aria-label="Page number"
-                />
-                <span className="text-gray-700 text-sm">of {totalPages}</span>
-                <button
-                  onClick={() => handlePaginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Next page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-                <button
-                  onClick={() => handlePaginate(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Last page"
-                >
-                  <ChevronRight size={12} className="inline mr-[-4px]" />
-                  <ChevronRight size={12} className="inline" />
-                </button>
-              </div>
+              <PaginationControls
+                currentPage={currentPage - 1}
+                totalPages={totalPages}
+                setCurrentPage={(page) => handlePaginate(page + 1)}
+              />
             )}
             {currentCardsToDisplay.length > 0 && (
               <p className="text-center text-gray-500 text-xs mt-2">

@@ -6,22 +6,12 @@ import type {
 } from "@/lib/types/administration";
 
 /**
- * Fetches a list of users.
- * @returns A promise that resolves to an array of User objects.
- * @remarks This is currently a placeholder and returns mock data.
- *          Replace with actual API call in the future.
+ * Fetches a list of users with full profile data.
+ * @returns A promise that resolves to an array of User objects with complete profile information.
  */
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await axios.get("/api/users");
-  return response.data.users.map((user: User) => ({
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    enabled: user.enabled,
-    roles: user.roles,
-    profilePicture: user.profilePicture ?? null,
-  }));
+  return response.data.users;
 };
 
 export const updateUser = async (

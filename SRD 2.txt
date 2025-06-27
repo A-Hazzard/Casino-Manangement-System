@@ -1,0 +1,140 @@
+Software Requirements Document: Casino Analytics Module
+Version 1.0
+Date: June 23, 2025
+1. Introduction
+1.1. Purpose
+This document outlines the software requirements for the new Analytics Module for the Casino Management System (CMS). The purpose of this module is to provide powerful analytical tools for understanding and optimizing the performance of casino locations and individual gaming machines. It will offer a comprehensive, data-driven view of operations, enabling stakeholders to make informed decisions to increase profitability and operational efficiency.
+1.2. Scope
+The Analytics Module will provide a web-based interface for viewing and analyzing data from casino machines across various locations. The scope of this document includes:
+Dashboard: A high-level overview of key performance indicators (KPIs) for locations and machines.
+Location Analytics: In-depth analysis of location performance, including comparisons between locations.
+Machine Analytics: Detailed analysis of individual machine performance, including machine-to-machine comparisons.
+Machine Movement Tracking: A system for logging and viewing the movement of machines between locations.
+Reporting and Data Export: The ability to generate and export reports in various formats.
+
+This document covers the functional and non-functional requirements for the Analytics Module.
+1.3. Definitions, Acronyms, and Abbreviations
+Term
+Definition
+CMS
+Casino Management System
+EGM
+Electronic Gaming Machine
+Handle
+The total amount of money wagered on an EGM over a period of time.
+Win/Loss
+The net amount of money won or lost by the casino from an EGM.
+Jackpot
+A large prize awarded from an EGM.
+Theoretical Hold
+The theoretical percentage of the handle that the EGM is designed to keep.
+Actual Hold
+The actual percentage of the handle that the EGM has kept.
+UI
+User Interface
+KPI
+Key Performance Indicator
+
+
+2. Overall Description
+2.1. Product Perspective
+The Analytics Module will be a new component of the existing Casino Management System. It will utilize the data already collected by the CMS, including the machine meter data, to provide new insights and visualizations. It is intended to be used by casino management, operations staff, and financial analysts.
+2.2. User Classes and Characteristics
+User Role
+Responsibilities
+Administrator
+Has full access to all features, including user management and system configuration.
+Manager
+Can view all analytical data, generate reports, and track machine movements.
+Analyst
+Can view all analytical data and generate reports.
+
+2.3. Operating Environment
+The Analytics Module shall be a web-based application accessible through modern web browsers (e.g., Chrome, Firefox, Safari, Edge). It will be hosted on the same infrastructure as the existing CMS.
+2.4. Design and Implementation Constraints
+The system must use the existing machine meter data structure.
+The UI should be intuitive and user-friendly, with a design inspired by modern analytics platforms like Google Analytics.
+The system must be secure, with access control based on user roles.
+
+3. System Features
+3.1. Dashboard
+3.1.1. The dashboard shall provide a high-level, at-a-glance view of the overall performance of all casino locations.
+3.1.2. It shall display key KPIs, such as total handle, total win/loss, and total games played for a selected time period.
+3.1.3. The dashboard will feature a map visualization showing the geographic location of all casinos, with markers indicating their overall performance status (e.g., green for good, yellow for average, red for poor).
+3.1.4. Users shall be able to filter the dashboard data by date range (e.g., today, last 7 days, last 30 days, custom range).
+3.2. Location Analytics
+3.2.1. The system shall provide a dedicated section for detailed location analytics.
+3.2.2. Users shall be able to select one or more locations to compare their performance side-by-side.
+3.2.3. For each selected location, the system will display the following metrics:
+Total Handle
+Average Wager
+Total Win/Loss
+Total Jackpot
+Actual Hold
+Games Played
+3.2.4. The system shall provide interactive charts and graphs to visualize location performance over time.
+3.2.5. A "Top 5 Machines" table will be displayed for each location, showing the best-performing machines based on a user-selectable metric (e.g., handle, win/loss).
+3.3. Machine Analytics
+3.3.1. The system shall provide a dedicated section for detailed machine analytics.
+3.3.2. Users shall be able to select a location and then view a list of all machines at that location.
+3.3.3. Users shall be able to select two or more machines for a side-by-side comparison of their performance metrics.
+3.3.4. For each selected machine, the system will display the following metrics:
+Coin In
+Coin Out
+Total Canceled Credits
+Total Hand-Paid Canceled Credits
+Total Won Credits
+Drop
+Jackpot
+Current Credits
+Games Played
+Games Won
+3.3.5. The system will provide charts to compare the performance of selected machines over a chosen time period.
+3.3.6. A summary section will display the "Machine Contribution Percentage" for handle, win, and games played for the selected location, as defined in the "Reports Specification" document.
+3.4. Machine Movement Tracking
+3.4.1. The system shall provide a feature to track the physical movement of EGMs.
+3.4.2. Authorized users (Administrators, Managers) shall be able to log a machine movement by selecting the machine, its new location, and the date of the move.
+3.4.3. The system shall maintain a historical log of all machine movements.
+3.4.4. Users shall be able to view the movement history for any specific machine.
+3.5. Reporting
+3.5.1. The system shall allow users to export all reports and data tables.
+3.5.2. Export formats shall include PDF (for visual reports) and RAW (e.g., CSV or Excel) for data analysis.
+4. Non-Functional Requirements
+4.1. Performance
+The system shall be responsive, with page load times not exceeding 3 seconds.
+Data queries and report generation shall be optimized for performance, even with large datasets.
+4.2. Security
+All communication between the client and server shall be encrypted using HTTPS.
+User authentication shall be required to access the system.
+Access to features and data shall be restricted based on user roles.
+4.3. Usability
+The UI shall be intuitive and easy to navigate.
+The system shall provide clear and informative error messages.
+The design shall be responsive and work well on a variety of screen sizes, from desktops to tablets.
+5. Data Model and Calculations
+5.1. Machine Meter Data
+The system will use the following JSON structure for machine meter data:
+{
+  "_id": "1569ac9d66b6795c0a1acac3",
+  "machine": "3725ef333314beef655e6197",
+  "location": "c5dc7c855dc43a9144e854f6",
+  "coinIn": 64574000,
+  "coinOut": 56475350,
+  "totalCancelledCredits": 28714075,
+  "totalHandPaidCancelledCredits": 28714075,
+  "totalWonCredits": 56475350,
+  "drop": 36819800,
+  "jackpot": 0,
+  "gamesPlayed": 173824,
+  "gamesWon": 53251,
+  "readAt": { "$date": "2022-01-01T04:00:03.035Z" }
+}
+
+
+5.2. Calculations
+The following calculations will be used in the system, as defined in the "Reports Specification" document:
+Average Wager: Handle / Games_Played
+Actual Hold: (Win / Handle) * 100%
+Machine Contribution Percentage: As defined in the "Reports Specification" document.
+Voucher Out: Total_Cancelled_Credits - Total_Handpaid_Cancelled_Credits
+Money Won: Coin_Out + Total_Jackpot

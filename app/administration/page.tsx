@@ -48,6 +48,8 @@ import UserActivityLogModal from "@/components/administration/UserActivityLogMod
 import LicenseeSuccessModal from "@/components/administration/LicenseeSuccessModal";
 import PaymentStatusConfirmModal from "@/components/administration/PaymentStatusConfirmModal";
 import { getNext30Days } from "@/lib/utils/licensee";
+import { toast } from "sonner";
+import { Toaster } from "sonner";
 
 type AddUserForm = {
   username?: string;
@@ -232,8 +234,9 @@ export default function AdministrationPage() {
       // Refresh users
       const usersData = await fetchUsers();
       setAllUsers(usersData);
+      toast.success("User updated successfully");
     } catch {
-      alert("Failed to update user");
+      toast.error("Failed to update user");
     }
   };
 
@@ -267,19 +270,19 @@ export default function AdministrationPage() {
       resourcePermissions,
     } = addUserForm;
     if (!username || typeof username !== "string") {
-      alert("Username is required");
+      toast.error("Username is required");
       return;
     }
     if (!email || !validateEmail(email)) {
-      alert("A valid email is required");
+      toast.error("A valid email is required");
       return;
     }
     if (!password || !validatePassword(password)) {
-      alert("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (!roles || !Array.isArray(roles) || roles.length === 0) {
-      alert("At least one role is required");
+      toast.error("At least one role is required");
       return;
     }
     // Map to backend payload
@@ -303,11 +306,12 @@ export default function AdministrationPage() {
       // Refresh users
       const usersData = await fetchUsers();
       setAllUsers(usersData);
+      toast.success("User created successfully");
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
       };
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           error?.message ||
           "Failed to create user"
@@ -323,7 +327,7 @@ export default function AdministrationPage() {
   };
   const handleSaveAddLicensee = async () => {
     if (!licenseeForm.name || !licenseeForm.country) {
-      alert("Name and country are required");
+      toast.error("Name and country are required");
       return;
     }
     try {
@@ -350,11 +354,12 @@ export default function AdministrationPage() {
       const data = await fetchLicensees();
       setAllLicensees(data);
       setIsLicenseesLoading(false);
+      toast.success("Licensee created successfully");
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
       };
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           error?.message ||
           "Failed to add licensee"
@@ -400,11 +405,12 @@ export default function AdministrationPage() {
       const data = await fetchLicensees();
       setAllLicensees(data);
       setIsLicenseesLoading(false);
+      toast.success("Licensee updated successfully");
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
       };
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           error?.message ||
           "Failed to update licensee"
@@ -425,11 +431,12 @@ export default function AdministrationPage() {
       const data = await fetchLicensees();
       setAllLicensees(data);
       setIsLicenseesLoading(false);
+      toast.success("Licensee deleted successfully");
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
       };
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           error?.message ||
           "Failed to delete licensee"
@@ -506,7 +513,7 @@ export default function AdministrationPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        alert(errorData.message || "Failed to update payment status");
+        toast.error(errorData.message || "Failed to update payment status");
         return;
       }
 
@@ -519,9 +526,10 @@ export default function AdministrationPage() {
       // Close modal
       setIsPaymentConfirmModalOpen(false);
       setSelectedLicenseeForPaymentChange(null);
+      toast.success("Licensee payment status updated successfully");
     } catch (error) {
       console.error("Failed to update payment status:", error);
-      alert("Failed to update payment status");
+      toast.error("Failed to update payment status");
     }
   };
 
@@ -733,14 +741,15 @@ export default function AdministrationPage() {
               });
               if (!res.ok) {
                 const data = await res.json();
-                alert(data.message || "Failed to delete user");
+                toast.error(data.message || "Failed to delete user");
               } else {
                 // Refresh users
                 const usersData = await fetchUsers();
                 setAllUsers(usersData);
+                toast.success("User deleted successfully");
               }
             } catch {
-              alert("Failed to delete user");
+              toast.error("Failed to delete user");
             }
             setIsDeleteModalOpen(false);
             setSelectedUserToDelete(null);
@@ -768,7 +777,9 @@ export default function AdministrationPage() {
 
               if (!response.ok) {
                 const errorData = await response.json();
-                alert(errorData.message || "Failed to update user profile");
+                toast.error(
+                  errorData.message || "Failed to update user profile"
+                );
                 return;
               }
 
@@ -779,9 +790,10 @@ export default function AdministrationPage() {
               // Refresh users list
               const usersData = await fetchUsers();
               setAllUsers(usersData);
+              toast.success("User profile updated successfully");
             } catch (error) {
               console.error("Failed to update user profile:", error);
-              alert("Failed to update user profile");
+              toast.error("Failed to update user profile");
             }
           }}
         />
@@ -986,6 +998,7 @@ export default function AdministrationPage() {
           {renderSectionContent()}
         </main>
       </div>
+      <Toaster position="top-right" richColors />
     </>
   );
 }

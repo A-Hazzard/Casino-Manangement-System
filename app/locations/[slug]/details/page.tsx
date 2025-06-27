@@ -139,8 +139,9 @@ export default function LocationDetailsPage() {
             <div className="ml-auto">
               <RefreshButton
                 onClick={handleRefresh}
-                isRefreshing={refreshing}
+                isSyncing={refreshing}
                 disabled={metricsLoading || refreshing}
+                label="Refresh"
               />
             </div>
           </div>

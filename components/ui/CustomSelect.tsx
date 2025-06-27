@@ -1,7 +1,7 @@
 "use client";
 
 import { CustomSelectProps } from "@/lib/types/componentProps";
-import { TimePeriod } from "@/lib/types/api";
+import { TimePeriod } from "@shared/types";
 import {
   Select,
   SelectTrigger,
@@ -34,7 +34,7 @@ export default function CustomSelect(props: CustomSelectProps) {
           <SelectItem key={time.time} value={time.value} className="text-xs">
             {time.time}
           </SelectItem>
-        ))} 
+        ))}
       </SelectContent>
     </Select>
   );

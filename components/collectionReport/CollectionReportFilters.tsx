@@ -111,7 +111,7 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="rounded-lg p-4 mb-2 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col lg:flex-row lg:items-center lg:justify-start gap-y-3 lg:gap-2"
+      className="rounded-t-lg p-4 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col lg:flex-row lg:items-center lg:justify-start gap-y-3 lg:gap-2"
     >
       <div className="relative w-full lg:w-[280px]">
         <input

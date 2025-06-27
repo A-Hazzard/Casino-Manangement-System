@@ -1,5 +1,5 @@
 import { dashboardData, Metrics } from "@/lib/types";
-import { TimePeriod } from "@/lib/types/api";
+import { TimePeriod } from "@shared/types";
 import axios from "axios";
 
 /**

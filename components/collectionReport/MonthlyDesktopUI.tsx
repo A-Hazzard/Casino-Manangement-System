@@ -2,12 +2,12 @@ import React from "react";
 import { DateRangePicker } from "@/components/ui/dateRangePicker";
 import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
 import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { MonthlyDesktopUIProps } from "@/lib/types/componentProps";
 import {
   exportMonthlyReportPDF,
   exportMonthlyReportExcel,
 } from "@/lib/utils/export";
+import PaginationControls from "@/components/ui/PaginationControls";
 
 const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   allLocationNames,
@@ -24,7 +24,6 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   monthlyTotalPages,
   monthlyPage,
   onPaginateMonthly,
-  monthlyPaginationRef,
 }) => {
   // Handler to properly await the async PDF export
   const handleExportPDF = async () => {
@@ -110,64 +109,11 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
           <>
             <MonthlyReportDetailsTable details={monthlyCurrentItems} />
             {monthlyTotalPages > 1 && (
-              <div
-                ref={monthlyPaginationRef}
-                className="flex justify-center items-center space-x-2 mt-4"
-              >
-                <button
-                  onClick={() => onPaginateMonthly(1)}
-                  disabled={monthlyPage === 1}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="First page"
-                >
-                  <ChevronLeft size={12} className="inline mr-[-4px]" />
-                  <ChevronLeft size={12} className="inline" />
-                </button>
-                <button
-                  onClick={() => onPaginateMonthly(monthlyPage - 1)}
-                  disabled={monthlyPage === 1}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Previous page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-gray-700 text-sm">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={monthlyTotalPages}
-                  value={monthlyPage}
-                  onChange={(e) => {
-                    let val = Number(e.target.value);
-                    if (isNaN(val)) val = 1;
-                    if (val < 1) val = 1;
-                    if (val > monthlyTotalPages) val = monthlyTotalPages;
-                    onPaginateMonthly(val);
-                  }}
-                  className="w-16 px-2 py-1 border rounded text-center text-sm"
-                  aria-label="Page number"
-                />
-                <span className="text-gray-700 text-sm">
-                  of {monthlyTotalPages}
-                </span>
-                <button
-                  onClick={() => onPaginateMonthly(monthlyPage + 1)}
-                  disabled={monthlyPage === monthlyTotalPages}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Next page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-                <button
-                  onClick={() => onPaginateMonthly(monthlyTotalPages)}
-                  disabled={monthlyPage === monthlyTotalPages}
-                  className="p-2 bg-gray-200 rounded-md disabled:opacity-50"
-                  title="Last page"
-                >
-                  <ChevronRight size={12} className="inline mr-[-4px]" />
-                  <ChevronRight size={12} className="inline" />
-                </button>
-              </div>
+              <PaginationControls
+                currentPage={monthlyPage - 1}
+                totalPages={monthlyTotalPages}
+                setCurrentPage={(page) => onPaginateMonthly(page + 1)}
+              />
             )}
           </>
         )}

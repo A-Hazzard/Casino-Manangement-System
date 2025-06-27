@@ -33,6 +33,7 @@ import { DateRange as RDPDateRange } from "react-day-picker";
 import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport";
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 // Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
@@ -43,6 +44,22 @@ import ManagerMobileUI from "@/components/collectionReport/ManagerMobileUI";
 import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
 import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
+
+const EmptyState = ({
+  icon,
+  title,
+  message,
+}: {
+  icon: string;
+  title: string;
+  message: string;
+}) => (
+  <div className="flex flex-col items-center justify-center py-12">
+    <div className="text-4xl mb-4">{icon}</div>
+    <p className="text-lg text-gray-600 font-semibold mb-2">{title}</p>
+    <p className="text-sm text-gray-400">{message}</p>
+  </div>
+);
 
 /**
  * Main page component for the Collection Report.
@@ -128,15 +145,81 @@ export default function CollectionReportPage() {
     CollectionReportLocationWithMachines[]
   >([]);
 
-  // Add skeleton loader and empty state components at the top
-  const TableSkeleton = () => (
-    <div className="animate-pulse">
-      <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-6 bg-gray-200 rounded w-full" />
-        ))}
-      </div>
+  // Add skeletons for Monthly Report and Manager Schedule
+  const MonthlyTableSkeleton = () => (
+    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
+      <table className="w-full min-w-0 text-sm text-left">
+        <thead className="bg-button text-white">
+          <tr>
+            <th className="px-4 py-2 font-bold">LOCATION</th>
+            <th className="px-4 py-2 font-bold">DROP</th>
+            <th className="px-4 py-2 font-bold">WIN</th>
+            <th className="px-4 py-2 font-bold">GROSS</th>
+            <th className="px-4 py-2 font-bold">SAS GROSS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...Array(6)].map((_, i) => (
+            <tr key={i} className="border-b">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <td key={j} className="px-4 py-3">
+                  <div className="h-5 bg-gray-200 rounded w-full" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+  const MonthlySummarySkeleton = () => (
+    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse mb-0">
+      <table className="w-full min-w-0 text-sm text-left">
+        <thead className="bg-button text-white">
+          <tr>
+            <th className="px-4 py-2 font-bold">DROP</th>
+            <th className="px-4 py-2 font-bold">CANCELLED CREDITS</th>
+            <th className="px-4 py-2 font-bold">GROSS</th>
+            <th className="px-4 py-2 font-bold">SAS GROSS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {Array.from({ length: 4 }).map((_, j) => (
+              <td key={j} className="px-4 py-3">
+                <div className="h-5 bg-gray-200 rounded w-full" />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+  const ManagerTableSkeleton = () => (
+    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
+      <table className="w-full min-w-0 text-sm text-left">
+        <thead className="bg-button text-white">
+          <tr>
+            <th className="px-4 py-2 font-bold">COLLECTOR</th>
+            <th className="px-4 py-2 font-bold">LOCATION</th>
+            <th className="px-4 py-2 font-bold">MANAGER</th>
+            <th className="px-4 py-2 font-bold">VISIT TIME</th>
+            <th className="px-4 py-2 font-bold">CREATED AT</th>
+            <th className="px-4 py-2 font-bold">STATUS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...Array(6)].map((_, i) => (
+            <tr key={i} className="border-b">
+              {Array.from({ length: 6 }).map((_, j) => (
+                <td key={j} className="px-4 py-3">
+                  <div className="h-5 bg-gray-200 rounded w-full" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
   const CardSkeleton = () => (
@@ -146,28 +229,19 @@ export default function CollectionReportPage() {
       ))}
     </div>
   );
-  const SectionSkeleton = () => (
-    <div className="animate-pulse bg-white rounded-lg shadow-md p-6">
-      <div className="h-6 bg-gray-200 rounded w-1/2 mb-4" />
-      <div className="h-4 bg-gray-200 rounded w-full mb-2" />
-      <div className="h-4 bg-gray-200 rounded w-2/3" />
-    </div>
-  );
-  const EmptyState = ({
-    icon,
-    title,
-    message,
-  }: {
-    icon: string;
-    title: string;
-    message: string;
-  }) => (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="text-4xl mb-4">{icon}</div>
-      <p className="text-lg text-gray-600 font-semibold mb-2">{title}</p>
-      <p className="text-sm text-gray-400">{message}</p>
-    </div>
-  );
+
+  // Refetch handler
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchCollectionReportsByLicencee(selectedLicencee);
+      setReports(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } catch {
+      setReports([]);
+      setLoading(false);
+    }
+  };
 
   /**
    * Fetches monthly report summary and details for the selected date range and location.
@@ -504,6 +578,7 @@ export default function CollectionReportPage() {
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
             pageTitle=""
+            disabled={loading}
           />
 
           {/* Page Title and "New Collection" Button Section */}
@@ -525,13 +600,13 @@ export default function CollectionReportPage() {
                 <h1 className="text-3xl font-bold text-gray-800">
                   Collections
                 </h1>
-                {/* Plus icon is always visible next to the title now, acting as main "add" for mobile too */}
+                {/* Plus icon is visible on mobile/tablet, hidden on large screens */}
                 <Image
                   src="/plusButton.svg" // Green plus icon from your image
                   alt="Add New Collection"
                   width={28}
                   height={28}
-                  className="cursor-pointer h-7 w-7" // h-7 w-7 for consistent sizing
+                  className="cursor-pointer h-7 w-7 lg:hidden" // Hidden on large screens
                   onClick={() => setShowModal(true)} // Make the icon itself trigger modal
                 />
               </div>
@@ -539,19 +614,43 @@ export default function CollectionReportPage() {
 
             {/* Desktop: Separate "New Collection" Button (on the right) */}
             {/* This button is only for desktop, providing a larger click target with text */}
-            <button
-              className="hidden lg:flex bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-lg items-center gap-2 mt-4 lg:mt-0"
-              onClick={() => setShowModal(true)}
-            >
-              <Image
-                src="/plusButtonWhite.svg"
-                alt="Add"
-                width={20}
-                height={20}
-                className="filter-white"
-              />
-              New Collection
-            </button>
+            <div className="flex flex-row gap-2 items-center mt-4 lg:mt-0">
+              <Button
+                onClick={handleRefresh}
+                disabled={loading}
+                className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 ${
+                  loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
+                  />
+                </svg>
+                Refresh
+              </Button>
+              <button
+                className="hidden lg:flex bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-lg items-center gap-2"
+                onClick={() => setShowModal(true)}
+              >
+                <Image
+                  src="/plusButtonWhite.svg"
+                  alt="Add"
+                  width={20}
+                  height={20}
+                  className="filter-white"
+                />
+                New Collection
+              </button>
+            </div>
           </div>
 
           {/* Mobile: Tab selector */}
@@ -613,7 +712,7 @@ export default function CollectionReportPage() {
                       <CardSkeleton />
                     </div>
                     <div className="hidden lg:block">
-                      <TableSkeleton />
+                      <MonthlyTableSkeleton />
                     </div>
                   </>
                 ) : filteredReports.length === 0 ? (
@@ -671,8 +770,17 @@ export default function CollectionReportPage() {
 
             {activeTab === "monthly" && (
               <>
-                {loading ? (
-                  <SectionSkeleton />
+                {monthlyLoading ? (
+                  <>
+                    <div className="lg:hidden">
+                      <MonthlySummarySkeleton />
+                      <MonthlyTableSkeleton />
+                    </div>
+                    <div className="hidden lg:block">
+                      <MonthlySummarySkeleton />
+                      <MonthlyTableSkeleton />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <MonthlyMobileUI
@@ -722,7 +830,14 @@ export default function CollectionReportPage() {
             {activeTab === "manager" && (
               <>
                 {loadingSchedulers ? (
-                  <SectionSkeleton />
+                  <>
+                    <div className="lg:hidden">
+                      <CardSkeleton />
+                    </div>
+                    <div className="hidden lg:block">
+                      <ManagerTableSkeleton />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <ManagerMobileUI

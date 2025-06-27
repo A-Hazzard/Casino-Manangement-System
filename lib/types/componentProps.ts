@@ -8,7 +8,7 @@ import {
   TimeFrames,
   TopPerformingData,
 } from "@/lib/types";
-import { TimePeriod } from "@/lib/types/api";
+import { TimePeriod } from "@shared/types";
 import { VariantProps } from "class-variance-authority";
 import { JSX } from "react";
 import type { LocationSelectItem } from "./location";

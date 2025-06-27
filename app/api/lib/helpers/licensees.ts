@@ -1,0 +1,387 @@
+import { NextRequest } from "next/server";
+import { Licencee } from "../models/licencee";
+import { ObjectId } from "mongodb";
+import { logActivity, calculateChanges } from "./activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
+import { generateUniqueLicenseKey } from "../utils/licenseKey";
+
+/**
+ * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
+ */
+export function formatLicenseesForResponse(
+  licensees: Record<string, unknown>[]
+) {
+  return licensees.map((licensee) => {
+    let isPaid = licensee.isPaid;
+    if (typeof isPaid === "undefined") {
+      if (licensee.expiryDate) {
+        isPaid = new Date(licensee.expiryDate as string | Date) > new Date();
+      } else {
+        isPaid = false;
+      }
+    }
+    return {
+      ...licensee,
+      isPaid,
+      countryName: licensee.country,
+      lastEdited: licensee.updatedAt,
+    };
+  });
+}
+
+/**
+ * Retrieves all licensees from database
+ */
+export async function getAllLicensees() {
+  return await Licencee.find(
+    { deletedAt: { $in: [null, new Date(-1)] } },
+    {
+      _id: 1,
+      name: 1,
+      description: 1,
+      country: 1,
+      startDate: 1,
+      expiryDate: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      geoCoords: 1,
+      isPaid: 1,
+      prevStartDate: 1,
+      prevExpiryDate: 1,
+    }
+  )
+    .sort({ name: 1 })
+    .lean();
+}
+
+/**
+ * Creates a new licensee with activity logging
+ */
+export async function createLicensee(
+  data: {
+    name: string;
+    description?: string;
+    country: string;
+    startDate?: string;
+    expiryDate?: string;
+  },
+  request: NextRequest
+) {
+  const { name, description, country, startDate, expiryDate } = data;
+  const currentUser = await getUserFromServer();
+  const newId = new ObjectId().toString();
+  const licenseKey = await generateUniqueLicenseKey();
+
+  const finalStartDate = startDate ? new Date(startDate) : new Date();
+  let finalExpiryDate = null;
+  if (expiryDate) {
+    finalExpiryDate = new Date(expiryDate);
+  } else {
+    finalExpiryDate = new Date(finalStartDate);
+    finalExpiryDate.setDate(finalExpiryDate.getDate() + 30);
+  }
+
+  const licensee = await Licencee.create({
+    _id: newId,
+    name,
+    description: description || "",
+    country,
+    startDate: finalStartDate,
+    expiryDate: finalExpiryDate,
+    licenseKey,
+    lastEdited: new Date(),
+  });
+
+  if (currentUser && currentUser.emailAddress) {
+    try {
+      const createChanges = [
+        { field: "name", oldValue: null, newValue: name },
+        { field: "description", oldValue: null, newValue: description || "" },
+        { field: "country", oldValue: null, newValue: country },
+        { field: "licenseKey", oldValue: null, newValue: licenseKey },
+        { field: "startDate", oldValue: null, newValue: finalStartDate },
+        { field: "expiryDate", oldValue: null, newValue: finalExpiryDate },
+        {
+          field: "isPaid",
+          oldValue: null,
+          newValue: finalExpiryDate ? finalExpiryDate > new Date() : false,
+        },
+      ];
+
+      await logActivity(
+        {
+          id: currentUser._id as string,
+          email: currentUser.emailAddress as string,
+          role: (currentUser.roles as string[])?.[0] || "user",
+        },
+        "CREATE",
+        "Licensee",
+        { id: newId, name },
+        createChanges,
+        `Created new licensee "${name}" in ${country}`,
+        getClientIP(request) || undefined
+      );
+    } catch (logError) {
+      console.error("Failed to log activity:", logError);
+    }
+  }
+
+  return licensee;
+}
+
+/**
+ * Updates an existing licensee with activity logging
+ */
+export async function updateLicensee(
+  data: {
+    _id: string;
+    name?: string;
+    description?: string;
+    country?: string;
+    startDate?: string;
+    expiryDate?: string;
+    isPaid?: boolean;
+    prevStartDate?: string;
+    prevExpiryDate?: string;
+  },
+  request: NextRequest
+) {
+  const {
+    _id,
+    name,
+    description,
+    country,
+    startDate,
+    expiryDate,
+    isPaid,
+    prevStartDate,
+    prevExpiryDate,
+  } = data;
+
+  const currentUser = await getUserFromServer();
+  const originalLicensee = (await Licencee.findOne({ _id }).lean()) as {
+    _id: string;
+    name: string;
+    description?: string;
+    country: string;
+    startDate?: Date;
+    expiryDate?: Date;
+    prevStartDate?: Date;
+    prevExpiryDate?: Date;
+    isPaid?: boolean;
+    licenseKey?: string;
+  } | null;
+
+  if (!originalLicensee) {
+    throw new Error("Licensee not found");
+  }
+
+  const updateData: Record<string, unknown> = { lastEdited: new Date() };
+
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (country !== undefined) updateData.country = country;
+  if (startDate !== undefined) {
+    if (
+      originalLicensee.startDate &&
+      startDate !== originalLicensee.startDate.toISOString()
+    ) {
+      updateData.prevStartDate = originalLicensee.startDate;
+    }
+    updateData.startDate = startDate ? new Date(startDate) : null;
+  }
+  if (expiryDate !== undefined) {
+    if (
+      originalLicensee.expiryDate &&
+      expiryDate !== originalLicensee.expiryDate.toISOString()
+    ) {
+      updateData.prevExpiryDate = originalLicensee.expiryDate;
+    }
+    updateData.expiryDate = expiryDate ? new Date(expiryDate) : null;
+  }
+  if (prevStartDate !== undefined) {
+    updateData.prevStartDate = prevStartDate ? new Date(prevStartDate) : null;
+  }
+  if (prevExpiryDate !== undefined) {
+    updateData.prevExpiryDate = prevExpiryDate
+      ? new Date(prevExpiryDate)
+      : null;
+  }
+  if (isPaid !== undefined) {
+    updateData.isPaid = isPaid;
+  }
+
+  const updated = await Licencee.findOneAndUpdate({ _id }, updateData, {
+    new: true,
+  });
+
+  if (!updated) {
+    throw new Error("Licensee not found");
+  }
+
+  const updatedLicensee = updated.toObject();
+  if (typeof updatedLicensee.isPaid === "undefined") {
+    if (updatedLicensee.expiryDate) {
+      updatedLicensee.isPaid =
+        new Date(updatedLicensee.expiryDate) > new Date();
+    } else {
+      updatedLicensee.isPaid = false;
+    }
+  }
+
+  if (currentUser && currentUser.emailAddress) {
+    try {
+      const oldIsPaid =
+        typeof originalLicensee.isPaid === "undefined"
+          ? false
+          : originalLicensee.isPaid;
+      const newIsPaid =
+        typeof updateData.isPaid === "undefined"
+          ? oldIsPaid
+          : updateData.isPaid;
+
+      const changes = calculateChanges(
+        {
+          name: originalLicensee.name,
+          description: originalLicensee.description,
+          country: originalLicensee.country,
+          startDate: originalLicensee.startDate,
+          expiryDate: originalLicensee.expiryDate,
+          prevStartDate: originalLicensee.prevStartDate,
+          prevExpiryDate: originalLicensee.prevExpiryDate,
+          isPaid: oldIsPaid,
+        },
+        {
+          name: updateData.name || originalLicensee.name,
+          description:
+            updateData.description !== undefined
+              ? updateData.description
+              : originalLicensee.description,
+          country: updateData.country || originalLicensee.country,
+          startDate:
+            updateData.startDate !== undefined
+              ? updateData.startDate
+              : originalLicensee.startDate,
+          expiryDate:
+            updateData.expiryDate !== undefined
+              ? updateData.expiryDate
+              : originalLicensee.expiryDate,
+          prevStartDate:
+            updateData.prevStartDate !== undefined
+              ? updateData.prevStartDate
+              : originalLicensee.prevStartDate,
+          prevExpiryDate:
+            updateData.prevExpiryDate !== undefined
+              ? updateData.prevExpiryDate
+              : originalLicensee.prevExpiryDate,
+          isPaid: newIsPaid,
+        }
+      );
+
+      await logActivity(
+        {
+          id: currentUser._id as string,
+          email: currentUser.emailAddress as string,
+          role: (currentUser.roles as string[])?.[0] || "user",
+        },
+        "UPDATE",
+        "Licensee",
+        {
+          id: _id,
+          name: (updateData.name as string) || originalLicensee.name,
+        },
+        changes,
+        undefined,
+        getClientIP(request) || undefined
+      );
+    } catch (logError) {
+      console.error("Failed to log activity:", logError);
+    }
+  }
+
+  return updatedLicensee;
+}
+
+/**
+ * Soft deletes a licensee with activity logging
+ */
+export async function deleteLicensee(_id: string, request: NextRequest) {
+  const currentUser = await getUserFromServer();
+  const licenseeToDelete = await Licencee.findById(_id);
+
+  if (!licenseeToDelete) {
+    throw new Error("Licensee not found");
+  }
+
+  const deleted = await Licencee.findByIdAndUpdate(
+    _id,
+    { deletedAt: new Date() },
+    { new: true }
+  );
+
+  if (!deleted) {
+    throw new Error("Licensee not found");
+  }
+
+  if (currentUser && currentUser.emailAddress) {
+    try {
+      const deleteChanges = [
+        { field: "name", oldValue: licenseeToDelete.name, newValue: null },
+        {
+          field: "description",
+          oldValue: licenseeToDelete.description || "",
+          newValue: null,
+        },
+        {
+          field: "country",
+          oldValue: licenseeToDelete.country,
+          newValue: null,
+        },
+        {
+          field: "licenseKey",
+          oldValue: licenseeToDelete.licenseKey,
+          newValue: null,
+        },
+        {
+          field: "startDate",
+          oldValue: licenseeToDelete.startDate,
+          newValue: null,
+        },
+        {
+          field: "expiryDate",
+          oldValue: licenseeToDelete.expiryDate,
+          newValue: null,
+        },
+        {
+          field: "isPaid",
+          oldValue:
+            licenseeToDelete.isPaid !== undefined
+              ? licenseeToDelete.isPaid
+              : licenseeToDelete.expiryDate
+              ? new Date(licenseeToDelete.expiryDate) > new Date()
+              : false,
+          newValue: null,
+        },
+      ];
+
+      await logActivity(
+        {
+          id: currentUser._id as string,
+          email: currentUser.emailAddress as string,
+          role: (currentUser.roles as string[])?.[0] || "user",
+        },
+        "DELETE",
+        "Licensee",
+        { id: _id, name: licenseeToDelete.name },
+        deleteChanges,
+        `Deleted licensee "${licenseeToDelete.name}"`,
+        getClientIP(request) || undefined
+      );
+    } catch (logError) {
+      console.error("Failed to log activity:", logError);
+    }
+  }
+
+  return deleted;
+}

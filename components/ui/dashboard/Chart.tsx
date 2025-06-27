@@ -42,7 +42,7 @@ export default function Chart({
   }
 
   return (
-    <div className="bg-container p-6 rounded-lg shadow-md flex-1">
+    <div className="bg-container p-6 rounded-lg shadow-md">
       <ResponsiveContainer width="100%" height={320}>
         <AreaChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
