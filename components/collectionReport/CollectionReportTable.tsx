@@ -3,11 +3,13 @@ import Image from "next/image";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
 
-type Props = {
+type ExtendedCollectionReportTableProps = {
   data: CollectionReportRow[];
 };
 
-export default function CollectionReportTable({ data }: Props) {
+export default function CollectionReportTable({
+  data,
+}: ExtendedCollectionReportTableProps) {
   const router = useRouter();
   return (
     <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0">

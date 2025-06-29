@@ -3,11 +3,13 @@ import type { MonthlyReportDetailsRow } from "@/lib/types/componentProps"; // As
 
 type Row = MonthlyReportDetailsRow; // Alias if structure is identical, otherwise define explicitly
 
-type Props = {
+type ExtendedMonthlyReportDetailsTableProps = {
   details: Row[];
 };
 
-export default function MonthlyReportDetailsTable({ details }: Props) {
+export default function MonthlyReportDetailsTable({
+  details,
+}: ExtendedMonthlyReportDetailsTableProps) {
   return (
     <div className="overflow-x-auto bg-white shadow mt-0">
       <table className="min-w-full text-sm text-left">

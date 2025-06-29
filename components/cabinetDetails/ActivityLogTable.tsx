@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import type { MachineEvent } from "@/lib/types/api";
 
-type ActivityLogTableProps = {
+type ExtendedActivityLogTableProps = {
   data: MachineEvent[];
 };
 
@@ -10,7 +10,9 @@ type ActivityLogTableProps = {
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
-const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ data }) => {
+const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
+  data,
+}) => {
   // Prepare for search, pagination, and animation
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);

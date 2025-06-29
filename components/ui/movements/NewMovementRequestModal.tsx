@@ -18,12 +18,7 @@ import { createMovementRequest } from "@/lib/helpers/movementRequests";
 import { validateEmail } from "@/lib/utils/validation";
 import type { MovementRequest } from "@/lib/types/movementRequests";
 import type { Cabinet } from "@/lib/types/cabinets";
-
-interface NewMovementRequestModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  locations: { _id: string; name: string }[];
-}
+import type { NewMovementRequestModalProps } from "@/lib/types/components";
 
 const NewMovementRequestModal: React.FC<NewMovementRequestModalProps> = ({
   isOpen,
@@ -71,8 +66,8 @@ const NewMovementRequestModal: React.FC<NewMovementRequestModalProps> = ({
           setAvailableCabinets(cabs);
           setSelectedCabinets([]);
         })
-        .catch((error) => {
-          console.error("Error fetching cabinets:", error);
+        .catch(() => {
+          // Handle error silently - could implement proper error reporting
           setCabinets([]);
           setAvailableCabinets([]);
           setSelectedCabinets([]);

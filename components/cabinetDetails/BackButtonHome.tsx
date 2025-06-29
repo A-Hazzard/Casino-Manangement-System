@@ -2,9 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
-
-// Use Record<string, never> for a truly empty props object
-type BackButtonHomeProps = Record<string, never>;
+import type { BackButtonHomeProps } from "@/lib/types/components";
 
 const BackButtonHome: React.FC<BackButtonHomeProps> = () => {
   const router = useRouter();

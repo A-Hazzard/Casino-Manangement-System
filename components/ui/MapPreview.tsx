@@ -69,7 +69,10 @@ export default function MapPreview(props: MapPreviewProps) {
         );
         setLocationMetrics(metrics);
       } catch (error) {
-        console.error("Error fetching location metrics:", error);
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error fetching location metrics:", error);
+        }
         setLocationMetrics([]);
       }
     };

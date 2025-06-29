@@ -2,11 +2,13 @@ import React from "react";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
 
-type Props = {
+type ExtendedCollectionReportCardsProps = {
   data: CollectionReportRow[];
 };
 
-export default function CollectionReportCards({ data }: Props) {
+export default function CollectionReportCards({
+  data,
+}: ExtendedCollectionReportCardsProps) {
   const router = useRouter();
   return (
     <div className="flex flex-col lg:hidden mt-4 px-2 md:px-4 gap-4 w-full min-w-0">

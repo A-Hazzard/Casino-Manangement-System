@@ -21,9 +21,11 @@ export function getStatusColor(status: string): string {
 /**
  * Format a date for display in movement requests.
  * @param date Date or string
- * @returns string
+ * @returns string with date and time
  */
 export function formatMovementRequestDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString();
+  const dateStr = d.toLocaleDateString();
+  const timeStr = d.toLocaleTimeString("en-US", { hour12: false });
+  return `${dateStr} ${timeStr}`;
 }

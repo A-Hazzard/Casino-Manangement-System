@@ -6,11 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { DownloadIcon } from "@radix-ui/react-icons";
 import type { Firmware } from "@/lib/types/firmware";
-
-type SMIBFirmwareTableProps = {
-  firmwares: Firmware[];
-  loading?: boolean;
-};
+import type { SMIBFirmwareTableProps } from "@/lib/types/components";
 
 export default function SMIBFirmwareTable({
   firmwares,
@@ -65,7 +61,10 @@ export default function SMIBFirmwareTable({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("Error downloading firmware:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error downloading firmware:", error);
+      }
       alert("Failed to download firmware file");
     }
   };

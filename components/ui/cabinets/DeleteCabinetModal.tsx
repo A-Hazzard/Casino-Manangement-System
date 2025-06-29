@@ -99,7 +99,10 @@ export const DeleteCabinetModal = () => {
         // You could add a toast notification here
       }
     } catch (err) {
-      console.error("Failed to delete cabinet:", err);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to delete cabinet:", err);
+      }
     } finally {
       setLoading(false);
     }

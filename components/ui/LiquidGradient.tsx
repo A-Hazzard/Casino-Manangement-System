@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import type { Blob, RGBAColor } from "@/lib/types/components";
 
 const BlobConfig = {
   transparency: 0.04, // just a whisper of color
@@ -17,22 +18,6 @@ const BlobConfig = {
     "#F9687D",
   ],
 };
-
-interface Blob {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-  color: RGBAColor;
-}
-
-interface RGBAColor {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
 
 const G = 10000;
 const MAX_FORCE = 0.25;

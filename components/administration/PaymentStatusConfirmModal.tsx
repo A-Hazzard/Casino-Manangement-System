@@ -2,22 +2,7 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-
-function formatDate(date: Date | string | undefined) {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getNext30DaysDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 30);
-  return date;
-}
+import { formatDate, getNext30DaysDate } from "@/lib/utils/dateFormatting";
 
 type PaymentStatusConfirmModalProps = {
   open: boolean;

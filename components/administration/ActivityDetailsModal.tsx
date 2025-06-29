@@ -5,6 +5,8 @@ import gsap from "gsap";
 import { format } from "date-fns";
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 import { getIPDescription } from "@/lib/utils/ipAddress";
+import { formatFieldName } from "@/lib/utils/fieldFormatting";
+import { formatValue } from "@/lib/utils/dateFormatting";
 
 type ActivityDetailsModalProps = {
   open: boolean;
@@ -59,132 +61,6 @@ export default function ActivityDetailsModal({
       default:
         return <User className="w-5 h-5" />;
     }
-  };
-
-  const formatFieldName = (field: string) => {
-    // Handle common field names with better labels
-    const fieldLabels: { [key: string]: string } = {
-      // Date fields
-      startDate: "Start Date",
-      expiryDate: "Expiry Date",
-      endDate: "End Date",
-      dateOfBirth: "Date of Birth",
-      createdAt: "Created At",
-      updatedAt: "Updated At",
-      timestamp: "Timestamp",
-      lastEdited: "Last Edited",
-      // User fields
-      username: "Username",
-      emailAddress: "Email Address",
-      firstName: "First Name",
-      lastName: "Last Name",
-      middleName: "Middle Name",
-      otherName: "Other Name",
-      profilePicture: "Profile Picture",
-      isEnabled: "Account Status",
-      // Licensee fields
-      licenseKey: "License Key",
-      isPaid: "Payment Status",
-      prevStartDate: "Previous Start Date",
-      prevExpiryDate: "Previous Expiry Date",
-      // Common fields
-      name: "Name",
-      description: "Description",
-      country: "Country",
-      roles: "Roles",
-      gender: "Gender",
-      // Nested fields
-      "address.street": "Street Address",
-      "address.town": "Town/City",
-      "address.region": "Region/State",
-      "address.country": "Country",
-      "address.postalCode": "Postal Code",
-      "identification.dateOfBirth": "Date of Birth",
-      "identification.idType": "ID Type",
-      "identification.idNumber": "ID Number",
-      "identification.notes": "Notes",
-    };
-
-    // Check if it's a known field
-    if (fieldLabels[field]) {
-      return fieldLabels[field];
-    }
-
-    // Convert camelCase and dot notation to readable format
-    return field
-      .replace(/([A-Z])/g, " $1")
-      .replace(/\./g, " → ")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
-  };
-
-  const formatValue = (value: unknown, fieldName?: string) => {
-    if (value === null || value === undefined) return "Not set";
-    if (typeof value === "string" && value.trim() === "") return "Empty";
-    if (typeof value === "boolean") return value ? "Yes" : "No";
-
-    // Check if the value is a date string (ISO format or Date object)
-    if (typeof value === "string" || value instanceof Date) {
-      const dateValue = typeof value === "string" ? value : value.toISOString();
-
-      // Check if it's a valid ISO date string with time
-      const isoDateTimeRegex =
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
-      if (isoDateTimeRegex.test(dateValue)) {
-        try {
-          const date = new Date(dateValue);
-          if (!isNaN(date.getTime())) {
-            // For date-only fields, show just the date
-            const dateOnlyFields = [
-              "startDate",
-              "expiryDate",
-              "endDate",
-              "dateOfBirth",
-            ];
-            if (fieldName && dateOnlyFields.includes(fieldName)) {
-              return format(date, "MMMM d, yyyy");
-            }
-            // For timestamp fields, show date and time
-            return format(date, "MMMM d, yyyy 'at' h:mm a");
-          }
-        } catch {}
-      }
-
-      // Check if it's a simple date string (YYYY-MM-DD)
-      const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (typeof value === "string" && simpleDateRegex.test(value)) {
-        try {
-          const date = new Date(value + "T00:00:00");
-          if (!isNaN(date.getTime())) {
-            // Format as readable date only
-            return format(date, "MMMM d, yyyy");
-          }
-        } catch {}
-      }
-
-      // Check if it's a timestamp number (milliseconds since epoch)
-      if (typeof value === "string" && /^\d{13}$/.test(value)) {
-        try {
-          const date = new Date(parseInt(value));
-          if (!isNaN(date.getTime())) {
-            return format(date, "MMMM d, yyyy 'at' h:mm a");
-          }
-        } catch {}
-      }
-    }
-
-    // Handle numeric timestamps
-    if (typeof value === "number" && value > 1000000000000) {
-      // Likely a timestamp in milliseconds
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return format(date, "MMMM d, yyyy 'at' h:mm a");
-        }
-      } catch {}
-    }
-
-    return String(value);
   };
 
   return (

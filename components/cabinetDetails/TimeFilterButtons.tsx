@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { TimePeriod } from "@/lib/types/api";
 
-type TimeFilterButtonsProps = {
+type ExtendedTimeFilterButtonsProps = {
   activeMetricsFilter: TimePeriod;
   metricsLoading: boolean;
   isFilterChangeInProgress: boolean;
@@ -12,7 +12,7 @@ type TimeFilterButtonsProps = {
   setActiveMetricsFilter: (filter: TimePeriod) => void;
 };
 
-const TimeFilterButtons: React.FC<TimeFilterButtonsProps> = ({
+const TimeFilterButtons: React.FC<ExtendedTimeFilterButtonsProps> = ({
   activeMetricsFilter,
   metricsLoading,
   isFilterChangeInProgress,

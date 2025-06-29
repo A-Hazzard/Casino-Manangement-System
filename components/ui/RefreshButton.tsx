@@ -2,14 +2,9 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { RefreshCw, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
+import type { SyncButtonProps as BaseSyncButtonProps } from "@/lib/types/components";
 
-type SyncButtonProps = ButtonProps & {
-  isSyncing: boolean;
-  onClick: () => void;
-  label?: string;
-  iconOnly?: boolean;
-  variant?: "refresh" | "sync";
-};
+type SyncButtonProps = ButtonProps & BaseSyncButtonProps;
 
 export const SyncButton: React.FC<SyncButtonProps> = ({
   onClick,

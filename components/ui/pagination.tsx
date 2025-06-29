@@ -1,6 +1,6 @@
 import * as React from "react";
-import { ButtonProps } from "@/lib/types/componentProps";
 import { cn } from "@/lib/utils";
+import type { PaginationLinkProps } from "@/lib/types/components";
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
   <nav
@@ -30,11 +30,6 @@ const PaginationItem = React.forwardRef<
   <li ref={ref} className={cn("", className)} {...props} />
 ));
 PaginationItem.displayName = "PaginationItem";
-
-type PaginationLinkProps = {
-  isActive?: boolean;
-  size?: Pick<ButtonProps, "size">;
-} & React.ComponentProps<"a">;
 
 const PaginationLink = ({
   className,

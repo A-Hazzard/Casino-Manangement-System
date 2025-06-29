@@ -5,14 +5,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@radix-ui/react-icons";
-
-type PaginationControlsProps = {
-  currentPage: number;
-  totalPages: number;
-  setCurrentPage: (page: number) => void;
-  itemsPerPage?: number; // Optional, for future use if needed elsewhere
-  totalItems?: number; // Optional, for future use if needed elsewhere
-};
+import type { PaginationControlsProps } from "@/lib/types/components";
 
 export default function PaginationControls({
   currentPage,

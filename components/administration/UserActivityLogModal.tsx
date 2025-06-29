@@ -244,7 +244,10 @@ export default function UserActivityLogModal({
         throw new Error(data.message || "Failed to fetch activity logs");
       }
     } catch (err) {
-      console.error("Error fetching activities:", err);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching activities:", err);
+      }
       setError(
         err instanceof Error ? err.message : "Failed to load activity logs"
       );

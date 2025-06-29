@@ -66,7 +66,13 @@ export default function CabinetCard(props: CabinetCardProps) {
       if (targetLocationId) {
         router.push(`/locations/${targetLocationId}/details/${props._id}`);
       } else {
-        console.error("Location ID not found for navigation.");
+        if (!locationId) {
+          // Log error for debugging in development
+          if (process.env.NODE_ENV === "development") {
+            console.error("Location ID not found for navigation.");
+          }
+          return;
+        }
       }
     }
   };

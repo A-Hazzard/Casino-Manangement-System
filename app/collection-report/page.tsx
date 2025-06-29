@@ -16,8 +16,6 @@ import {
 import Image from "next/image";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import type { LocationSelectItem } from "@/lib/types/location";
-import { fetchSchedulersWithFilters } from "@/lib/helpers/schedulers";
-import { formatDateString } from "@/lib/utils/dateUtils";
 import type { SchedulerTableRow } from "@/lib/types/componentProps";
 import {
   fetchMonthlyReportSummaryAndDetails,
@@ -34,8 +32,18 @@ import { fetchCollectionReportsByLicencee } from "@/lib/helpers/collectionReport
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  animatePagination,
+  animateTableRows,
+  animateCards,
+  animateContentTransition,
+  filterCollectionReports,
+  calculatePagination,
+  fetchAndFormatSchedulers,
+  setLastMonthDateRange,
+  triggerSearchAnimation,
+} from "@/lib/helpers/collectionReportPage";
 
-// Import new UI components
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
 import CollectionDesktopUI from "@/components/collectionReport/CollectionDesktopUI";
 import MonthlyMobileUI from "@/components/collectionReport/MonthlyMobileUI";
@@ -44,22 +52,15 @@ import ManagerMobileUI from "@/components/collectionReport/ManagerMobileUI";
 import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
 import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
+import { EmptyState } from "@/components/ui/EmptyState";
 
-const EmptyState = ({
-  icon,
-  title,
-  message,
-}: {
-  icon: string;
-  title: string;
-  message: string;
-}) => (
-  <div className="flex flex-col items-center justify-center py-12">
-    <div className="text-4xl mb-4">{icon}</div>
-    <p className="text-lg text-gray-600 font-semibold mb-2">{title}</p>
-    <p className="text-sm text-gray-400">{message}</p>
-  </div>
-);
+// Skeleton components
+import {
+  MonthlyTableSkeleton,
+  MonthlySummarySkeleton,
+  ManagerTableSkeleton,
+  CardSkeleton,
+} from "@/components/ui/skeletons/CollectionReportSkeletons";
 
 /**
  * Main page component for the Collection Report.
@@ -145,91 +146,6 @@ export default function CollectionReportPage() {
     CollectionReportLocationWithMachines[]
   >([]);
 
-  // Add skeletons for Monthly Report and Manager Schedule
-  const MonthlyTableSkeleton = () => (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button text-white">
-          <tr>
-            <th className="px-4 py-2 font-bold">LOCATION</th>
-            <th className="px-4 py-2 font-bold">DROP</th>
-            <th className="px-4 py-2 font-bold">WIN</th>
-            <th className="px-4 py-2 font-bold">GROSS</th>
-            <th className="px-4 py-2 font-bold">SAS GROSS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...Array(6)].map((_, i) => (
-            <tr key={i} className="border-b">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <td key={j} className="px-4 py-3">
-                  <div className="h-5 bg-gray-200 rounded w-full" />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-  const MonthlySummarySkeleton = () => (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse mb-0">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button text-white">
-          <tr>
-            <th className="px-4 py-2 font-bold">DROP</th>
-            <th className="px-4 py-2 font-bold">CANCELLED CREDITS</th>
-            <th className="px-4 py-2 font-bold">GROSS</th>
-            <th className="px-4 py-2 font-bold">SAS GROSS</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {Array.from({ length: 4 }).map((_, j) => (
-              <td key={j} className="px-4 py-3">
-                <div className="h-5 bg-gray-200 rounded w-full" />
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-  const ManagerTableSkeleton = () => (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button text-white">
-          <tr>
-            <th className="px-4 py-2 font-bold">COLLECTOR</th>
-            <th className="px-4 py-2 font-bold">LOCATION</th>
-            <th className="px-4 py-2 font-bold">MANAGER</th>
-            <th className="px-4 py-2 font-bold">VISIT TIME</th>
-            <th className="px-4 py-2 font-bold">CREATED AT</th>
-            <th className="px-4 py-2 font-bold">STATUS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...Array(6)].map((_, i) => (
-            <tr key={i} className="border-b">
-              {Array.from({ length: 6 }).map((_, j) => (
-                <td key={j} className="px-4 py-3">
-                  <div className="h-5 bg-gray-200 rounded w-full" />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-  const CardSkeleton = () => (
-    <div className="animate-pulse space-y-4">
-      {[...Array(2)].map((_, i) => (
-        <div key={i} className="bg-gray-200 rounded-lg h-24 w-full" />
-      ))}
-    </div>
-  );
-
   // Refetch handler
   const handleRefresh = async () => {
     setLoading(true);
@@ -311,11 +227,7 @@ export default function CollectionReportPage() {
   // Animate content when tab changes
   useEffect(() => {
     if (contentRef.current) {
-      gsap.fromTo(
-        contentRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }
-      );
+      animateContentTransition(contentRef);
     }
   }, [activeTab]);
 
@@ -329,142 +241,68 @@ export default function CollectionReportPage() {
   useEffect(() => {
     if (!loading && !isSearching) {
       if (desktopTableRef.current && activeTab === "collection") {
-        const tableRows = desktopTableRef.current.querySelectorAll("tbody tr");
-        gsap.fromTo(
-          tableRows,
-          { opacity: 0, y: 15 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.4,
-            stagger: 0.05,
-            ease: "power2.out",
-          }
-        );
+        animateTableRows(desktopTableRef);
       }
       if (mobileCardsRef.current && activeTab === "collection") {
-        const cards = Array.from(
-          mobileCardsRef.current?.querySelectorAll(".card-item") || []
-        );
-        gsap.fromTo(
-          cards,
-          { opacity: 0, scale: 0.95, y: 15 },
-          {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            duration: 0.3,
-            stagger: 0.05,
-            ease: "back.out(1.5)",
-          }
-        );
+        animateCards(mobileCardsRef);
       }
     }
   }, [loading, isSearching, mobilePage, desktopPage, activeTab]);
 
   // Filter reports based on location, search, and uncollected status
-  const filteredReports = reports.filter((r) => {
-    const matchesLocation =
-      selectedLocation === "all" ||
-      r.location === locations.find((l) => l._id === selectedLocation)?.name;
-    const matchesSearch =
-      !search ||
-      r.collector.toLowerCase().includes(search.toLowerCase()) ||
-      r.location.toLowerCase().includes(search.toLowerCase());
-    const uncollectedStr = String(r.uncollected).trim();
-    const matchesUncollected =
-      !showUncollectedOnly || Number(uncollectedStr) > 0;
-    return matchesLocation && matchesSearch && matchesUncollected;
-  });
+  const filteredReports = filterCollectionReports(
+    reports,
+    selectedLocation,
+    search,
+    showUncollectedOnly,
+    locations
+  );
 
   // Pagination calculations for mobile and desktop
-  const mobileLastItemIndex = mobilePage * itemsPerPage;
-  const mobileFirstItemIndex = mobileLastItemIndex - itemsPerPage;
-  const mobileCurrentItems = filteredReports.slice(
-    mobileFirstItemIndex,
-    mobileLastItemIndex
+  const mobileData = calculatePagination(
+    filteredReports,
+    mobilePage,
+    itemsPerPage
   );
-  const mobileTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
-
-  const desktopLastItemIndex = desktopPage * itemsPerPage;
-  const desktopFirstItemIndex = desktopLastItemIndex - itemsPerPage;
-  const desktopCurrentItems = filteredReports.slice(
-    desktopFirstItemIndex,
-    desktopLastItemIndex
+  const desktopData = calculatePagination(
+    filteredReports,
+    desktopPage,
+    itemsPerPage
   );
-  const desktopTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
 
   // Pagination handlers with animation
   const paginateMobile = (pageNumber: number) => {
     setMobilePage(pageNumber);
-    if (mobilePaginationRef.current && activeTab === "collection") {
-      gsap.fromTo(
-        mobilePaginationRef.current,
-        { scale: 0.95, opacity: 0.8 },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: 0.3,
-          ease: "back.out(1.7)",
-        }
-      );
+    if (activeTab === "collection") {
+      animatePagination(mobilePaginationRef);
     }
   };
 
   const paginateDesktop = (pageNumber: number) => {
     setDesktopPage(pageNumber);
-    if (desktopPaginationRef.current && activeTab === "collection") {
-      gsap.fromTo(
-        desktopPaginationRef.current,
-        { scale: 0.95, opacity: 0.8 },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: 0.3,
-          ease: "back.out(1.7)",
-        }
-      );
+    if (activeTab === "collection") {
+      animatePagination(desktopPaginationRef);
     }
   };
 
   // Triggers a search animation
   const handleSearch = () => {
-    setIsSearching(true);
-    setTimeout(() => {
-      setIsSearching(false);
-    }, 500);
+    triggerSearchAnimation(setIsSearching);
   };
 
   // Fetch manager schedules and collectors when manager tab is active or filters change
   useEffect(() => {
     if (activeTab === "manager") {
       setLoadingSchedulers(true);
-      const locationName =
-        selectedSchedulerLocation !== "all"
-          ? locations.find((loc) => loc._id === selectedSchedulerLocation)?.name
-          : undefined;
-      fetchSchedulersWithFilters({
-        location: locationName,
-        collector: selectedCollector !== "all" ? selectedCollector : undefined,
-        status: selectedStatus !== "all" ? selectedStatus : undefined,
-      })
-        .then((data) => {
-          // Extract unique collectors for filter dropdown
-          const uniqueCollectors = Array.from(
-            new Set(data.map((item) => item.collector))
-          ).filter(Boolean);
-          setCollectors(uniqueCollectors);
-          // Format scheduler data for table
-          const formattedData: SchedulerTableRow[] = data.map((item) => ({
-            id: item._id,
-            collector: item.collector,
-            location: item.location,
-            creator: item.creator,
-            visitTime: formatDateString(item.startTime),
-            createdAt: formatDateString(item.createdAt),
-            status: item.status,
-          }));
-          setSchedulers(formattedData);
+      fetchAndFormatSchedulers(
+        selectedSchedulerLocation,
+        selectedCollector,
+        selectedStatus,
+        locations
+      )
+        .then(({ schedulers, collectors }) => {
+          setCollectors(collectors);
+          setSchedulers(schedulers);
           setLoadingSchedulers(false);
         })
         .catch((error) => {
@@ -511,11 +349,7 @@ export default function CollectionReportPage() {
 
   // Set date range to last month for monthly report
   const handleLastMonth = () => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const last = new Date(now.getFullYear(), now.getMonth(), 0);
-    setPendingRange({ from: first, to: last });
-    setMonthlyDateRange({ from: first, to: last });
+    setLastMonthDateRange(setMonthlyDateRange, setPendingRange);
   };
 
   // Apply the pending date range to the monthly report
@@ -735,8 +569,8 @@ export default function CollectionReportPage() {
                       isSearching={isSearching}
                       loading={loading}
                       filteredReports={filteredReports}
-                      mobileCurrentItems={mobileCurrentItems}
-                      mobileTotalPages={mobileTotalPages}
+                      mobileCurrentItems={mobileData.currentItems}
+                      mobileTotalPages={mobileData.totalPages}
                       mobilePage={mobilePage}
                       onPaginateMobile={paginateMobile}
                       mobilePaginationRef={mobilePaginationRef}
@@ -755,8 +589,8 @@ export default function CollectionReportPage() {
                       isSearching={isSearching}
                       loading={loading}
                       filteredReports={filteredReports}
-                      desktopCurrentItems={desktopCurrentItems}
-                      desktopTotalPages={desktopTotalPages}
+                      desktopCurrentItems={desktopData.currentItems}
+                      desktopTotalPages={desktopData.totalPages}
                       desktopPage={desktopPage}
                       onPaginateDesktop={paginateDesktop}
                       desktopPaginationRef={desktopPaginationRef}

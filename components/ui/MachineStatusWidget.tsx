@@ -1,10 +1,6 @@
 import React from "react";
 import Image from "next/image";
-
-interface MachineStatusWidgetProps {
-  onlineCount: number;
-  offlineCount: number;
-}
+import type { MachineStatusWidgetProps } from "@/lib/types/components";
 
 export default function MachineStatusWidget({
   onlineCount,

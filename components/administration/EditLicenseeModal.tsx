@@ -5,7 +5,7 @@ import { getNames } from "country-list";
 import { Info } from "lucide-react";
 import { formatLicenseeDate } from "@/lib/utils/licensee";
 
-interface EditLicenseeModalProps {
+type EditLicenseeModalProps = {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -29,7 +29,7 @@ interface EditLicenseeModalProps {
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
   }) => void;
-}
+};
 
 export default function EditLicenseeModal({
   open,

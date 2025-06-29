@@ -7,7 +7,6 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
-import { CabinetDetail } from "@/lib/types/cabinets";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
@@ -20,28 +19,7 @@ import CabinetFilterBar from "@/components/locationDetails/CabinetFilterBar";
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { TimePeriod } from "@/lib/types/api";
 import RefreshButton from "@/components/ui/RefreshButton";
-
-type LocationInfo = {
-  _id: string;
-  name: string;
-  address?: string;
-  licencee?: string;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-};
-
-type ExtendedCabinetDetail = CabinetDetail & {
-  serialNumber: string;
-  isOnline?: boolean;
-  lastCommunication?: string | Date;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-  lastActivity?: string | Date;
-};
+import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
 
 export default function LocationDetailsPage() {
   const params = useParams();

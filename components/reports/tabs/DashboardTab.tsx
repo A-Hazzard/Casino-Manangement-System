@@ -180,8 +180,8 @@ export default function DashboardTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle location selection from map
-  const handleLocationSelect = (locationId: string) => {
-    console.log("Selected location:", locationId);
+  const handleLocationSelect = () => {
+    // Handle location selection functionality would be implemented here
     // Here you could navigate to location details or show more info
   };
 

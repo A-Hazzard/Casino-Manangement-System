@@ -1,18 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
-import gsap from "gsap";
-import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
-import { validateCollectionReportData } from "@/lib/utils/validation";
-import type { CollectionReportData } from "@/lib/types/index";
-import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
-import type { CollectionDocument } from "@/lib/types/collections";
-import { calculateSasGross, calculateVariation } from "@/lib/utils/metrics";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -21,107 +12,35 @@ import {
 } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 
-// Skeleton Components
-const CollectionReportSkeleton = () => (
-  <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col overflow-hidden">
-    <Sidebar pathname="/collection-report/report/loading" />
-    <main className="flex-1 lg:ml-4">
-      <Header
-        pageTitle=""
-        hideOptions={true}
-        hideLicenceeFilter={true}
-        containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-        disabled={true}
-      />
+// Layout components
+import Sidebar from "@/components/layout/Sidebar";
+import Header from "@/components/layout/Header";
 
-      {/* Back button skeleton - Desktop only */}
-      <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-40 skeleton-bg rounded-md"></div>
-          <div className="h-8 w-8 skeleton-bg rounded-md"></div>
-        </div>
-      </div>
+// Skeleton components
+import {
+  CollectionReportSkeleton,
+  TableSkeleton,
+  CardSkeleton,
+} from "@/components/ui/skeletons/CollectionReportDetailSkeletons";
 
-      {/* Collection Header Card Skeleton */}
-      <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
-        <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
-          <div className="text-center py-2 lg:py-4 px-4">
-            <div className="h-4 w-20 skeleton-bg rounded mx-auto mb-2 lg:hidden"></div>
-            <div className="h-8 lg:h-12 w-48 lg:w-64 skeleton-bg rounded mx-auto mb-2"></div>
-            <div className="h-4 lg:h-5 w-32 lg:w-40 skeleton-bg rounded mx-auto mb-4"></div>
-            {/* Location Total Skeleton */}
-            <div className="h-6 w-40 skeleton-bg rounded mx-auto mb-4"></div>
-          </div>
-        </div>
-      </div>
+// Helper functions
+import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
+import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
+import { validateCollectionReportData } from "@/lib/utils/validation";
+import {
+  animateDesktopTabTransition,
+  generateMachineMetricsData,
+  calculateLocationTotal,
+  calculateSasMetricsTotals,
+} from "@/lib/helpers/collectionReportDetailPage";
 
-      {/* Desktop: Tabs Skeleton */}
-      <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
-        <div className="lg:w-1/4 mb-6 lg:mb-0">
-          <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-            <div className="h-10 w-full skeleton-bg rounded"></div>
-            <div className="h-10 w-full skeleton-bg rounded"></div>
-            <div className="h-10 w-full skeleton-bg rounded"></div>
-          </div>
-        </div>
-        <div className="lg:w-3/4">
-          <TabContentSkeleton />
-        </div>
-      </div>
+// Types
+import type { CollectionReportData } from "@/lib/types/index";
+import type { CollectionDocument } from "@/lib/types/collections";
 
-      {/* Mobile: Stacked Sections Skeleton */}
-      <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
-        <MobileSectionSkeleton />
-        <MobileSectionSkeleton />
-        <MobileSectionSkeleton />
-      </div>
-    </main>
-  </div>
-);
-
-const TabContentSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md">
-    <div className="h-12 w-full skeleton-bg rounded-t-lg mb-4"></div>
-    <div className="p-6 space-y-4">
-      <div className="h-6 w-1/3 skeleton-bg rounded"></div>
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-12 w-full skeleton-bg rounded"></div>
-        ))}
-      </div>
-      <div className="flex justify-between items-center mt-4">
-        <div className="h-6 w-32 skeleton-bg rounded"></div>
-        <div className="flex space-x-2">
-          <div className="h-8 w-8 skeleton-bg rounded"></div>
-          <div className="h-8 w-8 skeleton-bg rounded"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const MobileSectionSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md">
-    <div className="h-12 w-full skeleton-bg rounded-t-lg mb-4"></div>
-    <div className="p-4 space-y-4">
-      <div className="h-5 w-1/2 skeleton-bg rounded"></div>
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex justify-between">
-            <div className="h-4 w-1/3 skeleton-bg rounded"></div>
-            <div className="h-4 w-1/4 skeleton-bg rounded"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// Main component for the report page
 export default function CollectionReportPage() {
   const params = useParams();
   const pathname = usePathname();
-  // reportId is the MongoDB _id (document ID)
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
@@ -136,9 +55,8 @@ export default function CollectionReportPage() {
   const [machinePage, setMachinePage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
 
-  const tabContentRef = useRef<HTMLDivElement>(null); // For desktop GSAP
+  const tabContentRef = useRef<HTMLDivElement>(null);
 
-  // Fetch report data on mount or when reportId changes
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -156,34 +74,16 @@ export default function CollectionReportPage() {
         setReportData(null);
       })
       .finally(() => setLoading(false));
-    // Fetch collections for this report
+
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
   }, [reportId]);
 
-  // GSAP animation for desktop tab transitions
   useEffect(() => {
-    if (tabContentRef.current && window.innerWidth >= 1024) {
-      // 1024px is lg breakpoint for default Tailwind
-      gsap.fromTo(
-        tabContentRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
-      );
-    }
+    animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
 
-  // Calculate location total
-  const calculateLocationTotal = () => {
-    if (!collections || collections.length === 0) return 0;
-    return collections.reduce((total, collection) => {
-      const gross = (collection.metersOut || 0) - (collection.metersIn || 0);
-      return total + gross;
-    }, 0);
-  };
-
-  // Refetch handler
   const handleRefresh = async () => {
     setRefreshing(true);
     setLoading(true);
@@ -209,11 +109,10 @@ export default function CollectionReportPage() {
   };
 
   if (loading) {
-    return <CollectionReportSkeleton />;
+    return <CollectionReportSkeleton pathname={pathname} />;
   }
 
   if (error) {
-    // Common error display
     return (
       <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
         <Sidebar pathname={pathname} />
@@ -240,7 +139,6 @@ export default function CollectionReportPage() {
   }
 
   if (!reportData) {
-    // Common not found display
     return (
       <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
         <Sidebar pathname={pathname} />
@@ -266,7 +164,6 @@ export default function CollectionReportPage() {
     );
   }
 
-  // Desktop Tab Button Component
   const TabButton = ({
     label,
   }: {
@@ -285,16 +182,11 @@ export default function CollectionReportPage() {
     </button>
   );
 
-  const sortedCollections = [...collections].sort(
-    (a, b) => (b.sasMeters?.drop || 0) - (a.sasMeters?.drop || 0)
-  );
-  const machineTotalPages = Math.ceil(
-    sortedCollections.length / ITEMS_PER_PAGE
-  );
-  const machineCurrentItems = sortedCollections.slice(
-    (machinePage - 1) * ITEMS_PER_PAGE,
-    machinePage * ITEMS_PER_PAGE
-  );
+  const {
+    metricsData,
+    totalPages: machineTotalPages,
+    hasData,
+  } = generateMachineMetricsData(collections, machinePage, ITEMS_PER_PAGE);
 
   const MachineMetricsContent = ({ loading }: { loading: boolean }) => {
     if (loading) {
@@ -309,7 +201,7 @@ export default function CollectionReportPage() {
         </>
       );
     }
-    if (machineCurrentItems.length === 0) {
+    if (!hasData) {
       return (
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-4xl mb-4">🛠️</div>
@@ -324,58 +216,56 @@ export default function CollectionReportPage() {
     }
     return (
       <>
-        {/* Mobile View */}
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             Machine Metrics
           </h2>
-          {machineCurrentItems.map((col) => (
+          {metricsData.map((metric) => (
             <div
-              key={col._id}
+              key={metric.id}
               className="bg-white rounded-lg shadow-md overflow-hidden"
             >
               <div className="bg-lighterBlueHighlight text-white p-3">
                 <h3 className="font-semibold">
-                  Machine ID: {col.machineCustomName}
+                  Machine ID: {metric.machineCustomName}
                 </h3>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Dropped / Cancelled</span>
                   <span className="font-medium text-gray-800">
-                    {col.movement.metersIn} / {col.movement.metersOut}
+                    {metric.droppedCancelled}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Meters Gross</span>
                   <span className="font-medium text-gray-800">
-                    {col.movement.gross}
+                    {metric.metersGross}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Gross</span>
                   <span className="font-medium text-gray-800">
-                    {calculateSasGross(col)}
+                    {metric.sasGross}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variation</span>
                   <span className="font-medium text-gray-800">
-                    {calculateVariation(col)}
+                    {metric.variation}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Times</span>
                   <div className="font-medium text-gray-800 text-right">
-                    <div>{col.sasMeters?.sasStartTime || "-"}</div>
-                    <div>{col.sasMeters?.sasEndTime || "-"}</div>
+                    <div>{metric.sasStartTime}</div>
+                    <div>{metric.sasEndTime}</div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        {/* Desktop View */}
         <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto pb-6">
           <table className="w-full text-sm">
             <thead className="bg-button text-white">
@@ -401,37 +291,32 @@ export default function CollectionReportPage() {
               </tr>
             </thead>
             <tbody>
-              {machineCurrentItems.map((col) => (
+              {metricsData.map((metric) => (
                 <tr
-                  key={col._id}
+                  key={metric.id}
                   className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
                 >
                   <td className="p-3 whitespace-nowrap">
                     <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                      {col.machineCustomName}
+                      {metric.machineCustomName}
                     </span>
                   </td>
                   <td className="p-3 whitespace-nowrap">
-                    {col.movement.metersIn} / {col.movement.metersOut}
+                    {metric.droppedCancelled}
                   </td>
                   <td className="p-3 whitespace-nowrap">
-                    {col.movement.gross}
+                    {metric.metersGross}
                   </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {calculateSasGross(col)}
-                  </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {calculateVariation(col)}
-                  </td>
+                  <td className="p-3 whitespace-nowrap">{metric.sasGross}</td>
+                  <td className="p-3 whitespace-nowrap">{metric.variation}</td>
                   <td className="p-3 whitespace-nowrap text-xs">
-                    <div>{col.sasMeters?.sasStartTime || "-"}</div>
-                    <div>{col.sasMeters?.sasEndTime || "-"}</div>
+                    <div>{metric.sasStartTime}</div>
+                    <div>{metric.sasEndTime}</div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {/* Pagination for Machine Metrics */}
           <div className="mt-6 flex items-center justify-center space-x-2">
             <Button
               variant="outline"
@@ -512,7 +397,6 @@ export default function CollectionReportPage() {
 
     return (
       <>
-        {/* Mobile View */}
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             Location Metrics
@@ -526,27 +410,27 @@ export default function CollectionReportPage() {
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Dropped / Cancelled</span>
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-black">
                   {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Meters Gross</span>
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-green-600">
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross</span>
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-green-600">
                   {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Variation</span>
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-yellow-600">
                   {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </span>
@@ -554,7 +438,6 @@ export default function CollectionReportPage() {
             </div>
           </div>
         </div>
-        {/* Desktop View */}
         <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-button text-white">
@@ -584,24 +467,31 @@ export default function CollectionReportPage() {
                   </span>
                 </td>
                 <td className="p-3 whitespace-nowrap">
-                  {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
+                  <span className="font-medium text-black">
+                    {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
+                  </span>
                 </td>
                 <td className="p-3 whitespace-nowrap">
-                  {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                    "0"}
+                  <span className="font-medium text-green-600">
+                    {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
+                      "0"}
+                  </span>
                 </td>
                 <td className="p-3 whitespace-nowrap">
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                    "0"}
+                  <span className="font-medium text-green-600">
+                    {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
+                      "0"}
+                  </span>
                 </td>
                 <td className="p-3 whitespace-nowrap">
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                    "0"}
+                  <span className="font-medium text-yellow-600">
+                    {reportData?.locationMetrics?.variation?.toLocaleString() ||
+                      "0"}
+                  </span>
                 </td>
               </tr>
             </tbody>
           </table>
-          {/* Pagination for Location Metrics - Single item, no pagination needed */}
         </div>
       </>
     );
@@ -621,19 +511,11 @@ export default function CollectionReportPage() {
       );
     }
 
-    const totalSasDrop = collections.reduce(
-      (sum, col) => sum + (col.sasMeters?.drop || 0),
-      0
-    );
-    const totalSasCancelled = collections.reduce(
-      (sum, col) => sum + (col.sasMeters?.totalCancelledCredits || 0),
-      0
-    );
-    const totalSasGross = totalSasDrop - totalSasCancelled;
+    const { totalSasDrop, totalSasCancelled, totalSasGross } =
+      calculateSasMetricsTotals(collections);
 
     return (
       <>
-        {/* Mobile View */}
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             SAS Metrics Compare
@@ -664,7 +546,6 @@ export default function CollectionReportPage() {
             </div>
           </div>
         </div>
-        {/* Desktop View */}
         <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-button text-white">
@@ -704,7 +585,6 @@ export default function CollectionReportPage() {
               </tr>
             </tbody>
           </table>
-          {/* Pagination for SAS Metrics - Single summary, no pagination needed */}
         </div>
       </>
     );
@@ -735,7 +615,6 @@ export default function CollectionReportPage() {
           disabled={loading || refreshing}
         />
 
-        {/* Back button - Desktop only */}
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
           <div className="flex items-center justify-between">
             <Link href="/collection-report" legacyBehavior>
@@ -773,7 +652,6 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        {/* Collection Header Card */}
         <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
           <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
             <div className="text-center py-2 lg:py-4 px-4">
@@ -787,9 +665,9 @@ export default function CollectionReportPage() {
                 Report ID: {reportData.reportId}
               </p>
               <p className="text-lg font-semibold text-gray-700">
-                Location Total: ${calculateLocationTotal().toLocaleString()}
+                Location Total: $
+                {calculateLocationTotal(collections).toLocaleString()}
               </p>
-              {/* Mobile refresh button */}
               <div className="lg:hidden mt-4">
                 <Button
                   onClick={handleRefresh}
@@ -822,9 +700,7 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        {/* Desktop: Sidebar + Content Layout */}
         <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
-          {/* Tab Navigation Sidebar */}
           <div className="lg:w-1/4 mb-6 lg:mb-0">
             <div className="space-y-2 bg-white p-3 rounded-lg shadow">
               <TabButton label="Machine Metrics" />
@@ -833,13 +709,11 @@ export default function CollectionReportPage() {
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="lg:w-3/4" ref={tabContentRef}>
             {renderDesktopTabContent()}
           </div>
         </div>
 
-        {/* Mobile: Stacked Sections */}
         <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
           <MachineMetricsContent loading={false} />
           <LocationMetricsContent loading={false} />
@@ -849,24 +723,3 @@ export default function CollectionReportPage() {
     </div>
   );
 }
-
-const TableSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <div className="space-y-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-12 w-full skeleton-bg rounded"></div>
-      ))}
-    </div>
-  </div>
-);
-
-const CardSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md p-4">
-    <div className="h-6 w-1/2 skeleton-bg rounded mb-4"></div>
-    <div className="space-y-2">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="h-4 w-full skeleton-bg rounded"></div>
-      ))}
-    </div>
-  </div>
-);

@@ -29,24 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ExportUtils } from "@/lib/utils/exportUtils";
-
-type TemplateData = {
-  id: number;
-  name: string;
-  category: string;
-  rating: number;
-  uses: number;
-  description: string;
-  lastUpdated: string;
-  author: string;
-  sections: string[];
-  sampleData: {
-    title: string;
-    subtitle: string;
-    headers: string[];
-    data: string[][];
-  };
-};
+import type { TemplateData } from "@/lib/types/components";
 
 export default function TemplatesTab() {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateData | null>(
@@ -258,7 +241,10 @@ export default function TemplatesTab() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to generate report from template:", errorMessage);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to generate report from template:", errorMessage);
+      }
       toast.error("Failed to generate report from template");
     }
   };

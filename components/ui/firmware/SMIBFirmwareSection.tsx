@@ -22,7 +22,10 @@ export default function SMIBFirmwareSection() {
       const data = await response.json();
       setFirmwares(data);
     } catch (error) {
-      console.error("Error fetching firmwares:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching firmwares:", error);
+      }
     } finally {
       setLoading(false);
     }

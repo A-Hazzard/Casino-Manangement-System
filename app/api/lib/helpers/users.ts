@@ -20,7 +20,7 @@ export async function getUserByEmail(
   });
 }
 
-interface UserDocument {
+type UserDocument = {
   _id: string;
   profile?: {
     firstName?: string;
@@ -32,9 +32,9 @@ interface UserDocument {
   isEnabled: boolean;
   roles: string[];
   profilePicture?: string | null;
-}
+};
 
-interface UserDocumentWithPassword extends UserDocument {
+type UserDocumentWithPassword = UserDocument & {
   password?: string;
   permissions?: string[];
   resourcePermissions?: {
@@ -57,7 +57,7 @@ interface UserDocumentWithPassword extends UserDocument {
     };
     [key: string]: unknown;
   };
-}
+};
 
 type OriginalUserType = {
   _id: string;

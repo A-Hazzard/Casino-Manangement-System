@@ -50,30 +50,7 @@ import PaymentStatusConfirmModal from "@/components/administration/PaymentStatus
 import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
-
-type AddUserForm = {
-  username?: string;
-  email?: string;
-  password?: string;
-  roles: string[];
-  firstName?: string;
-  lastName?: string;
-  gender?: string;
-  profilePicture?: string | null;
-  resourcePermissions?: ResourcePermissions;
-  allowedLocations: string[];
-};
-
-type AddLicenseeForm = {
-  _id?: string;
-  name?: string;
-  description?: string;
-  country?: string;
-  startDate?: Date | string;
-  expiryDate?: Date | string;
-  prevStartDate?: Date | string;
-  prevExpiryDate?: Date | string;
-};
+import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
 
 export default function AdministrationPage() {
   const pathname = usePathname();

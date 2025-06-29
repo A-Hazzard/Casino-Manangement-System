@@ -6,13 +6,13 @@ import { formatCurrency } from "@/lib/utils";
  * @param data - Array of AcceptedBill objects.
  * @returns Bill validator table component.
  */
-type BillValidatorTableProps = {
+type ExtendedBillValidatorTableProps = {
   bills: Array<{ denomination: number; count: number }>;
 };
 
 const DEFAULT_DENOMS = [20, 100, 500, 1000, 2000, 5000];
 
-export const BillValidatorTable: React.FC<BillValidatorTableProps> = ({
+export const BillValidatorTable: React.FC<ExtendedBillValidatorTableProps> = ({
   bills,
 }) => {
   // Group and sum quantities by denomination

@@ -14,10 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UploadIcon, CameraIcon } from "@radix-ui/react-icons";
+import type { SMIBFirmwareModalProps } from "@/lib/types/components";
 
-type SMIBFirmwareModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
+type ExtendedSMIBFirmwareModalProps = SMIBFirmwareModalProps & {
   onUploadComplete: () => void;
 };
 
@@ -25,7 +24,7 @@ export default function SMIBFirmwareModal({
   isOpen,
   onClose,
   onUploadComplete,
-}: SMIBFirmwareModalProps) {
+}: ExtendedSMIBFirmwareModalProps) {
   const [product, setProduct] = useState("");
   const [version, setVersion] = useState("");
   const [versionDetails, setVersionDetails] = useState("");
@@ -103,7 +102,10 @@ export default function SMIBFirmwareModal({
       onUploadComplete();
       handleModalClose();
     } catch (error) {
-      console.error("Error uploading firmware:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error uploading firmware:", error);
+      }
       alert(
         `Upload failed: ${
           error instanceof Error ? error.message : "Unknown error"

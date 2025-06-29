@@ -1,12 +1,12 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 
-type MetricsTabsProps = {
+type ExtendedMetricsTabsProps = {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 };
 
-const MetricsTabs: React.FC<MetricsTabsProps> = ({
+const MetricsTabs: React.FC<ExtendedMetricsTabsProps> = ({
   activeTab,
   setActiveTab,
 }) => {

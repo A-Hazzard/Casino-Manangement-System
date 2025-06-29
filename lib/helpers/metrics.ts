@@ -1,6 +1,12 @@
 import { dashboardData, Metrics } from "@/lib/types";
 import { TimePeriod } from "@shared/types";
 import axios from "axios";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(utc);
+dayjs.extend(isSameOrBefore);
 
 /**
  * Fetches and aggregates metric data from the API endpoint.
@@ -83,7 +89,7 @@ export async function getMetrics(
       }
     });
 
-    return Object.values(grouped).sort((a, b) => {
+    const sortedData = Object.values(grouped).sort((a, b) => {
       const dayA = a.day ?? "";
       const dayB = b.day ?? "";
       if (dayA === dayB) {
@@ -93,8 +99,108 @@ export async function getMetrics(
       }
       return dayA.localeCompare(dayB);
     });
+
+    // Fill missing intervals to ensure consistent chart display
+    const filledData = fillMissingIntervals(
+      sortedData,
+      timePeriod,
+      startDate,
+      endDate
+    );
+
+    return filledData;
   } catch (error) {
-    console.error("Failed to fetch metrics:", error);
+    // Log error for debugging in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to fetch metrics:", error);
+    }
     return [];
   }
+}
+
+/**
+ * Fills missing time intervals in chart data with zero values
+ * @param data - The existing chart data
+ * @param timePeriod - The time period to determine interval type
+ * @param startDate - Start date for the period
+ * @param endDate - End date for the period
+ * @returns Complete chart data with filled intervals
+ */
+function fillMissingIntervals(
+  data: dashboardData[],
+  timePeriod: TimePeriod,
+  startDate?: Date,
+  endDate?: Date
+): dashboardData[] {
+  if (data.length === 0) return [];
+
+  const isHourly = timePeriod === "Today" || timePeriod === "Yesterday";
+  const filledData: dashboardData[] = [];
+
+  if (isHourly) {
+    // Fill hourly intervals (0:00 to 23:00)
+    const baseDay = data[0]?.day || dayjs().format("YYYY-MM-DD");
+
+    for (let hour = 0; hour < 24; hour++) {
+      const timeKey = `${hour.toString().padStart(2, "0")}:00`;
+      const existingData = data.find(
+        (item) => item.time === timeKey && item.day === baseDay
+      );
+
+      if (existingData) {
+        filledData.push(existingData);
+      } else {
+        filledData.push({
+          xValue: timeKey,
+          day: baseDay,
+          time: timeKey,
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+        });
+      }
+    }
+  } else {
+    // Fill daily intervals
+    let start: dayjs.Dayjs;
+    let end: dayjs.Dayjs;
+
+    if (timePeriod === "Custom" && startDate && endDate) {
+      start = dayjs(startDate);
+      end = dayjs(endDate);
+    } else if (timePeriod === "7d") {
+      end = dayjs();
+      start = end.subtract(6, "day");
+    } else if (timePeriod === "30d") {
+      end = dayjs();
+      start = end.subtract(29, "day");
+    } else {
+      // Default to 7 days if unknown
+      end = dayjs();
+      start = end.subtract(6, "day");
+    }
+
+    let current = start;
+    while (current.isSameOrBefore(end, "day")) {
+      const dayKey = current.format("YYYY-MM-DD");
+      const existingData = data.find((item) => item.day === dayKey);
+
+      if (existingData) {
+        filledData.push(existingData);
+      } else {
+        filledData.push({
+          xValue: dayKey,
+          day: dayKey,
+          time: "",
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+        });
+      }
+
+      current = current.add(1, "day");
+    }
+  }
+
+  return filledData;
 }

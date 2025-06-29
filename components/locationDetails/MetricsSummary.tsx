@@ -1,31 +1,13 @@
 import React from "react";
 import { formatCurrency } from "@/lib/utils";
-import type {
-  CabinetDetail,
-  // CabinetPerformanceMetrics, // This import is unused and should be removed
-} from "@/lib/types/cabinets";
+import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
 
-type LocationInfo = {
-  _id: string;
-  name: string;
-  address?: string;
-  contactName?: string;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-};
-
-type ExtendedCabinetDetail = CabinetDetail & {
-  isOnline?: boolean;
-};
-
-type MetricsSummaryProps = {
+type ExtendedMetricsSummaryProps = {
   location: LocationInfo | null;
   cabinets: ExtendedCabinetDetail[];
 };
 
-const MetricsSummary: React.FC<MetricsSummaryProps> = ({
+const MetricsSummary: React.FC<ExtendedMetricsSummaryProps> = ({
   location,
   cabinets,
 }) => {

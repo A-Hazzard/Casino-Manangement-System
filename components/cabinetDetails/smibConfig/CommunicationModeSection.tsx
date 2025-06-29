@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { SmibConfig } from "@/lib/types/cabinets";
 
-type CommunicationModeSectionProps = {
+type ExtendedCommunicationModeSectionProps = {
   smibConfig?: SmibConfig;
   initialCommunicationMode: string;
   onSave: (newConfig: {
@@ -24,13 +24,9 @@ type CommunicationModeSectionProps = {
   error: string | null;
 };
 
-const CommunicationModeSection: React.FC<CommunicationModeSectionProps> = ({
-  smibConfig,
-  initialCommunicationMode,
-  onSave,
-  isLoading,
-  error,
-}) => {
+const CommunicationModeSection: React.FC<
+  ExtendedCommunicationModeSectionProps
+> = ({ smibConfig, initialCommunicationMode, onSave, isLoading, error }) => {
   const [currentMode, setCurrentMode] = useState(initialCommunicationMode);
   const [ssid, setSsid] = useState(smibConfig?.net?.netStaSSID || "");
   const [password, setPassword] = useState(smibConfig?.net?.netStaPwd || "");

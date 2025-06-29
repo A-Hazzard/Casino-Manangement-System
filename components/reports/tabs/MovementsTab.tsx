@@ -180,7 +180,10 @@ export default function MovementsTab() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to export movement data:", errorMessage);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to export movement data:", errorMessage);
+      }
       toast.error("Failed to export movement data");
     }
   };

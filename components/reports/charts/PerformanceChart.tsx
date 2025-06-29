@@ -1,4 +1,3 @@
-import { ChartDataPoint } from "@/lib/types/reports";
 import {
   LineChart,
   Line,
@@ -9,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency } from "@/lib/helpers/reports";
+import type { ChartDataPoint } from "@/lib/types/reports";
 
 type PerformanceChartProps = {
   data: ChartDataPoint[];

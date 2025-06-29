@@ -1,23 +1,18 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { itemVariants } from "@/lib/constants/animationVariants";
+import type { SmibConfig } from "@/lib/types/cabinets";
 
-type AdvancedSettingsProps = {
+type ExtendedAdvancedSettingsProps = {
   settings: { smibConfig?: Record<string, unknown> };
 };
 
-type NetConfig = {
-  netStaSSID?: string;
-  netStaPwd?: string;
-  netStaChan?: string | number;
-};
-
-const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
+const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
   settings /*, onSettingChange, onSave, isLoading, error*/,
 }) => {
-  const net =
+  const net = 
     (settings?.smibConfig &&
-      (settings.smibConfig as { net?: NetConfig }).net) ||
+      (settings.smibConfig as SmibConfig).net) ||
     {};
   return (
     <>

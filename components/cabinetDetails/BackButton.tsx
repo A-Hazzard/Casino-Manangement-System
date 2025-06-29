@@ -3,13 +3,13 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 
-type BackButtonProps = {
+type ExtendedBackButtonProps = {
   locationName: string;
   handleBackToLocation: () => void;
   hasMounted?: boolean;
 };
 
-export const BackButton: React.FC<BackButtonProps> = ({
+export const BackButton: React.FC<ExtendedBackButtonProps> = ({
   locationName,
   handleBackToLocation,
   hasMounted = false,

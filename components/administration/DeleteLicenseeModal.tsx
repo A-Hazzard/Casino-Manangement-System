@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import type { Licensee } from "@/lib/types/licensee";
 
-interface DeleteLicenseeModalProps {
+type DeleteLicenseeModalProps = {
   open: boolean;
   onClose: () => void;
   onDelete: () => void;
   licensee: Licensee | null;
-}
+};
 
 export default function DeleteLicenseeModal({
   open,

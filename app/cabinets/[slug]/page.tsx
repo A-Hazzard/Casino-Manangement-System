@@ -23,9 +23,14 @@ import { differenceInMinutes } from "date-fns";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { toast } from "sonner";
 import gsap from "gsap";
-import CabinetDetailsSkeleton from "@/components/ui/cabinets/CabinetDetailsSkeleton";
 import RefreshButton from "@/components/ui/RefreshButton";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
+
+// Extracted skeleton and error components
+import {
+  CabinetDetailsLoadingState,
+  CabinetDetailsErrorState,
+} from "@/components/ui/skeletons/CabinetDetailSkeletons";
 
 // Animation variants
 const configContentVariants: Variants = {
@@ -305,53 +310,25 @@ export default function CabinetDetailPage() {
   // 1. FIRST: If loading, show skeleton loaders
   if (loading || (!cabinet && !loading && !error)) {
     return (
-      <>
-        <Sidebar pathname={pathname} />
-        <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
-          <main className="flex flex-col flex-1 p-6">
-            <Header
-              selectedLicencee={selectedLicencee}
-              setSelectedLicencee={setSelectedLicencee}
-              pageTitle="Cabinet Details"
-              hideOptions={true}
-              hideLicenceeFilter={false}
-            />
-            <CabinetDetailsSkeleton />
-            {error && (
-              <div className="mt-4 text-destructive text-center">{error}</div>
-            )}
-          </main>
-        </div>
-      </>
+      <CabinetDetailsLoadingState
+        pathname={pathname}
+        selectedLicencee={selectedLicencee}
+        setSelectedLicencee={setSelectedLicencee}
+        error={error}
+      />
     );
   }
 
   // 2. SECOND: If there was an error, show error message
   if (error) {
     return (
-      <>
-        <Sidebar pathname={pathname} />
-        <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
-          <main className="flex flex-col flex-1 p-6">
-            <Header
-              selectedLicencee={selectedLicencee}
-              setSelectedLicencee={setSelectedLicencee}
-              pageTitle="Cabinet Details"
-              hideOptions={true}
-              hideLicenceeFilter={false}
-            />
-            <div className="p-6 bg-container rounded-lg shadow-sm">
-              <h1 className="text-2xl font-bold mb-4">
-                Error Loading Cabinet Details
-              </h1>
-              <p className="text-destructive">{error}</p>
-              <Button onClick={fetchCabinetDetailsData} className="mt-4">
-                Retry
-              </Button>
-            </div>
-          </main>
-        </div>
-      </>
+      <CabinetDetailsErrorState
+        pathname={pathname}
+        selectedLicencee={selectedLicencee}
+        setSelectedLicencee={setSelectedLicencee}
+        error={error}
+        onRetry={fetchCabinetDetailsData}
+      />
     );
   }
 

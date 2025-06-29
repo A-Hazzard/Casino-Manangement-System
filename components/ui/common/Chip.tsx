@@ -1,10 +1,5 @@
 import React from "react";
-
-interface ChipProps {
-  label: string;
-  onRemove?: () => void;
-  className?: string;
-}
+import type { ChipProps } from "@/lib/types/components";
 
 const Chip: React.FC<ChipProps> = ({ label, onRemove, className }) => (
   <span

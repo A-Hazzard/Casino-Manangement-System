@@ -157,7 +157,10 @@ export const NewLocationModal = () => {
       handleClose();
       // You might want to refresh the locations list after adding a new one
     } catch (error) {
-      console.error("Error creating location:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error creating location:", error);
+      }
     } finally {
       setLoading(false);
     }

@@ -24,7 +24,7 @@ export default function Chart({
   chartData,
   activeMetricsFilter,
 }: ChartProps) {
-  console.log(chartData, "is props chart data");
+  // Chart data received for rendering
 
   if (loadingChartData) {
     return <ChartSkeleton />;

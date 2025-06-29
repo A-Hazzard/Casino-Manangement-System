@@ -4,7 +4,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { getNames } from "country-list";
 import { Info } from "lucide-react";
 
-interface AddLicenseeModalProps {
+type AddLicenseeModalProps = {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -22,7 +22,7 @@ interface AddLicenseeModalProps {
     startDate?: Date | string;
     expiryDate?: Date | string;
   }) => void;
-}
+};
 
 export default function AddLicenseeModal({
   open,

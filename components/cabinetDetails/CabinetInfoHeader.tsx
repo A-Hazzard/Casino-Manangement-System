@@ -2,14 +2,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 
-type CabinetInfoHeaderProps = {
+type ExtendedCabinetInfoHeaderProps = {
   title: string;
   isLoading: boolean;
   isOnline?: boolean;
   // lastCommunication?: string; // Removed as unused
 };
 
-const CabinetInfoHeader: React.FC<CabinetInfoHeaderProps> = ({
+const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
   title,
   isLoading,
   isOnline,

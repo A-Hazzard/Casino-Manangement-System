@@ -2,10 +2,10 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import type { 
-  ExportDataStructure, 
-  MachineExportData, 
-  LocationExportData 
+import type {
+  ExportDataStructure,
+  MachineExportData,
+  LocationExportData,
 } from "@/lib/types/reports";
 
 declare module "jspdf" {
@@ -24,7 +24,7 @@ declare module "jspdf" {
 
 export type ExportFormat = "pdf" | "csv" | "excel";
 
-export interface ExportData {
+export type ExportData = {
   title: string;
   subtitle?: string;
   headers: string[];
@@ -38,7 +38,7 @@ export interface ExportData {
     generatedAt: string;
     dateRange?: string;
   };
-}
+};
 
 // Base64 encoded EOS logo (placeholder - you'll need to replace with actual logo)
 const EOS_LOGO_BASE64 = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
@@ -96,7 +96,9 @@ export class ExportUtils {
         margin: { left: 15, right: 15 },
       });
 
-      yPosition = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+      yPosition =
+        (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable
+          .finalY + 15;
     }
 
     // Main data table
@@ -283,7 +285,9 @@ export class ExportUtils {
 }
 
 // Helper function to format machine data for export
-export function formatMachineDataForExport(machines: MachineExportData[]): ExportDataStructure {
+export function formatMachineDataForExport(
+  machines: MachineExportData[]
+): ExportDataStructure {
   return {
     title: "Machine Performance Report",
     subtitle: "Comprehensive analysis of gaming machine performance",
@@ -343,7 +347,9 @@ export function formatMachineDataForExport(machines: MachineExportData[]): Expor
 }
 
 // Helper function to format location data for export
-export function formatLocationDataForExport(locations: LocationExportData[]): ExportDataStructure {
+export function formatLocationDataForExport(
+  locations: LocationExportData[]
+): ExportDataStructure {
   return {
     title: "Location Performance Report",
     subtitle: "Performance analysis across all casino locations",

@@ -10,12 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
-
-interface UploadSmibDataModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  // onUpload: (file: File, comments: string) => void; // For actual upload logic
-}
+import type { UploadSmibDataModalProps } from "@/lib/types/components";
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,

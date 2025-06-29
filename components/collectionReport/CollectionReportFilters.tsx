@@ -4,7 +4,7 @@ import { gsap } from "gsap";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 
-type Props = {
+type ExtendedCollectionReportFiltersProps = {
   locations: LocationSelectItem[];
   selectedLocation: string;
   onLocationChange: (locationId: string) => void;
@@ -26,7 +26,7 @@ export default function CollectionReportFilters({
   onShowUncollectedOnlyChange,
   isSearching = false,
   onSearchSubmit,
-}: Props) {
+}: ExtendedCollectionReportFiltersProps) {
   const filterRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);

@@ -322,7 +322,10 @@ export default function NewCollectionModal({
       );
       resetMachineSpecificInputFields();
     } catch (error) {
-      console.error("Failed to add machine:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to add machine:", error);
+      }
       toast.error(
         "Failed to add machine. Please check the console for details."
       );
@@ -432,11 +435,14 @@ export default function NewCollectionModal({
       };
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
-        console.error(
-          "Validation failed for machine:",
-          entry.machineName,
-          validation.errors
-        );
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error(
+            "Validation failed for machine:",
+            entry.machineName,
+            validation.errors
+          );
+        }
         return Promise.reject({
           machineName: entry.machineName,
           errors: validation.errors,
@@ -467,7 +473,10 @@ export default function NewCollectionModal({
         toast.error(
           `Failed to create report for ${machineName}: ${errorMessages}`
         );
-        console.error(`Error for ${machineName}:`, result.reason);
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error(`Error for ${machineName}:`, result.reason);
+        }
       }
     });
 

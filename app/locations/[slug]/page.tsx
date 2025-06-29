@@ -37,18 +37,11 @@ import {
 } from "@/lib/utils/ui";
 import CabinetCardsSkeleton from "@/components/ui/locations/CabinetCardsSkeleton";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
-import type { CabinetDetail } from "@/lib/types/cabinets";
-
-type ExtendedCabinetDetail = CabinetDetail & {
-  serialNumber: string;
-  isOnline?: boolean;
-  lastCommunication?: string | Date;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-  lastActivity?: string | Date;
-};
+import type { ExtendedCabinetDetail } from "@/lib/types/pages";
+import {
+  handleBackToLocations,
+  handleLocationChange,
+} from "@/lib/helpers/locationPage";
 
 export default function LocationPage() {
   const params = useParams();
@@ -93,11 +86,6 @@ export default function LocationPage() {
   // To prevent double fetch on initial load
   const hasFetchedOnce = useRef(false);
 
-  // Function to navigate back to locations list
-  const handleBackToLocations = () => {
-    router.push("/locations");
-  };
-
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
     const filtered = filterAndSortCabinetsUtil(
@@ -109,15 +97,6 @@ export default function LocationPage() {
     setFilteredCabinets(filtered);
     setCurrentPage(0); // Reset to first page when filters change
   }, [allCabinets, searchTerm, sortOption, sortOrder]);
-
-  // Handle location change
-  const handleLocationChange = (locationId: string, locationName: string) => {
-    setSelectedLocation(locationName);
-    setIsLocationDropdownOpen(false);
-    if (locationId !== "all" && locationId !== params.slug) {
-      router.push(`/locations/${locationId}`);
-    }
-  };
 
   // Use useEffect to update selectedLocation when locationName changes
   useEffect(() => {
@@ -291,7 +270,7 @@ export default function LocationPage() {
           <div className="mt-4 flex items-center justify-between">
             <Button
               variant="outline"
-              onClick={handleBackToLocations}
+              onClick={() => handleBackToLocations(router)}
               className="flex items-center gap-2"
             >
               <ArrowLeft size={16} />
@@ -384,7 +363,14 @@ export default function LocationPage() {
                     <button
                       className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
                       onClick={() =>
-                        handleLocationChange("all", "All Locations")
+                        handleLocationChange(
+                          "all",
+                          "All Locations",
+                          params.slug as string,
+                          router,
+                          setSelectedLocation,
+                          setIsLocationDropdownOpen
+                        )
                       }
                     >
                       All Locations
@@ -397,7 +383,16 @@ export default function LocationPage() {
                             ? "bg-gray-100 font-medium"
                             : ""
                         }`}
-                        onClick={() => handleLocationChange(loc.id, loc.name)}
+                        onClick={() =>
+                          handleLocationChange(
+                            loc.id,
+                            loc.name,
+                            params.slug as string,
+                            router,
+                            setSelectedLocation,
+                            setIsLocationDropdownOpen
+                          )
+                        }
                       >
                         {loc.name}
                       </button>

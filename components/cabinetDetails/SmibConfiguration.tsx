@@ -12,13 +12,13 @@ import MachineControlButtons from "./smibConfig/MachineControlButtons";
 import AdvancedSettings from "./smibConfig/AdvancedSettings";
 import { toast } from "sonner";
 
-type SmibConfigurationProps = {
+type ExtendedSmibConfigurationProps = {
   cabinet: CabinetDetail | null;
   // loading: boolean; // Removed as unused
   // error: string | null; // Removed as unused
 };
 
-export const SmibConfiguration: React.FC<SmibConfigurationProps> = ({
+export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
   cabinet,
   // loading, // Removed as unused
   // error, // Removed as unused

@@ -203,7 +203,10 @@ export default function ComplianceTab() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to export compliance data:", errorMessage);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to export compliance data:", errorMessage);
+      }
       toast.error("Failed to export compliance data");
     }
   };

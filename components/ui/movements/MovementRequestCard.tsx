@@ -86,9 +86,9 @@ export default function MovementRequestCard({
         </p>
         <p
           className="text-xs text-gray-600 truncate"
-          title={`Time: ${formatMovementRequestDate(request.timestamp)}`}
+          title={`Date: ${formatMovementRequestDate(request.timestamp)}`}
         >
-          <span className="font-medium">Time:</span>{" "}
+          <span className="font-medium">Date:</span>{" "}
           {formatMovementRequestDate(request.timestamp)}
         </p>
       </div>

@@ -161,7 +161,18 @@ export const EditLocationModal = () => {
 
   const handleSubmit = async () => {
     if (!selectedLocation) {
-      console.error("No location selected");
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("No location selected");
+      }
+      return;
+    }
+
+    if (!selectedLocation.name) {
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Location name is missing in the selected location");
+      }
       return;
     }
 

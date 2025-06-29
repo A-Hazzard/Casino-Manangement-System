@@ -13,18 +13,8 @@ import { CollectionHistoryTable } from "./CollectionHistoryTable";
 import { ActivityLogTable } from "./ActivityLogTable";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
 import type { MachineEvent } from "@/lib/types/api";
-import type { Machine as BaseMachine } from "@/lib/types/machines";
 import type { BillValidatorData } from "@/lib/types/machines";
-
-// Define MachineDoc as a type alias extending BaseMachine
-type MachineDoc = BaseMachine & {
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-};
+import type { MachineDoc } from "@/lib/types/components";
 
 // Export the component as both default and named export
 export const AccountingDetails: React.FC<AccountingDetailsProps> = ({

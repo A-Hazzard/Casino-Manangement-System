@@ -1,13 +1,13 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { itemVariants } from "@/lib/constants/animationVariants";
+import { Button } from "@/components/ui/button";
 
-type FirmwareUpdateSectionProps = {
+type ExtendedFirmwareUpdateSectionProps = {
   currentFirmwareVersion: string;
 };
 
-const FirmwareUpdateSection: React.FC<FirmwareUpdateSectionProps> = ({
+const FirmwareUpdateSection: React.FC<ExtendedFirmwareUpdateSectionProps> = ({
   currentFirmwareVersion,
 }) => {
   // If you want to allow changing firmware version, you can add state here

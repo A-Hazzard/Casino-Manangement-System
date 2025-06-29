@@ -7,12 +7,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-type KpiCardProps = {
+type ExtendedKpiCardProps = {
   metric: KpiMetric;
   isLoading?: boolean;
 };
 
-export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
+export default function KpiCard({
+  metric,
+  isLoading = false,
+}: ExtendedKpiCardProps) {
   if (isLoading) {
     return (
       <Card className="bg-container border border-gray-200 shadow-sm">

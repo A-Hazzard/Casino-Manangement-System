@@ -11,13 +11,14 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  renderCustomizedLabel,
+  calculatePieChartLabelData,
   loadGamingLocations,
   fetchMetricsData,
   fetchTopPerformingDataHelper,
   handleDashboardRefresh,
   getTimeFilterButtons,
 } from "@/lib/helpers/dashboard";
+import { CustomizedLabelProps } from "@/lib/types/componentProps";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -83,7 +84,10 @@ function DashboardContent() {
           setShowDatePicker
         );
       } catch (error) {
-        console.error("Error fetching metrics:", error);
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error fetching metrics:", error);
+        }
       } finally {
         setLoadingChartData(false);
       }
@@ -110,8 +114,12 @@ function DashboardContent() {
       setTopPerformingData,
       setLoadingTopPerforming
     ).catch((error) => {
-      if (isMounted)
-        console.error("Error fetching top-performing data:", error);
+      if (isMounted) {
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error fetching top-performing data:", error);
+        }
+      }
     });
 
     return () => {
@@ -172,6 +180,24 @@ function DashboardContent() {
   ]);
 
   const timeFilterButtons = getTimeFilterButtons();
+
+  // Render function for pie chart labels
+  const renderCustomizedLabel = (props: CustomizedLabelProps) => {
+    const labelData = calculatePieChartLabelData(props);
+    return (
+      <text
+        x={labelData.x}
+        y={labelData.y}
+        fill={labelData.fill}
+        textAnchor={labelData.textAnchor}
+        dominantBaseline={labelData.dominantBaseline}
+        fontSize={labelData.fontSize}
+        fontWeight={labelData.fontWeight}
+      >
+        {labelData.text}
+      </text>
+    );
+  };
 
   return (
     <>

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { CabinetDetail } from "@/lib/types/cabinets";
 
-type CabinetCardProps = {
+type ExtendedCabinetCardProps = {
   cabinet: CabinetDetail;
   onClick: (cabinetId: string, locationId: string) => void;
   isSelected?: boolean;
@@ -17,7 +17,7 @@ const itemVariants = {
   },
 };
 
-const CabinetCard: React.FC<CabinetCardProps> = ({
+const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
   cabinet,
   onClick,
   isSelected,

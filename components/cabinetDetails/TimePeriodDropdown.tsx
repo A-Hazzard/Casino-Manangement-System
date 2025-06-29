@@ -2,15 +2,15 @@ import React from "react";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import type { TimePeriod } from "@/lib/types/api";
 
-type TimePeriodDropdownProps = {
-  selectedPeriod: TimePeriod;
-  onPeriodChange: (period: TimePeriod) => void;
+type ExtendedTimePeriodDropdownProps = {
+  activeMetricsFilter: TimePeriod;
+  setActiveMetricsFilter: (filter: TimePeriod) => void;
   disabled?: boolean;
 };
 
-const TimePeriodDropdown: React.FC<TimePeriodDropdownProps> = ({
-  selectedPeriod,
-  onPeriodChange,
+const TimePeriodDropdown: React.FC<ExtendedTimePeriodDropdownProps> = ({
+  activeMetricsFilter,
+  setActiveMetricsFilter,
   disabled,
 }) => {
   const timeFilters = [
@@ -33,7 +33,7 @@ const TimePeriodDropdown: React.FC<TimePeriodDropdownProps> = ({
             }
           }}
         >
-          <span>Sort by: {selectedPeriod}</span>
+          <span>Sort by: {activeMetricsFilter}</span>
           <ChevronDownIcon className="h-4 w-4" />
         </button>
         <div
@@ -44,20 +44,20 @@ const TimePeriodDropdown: React.FC<TimePeriodDropdownProps> = ({
             <button
               key={filter.label}
               className={`block w-full text-left px-4 py-2 text-sm ${
-                selectedPeriod === filter.value
+                activeMetricsFilter === filter.value
                   ? "bg-purple-50 text-purple-700 font-medium"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
               onClick={() => {
                 // Don't update if already selected or loading
-                if (selectedPeriod === filter.value || disabled) {
+                if (activeMetricsFilter === filter.value || disabled) {
                   document
                     .getElementById("mobile-filter-dropdown")
                     ?.classList.add("hidden");
                   return;
                 }
 
-                onPeriodChange(filter.value);
+                setActiveMetricsFilter(filter.value);
 
                 // Ensure the dropdown is hidden
                 document

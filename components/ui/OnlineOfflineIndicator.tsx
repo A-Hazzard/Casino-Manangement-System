@@ -5,17 +5,10 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { fetchLocationMetricsForMap } from "@/lib/helpers/locations";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-
-interface LocationMetrics {
-  onlineMachines?: number;
-  totalMachines?: number;
-}
-
-interface OnlineOfflineIndicatorProps {
-  className?: string;
-  showTitle?: boolean;
-  size?: "sm" | "md" | "lg";
-}
+import type {
+  LocationMetrics,
+  OnlineOfflineIndicatorProps,
+} from "@/lib/types/components";
 
 export default function OnlineOfflineIndicator({
   className = "",
@@ -51,8 +44,8 @@ export default function OnlineOfflineIndicator({
 
         setOnlineMachines(totalOnline);
         setOfflineMachines(totalOffline);
-      } catch (error) {
-        console.error("Error fetching machine stats:", error);
+      } catch {
+        // Handle error silently for now - could implement proper error reporting
         setOnlineMachines(0);
         setOfflineMachines(0);
       } finally {

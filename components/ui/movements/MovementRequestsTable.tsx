@@ -57,7 +57,7 @@ export default function MovementRequestsTable({
               Cabinet In
             </th>
             <th className="p-3 border border-border border-t-0 text-sm w-[15%]">
-              Time
+              Date
             </th>
             <th className="p-3 border border-border border-t-0 text-sm w-[12%]">
               Status

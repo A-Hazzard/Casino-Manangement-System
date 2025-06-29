@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { CheckCircle, Copy } from "lucide-react";
 
-interface LicenseeSuccessModalProps {
+type LicenseeSuccessModalProps = {
   open: boolean;
   onClose: () => void;
   licensee: {
     name: string;
     licenseKey: string;
   } | null;
-}
+};
 
 export default function LicenseeSuccessModal({
   open,
@@ -34,7 +34,10 @@ export default function LicenseeSuccessModal({
         await navigator.clipboard.writeText(licensee.licenseKey);
         alert("License key copied to clipboard!");
       } catch (err) {
-        console.error("Failed to copy:", err);
+        // Log error for debugging in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to copy:", err);
+        }
         alert("Failed to copy license key");
       }
     }

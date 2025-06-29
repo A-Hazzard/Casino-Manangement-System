@@ -1,9 +1,5 @@
 import React from "react";
-
-type NoDataMessageProps = {
-  message?: string;
-  className?: string;
-};
+import type { NoDataMessageProps } from "@/lib/types/components";
 
 /**
  * Displays a message when no data is available

@@ -14,7 +14,14 @@ import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 // Types
-import type { ReportView, ReportTab } from "@/lib/types/reports";
+import type { ReportView } from "@/lib/types/reports";
+
+// Constants
+import {
+  reportsTabsConfig,
+  pageVariants,
+  tabVariants,
+} from "@/lib/constants/uiConstants";
 
 // Tab components
 import DashboardTab from "@/components/reports/tabs/DashboardTab";
@@ -45,82 +52,6 @@ import {
   RefreshCw,
   FileText,
 } from "lucide-react";
-
-const reportsTabsConfig: ReportTab[] = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: "📊",
-    description: "Real-time overview of casino operations and KPIs",
-  },
-  {
-    id: "locations",
-    label: "Locations",
-    icon: "🏢",
-    description: "Location performance analysis and comparisons",
-  },
-  {
-    id: "machines",
-    label: "Machines",
-    icon: "🎰",
-    description: "Individual machine performance and revenue tracking",
-  },
-  {
-    id: "customers",
-    label: "Customers",
-    icon: "👥",
-    description: "Customer activity, demographics, and behavior analysis",
-  },
-  {
-    id: "vouchers",
-    label: "Vouchers",
-    icon: "🎫",
-    description: "Voucher issuance, redemption, and fraud tracking",
-  },
-  {
-    id: "movements",
-    label: "Movements",
-    icon: "🚚",
-    description: "Machine movement tracking and logistics management",
-  },
-  {
-    id: "compliance",
-    label: "Compliance",
-    icon: "🛡️",
-    description: "Regulatory compliance monitoring and audit trails",
-  },
-  {
-    id: "analytics",
-    label: "Analytics",
-    icon: "📈",
-    description: "Advanced analytics, forecasting, and predictive insights",
-  },
-  {
-    id: "templates",
-    label: "Templates",
-    icon: "📋",
-    description: "Report templates and custom report builder",
-  },
-  {
-    id: "scheduled",
-    label: "Scheduled",
-    icon: "⏰",
-    description: "Automated report scheduling and delivery",
-  },
-];
-
-// Animation variants
-const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-const tabVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-};
 
 export default function ReportsPage() {
   const pathname = usePathname();

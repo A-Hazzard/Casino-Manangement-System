@@ -133,7 +133,10 @@ export const NewCabinetModal = () => {
         resetForm();
       }
     } catch (err) {
-      console.error("Failed to create cabinet:", err);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to create cabinet:", err);
+      }
     } finally {
       setLoading(false);
     }

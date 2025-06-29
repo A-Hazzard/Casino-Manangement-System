@@ -1,11 +1,13 @@
 import React from "react";
 import type { MonthlyReportSummary } from "@/lib/types/componentProps"; // Assuming this is a type
 
-type Props = {
+type ExtendedMonthlyReportSummaryTableProps = {
   summary: MonthlyReportSummary;
 };
 
-export default function MonthlyReportSummaryTable({ summary }: Props) {
+export default function MonthlyReportSummaryTable({
+  summary,
+}: ExtendedMonthlyReportSummaryTableProps) {
   return (
     <div className="overflow-x-auto bg-white shadow mb-0">
       <table className="min-w-full text-sm text-left">

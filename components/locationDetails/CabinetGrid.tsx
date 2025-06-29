@@ -1,37 +1,20 @@
 import React from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
-import type {
-  CabinetDetail,
-  Cabinet,
-  CabinetSortOption,
-} from "@/lib/types/cabinets";
-// import type { CabinetCardProps } from "@/lib/types/cardProps"; // Removed as unused
+import type { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
+import type { ExtendedCabinetDetail } from "@/lib/types/pages";
+import type { CabinetGridProps } from "@/lib/types/components";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import CabinetTable from "@/components/ui/cabinets/CabinetTable";
 import gsap from "gsap";
 
-// Define ExtendedCabinetDetail as a type alias
-type ExtendedCabinetDetail = CabinetDetail & {
-  isOnline?: boolean;
-  serialNumber: string;
-  lastCommunication?: string | Date;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-  lastActivity?: string | Date;
-};
-
-// Reverted CabinetGridProps to original structure, as a type
-type CabinetGridProps = {
-  filteredCabinets: ExtendedCabinetDetail[];
-  currentPage: number;
-  itemsPerPage: number;
+function CabinetCardMobile({
+  cabinet,
+  router,
+}: {
+  cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
-};
-
-function CabinetCardMobile({ cabinet, router }: { cabinet: ExtendedCabinetDetail; router: AppRouterInstance }) {
+}) {
   const statusRef = React.useRef<HTMLSpanElement>(null);
   React.useEffect(() => {
     if (cabinet.isOnline && statusRef.current) {
@@ -121,14 +104,14 @@ export default function CabinetGrid({
   };
 
   // Handle cabinet actions
-  const handleEdit = (cabinet: Cabinet) => {
+  const handleEdit = () => {
     // This would typically open the cabinet edit modal
-    console.log("Edit cabinet", cabinet);
+    // Edit cabinet functionality would be implemented here
   };
 
-  const handleDelete = (cabinet: Cabinet) => {
+  const handleDelete = () => {
     // This would typically open the cabinet delete confirmation
-    console.log("Delete cabinet", cabinet);
+    // Delete cabinet functionality would be implemented here
   };
 
   return (
@@ -157,7 +140,11 @@ export default function CabinetGrid({
           {filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet: ExtendedCabinetDetail) => (
-              <CabinetCardMobile key={cabinet._id} cabinet={cabinet} router={router} />
+              <CabinetCardMobile
+                key={cabinet._id}
+                cabinet={cabinet}
+                router={router}
+              />
             ))}
         </div>
       </div>

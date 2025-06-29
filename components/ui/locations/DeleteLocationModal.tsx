@@ -98,7 +98,7 @@ export const DeleteLocationModal = () => {
       setLoading(true);
 
       // Log the location ID being sent
-      console.log("Deleting location with ID:", selectedLocation._id);
+      // Deleting location with ID: ${selectedLocation._id}
 
       await axios.delete(`/api/locations`, {
         params: {
@@ -108,7 +108,10 @@ export const DeleteLocationModal = () => {
       handleClose();
       // You might want to refresh the locations list after deletion
     } catch (error) {
-      console.error("Error deleting location:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting location:", error);
+      }
     } finally {
       setLoading(false);
     }

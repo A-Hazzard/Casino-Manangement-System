@@ -80,7 +80,10 @@ export const EditCabinetModal = () => {
             }
           })
           .catch((error) => {
-            console.error("Error fetching cabinet details:", error);
+            // Log error for debugging in development
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error fetching cabinet details:", error);
+            }
           })
           .finally(() => {
             setFetchingDetails(false);
@@ -162,7 +165,10 @@ export const EditCabinetModal = () => {
         // You can add a toast notification here
       }
     } catch (error) {
-      console.error("Error updating cabinet:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error updating cabinet:", error);
+      }
     } finally {
       setLoading(false);
     }

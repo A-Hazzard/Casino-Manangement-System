@@ -279,7 +279,10 @@ export default function MachinesTab() {
       await ExportUtils.exportData(metersData, "csv");
       toast.success("Meters data exported successfully");
     } catch (error) {
-      console.error("Export failed:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Export failed:", error);
+      }
       toast.error("Failed to export meters data");
     }
   };

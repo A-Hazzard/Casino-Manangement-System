@@ -304,7 +304,10 @@ export default function LocationsTab() {
       await ExportUtils.exportData(exportData, "pdf");
       toast.success("Location revenue report exported successfully");
     } catch (error) {
-      console.error("Failed to export location revenue:", error);
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to export location revenue:", error);
+      }
       toast.error("Failed to export location revenue report");
     }
   };

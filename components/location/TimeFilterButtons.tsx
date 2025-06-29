@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { TimePeriod } from "@/lib/types/api";
 
-type TimeFilterButtonsProps = {
+type ExtendedTimeFilterButtonsProps = {
   activeMetricsFilter: TimePeriod;
   metricsLoading: boolean;
   isFilterChangeInProgress: boolean;
@@ -23,7 +23,7 @@ const filterOptions = [
 export default function TimeFilterButtons({
   activeMetricsFilter,
   setActiveMetricsFilter,
-}: TimeFilterButtonsProps) {
+}: ExtendedTimeFilterButtonsProps) {
   return (
     <motion.div
       className="mb-6 overflow-x-auto no-scrollbar"

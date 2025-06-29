@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, DollarSign, TrendingUp } from "lucide-react";
+import type { LocationMapProps } from "@/lib/types/components";
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -23,29 +24,6 @@ const Marker = dynamic(
 const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
-
-interface LocationData {
-  locationId: string;
-  locationName: string;
-  coordinates?: { lat: number; lng: number };
-  metrics: {
-    grossRevenue: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    actualHoldPercentage: number;
-  };
-  onlineMachines: number;
-  totalMachines: number;
-  performance: "excellent" | "good" | "average" | "poor";
-  sasEnabled: boolean;
-}
-
-interface LocationMapProps {
-  locations: LocationData[];
-  selectedLocations?: string[];
-  onLocationSelect: (locationId: string) => void;
-  compact?: boolean;
-}
 
 export default function LocationMap({
   locations,
