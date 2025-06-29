@@ -41,10 +41,69 @@ export default function Chart({
     );
   }
 
+  // --- Robust sorting for both string and date types ---
+  const parseTime = (val?: string) => {
+    if (!val) return 0;
+    // Try to parse as HH:mm
+    const match = val.match(/^(\d{1,2}):(\d{2})$/);
+    if (match) {
+      return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    }
+    // Try to parse as Date
+    const date = new Date(val);
+    if (!isNaN(date.getTime())) {
+      return date.getHours() * 60 + date.getMinutes();
+    }
+    return 0;
+  };
+
+  const parseDay = (val?: string) => {
+    if (!val) return 0;
+    // Try to parse as YYYY-MM-DD
+    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      return new Date(val).getTime();
+    }
+    // Try to parse as Date
+    const date = new Date(val);
+    if (!isNaN(date.getTime())) {
+      return date.getTime();
+    }
+    return 0;
+  };
+
+  // For hourly charts, filter to only the most common day
+  let filteredChartData = chartData;
+  if (activeMetricsFilter === "Today" || activeMetricsFilter === "Yesterday") {
+    const dayCounts: Record<string, number> = {};
+    chartData.forEach((d) => {
+      if (d.day) dayCounts[d.day] = (dayCounts[d.day] || 0) + 1;
+    });
+    const [mostCommonDay] =
+      Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0] || [];
+    if (mostCommonDay) {
+      filteredChartData = chartData.filter((d) => d.day === mostCommonDay);
+    }
+  }
+
+  const sortedChartData = filteredChartData.slice().sort((a, b) => {
+    // If filtering by hour (Today/Yesterday), sort by day then time
+    if (
+      activeMetricsFilter === "Today" ||
+      activeMetricsFilter === "Yesterday"
+    ) {
+      const dayDiff = parseDay(a.day) - parseDay(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return parseTime(a.time) - parseTime(b.time);
+    }
+    // Otherwise, sort by day (could be string or date)
+    return parseDay(a.day) - parseDay(b.day);
+  });
+
   return (
     <div className="bg-container p-6 rounded-lg shadow-md">
       <ResponsiveContainer width="100%" height={320}>
-        <AreaChart data={chartData}>
+        <AreaChart data={sortedChartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey={
@@ -58,7 +117,7 @@ export default function Chart({
                 activeMetricsFilter === "Today" ||
                 activeMetricsFilter === "Yesterday"
               ) {
-                const day = chartData[index]?.day;
+                const day = sortedChartData[index]?.day;
                 const fullUTCDate = `${day}T${val}:00Z`;
                 return dayjs.utc(fullUTCDate).local().format("hh:mm A");
               } else {
