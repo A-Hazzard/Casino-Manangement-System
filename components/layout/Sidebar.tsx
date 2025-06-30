@@ -137,16 +137,18 @@ export default function Sidebar({ pathname }: { pathname: string }) {
           </div>
         </Link>
       </div>
-      <SettingsModal />
-      {/* Logout button (client-side) */}
-      <button
-        onClick={logoutUser}
-        className="group mt-auto mb-4 mx-auto p-2 rounded hover:bg-buttonActive"
-        aria-label="Logout"
-        type="button"
-      >
-        <ExitIcon className="w-6 h-6 text-grayHighlight group-hover:text-container" />
-      </button>
+      {/* Settings and Logout container */}
+      <div className="mt-auto mb-4 mx-auto flex flex-col gap-2">
+        <SettingsModal />
+        <button
+          onClick={logoutUser}
+          className="group p-2 rounded hover:bg-buttonActive"
+          aria-label="Logout"
+          type="button"
+        >
+          <ExitIcon className="w-6 h-6 text-grayHighlight group-hover:text-container" />
+        </button>
+      </div>
     </aside>
   );
 }
