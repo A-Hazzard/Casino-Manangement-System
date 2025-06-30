@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ExitIcon } from "@radix-ui/react-icons";
 import { BarChart3 } from "lucide-react";
 import { logoutUser } from "@/lib/helpers/auth";
+import SettingsModal from "./SettingsModal";
 
 // Pre-import all images to enable preloading
 import dashboardButton from "@/public/dashboardButton.svg";
@@ -136,6 +137,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
           </div>
         </Link>
       </div>
+      <SettingsModal />
       {/* Logout button (client-side) */}
       <button
         onClick={logoutUser}
