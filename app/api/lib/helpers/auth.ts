@@ -3,17 +3,21 @@ import { getUserByEmail } from "./users";
 import { sendEmail } from "../../lib/utils/email";
 import { UserAuthPayload } from "@/lib/types";
 import { comparePassword } from "../utils/validation";
+import type { AuthResult } from "../types/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 /**
- * Authenticates a user by email and password, returning a JWT if successful.
+ * Validates user credentials and generates a JWT token on success.
  *
- * @param email - The user's email address.
- * @param password - The user's password.
- * @returns Promise resolving to an object with success, token, and user payload or error message.
+ * @param email - User email address
+ * @param password - Plain text password
+ * @returns Authentication result containing token and user payload
  */
-export async function authenticateUser(email: string, password: string) {
+export async function authenticateUser(
+  email: string,
+  password: string,
+): Promise<AuthResult> {
   const user = await getUserByEmail(email);
   if (!user) return { success: false, message: "User not found." };
 
@@ -54,12 +58,12 @@ export async function authenticateUser(email: string, password: string) {
 }
 
 /**
- * Sends a password reset email to the user.
+ * Sends a password reset email with a short-lived token.
  *
- * @param email - The user's email address.
- * @returns Promise resolving to an object indicating success or failure, and an optional message.
+ * @param email - User email address
+ * @returns Result indicating if the email was sent successfully
  */
-export async function sendResetPasswordEmail(email: string) {
+export async function sendResetPasswordEmail(email: string): Promise<AuthResult> {
   const user = await getUserByEmail(email);
   if (!user) {
     return { success: false, message: "User not found." };

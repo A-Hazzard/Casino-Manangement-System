@@ -1,11 +1,18 @@
-import { NextResponse } from "next/server"
-import { sendResetPasswordEmail } from "../../lib/helpers/auth"
-import { validateEmail } from "../../lib/utils/validation"
-import { connectDB } from "../../lib/middleware/db"
+import { NextResponse } from "next/server";
+import { sendResetPasswordEmail } from "../../lib/helpers/auth";
+import { validateEmail } from "../../lib/utils/validation";
+import { connectDB } from "../../lib/middleware/db";
+import type { AuthResult } from "../../lib/types";
 
+/**
+ * Handles password reset requests by sending a reset token via email.
+ *
+ * @param request - Next.js Request object with JSON body containing `email`.
+ * @returns Response indicating if the reset email was sent.
+ */
 export async function POST(request: Request) {
-    await connectDB()
-    const { email } = await request.json()
+    await connectDB();
+    const { email } = await request.json();
 
     if (!validateEmail(email)) {
         return NextResponse.json(
@@ -14,16 +21,16 @@ export async function POST(request: Request) {
         )
     }
 
-    const result = await sendResetPasswordEmail(email)
+    const result: AuthResult = await sendResetPasswordEmail(email);
     if (result.success) {
         return NextResponse.json({
             success: true,
             message: "Reset instructions sent.",
-        })
+        });
     } else {
         return NextResponse.json(
             { success: false, message: result.message || "Failed to send email." },
             { status: 500 }
-        )
+        );
     }
 }

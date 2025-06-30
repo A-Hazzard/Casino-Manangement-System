@@ -32,8 +32,8 @@ export async function getAllMeters(): Promise<Meter[]> {
  * Calculates the summary metrics from a list of meters.
  *
  * @param meters - List of meters to process.
- * @returns Aggregated data for Wager, Games Won, and Gross as a Partial<dashboardData>.
- */
+ * @returns Totals for drop, cancelled credits, and gross profit.
+*/
 export function calculateMetrics(meters: Meter[]): Partial<dashboardData> {
   let totalDrop = 0; // Total money inserted (Wager)
   let totalCancelledCredits = 0; // Total money removed (Games Won)
@@ -44,7 +44,7 @@ export function calculateMetrics(meters: Meter[]): Partial<dashboardData> {
       meter.movement || ({} as Meter["movement"]);
     const drop = movement.drop || 0;
     const totalCancelled = movement.totalCancelledCredits || 0;
-    const gross = drop - totalCancelledCredits;
+    const gross = drop - totalCancelled;
 
     totalDrop += drop;
     totalCancelledCredits += totalCancelled;

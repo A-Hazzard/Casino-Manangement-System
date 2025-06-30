@@ -1,4 +1,5 @@
 import { Document } from "mongoose";
+import type { UserAuthPayload } from "@/lib/types";
 
 export type UserDocument = Document & {
   _id: string;
@@ -14,4 +15,16 @@ export type UserDocument = Document & {
       resources: string[];
     }
   >;
+};
+
+export type LoginRequestBody = {
+  emailAddress: string;
+  password: string;
+};
+
+export type AuthResult = {
+  success: boolean;
+  message?: string;
+  token?: string;
+  user?: UserAuthPayload;
 };
