@@ -1,14 +1,21 @@
-import {NextRequest, NextResponse} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser } from "@/app/api/lib/helpers/auth";
 import { validateEmail, validatePassword } from "@/app/api/lib/utils/validation";
 import { connectDB } from "@/app/api/lib/middleware/db";
+import type { LoginRequestBody, AuthResult } from "@/app/api/lib/types";
 
 export const runtime = "nodejs";
 
+/**
+ * Authenticates a user and issues an HTTP-only token cookie.
+ *
+ * @param request - Incoming request containing email and password
+ * @returns JSON response with user and token on success
+ */
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
-        const { emailAddress, password } = await request.json();
+        const { emailAddress, password } = (await request.json()) as LoginRequestBody;
 
         if (!validateEmail(emailAddress) || !validatePassword(password)) {
             return NextResponse.json(
@@ -17,7 +24,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const result = await authenticateUser(emailAddress, password);
+        const result: AuthResult = await authenticateUser(emailAddress, password);
         if (!result.success || !result.user || !result.token) {
             return NextResponse.json(
                 { success: false, message: result.message || "Invalid credentials." },

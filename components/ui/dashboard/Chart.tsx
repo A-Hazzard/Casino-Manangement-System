@@ -42,34 +42,15 @@ export default function Chart({
   }
 
   // --- Robust sorting for both string and date types ---
-  const parseTime = (val?: string) => {
-    if (!val) return 0;
-    // Try to parse as HH:mm
-    const match = val.match(/^(\d{1,2}):(\d{2})$/);
-    if (match) {
-      return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-    }
-    // Try to parse as Date
-    const date = new Date(val);
-    if (!isNaN(date.getTime())) {
-      return date.getHours() * 60 + date.getMinutes();
-    }
-    return 0;
+  const parseTime = (val?: string, day?: string) => {
+    if (!val || !day) return 0;
+    const localDate = dayjs.utc(`${day}T${val}:00Z`).local();
+    return localDate.hour() * 60 + localDate.minute();
   };
 
   const parseDay = (val?: string) => {
     if (!val) return 0;
-    // Try to parse as YYYY-MM-DD
-    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      return new Date(val).getTime();
-    }
-    // Try to parse as Date
-    const date = new Date(val);
-    if (!isNaN(date.getTime())) {
-      return date.getTime();
-    }
-    return 0;
+    return dayjs.utc(val).local().valueOf();
   };
 
   // For hourly charts, filter to only the most common day
@@ -94,7 +75,7 @@ export default function Chart({
     ) {
       const dayDiff = parseDay(a.day) - parseDay(b.day);
       if (dayDiff !== 0) return dayDiff;
-      return parseTime(a.time) - parseTime(b.time);
+      return parseTime(a.time, a.day) - parseTime(b.time, b.day);
     }
     // Otherwise, sort by day (could be string or date)
     return parseDay(a.day) - parseDay(b.day);
