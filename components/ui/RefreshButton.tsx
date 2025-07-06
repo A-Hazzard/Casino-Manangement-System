@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import type { SyncButtonProps as BaseSyncButtonProps } from "@/lib/types/components";
 
-type SyncButtonProps = ButtonProps & BaseSyncButtonProps;
+type Props = Omit<ButtonProps, keyof BaseSyncButtonProps> & BaseSyncButtonProps;
 
-export const SyncButton: React.FC<SyncButtonProps> = ({
+export const SyncButton = ({
   onClick,
   isSyncing = false,
   className = "",
@@ -14,7 +14,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   iconOnly = false,
   variant = "sync",
   ...props
-}) => {
+}: Props) => {
   const Icon = variant === "sync" ? RotateCcw : RefreshCw;
 
   return (
@@ -37,16 +37,11 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   );
 };
 
-// Keep the old RefreshButton for backward compatibility
-export const RefreshButton: React.FC<SyncButtonProps> = (props) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { variant, ...otherProps } = props;
+export const RefreshButton = (props: Omit<Props, "variant">) => {
   return (
     <SyncButton
-      {...otherProps}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      variant={"refresh" as any}
-      label={props.label || "Refresh"}
+      {...props}
+      variant="refresh"
     />
   );
 };

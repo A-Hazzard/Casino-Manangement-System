@@ -211,7 +211,7 @@ export default function MapPreview(props: MapPreviewProps) {
         <h3 className="text-sm font-medium text-gray-700 mb-3">Map Preview</h3>
 
         <button
-          className="absolute top-8 right-5 z-[1000] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
+          className="absolute top-8 right-5 z-[50] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
           onClick={() => setIsModalOpen(true)}
         >
           <EnterFullScreenIcon className="w-5 h-5" />

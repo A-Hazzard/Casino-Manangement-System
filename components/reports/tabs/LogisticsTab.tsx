@@ -1,5 +1,4 @@
 import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { LogisticsEntry } from "@/lib/types/reports";
 import { format } from "date-fns";
+import { useState } from "react";
 
 const StatusBadge = ({ status }: { status: LogisticsEntry["status"] }) => {
   const statusStyles = {
@@ -30,14 +30,9 @@ const StatusBadge = ({ status }: { status: LogisticsEntry["status"] }) => {
 
 export default function LogisticsTab() {
   const { logisticsEntries } = useAnalyticsDataStore();
-  // TODO: Add logistics filtering state to reports store
-  const isLoading = false;
-  const logisticsSearchTerm = "";
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const setLogisticsSearchTerm = (_: string) => {};
-  const logisticsStatusFilter = "all";
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const setLogisticsStatusFilter = (_: string) => {};
+  const [isLoading] = useState(false);
+  const [logisticsSearchTerm, setLogisticsSearchTerm] = useState("");
+  const [logisticsStatusFilter, setLogisticsStatusFilter] = useState("all");
 
   return (
     <div className="space-y-6">

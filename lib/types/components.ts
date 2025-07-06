@@ -202,12 +202,14 @@ export type MachineDoc = {
 };
 
 // Common UI Component Props
+export type ButtonVariant = "sync" | "refresh";
+
 export type SyncButtonProps = {
-  isSyncing: boolean;
   onClick: () => void;
+  isSyncing?: boolean;
   label?: string;
   iconOnly?: boolean;
-  variant?: "refresh" | "sync";
+  variant?: ButtonVariant;
 };
 
 export type PaginationControlsProps = {

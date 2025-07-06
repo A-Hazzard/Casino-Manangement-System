@@ -3,12 +3,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { fetchLocationMetricsForMap } from "@/lib/helpers/locations";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import type {
-  LocationMetrics,
-  OnlineOfflineIndicatorProps,
-} from "@/lib/types/components";
+import type { OnlineOfflineIndicatorProps } from "@/lib/types/components";
+import { fetchMachineStats } from "@/lib/helpers/machines";
 
 export default function OnlineOfflineIndicator({
   className = "",
@@ -18,34 +15,17 @@ export default function OnlineOfflineIndicator({
   const [onlineMachines, setOnlineMachines] = useState(0);
   const [offlineMachines, setOfflineMachines] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { activeMetricsFilter, selectedLicencee } = useDashBoardStore();
+  const { selectedLicencee } = useDashBoardStore();
 
   useEffect(() => {
-    const fetchMachineStats = async () => {
+    const getMachineStats = async () => {
       setLoading(true);
       try {
-        const locationMetrics = await fetchLocationMetricsForMap(
-          activeMetricsFilter,
-          selectedLicencee
-        );
-
-        // Calculate total online and offline machines across all locations
-        const totalOnline = locationMetrics.reduce(
-          (sum: number, location: LocationMetrics) =>
-            sum + (location.onlineMachines || 0),
-          0
-        );
-        const totalMachines = locationMetrics.reduce(
-          (sum: number, location: LocationMetrics) =>
-            sum + (location.totalMachines || 0),
-          0
-        );
-        const totalOffline = totalMachines - totalOnline;
-
-        setOnlineMachines(totalOnline);
-        setOfflineMachines(totalOffline);
-      } catch {
-        // Handle error silently for now - could implement proper error reporting
+        const stats = await fetchMachineStats(selectedLicencee);
+        setOnlineMachines(stats.onlineMachines);
+        setOfflineMachines(stats.offlineMachines);
+      } catch (error) {
+        console.error("Error fetching machine stats:", error);
         setOnlineMachines(0);
         setOfflineMachines(0);
       } finally {
@@ -53,8 +33,10 @@ export default function OnlineOfflineIndicator({
       }
     };
 
-    fetchMachineStats();
-  }, [activeMetricsFilter, selectedLicencee]);
+    if (selectedLicencee) {
+      getMachineStats();
+    }
+  }, [selectedLicencee]);
 
   const getSizeClasses = () => {
     switch (size) {

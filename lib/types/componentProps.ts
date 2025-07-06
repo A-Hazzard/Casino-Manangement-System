@@ -14,6 +14,7 @@ import { JSX } from "react";
 import type { LocationSelectItem } from "./location";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 import type { CollectionReportLocationWithMachines } from "./api";
+import { LatLng } from "leaflet";
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
@@ -289,4 +290,8 @@ export type ManagerMobileUIProps = {
   onResetSchedulerFilters: () => void;
   schedulers: SchedulerTableRow[];
   loadingSchedulers: boolean;
+};
+
+export type LocationPickerMapProps = {
+  onLocationSelect: (latlng: LatLng) => void;
 };

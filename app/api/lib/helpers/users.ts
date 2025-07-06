@@ -6,6 +6,12 @@ import { logActivity } from "./activityLogger";
 import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
+type CurrentUser = {
+  _id: string;
+  emailAddress: string;
+  roles: string[];
+}
+
 /**
  * Finds a user by email address (case-insensitive).
  *
@@ -63,46 +69,6 @@ type OriginalUserType = {
   _id: string;
   username: string;
   emailAddress: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    middleName?: string;
-    otherName?: string;
-    gender?: string;
-    address?: {
-      street?: string;
-      town?: string;
-      region?: string;
-      country?: string;
-      postalCode?: string;
-    };
-    identification?: {
-      dateOfBirth?: string;
-      idType?: string;
-      idNumber?: string;
-      notes?: string;
-    };
-  };
-};
-
-type UserUpdateData = {
-  password?: string;
-  roles?: string[];
-  resourcePermissions?: ResourcePermissions;
-  firstName?: string;
-  lastName?: string;
-  middleName?: string;
-  otherName?: string;
-  gender?: string;
-  street?: string;
-  town?: string;
-  region?: string;
-  country?: string;
-  postalCode?: string;
-  dateOfBirth?: string;
-  idType?: string;
-  idNumber?: string;
-  notes?: string;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -242,147 +208,41 @@ export async function createUser(
 }
 
 /**
- * Updates an existing user with activity logging
+ * Updates a user's information and logs the activity
  */
 export async function updateUser(
   _id: string,
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
-  const originalUser = (await UserModel.findById(
-    _id
-  ).lean()) as unknown as OriginalUserType;
-  if (!originalUser) {
+  const user = await UserModel.findById(_id);
+  if (!user) {
     throw new Error("User not found");
   }
 
-  const update: UserUpdateData = {};
+  // Calculate changes for activity log
+  const changes = calculateUserChanges(user.toObject(), updateFields);
 
-  if (updateFields.password) {
-    update.password = await hashPassword(updateFields.password as string);
-  }
+  // Update user
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    _id,
+    { $set: updateFields },
+    { new: true }
+  );
 
-  if (updateFields.roles) {
-    update.roles = updateFields.roles as string[];
-  }
-
-  if (updateFields.resourcePermissions) {
-    update.resourcePermissions =
-      updateFields.resourcePermissions as ResourcePermissions;
-  }
-
-  if (
-    updateFields.firstName !== undefined ||
-    updateFields.lastName !== undefined ||
-    updateFields.middleName !== undefined ||
-    updateFields.otherName !== undefined ||
-    updateFields.gender !== undefined ||
-    updateFields.street !== undefined ||
-    updateFields.town !== undefined ||
-    updateFields.region !== undefined ||
-    updateFields.country !== undefined ||
-    updateFields.postalCode !== undefined ||
-    updateFields.dateOfBirth !== undefined ||
-    updateFields.idType !== undefined ||
-    updateFields.idNumber !== undefined ||
-    updateFields.notes !== undefined
-  ) {
-    update.profile = {
-      ...originalUser.profile,
-      firstName:
-        updateFields.firstName !== undefined
-          ? (updateFields.firstName as string)
-          : originalUser.profile?.firstName,
-      lastName:
-        updateFields.lastName !== undefined
-          ? (updateFields.lastName as string)
-          : originalUser.profile?.lastName,
-      middleName:
-        updateFields.middleName !== undefined
-          ? (updateFields.middleName as string)
-          : originalUser.profile?.middleName,
-      otherName:
-        updateFields.otherName !== undefined
-          ? (updateFields.otherName as string)
-          : originalUser.profile?.otherName,
-      gender:
-        updateFields.gender !== undefined
-          ? (updateFields.gender as string)
-          : originalUser.profile?.gender,
-      address: {
-        ...originalUser.profile?.address,
-        street:
-          updateFields.street !== undefined
-            ? (updateFields.street as string)
-            : originalUser.profile?.address?.street,
-        town:
-          updateFields.town !== undefined
-            ? (updateFields.town as string)
-            : originalUser.profile?.address?.town,
-        region:
-          updateFields.region !== undefined
-            ? (updateFields.region as string)
-            : originalUser.profile?.address?.region,
-        country:
-          updateFields.country !== undefined
-            ? (updateFields.country as string)
-            : originalUser.profile?.address?.country,
-        postalCode:
-          updateFields.postalCode !== undefined
-            ? (updateFields.postalCode as string)
-            : originalUser.profile?.address?.postalCode,
-      },
-      identification: {
-        ...originalUser.profile?.identification,
-        dateOfBirth:
-          updateFields.dateOfBirth !== undefined
-            ? (updateFields.dateOfBirth as string)
-            : originalUser.profile?.identification?.dateOfBirth,
-        idType:
-          updateFields.idType !== undefined
-            ? (updateFields.idType as string)
-            : originalUser.profile?.identification?.idType,
-        idNumber:
-          updateFields.idNumber !== undefined
-            ? (updateFields.idNumber as string)
-            : originalUser.profile?.identification?.idNumber,
-        notes:
-          updateFields.notes !== undefined
-            ? (updateFields.notes as string)
-            : originalUser.profile?.identification?.notes,
-      },
-    };
-  }
-
-  const updatedUser = await UserModel.findByIdAndUpdate(_id, update, {
-    new: true,
-  });
-  if (!updatedUser) {
-    throw new Error("User not found");
-  }
-
-  const currentUser = await getUserFromServer();
+  // Log activity
+  const currentUser = (await getUserFromServer()) as CurrentUser | null;
+  const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
-    try {
-      const changes = calculateUserChanges(originalUser, updateFields);
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
-        },
-        "UPDATE",
-        "User",
-        { id: _id, name: updatedUser.username || updatedUser.emailAddress },
-        changes,
-        `Updated user profile for "${
-          updatedUser.username || updatedUser.emailAddress
-        }"`,
-        getClientIP(request) || undefined
-      );
-    } catch (logError) {
-      console.error("Failed to log activity:", logError);
-    }
+    await logActivity(
+      { id: currentUser._id, email: currentUser.emailAddress, role: currentUser.roles[0] || 'user' },
+      "update",
+      "user",
+      { id: _id, name: updatedUser.username || "" },
+      changes,
+      `Updated user profile for "${updatedUser.username || 'user'}"`,
+      clientIP || undefined,
+    );
   }
 
   return updatedUser;

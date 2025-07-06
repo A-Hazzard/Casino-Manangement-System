@@ -12,7 +12,9 @@ export async function GET() {
   try {
     await connectDB();
 
-    const firmwares = await Firmware.find({}).sort({ createdAt: -1 }).lean();
+    const firmwares = await Firmware.find({ deletedAt: null })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(firmwares);
   } catch (error) {
@@ -41,6 +43,8 @@ export async function POST(request: NextRequest) {
     const version = formData.get("version") as string;
     const versionDetails = formData.get("versionDetails") as string;
     const file = formData.get("file") as File;
+    const fileSize = file.size;
+    const fileName = file.name;
 
     // Validate required fields
     if (!product || !version || !file) {
@@ -86,6 +90,8 @@ export async function POST(request: NextRequest) {
       version,
       versionDetails: versionDetails || "",
       fileId,
+      fileName,
+      fileSize,
     });
 
     await firmware.save();

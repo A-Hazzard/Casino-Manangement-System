@@ -168,7 +168,7 @@ type ReportsActions = {
 
 const initialState: ReportsState = {
   // Current view and navigation
-  activeView: "dashboard",
+  activeView: "locations",
   isLoading: false,
   error: null,
 

@@ -65,64 +65,16 @@ export const RADIAN = Math.PI / 180;
  */
 export const reportsTabsConfig: ReportTab[] = [
   {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: "📊",
-    description: "Real-time overview of casino operations and KPIs",
-  },
-  {
     id: "locations",
     label: "Locations",
     icon: "🏢",
-    description: "Location performance analysis and comparisons",
+    description: "Location performance analysis, top performers, and comparisons",
   },
   {
     id: "machines",
     label: "Machines",
     icon: "🎰",
-    description: "Individual machine performance and revenue tracking",
-  },
-  {
-    id: "customers",
-    label: "Customers",
-    icon: "👥",
-    description: "Customer activity, demographics, and behavior analysis",
-  },
-  {
-    id: "vouchers",
-    label: "Vouchers",
-    icon: "🎫",
-    description: "Voucher issuance, redemption, and fraud tracking",
-  },
-  {
-    id: "movements",
-    label: "Movements",
-    icon: "🚚",
-    description: "Machine movement tracking and logistics management",
-  },
-  {
-    id: "compliance",
-    label: "Compliance",
-    icon: "🛡️",
-    description: "Regulatory compliance monitoring and audit trails",
-  },
-  {
-    id: "analytics",
-    label: "Analytics",
-    icon: "📈",
-    description: "Advanced analytics, forecasting, and predictive insights",
-  },
-  {
-    id: "templates",
-    label: "Templates",
-    icon: "📋",
-    description: "Report templates and custom report builder",
-  },
-  {
-    id: "scheduled",
-    label: "Scheduled",
-    icon: "⏰",
-    description: "Automated report scheduling and delivery",
+    description: "Individual machine performance, revenue tracking, and analytics",
   },
 ];
 

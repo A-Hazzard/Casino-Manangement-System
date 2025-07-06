@@ -6,6 +6,11 @@ export type Firmware = {
   version: string;
   versionDetails: string;
   fileId: Types.ObjectId; // GridFS file ID
-  createdAt: Date;
-  updatedAt: Date;
+  fileName: string;
+  fileSize: number;
+  createdAt: string; // Using string for date serialization
+  updatedAt: string;
+  deletedAt?: string | null;
 };
+
+export type NewFirmware = Omit<Firmware, "_id" | "createdAt" | "updatedAt">;

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import SMIBFirmwareTable from "./SMIBFirmwareTable";
 import SMIBFirmwareModal from "./SMIBFirmwareModal";
+import { DeleteFirmwareModal } from "./DeleteFirmwareModal";
+import { DownloadFirmwareModal } from "./DownloadFirmwareModal";
 import type { Firmware } from "@/lib/types/firmware";
 
 export default function SMIBFirmwareSection() {
@@ -39,6 +41,15 @@ export default function SMIBFirmwareSection() {
     fetchFirmwares(); // Refresh the list after upload
   };
 
+  const handleDeleteComplete = () => {
+    fetchFirmwares(); // Refresh the list after delete
+  };
+
+  const handleDownloadComplete = () => {
+    // Can add a toast notification here if needed
+    console.log("Download completed");
+  };
+
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
@@ -49,6 +60,8 @@ export default function SMIBFirmwareSection() {
         onClose={closeModal}
         onUploadComplete={handleUploadComplete}
       />
+      <DeleteFirmwareModal onDeleteComplete={handleDeleteComplete} />
+      <DownloadFirmwareModal onDownloadComplete={handleDownloadComplete} />
 
       <div className="w-full max-w-full">
         {/* Header with Add Button */}
@@ -74,7 +87,11 @@ export default function SMIBFirmwareSection() {
 
         {/* Firmware Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <SMIBFirmwareTable firmwares={firmwares} loading={loading} />
+          <SMIBFirmwareTable
+            firmwares={firmwares}
+            loading={loading}
+            onRefresh={fetchFirmwares}
+          />
         </div>
       </div>
     </>

@@ -261,33 +261,7 @@ export async function fetchLocationMetricsForMap(
       return [];
     }
 
-    // Transform the data to include the required fields for map display
-    return response.data.map(
-      (location: {
-        location?: string;
-        _id?: string;
-        locationName?: string;
-        moneyIn?: number;
-        moneyOut?: number;
-        gross?: number;
-        totalMachines?: number;
-        onlineMachines?: number;
-        isLocalServer?: boolean;
-        noSMIBLocation?: boolean;
-      }) => ({
-        _id: location.location || location._id,
-        locationName: location.locationName,
-        name: location.locationName, // Fallback for name field
-        moneyIn: location.moneyIn || 0,
-        moneyOut: location.moneyOut || 0,
-        gross: location.gross || 0,
-        totalMachines: location.totalMachines || 0,
-        onlineMachines: location.onlineMachines || 0,
-        isLocalServer: location.isLocalServer || false,
-        noSMIBLocation: location.noSMIBLocation || false,
-        hasSmib: !location.noSMIBLocation,
-      })
-    );
+    return response.data;
   } catch (error) {
     console.error("Error fetching location metrics for map:", error);
     return [];

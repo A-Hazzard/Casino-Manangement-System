@@ -24,16 +24,8 @@ import {
 } from "@/lib/constants/uiConstants";
 
 // Tab components
-import DashboardTab from "@/components/reports/tabs/DashboardTab";
 import LocationsTab from "@/components/reports/tabs/LocationsTab";
 import MachinesTab from "@/components/reports/tabs/MachinesTab";
-import CustomersTab from "@/components/reports/tabs/CustomersTab";
-import VouchersTab from "@/components/reports/tabs/VouchersTab";
-import MovementsTab from "@/components/reports/tabs/MovementsTab";
-import ComplianceTab from "@/components/reports/tabs/ComplianceTab";
-import AnalyticsTab from "@/components/reports/tabs/AnalyticsTab";
-import TemplatesTab from "@/components/reports/tabs/TemplatesTab";
-import ScheduledTab from "@/components/reports/tabs/ScheduledTab";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -66,19 +58,46 @@ export default function ReportsPage() {
     fullscreenMode,
     toggleFullscreen,
     refreshAllData,
-    realTimeMetrics,
   } = useReportsStore();
 
   const [isMobile, setIsMobile] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [isLicenseeReady, setIsLicenseeReady] = useState(false);
 
-  // Check if mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  useEffect(() => {
+    const ensureLicenseeIsSelected = async () => {
+      if (selectedLicencee) {
+        setIsLicenseeReady(true);
+        return;
+      }
+      try {
+        const response = await fetch("/api/licensees");
+        if (!response.ok) throw new Error("Failed to fetch");
+        const data = await response.json();
+        if (data.licensees && data.licensees.length > 0) {
+          setSelectedLicencee(data.licensees[0]._id);
+          setIsLicenseeReady(true);
+        } else {
+          setError("No licensees found");
+          toast.error("No licensees available to display reports.");
+          setIsLicenseeReady(false); // Can't proceed
+        }
+      } catch (error) {
+        console.error("Failed to fetch licensees:", error);
+        setError("Failed to load default licensee");
+        toast.error("Failed to load default licensee");
+        setIsLicenseeReady(false); // Can't proceed
+      }
+    };
+    ensureLicenseeIsSelected();
+  }, [selectedLicencee, setSelectedLicencee, setError]);
 
   // Handle tab change with loading state
   const handleTabChange = async (tabId: ReportView) => {
@@ -110,17 +129,9 @@ export default function ReportsPage() {
   };
 
   const renderTabContent = () => {
-    const tabComponents = {
-      dashboard: <DashboardTab />,
+    const tabComponents: Record<string, React.ReactElement> = {
       locations: <LocationsTab />,
       machines: <MachinesTab />,
-      customers: <CustomersTab />,
-      vouchers: <VouchersTab />,
-      movements: <MovementsTab />,
-      compliance: <ComplianceTab />,
-      analytics: <AnalyticsTab />,
-      templates: <TemplatesTab />,
-      scheduled: <ScheduledTab />,
     };
 
     return (
@@ -134,7 +145,7 @@ export default function ReportsPage() {
           transition={{ duration: 0.2 }}
           className="w-full h-full"
         >
-          {tabComponents[activeView] || <DashboardTab />}
+          {tabComponents[activeView] || <LocationsTab />}
         </motion.div>
       </AnimatePresence>
     );
@@ -161,7 +172,7 @@ export default function ReportsPage() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            disabled={isLoading}
+            disabled={isLoading || !isLicenseeReady}
             hideLicenceeFilter={false}
           />
 
@@ -194,14 +205,6 @@ export default function ReportsPage() {
                 >
                   {currentTab?.label}
                 </Badge>
-                {realTimeMetrics && (
-                  <Badge
-                    variant="outline"
-                    className="text-green-600 border-green-600"
-                  >
-                    Live • {realTimeMetrics.currentPlayers} players
-                  </Badge>
-                )}
               </div>
             </div>
 
@@ -284,15 +287,10 @@ export default function ReportsPage() {
                   `}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={isLoading}
+                  disabled={isLoading || !isLicenseeReady}
                 >
                   <span className="text-lg">{tab.icon}</span>
                   <span>{tab.label}</span>
-                  {tab.id === "dashboard" && realTimeMetrics && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {realTimeMetrics.activeTerminals}
-                    </Badge>
-                  )}
                 </motion.button>
               ))}
             </nav>
@@ -303,7 +301,7 @@ export default function ReportsPage() {
                 value={activeView}
                 onChange={(e) => handleTabChange(e.target.value as ReportView)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-                disabled={isLoading}
+                disabled={isLoading || !isLicenseeReady}
               >
                 {reportsTabsConfig.map((tab) => (
                   <option key={tab.id} value={tab.id}>
@@ -342,7 +340,15 @@ export default function ReportsPage() {
           </AnimatePresence>
 
           {/* Tab Content */}
-          <div className="flex-1 min-h-0">{renderTabContent()}</div>
+          <div className="flex-1 min-h-0">
+            {isLicenseeReady ? (
+              renderTabContent()
+            ) : (
+              <div className="flex justify-center items-center h-full">
+                <p>Loading reports...</p>
+              </div>
+            )}
+          </div>
         </motion.main>
       </div>
 

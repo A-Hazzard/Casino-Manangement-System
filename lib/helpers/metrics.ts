@@ -47,7 +47,7 @@ export async function getMetrics(
     if (timePeriod === "Custom" && startDate && endDate) {
       url += `&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
     }
-    if (licencee) {
+    if (licencee && licencee !== "all") {
       url += `&licencee=${licencee}`;
     }
 

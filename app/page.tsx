@@ -66,7 +66,15 @@ function DashboardContent() {
   const hasFetchedOnce = useRef(false);
 
   useEffect(() => {
+    // On initial load, if no licensee is selected, default to "all"
+    if (!selectedLicencee) {
+      setSelectedLicencee("all");
+    }
+  }, [selectedLicencee, setSelectedLicencee]);
+
+  useEffect(() => {
     const fetchMetrics = async () => {
+      if (!selectedLicencee) return; // Don't fetch until a licensee is selected
       setLoadingChartData(true);
       try {
         if (!hasFetchedOnce.current) {

@@ -7,7 +7,7 @@ export type CasinoLocation = {
   id: string;
   name: string;
   region: string;
-  address?: string;
+  address: string;
   isActive: boolean;
   totalHandle: number;
   totalWin: number;
@@ -15,37 +15,34 @@ export type CasinoLocation = {
   gamesPlayed: number;
   averageWager: number;
   totalJackpot: number;
-  performance: "excellent" | "good" | "average" | "poor";
+  performance: PerformanceStatus;
   coordinates?: {
     lat: number;
     lng: number;
   };
+  trend: "up" | "down" | "stable";
+  trendPercentage: number;
 };
 
 // Gaming machine types
 export type GamingMachine = {
   id: string;
-  gameTitle: string;
-  manufacturer: string;
   locationId: string;
-  locationName?: string;
-  totalHandle: number;
-  totalWin: number;
-  actualHold: number;
-  gamesPlayed: number;
-  isActive: boolean;
-  installDate: string;
-  avgBet?: number;
-  averageWager?: number;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  assetNumber: string;
+  status: "active" | "inactive" | "maintenance";
+  lastActivity: string;
   coinIn: number;
   coinOut: number;
+  jackpot: number;
+  gamesPlayed: number;
+  drop: number;
   totalCancelledCredits: number;
   totalHandPaidCancelledCredits: number;
-  totalWonCredits: number;
-  drop: number;
-  jackpot: number;
-  currentCredits: number;
-  gamesWon: number;
+  isOnline: boolean;
+  hasSas: boolean;
 };
 
 // Logistics types
@@ -552,4 +549,78 @@ export type LocationExportData = {
   actualHold: number;
   gamesPlayed: number;
   isActive: boolean;
+};
+
+// --- Evolution One Custom Analytics Types ---
+
+/**
+ * Analytics summary for a single location (used in LocationsTab)
+ */
+export type LocationPerformance = {
+  id: string;
+  name: string;
+  totalDrop: number;
+  cancelledCredits: number;
+  gross: number;
+  machineCount: number;
+  onlineMachines: number;
+  sasMachines: number;
+  coordinates?: [number, number];
+  trend: "up" | "down" | "stable";
+  trendPercentage: number;
+};
+
+/**
+ * Analytics summary for a single machine (used in MachinesTab and LocationsTab)
+ */
+export type MachinePerformance = {
+  id: string;
+  name: string;
+  locationName: string;
+  locationId: string;
+  totalDrop: number;
+  cancelledCredits: number;
+  gross: number;
+  isOnline: boolean;
+  hasSas: boolean;
+  lastActivity: string;
+};
+
+/**
+ * Global stats for the dashboard/overview (used in LocationsTab)
+ */
+export type GlobalStats = {
+  totalDrop: number;
+  totalCancelledCredits: number;
+  totalGross: number;
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
+};
+
+// ChartDataPoint for analytics charts (override if needed)
+export type AnalyticsChartDataPoint = {
+  date: string;
+  totalDrop: number;
+  cancelledCredits: number;
+  gross: number;
+};
+
+export type MachineAnalytics = {
+  _id: string;
+  name: string;
+  locationName: string;
+  totalDrop: number;
+  gross: number;
+  isOnline: boolean;
+  hasSas: boolean;
+};
+
+export type MachineStats = {
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
+  totalDrop: number;
+  totalGross: number;
+  totalCancelledCredits: number;
 };

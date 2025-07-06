@@ -17,12 +17,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { getNames } from "country-list";
+import dynamic from "next/dynamic";
+import { LatLng } from "leaflet";
+
+const LocationPickerMap = dynamic(
+  () =>
+    import("@/components/ui/locations/LocationPickerMap").then(
+      (mod) => mod.LocationPickerMap
+    ),
+  { ssr: false }
+);
 
 export const NewLocationModal = () => {
   const { isLocationModalOpen, closeLocationModal } = useLocationStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [useMap, setUseMap] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -128,6 +139,14 @@ export const NewLocationModal = () => {
 
   const handleCheckboxChange = (name: string, checked: boolean) => {
     setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
+
+  const handleLocationSelect = (latlng: LatLng) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: latlng.lat.toFixed(6),
+      longitude: latlng.lng.toFixed(6),
+    }));
   };
 
   const handleSubmit = async () => {
@@ -271,7 +290,7 @@ export const NewLocationModal = () => {
                       name="profitShare"
                       value={formData.profitShare}
                       onChange={handleInputChange}
-                      className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 border-l-0"
+                      className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                     <span className="pr-4">%</span>
                   </div>
@@ -281,12 +300,14 @@ export const NewLocationModal = () => {
                   <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
                     <span className="text-sm font-medium">Day Start Time</span>
                   </div>
-                  <Input
-                    name="dayStartTime"
-                    value="Curr. day, 08:00"
-                    readOnly
-                    className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 bg-container rounded-r-md border border-border border-l-0"
-                  />
+                  <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
+                    <Input
+                      name="dayStartTime"
+                      value="Curr. day, 08:00"
+                      readOnly
+                      className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -313,30 +334,53 @@ export const NewLocationModal = () => {
               {/* GEO Coordinates */}
               <div className="mb-4">
                 <p className="text-sm font-medium mb-2">GEO Coordinates</p>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Checkbox
+                    id="useMap"
+                    checked={useMap}
+                    onCheckedChange={(checked) => setUseMap(checked === true)}
+                  />
+                  <Label htmlFor="useMap">Use Map to Select Location</Label>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center">
                     <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
                       <span className="text-sm font-medium">Latitude</span>
                     </div>
-                    <Input
-                      name="latitude"
-                      value={formData.latitude}
-                      onChange={handleInputChange}
-                      className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 bg-container rounded-r-md border border-border border-l-0"
-                    />
+                    <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
+                      <Input
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={handleInputChange}
+                        className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                        readOnly={useMap}
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center">
                     <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
                       <span className="text-sm font-medium">Longitude</span>
                     </div>
-                    <Input
-                      name="longitude"
-                      value={formData.longitude}
-                      onChange={handleInputChange}
-                      className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 bg-container rounded-r-md border border-border border-l-0"
-                    />
+                    <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
+                      <Input
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={handleInputChange}
+                        className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                        readOnly={useMap}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {useMap && (
+                  <div className="mt-4">
+                    <LocationPickerMap
+                      onLocationSelect={handleLocationSelect}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
@@ -527,6 +571,14 @@ export const NewLocationModal = () => {
             <h3 className="text-lg font-semibold text-buttonActive mb-2">
               GEO Coordinates
             </h3>
+            <div className="flex items-center space-x-2 mb-2">
+              <Checkbox
+                id="useMapMobile"
+                checked={useMap}
+                onCheckedChange={(checked) => setUseMap(checked === true)}
+              />
+              <Label htmlFor="useMapMobile">Use Map to Select Location</Label>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label
@@ -535,13 +587,16 @@ export const NewLocationModal = () => {
                 >
                   Latitude
                 </Label>
-                <Input
-                  id="latitude"
-                  name="latitude"
-                  value={formData.latitude}
-                  onChange={handleInputChange}
-                  className="bg-container border-border"
-                />
+                <div className="flex items-center bg-container rounded-r-md border border-border border-l-0">
+                  <Input
+                    id="latitude"
+                    name="latitude"
+                    value={formData.latitude}
+                    onChange={handleInputChange}
+                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    readOnly={useMap}
+                  />
+                </div>
               </div>
               <div>
                 <Label
@@ -550,15 +605,23 @@ export const NewLocationModal = () => {
                 >
                   Longitude
                 </Label>
-                <Input
-                  id="longitude"
-                  name="longitude"
-                  value={formData.longitude}
-                  onChange={handleInputChange}
-                  className="bg-container border-border"
-                />
+                <div className="flex items-center bg-container rounded-r-md border border-border border-l-0">
+                  <Input
+                    id="longitude"
+                    name="longitude"
+                    value={formData.longitude}
+                    onChange={handleInputChange}
+                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    readOnly={useMap}
+                  />
+                </div>
               </div>
             </div>
+            {useMap && (
+              <div className="mt-4">
+                <LocationPickerMap onLocationSelect={handleLocationSelect} />
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}

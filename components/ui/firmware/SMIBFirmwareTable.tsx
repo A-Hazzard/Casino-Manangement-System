@@ -2,18 +2,25 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import { DownloadIcon } from "@radix-ui/react-icons";
+import { DownloadIcon, TrashIcon } from "@radix-ui/react-icons";
+import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
 import type { Firmware } from "@/lib/types/firmware";
-import type { SMIBFirmwareTableProps } from "@/lib/types/components";
+
+type SMIBFirmwareTableProps = {
+  firmwares: Firmware[];
+  loading: boolean;
+  onRefresh: () => void;
+};
 
 export default function SMIBFirmwareTable({
   firmwares,
   loading = false,
+  onRefresh,
 }: SMIBFirmwareTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const prevFirmwaresRef = useRef<Firmware[]>([]);
+  const { openDeleteModal, openDownloadModal } = useFirmwareActionsStore();
 
   // Animate table rows on data change
   useEffect(() => {
@@ -39,35 +46,6 @@ export default function SMIBFirmwareTable({
       }
     }
   }, [firmwares]);
-
-  const handleDownload = async (
-    firmwareId: string,
-    product: string,
-    version: string
-  ) => {
-    try {
-      const response = await fetch(`/api/firmwares/${firmwareId}/download`);
-      if (!response.ok) {
-        throw new Error("Download failed");
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${product}_${version}.bin`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error downloading firmware:", error);
-      }
-      alert("Failed to download firmware file");
-    }
-  };
 
   if (loading) {
     return (
@@ -119,6 +97,12 @@ export default function SMIBFirmwareTable({
         <div className="text-gray-400 text-sm text-center">
           Upload your first firmware version to get started.
         </div>
+        <button
+          onClick={onRefresh}
+          className="mt-4 px-4 py-2 bg-button text-white rounded-md hover:bg-buttonActive"
+        >
+          Refresh
+        </button>
       </div>
     );
   }
@@ -168,20 +152,23 @@ export default function SMIBFirmwareTable({
                   addSuffix: true,
                 })}
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                <Button
-                  onClick={() =>
-                    handleDownload(
-                      firmware._id,
-                      firmware.product,
-                      firmware.version
-                    )
-                  }
-                  className="bg-button hover:bg-button/90 text-white px-3 py-1 rounded-md text-xs flex items-center gap-1"
-                >
-                  <DownloadIcon className="w-3 h-3" />
-                  Download
-                </Button>
+              <td className="p-3 bg-container border border-border text-sm">
+                <div className="flex items-center justify-center space-x-3">
+                  <button
+                    onClick={() => openDownloadModal(firmware)}
+                    className="text-green-500 hover:text-green-700 transition-colors"
+                    title="Download Firmware"
+                  >
+                    <DownloadIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => openDeleteModal(firmware)}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                    title="Delete Firmware"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

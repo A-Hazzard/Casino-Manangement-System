@@ -1,45 +1,119 @@
-import { NextResponse } from "next/server";
-import { generateMockAnalyticsData } from "@/lib/helpers/reports";
-import { CasinoLocation } from "@/lib/types/reports";
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/app/api/lib/middleware/db";
+import { Machine } from "@/app/api/lib/models/machines";
+import { PipelineStage } from "mongoose";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
-    const locationIds = searchParams.get("locationIds")?.split(",");
+    const licensee = searchParams.get("licensee");
 
-    const { locations } = generateMockAnalyticsData();
-
-    let responseData: CasinoLocation[] | CasinoLocation;
-
-    // If specific location IDs are requested, filter the data
-    if (locationIds && locationIds.length > 0) {
-      const filteredLocations = locations.filter((loc) =>
-        locationIds.includes(loc.id)
+    if (!licensee) {
+      return NextResponse.json(
+        { message: "Licensee is required" },
+        { status: 400 }
       );
-      // For simplicity, if one ID is passed, return object, else array
-      responseData =
-        filteredLocations.length === 1
-          ? filteredLocations[0]
-          : filteredLocations;
-    } else {
-      // Otherwise, return all locations
-      responseData = locations;
     }
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    const locationsPipeline: PipelineStage[] = [
+      // Match machines for the given licensee
+      {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "gamingLocation",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
+      },
+      {
+        $unwind: "$locationDetails",
+      },
+      {
+        $match: {
+          "locationDetails.rel.licencee": licensee,
+        },
+      },
+      // Group by location to aggregate machine data
+      {
+        $group: {
+          _id: "$gamingLocation",
+          totalDrop: { $sum: "$sasMeters.coinIn" },
+          cancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" },
+          gross: {
+            $sum: {
+              $subtract: [
+                { $ifNull: ["$sasMeters.coinIn", 0] },
+                {
+                  $add: [
+                    { $ifNull: ["$sasMeters.coinOut", 0] },
+                    { $ifNull: ["$sasMeters.jackpot", 0] },
+                  ],
+                },
+              ],
+            },
+          },
+          machineCount: { $sum: 1 },
+          onlineMachines: {
+            $sum: {
+              $cond: [{ $eq: ["$assetStatus", "active"] }, 1, 0],
+            },
+          },
+          sasMachines: {
+            $sum: {
+              $cond: ["$isSasMachine", 1, 0],
+            },
+          },
+          locationInfo: { $first: "$locationDetails" },
+        },
+      },
+      // Sort by gross revenue
+      { $sort: { gross: -1 } },
+      // Limit to top 5
+      { $limit: 5 },
+      // Project the final structure
+      {
+        $project: {
+          _id: 0,
+          id: "$_id",
+          name: "$locationInfo.name",
+          totalDrop: "$totalDrop",
+          cancelledCredits: "$cancelledCredits",
+          gross: "$gross",
+          machineCount: "$machineCount",
+          onlineMachines: "$onlineMachines",
+          sasMachines: "$sasMachines",
+          coordinates: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ifNull: ["$locationInfo.geoCoords.latitude", false] },
+                  { $ifNull: ["$locationInfo.geoCoords.longitude", false] },
+                ],
+              },
+              then: [
+                "$locationInfo.geoCoords.longitude",
+                "$locationInfo.geoCoords.latitude",
+              ],
+              else: null,
+            },
+          },
+          // Mock trend data for now
+          trend: { $cond: [{ $gte: ["$gross", 10000] }, "up", "down"] },
+          trendPercentage: { $abs: { $multiply: [{ $rand: {} }, 10] } },
+        },
+      },
+    ];
+
+    const topLocations = await Machine.aggregate(locationsPipeline);
 
     return NextResponse.json({
-      success: true,
-      data: responseData,
+      topLocations,
     });
   } catch (error) {
+    console.error("Error fetching location analytics:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch location data",
-        error: error instanceof Error ? error.message : String(error),
-      },
+      { message: "Failed to fetch location analytics", error: (error as Error).message },
       { status: 500 }
     );
   }

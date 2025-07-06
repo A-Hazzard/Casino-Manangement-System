@@ -14,17 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UploadIcon, CameraIcon } from "@radix-ui/react-icons";
-import type { SMIBFirmwareModalProps } from "@/lib/types/components";
 
-type ExtendedSMIBFirmwareModalProps = SMIBFirmwareModalProps & {
+export interface SMIBFirmwareModalProps {
+  isOpen: boolean;
+  onClose: () => void;
   onUploadComplete: () => void;
-};
+}
 
 export default function SMIBFirmwareModal({
   isOpen,
   onClose,
   onUploadComplete,
-}: ExtendedSMIBFirmwareModalProps) {
+}: SMIBFirmwareModalProps) {
   const [product, setProduct] = useState("");
   const [version, setVersion] = useState("");
   const [versionDetails, setVersionDetails] = useState("");

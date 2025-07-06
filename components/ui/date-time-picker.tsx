@@ -70,7 +70,7 @@ export function DateTimePicker({
     }
   };
 
-  // Update the date with the selected time (but not when date changes)
+  // Update the date with the selected time
   React.useEffect(() => {
     if (!date) return;
     let hours = parseInt(time.hours);
@@ -82,8 +82,7 @@ export function DateTimePicker({
       const newDate = set(date, { hours, minutes });
       setDate(newDate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [time, setDate]); // Added setDate, kept date out intentionally
+  }, [time, date, setDate]);
 
   // Format display string
   const formattedDate = React.useMemo(() => {
