@@ -60,16 +60,8 @@ export default function ReportsPage() {
     refreshAllData,
   } = useReportsStore();
 
-  const [isMobile, setIsMobile] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [isLicenseeReady, setIsLicenseeReady] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   useEffect(() => {
     const ensureLicenseeIsSelected = async () => {
@@ -158,8 +150,8 @@ export default function ReportsPage() {
       <Sidebar pathname={pathname} />
       <div
         className={`w-full max-w-full min-h-screen bg-background flex overflow-hidden transition-all duration-300 ${
-          !isMobile ? "md:pl-20 lg:pl-36" : ""
-        } ${fullscreenMode ? "fixed inset-0 z-50" : ""}`}
+          fullscreenMode ? "fixed inset-0 z-50" : ""
+        }`}
       >
         <motion.main
           className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4"

@@ -1,5 +1,5 @@
 import React from "react";
-import { DateRangePicker } from "@/components/ui/dateRangePicker";
+import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
 import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
 import type { MonthlyDesktopUIProps } from "@/lib/types/componentProps";
@@ -65,30 +65,12 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
       </div>
 
       {/* Date Filters Bar */}
-      <div className="flex flex-wrap items-center justify-center gap-2 py-3 px-4 border-t-0 rounded-b-lg bg-gray-50">
-        <button
-          className="bg-button text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
-          onClick={onSetLastMonth}
-        >
-          Last Month
-        </button>
-
-        <div style={{ width: "fit-content" }}>
-          <DateRangePicker
-            value={pendingRange}
-            onChange={onPendingRangeChange}
-            maxDate={new Date()}
-            numberOfMonths={2}
-          />
-        </div>
-        <button
-          className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
-          onClick={onApplyDateRange}
-          disabled={!pendingRange?.from || !pendingRange?.to}
-        >
-          Go
-        </button>
-      </div>
+      <ModernDateRangePicker
+        value={pendingRange}
+        onChange={onPendingRangeChange}
+        onGo={onApplyDateRange}
+        onSetLastMonth={onSetLastMonth}
+      />
 
       {/* Content Area */}
       <div className="px-4 pb-4 space-y-4">

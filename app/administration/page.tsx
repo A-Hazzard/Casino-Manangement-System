@@ -21,7 +21,6 @@ import type {
   SortKey,
   User,
 } from "@/lib/types/administration";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -57,9 +56,6 @@ export default function AdministrationPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < 768 : false
-  );
   const [activeSection, setActiveSection] = useState<"users" | "licensees">(
     "users"
   );
@@ -68,13 +64,10 @@ export default function AdministrationPage() {
     "username"
   );
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey;
     direction: "ascending" | "descending";
   } | null>(null);
-  const [mobileSectionDropdownOpen, setMobileSectionDropdownOpen] =
-    useState(false);
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -122,13 +115,6 @@ export default function AdministrationPage() {
   ] = useState<Licensee | null>(null);
 
   const itemsPerPage = 5;
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -641,17 +627,12 @@ export default function AdministrationPage() {
     return (
       <>
         <SearchFilterBar
-          isMobile={isMobile}
           searchValue={searchValue}
           setSearchValue={setSearchValue}
           searchMode={searchMode}
           setSearchMode={setSearchMode}
           searchDropdownOpen={searchDropdownOpen}
           setSearchDropdownOpen={setSearchDropdownOpen}
-          filterDropdownOpen={filterDropdownOpen}
-          setFilterDropdownOpen={setFilterDropdownOpen}
-          sortConfig={sortConfig}
-          requestSort={requestSort}
           onActivityLogClick={() => setIsUserActivityLogModalOpen(true)}
         />
         <div className="block lg:hidden md:block space-y-3 mt-4">
@@ -802,7 +783,7 @@ export default function AdministrationPage() {
       <Sidebar pathname={pathname} />
       <div
         className={`w-full min-h-screen bg-background flex ${
-          isMobile ? "" : "md:pl-[8rem]"
+          "md:pl-[8rem]"
         }`}
       >
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
@@ -810,45 +791,9 @@ export default function AdministrationPage() {
           {/* Admin icon and title layout, matching original design */}
           <div
             className={`flex items-center ${
-              isMobile ? "flex-col mt-4" : "mt-6 justify-between"
+              "mt-6 justify-between"
             }`}
           >
-            {isMobile ? (
-              <>
-                <Image
-                  src="/adminIcon.svg"
-                  alt="Admin Icon"
-                  width={40}
-                  height={40}
-                  className="mb-2"
-                />
-                <div className="flex items-center w-full justify-center">
-                  <h1 className="text-3xl font-bold text-center">
-                    Administration
-                  </h1>
-                  {activeSection === "users" ? (
-                    <Image
-                      src="/plusButton.svg"
-                      width={20}
-                      height={20}
-                      alt="Add"
-                      className="cursor-pointer ml-2"
-                      onClick={openAddUserModal}
-                    />
-                  ) : (
-                    <Image
-                      src="/plusButton.svg"
-                      width={20}
-                      height={20}
-                      alt="Add"
-                      className="cursor-pointer ml-2"
-                      onClick={handleOpenAddLicensee}
-                    />
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
                 <div className="flex items-center">
                   <h1 className="text-3xl font-bold mr-4">Administration</h1>
                   <Image
@@ -884,64 +829,14 @@ export default function AdministrationPage() {
                     />
                     <span>Add Licensee</span>
                   </Button>
-                )}
-              </>
             )}
           </div>
 
           <div
             className={`mt-6 ${
-              isMobile ? "w-full" : "flex gap-3 justify-start"
+              "flex gap-3 justify-start"
             }`}
           >
-            {isMobile ? (
-              <div className="relative w-full">
-                <button
-                  className="w-full bg-buttonActive text-white rounded-lg px-4 py-3 font-bold text-lg flex justify-between items-center"
-                  onClick={() => setMobileSectionDropdownOpen((o) => !o)}
-                >
-                  {activeSection === "users" ? "Users" : "Licensees"}
-                  <ChevronDownIcon
-                    className={`w-5 h-5 transition-transform ${
-                      mobileSectionDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                {mobileSectionDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg">
-                    <button
-                      className={`block w-full text-left px-4 py-3 text-lg hover:bg-gray-100 ${
-                        activeSection === "users"
-                          ? "font-semibold text-buttonActive"
-                          : "text-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("users");
-                        setMobileSectionDropdownOpen(false);
-                        setCurrentPage(0);
-                      }}
-                    >
-                      Users
-                    </button>
-                    <button
-                      className={`block w-full text-left px-4 py-3 text-lg hover:bg-gray-100 ${
-                        activeSection === "licensees"
-                          ? "font-semibold text-buttonActive"
-                          : "text-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("licensees");
-                        setMobileSectionDropdownOpen(false);
-                        setCurrentPage(0);
-                      }}
-                    >
-                      Licensees
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
                 <Button
                   className={`px-6 py-2 text-sm font-medium ${
                     activeSection === "users"
@@ -968,8 +863,6 @@ export default function AdministrationPage() {
                 >
                   Licensees
                 </Button>
-              </>
-            )}
           </div>
 
           {renderSectionContent()}

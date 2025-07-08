@@ -159,7 +159,6 @@ export default function MobileLayout(props: MobileLayoutProps) {
                       }
                     }}
                     isActive={true}
-                    isTopPerforming={true}
                     placeholder="Select Time Frame"
                     disabled={props.loadingTopPerforming}
                   />

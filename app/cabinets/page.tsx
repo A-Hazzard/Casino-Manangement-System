@@ -38,6 +38,7 @@ import NewMovementRequestModal from "@/components/ui/movements/NewMovementReques
 import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
 import SMIBFirmwareSection from "@/components/ui/firmware/SMIBFirmwareSection";
 import { Toaster } from "sonner";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function CabinetsPage() {
   const {
@@ -45,6 +46,7 @@ export default function CabinetsPage() {
     setSelectedLicencee,
     setLoadingChartData,
     activeMetricsFilter,
+    customDateRange,
   } = useDashBoardStore();
 
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -144,9 +146,20 @@ export default function CabinetsPage() {
       setLoading(true);
       setLoadingChartData(true);
 
+      const dateRangeForFetch =
+        activeMetricsFilter === "Custom" &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+          ? {
+              from: customDateRange.startDate,
+              to: customDateRange.endDate,
+            }
+          : undefined;
+
       const cabinetsData = await fetchCabinets(
         selectedLicencee,
-        activeMetricsFilter
+        activeMetricsFilter,
+        dateRangeForFetch
       );
 
       if (!Array.isArray(cabinetsData)) {
@@ -173,6 +186,7 @@ export default function CabinetsPage() {
     searchTerm,
     setLoadingChartData,
     activeMetricsFilter,
+    customDateRange,
   ]);
 
   useEffect(() => {
@@ -459,43 +473,10 @@ export default function CabinetsPage() {
             </div>
           </div>
 
-          {/* Desktop Time Period Filters - HIDDEN */}
-          {/* 
-          <div className="hidden lg:flex items-center mt-4 w-full">
-            <div className="flex space-x-2 overflow-x-auto flex-wrap justify-start">
-              {[
-                { label: "Today", value: "Today" as TimePeriod },
-                { label: "Yesterday", value: "Yesterday" as TimePeriod },
-                { label: "Last 7 days", value: "7d" as TimePeriod },
-                { label: "30 days", value: "30d" as TimePeriod },
-                { label: "Custom", value: "Custom" as TimePeriod },
-              ].map((filter) => (
-                <Button
-                  key={filter.label}
-                  className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
-                    activeMetricsFilter === filter.value
-                      ? "bg-buttonActive text-white"
-                      : "bg-button text-white hover:bg-buttonActive"
-                  } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                  onClick={() =>
-                    !loading && setActiveMetricsFilter(filter.value)
-                  }
-                  disabled={loading}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-            </div>
-            <div className="flex-1"></div>
-            <div className="ml-8">
-              <RefreshButton
-                onClick={handleRefresh}
-                isSyncing={refreshing}
-                disabled={loading}
-              />
-            </div>
+          {/* Desktop Time Period Filters */}
+          <div className="mt-4">
+            <DashboardDateFilters disabled={loading || refreshing} />
           </div>
-          */}
 
           {/* Section Content */}
           {activeSection === "cabinets" ? (

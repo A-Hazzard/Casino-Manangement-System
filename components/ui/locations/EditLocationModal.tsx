@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Cross1Icon } from "@radix-ui/react-icons";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import {
   Select,
@@ -17,14 +16,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
-export const EditLocationModal = () => {
+interface EditLocationModalProps {
+  onLocationUpdated: () => void;
+}
+
+export const EditLocationModal: React.FC<EditLocationModalProps> = ({
+  onLocationUpdated,
+}) => {
   const { isEditModalOpen, selectedLocation, closeEditModal } =
     useLocationActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,28 +62,8 @@ export const EditLocationModal = () => {
     }
   }, [selectedLocation]);
 
-  // Check if we're on mobile
-  useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
-
-    return () => window.removeEventListener("resize", checkIsMobile);
-  }, []);
-
   useEffect(() => {
     if (isEditModalOpen) {
-      if (isMobile) {
-        gsap.to(modalRef.current, {
-          y: 0,
-          duration: 0.3,
-          ease: "power2.out",
-          overwrite: true,
-        });
-      } else {
         gsap.fromTo(
           modalRef.current,
           { opacity: 0, y: -20 },
@@ -90,7 +75,6 @@ export const EditLocationModal = () => {
             overwrite: true,
           }
         );
-      }
 
       gsap.to(backdropRef.current, {
         opacity: 1,
@@ -99,17 +83,9 @@ export const EditLocationModal = () => {
         overwrite: true,
       });
     }
-  }, [isEditModalOpen, isMobile]);
+  }, [isEditModalOpen]);
 
   const handleClose = () => {
-    if (isMobile) {
-      gsap.to(modalRef.current, {
-        y: "100%",
-        duration: 0.3,
-        ease: "power2.in",
-        overwrite: true,
-      });
-    } else {
       gsap.to(modalRef.current, {
         opacity: 0,
         y: -20,
@@ -117,7 +93,6 @@ export const EditLocationModal = () => {
         ease: "power2.in",
         overwrite: true,
       });
-    }
 
     gsap.to(backdropRef.current, {
       opacity: 0,
@@ -206,6 +181,8 @@ export const EditLocationModal = () => {
       };
 
       await axios.put("/api/locations", locationData);
+      toast.success("Location updated successfully");
+      onLocationUpdated();
       handleClose();
     } catch (error) {
       console.error("Error updating location:", error);
@@ -217,7 +194,6 @@ export const EditLocationModal = () => {
   if (!isEditModalOpen || !selectedLocation) return null;
 
   // Desktop View Modal Content
-  if (!isMobile) {
     return (
       <div className="fixed inset-0 z-50">
         {/* Backdrop */}
@@ -457,262 +433,6 @@ export const EditLocationModal = () => {
                   onClick={handleClose}
                 >
                   Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Mobile View (original bottom sheet modal)
-  return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div
-        ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
-      />
-
-      {/* Mobile Modal Content */}
-      <div
-        ref={modalRef}
-        className="fixed bottom-0 left-0 right-0 bg-container rounded-t-2xl shadow-lg"
-        style={{
-          transform: "translateY(100%)",
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-      >
-        {/* Header */}
-        <div className="sticky top-0 bg-container p-4 border-b border-border">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-grayHighlight flex-1">
-              Edit Location
-            </h2>
-            <Button
-              variant="outline"
-              className="text-pinkHighlight hover:bg-pinkHighlight/10 border-2 border-pinkHighlight ml-2 flex items-center"
-              onClick={() => {
-                useLocationActionsStore
-                  .getState()
-                  .openDeleteModal(selectedLocation);
-              }}
-              aria-label="Delete Location"
-            >
-              <Trash2 className="w-5 h-5 mr-1" />
-              Delete
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              className="text-grayHighlight hover:bg-buttonInactive/10 ml-2"
-            >
-              <Cross1Icon className="w-6 h-6" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="p-6 space-y-6">
-          {/* Location Name */}
-          <div>
-            <label className="block text-sm font-medium text-grayHighlight mb-2">
-              Location Name
-            </label>
-            <Input
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="bg-container border-border focus-visible:ring-buttonActive"
-            />
-          </div>
-
-          {/* Address Section */}
-          <div>
-            <h3 className="text-lg font-semibold text-grayHighlight mb-4">
-              Address
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                name="street"
-                value={formData.street}
-                onChange={handleInputChange}
-                placeholder="Street"
-                className="bg-container border-border"
-              />
-              <Input
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                placeholder="City"
-                className="bg-container border-border"
-              />
-              <Select
-                value={formData.country}
-                onValueChange={(value) => handleSelectChange("country", value)}
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Country" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Guyana">Guyana</SelectItem>
-                  <SelectItem value="Trinidad & Tobago">
-                    Trinidad & Tobago
-                  </SelectItem>
-                  <SelectItem value="Barbados">Barbados</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={formData.licencee}
-                onValueChange={(value) => handleSelectChange("licencee", value)}
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Licencee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TTG">TTG</SelectItem>
-                  <SelectItem value="Cabana">Cabana</SelectItem>
-                  <SelectItem value="Barbados">Barbados</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Profit Share */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="w-full md:w-1/2">
-              <h3 className="text-lg font-semibold text-grayHighlight mb-2">
-                Profit Share
-              </h3>
-              <Select
-                value={formData.profitShare}
-                onValueChange={(value) =>
-                  handleSelectChange("profitShare", value)
-                }
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Profit Share" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50">50%</SelectItem>
-                  <SelectItem value="40">40%</SelectItem>
-                  <SelectItem value="60">60%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2 w-full md:w-1/2">
-              <Checkbox
-                id="isLocalServer"
-                checked={formData.isLocalServer}
-                onCheckedChange={(checked) =>
-                  handleCheckboxChange("isLocalServer", checked as boolean)
-                }
-              />
-              <Label htmlFor="isLocalServer" className="text-grayHighlight">
-                No SMIB Location
-              </Label>
-            </div>
-          </div>
-
-          {/* Day Start Time */}
-          <div>
-            <h3 className="text-lg font-semibold text-grayHighlight mb-2">
-              Day Start Time
-            </h3>
-            <div className="bg-container border-border rounded-md p-3 text-grayHighlight">
-              {new Date().toLocaleDateString()}, 06:00
-            </div>
-          </div>
-
-          {/* GEO Coordinates */}
-          <div>
-            <h3 className="text-lg font-semibold text-grayHighlight mb-2">
-              GEO Coordinates
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label
-                  htmlFor="latitude"
-                  className="text-sm text-grayHighlight mb-1 block"
-                >
-                  Latitude
-                </Label>
-                <Input
-                  id="latitude"
-                  name="latitude"
-                  value={formData.latitude}
-                  onChange={handleInputChange}
-                  className="bg-container border-border"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="longitude"
-                  className="text-sm text-grayHighlight mb-1 block"
-                >
-                  Longitude
-                </Label>
-                <Input
-                  id="longitude"
-                  name="longitude"
-                  value={formData.longitude}
-                  onChange={handleInputChange}
-                  className="bg-container border-border"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Bill Validator Options */}
-          <div>
-            <h3 className="text-lg font-semibold text-grayHighlight mb-2">
-              Bill Validator Options
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000,
-              ].map((denomination) => (
-                <label
-                  key={denomination}
-                  className="flex items-center space-x-2"
-                >
-                  <Checkbox
-                    id={`mobile-denom-${denomination}`}
-                    checked={formData.billValidatorOptions.includes(
-                      denomination
-                    )}
-                    onCheckedChange={(checked) =>
-                      handleBillValidatorChange(denomination, checked === true)
-                    }
-                    className="border-2 border-buttonActive rounded checked:bg-buttonActive focus:ring-buttonActive"
-                  />
-                  <span className="text-grayHighlight">
-                    {denomination} Denomination
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="sticky bottom-0 bg-container py-4 border-t border-border">
-            <div className="flex justify-end space-x-4">
-              <Button
-                onClick={handleClose}
-                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
-                disabled={loading}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                className="bg-buttonActive text-primary-foreground hover:bg-buttonActive/90"
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>

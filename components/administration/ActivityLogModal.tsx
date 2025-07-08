@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,17 +9,12 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import ActivityDateRangeFilter from "@/components/administration/ActivityDateRangeFilter";
+import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
-import { DateRange } from "react-day-picker";
+import { DateRange as RDPDateRange } from "react-day-picker";
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 import { format } from "date-fns";
 import { ReactNode } from "react";
-
-const filterButtons = [
-  { label: "Date Range", color: "bg-buttonActive text-white", key: "date" },
-  { label: "Activity Type", color: "bg-green-500 text-white", key: "type" },
-];
 
 type ActivityLogModalProps = {
   open: boolean;
@@ -190,9 +185,13 @@ export default function ActivityLogModal({
   onClose,
 }: ActivityLogModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [activeFilter, setActiveFilter] = useState("date");
   const [activityType, setActivityType] = useState("update");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<RDPDateRange | undefined>(
+    undefined
+  );
+  const [pendingDateRange, setPendingDateRange] = useState<
+    RDPDateRange | undefined
+  >(dateRange);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +213,11 @@ export default function ActivityLogModal({
     }
   }, [open]);
 
+  const handleGoClick = () => {
+    setDateRange(pendingDateRange);
+    setCurrentPage(1);
+  };
+
   const fetchActivities = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -225,9 +229,7 @@ export default function ActivityLogModal({
         skip: ((currentPage - 1) * itemsPerPage).toString(),
       });
 
-      if (activeFilter === "type" && activityType) {
         params.append("actionType", activityType.toUpperCase());
-      }
 
       if (dateRange?.from) {
         params.append("startDate", dateRange.from.toISOString());
@@ -251,313 +253,197 @@ export default function ActivityLogModal({
           Math.ceil((data.total || data.count || 0) / itemsPerPage)
         );
       } else {
-        throw new Error(data.message || "Failed to fetch activity logs");
+        throw new Error(data.message || "An unknown error occurred");
       }
     } catch (err) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching activities:", err);
-      }
-      setError(
-        err instanceof Error ? err.message : "Failed to load activity logs"
-      );
-      setActivities([]);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [activeFilter, activityType, dateRange, currentPage, itemsPerPage]);
+  }, [activityType, dateRange, currentPage]);
 
   useEffect(() => {
-    if (open) {
       fetchActivities();
-    }
-  }, [open, fetchActivities]);
+  }, [fetchActivities]);
 
-  const handleFilterChange = (filterKey: string) => {
-    setActiveFilter(filterKey);
-    setCurrentPage(1);
-    if (filterKey === "type") {
-      setActivityType("update");
-    }
-  };
+  const groupedActivities = useMemo(() => groupActivitiesByDate(activities), [
+    activities,
+  ]);
 
   const handleActivityTypeChange = (type: string) => {
     setActivityType(type);
     setCurrentPage(1);
   };
 
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    setCurrentPage(1);
-  };
-
-  const handleGoClick = () => {
-    setCurrentPage(1);
-    fetchActivities();
-  };
-
   const handleActivityClick = (activity: ActivityLog) => {
+    if (activity.changes && activity.changes.length > 1) {
     setSelectedActivity(activity);
     setIsDetailsModalOpen(true);
+    }
   };
 
   if (!open) return null;
 
-  const activityGroups = groupActivitiesByDate(activities);
-
   return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
         <div
           ref={modalRef}
-          className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-gray-50 rounded-2xl shadow-2xl w-[95%] h-[95%] max-w-4xl flex flex-col overflow-hidden border border-gray-200"
         >
           {/* Header */}
-          <div className="relative bg-white border-b border-gray-200 px-6 py-6">
-            <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <h2 className="text-3xl font-bold text-center text-gray-900 pr-12">
-              Licensee Activity Log
-            </h2>
-          </div>
-
-          {/* Filter Section */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
-              <span className="font-semibold text-lg text-gray-700 flex-shrink-0">
-                Filter By:
-              </span>
-              <div className="flex flex-wrap gap-3 flex-1">
-                {filterButtons.map((btn) => (
-                  <button
-                    key={btn.key}
-                    className={`rounded-xl px-6 py-2.5 font-semibold text-base focus:outline-none transition-all duration-200 ${
-                      activeFilter === btn.key
-                        ? btn.color + " shadow-md transform scale-105"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                    onClick={() => handleFilterChange(btn.key)}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-                {activeFilter === "type" && (
-                  <select
-                    className="rounded-xl px-4 py-2.5 font-semibold text-base bg-white border-2 border-gray-300 text-gray-700 focus:outline-none focus:border-blue-500 transition-colors"
-                    value={activityType}
-                    onChange={(e) => handleActivityTypeChange(e.target.value)}
-                  >
-                    <option value="update">Update</option>
-                    <option value="create">Create</option>
-                    <option value="delete">Delete</option>
-                    <option value="payment">Payment</option>
-                  </select>
-                )}
-              </div>
+        <div className="flex items-center justify-between p-6 bg-white border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-xl mr-4">
+              <IdCard className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">
+                Activity Log
+              </h2>
+              <p className="text-sm text-gray-500">
+                Recent activities of all licensees
+              </p>
             </div>
           </div>
+            <button
+              onClick={onClose}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+            <X className="w-6 h-6 text-gray-600" />
+            </button>
+          </div>
 
-          {/* Date Range Filter */}
-          {activeFilter === "date" && (
-            <div className="bg-white border-b border-gray-200">
-              <ActivityDateRangeFilter
-                value={dateRange}
-                onChange={handleDateRangeChange}
+        {/* Filters */}
+        <div className="p-6 bg-white border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
+              {["create", "update", "delete", "payment"].map((type) => (
+                <Button
+                  key={type}
+                  variant={activityType === type ? "default" : "ghost"}
+                  onClick={() => handleActivityTypeChange(type)}
+                  className={`capitalize px-4 py-2 text-sm rounded-md ${
+                    activityType === type
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center space-x-2">
+              <ModernDateRangePicker
+                value={pendingDateRange}
+                onChange={setPendingDateRange}
                 onGo={handleGoClick}
+                onSetLastMonth={() => {
+                  const now = new Date();
+                  const firstDayLastMonth = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 1,
+                    1
+                  );
+                  const lastDayLastMonth = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    0
+                  );
+                  setPendingDateRange({
+                    from: firstDayLastMonth,
+                    to: lastDayLastMonth,
+                  });
+                }}
               />
             </div>
-          )}
-
-          {/* Activity Content */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6">
-              {loading && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <span className="ml-3 text-lg text-gray-600">
-                    Loading licensee activities...
-                  </span>
-                </div>
-              )}
-
-              {error && (
-                <div className="text-center text-red-500 py-12">
-                  <div className="text-lg font-medium">
-                    Error loading activities
-                  </div>
-                  <div className="text-sm mt-1">{error}</div>
-                  <button
-                    onClick={fetchActivities}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              {!loading && !error && activityGroups.length === 0 && (
-                <div className="text-center text-gray-500 py-12">
-                  <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <div className="text-lg font-medium">
-                    No licensee activities found
-                  </div>
-                  <div className="text-sm mt-1">
-                    {activeFilter === "type"
-                      ? `No ${activityType} activities found for the selected criteria`
-                      : "No licensee activities match your current filter criteria"}
-                  </div>
-                  <div className="text-xs mt-2 text-gray-400">
-                    Try adjusting your filters or date range
                   </div>
                 </div>
-              )}
 
-              {!loading && !error && activityGroups.length > 0 && (
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : (
                 <div className="space-y-8">
-                  {activityGroups.map((group, groupIdx) => (
-                    <div key={group.range} className="space-y-4">
-                      <div className="flex items-center gap-4">
-                        <h3 className="text-xl font-bold text-gray-900">
+              {groupedActivities.map((group, groupIndex) => (
+                <div key={groupIndex}>
+                  <div className="sticky top-0 bg-gray-50 py-2 mb-4">
+                    <h3 className="text-lg font-semibold text-gray-600">
                           {group.range}
                         </h3>
-                        <div className="flex-1 h-px bg-gray-300"></div>
                       </div>
-                      <div className="space-y-4">
-                        {group.entries.map((entry, idx) => (
-                          <div key={entry.id} className="relative flex gap-4">
-                            {/* Timeline */}
-                            <div className="relative flex flex-col items-center">
-                              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white border-2 border-gray-300 shadow-sm">
-                                <div
-                                  className={`${entry.iconBg} rounded-full p-2 text-white`}
+                  <ul className="space-y-4">
+                    {group.entries.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="flex items-start space-x-4 p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => handleActivityClick(entry.originalActivity)}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white ${entry.iconBg}`}
                                 >
                                   {entry.icon}
                                 </div>
-                              </div>
-                              <div
-                                className="absolute top-3 left-1/2 transform -translate-x-0.5 text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap"
-                                style={{ top: "50px" }}
-                              >
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-700">
+                            {entry.description}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
                                 {entry.time}
-                              </div>
-                              {!(
-                                groupIdx === activityGroups.length - 1 &&
-                                idx === group.entries.length - 1
-                              ) && (
-                                <div
-                                  className="absolute w-0.5 bg-gray-300 left-1/2 transform -translate-x-0.5 bottom-0 h-6"
-                                  style={{ top: "60px" }}
-                                />
-                              )}
-                            </div>
-
-                            {/* Activity Card */}
-                            <div
-                              className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-5 cursor-pointer group"
-                              onClick={() =>
-                                handleActivityClick(entry.originalActivity)
-                              }
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                                {/* User Info */}
-                                <div className="flex items-center gap-3 sm:min-w-0 sm:w-48">
-                                  <div className="w-10 h-10 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
-                                    <IdCard className="w-5 h-5 text-gray-500" />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-semibold text-gray-900 text-sm truncate">
-                                      {entry.user.email}
-                                    </div>
-                                    <div className="text-xs text-gray-500 truncate">
-                                      {entry.user.role}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Activity Description */}
-                                <div className="flex-1 min-w-0 flex items-center justify-between">
-                                  <div className="text-sm text-gray-700 leading-relaxed break-words">
-                                    {entry.description}
+                          </p>
                                   </div>
                                   {entry.originalActivity.changes &&
-                                    entry.originalActivity.changes.length >
-                                      1 && (
-                                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors ml-2 flex-shrink-0" />
+                          entry.originalActivity.changes.length > 1 && (
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
                                     )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                      </li>
                         ))}
-                      </div>
+                  </ul>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
           </div>
 
-          {/* Footer with Pagination */}
-          <div className="bg-white border-t border-gray-200 px-6 py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Pagination Info */}
-              {!loading && !error && activities.length > 0 && (
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages} ({activities.length}{" "}
-                  activities)
-                </div>
-              )}
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1 || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        {/* Pagination */}
+        <div className="p-4 bg-white border-t border-gray-200">
+          <div className="flex justify-center items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
                   >
                     Previous
-                  </button>
-                  <span className="px-3 py-1 text-sm">
-                    {currentPage} / {totalPages}
+            </Button>
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
                   </span>
-                  <button
+            <Button
+              variant="outline"
+              size="sm"
                     onClick={() =>
                       setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                     }
-                    disabled={currentPage === totalPages || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage === totalPages}
                   >
                     Next
-                  </button>
-                </div>
-              )}
-
-              {/* Save Button */}
-              <Button className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-                Save
               </Button>
-            </div>
           </div>
         </div>
       </div>
-
-      {/* Activity Details Modal */}
+      {selectedActivity && (
       <ActivityDetailsModal
         open={isDetailsModalOpen}
-        onClose={() => {
-          setIsDetailsModalOpen(false);
-          setSelectedActivity(null);
-        }}
+          onClose={() => setIsDetailsModalOpen(false)}
         activity={selectedActivity}
       />
-    </>
+      )}
+    </div>
   );
 }
+

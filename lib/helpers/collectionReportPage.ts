@@ -7,6 +7,8 @@ import type { CollectionDocument } from "@/lib/types/collections";
 import { formatDateString } from "@/lib/utils/dateUtils";
 import { fetchSchedulersWithFilters } from "@/lib/helpers/schedulers";
 import type { LocationSelectItem } from "@/lib/types/location";
+import type { DateRange as RDPDateRange } from "react-day-picker";
+import { parse } from 'date-fns';
 
 /**
  * Applies GSAP animation to pagination controls
@@ -95,20 +97,18 @@ export function animateContentTransition(
 }
 
 /**
- * Filters collection reports based on location, search, and uncollected status
- * @param reports - Array of collection reports
- * @param selectedLocation - Selected location ID
- * @param search - Search query
- * @param showUncollectedOnly - Whether to show only uncollected reports
- * @param locations - Array of location options
- * @returns Filtered reports array
+ * Filters collection reports based on location, search, uncollected status, and date range.
+ * See collection-report-implementation-guide.md for filtering contract and details.
+ *
+ * Date parsing fix: Handles '10 Jun 2025, 11:00:50 am' format robustly using date-fns.
  */
 export function filterCollectionReports(
   reports: CollectionReportRow[],
   selectedLocation: string,
   search: string,
   showUncollectedOnly: boolean,
-  locations: LocationSelectItem[]
+  locations: LocationSelectItem[],
+  dateRange?: RDPDateRange
 ): CollectionReportRow[] {
   return reports.filter((r) => {
     const matchesLocation =
@@ -121,7 +121,26 @@ export function filterCollectionReports(
     const uncollectedStr = String(r.uncollected).trim();
     const matchesUncollected =
       !showUncollectedOnly || Number(uncollectedStr) > 0;
-    return matchesLocation && matchesSearch && matchesUncollected;
+
+    let matchesDate = true;
+    if (dateRange?.from && dateRange?.to) {
+      // Robustly parse the time string using date-fns
+      let reportDate: Date | null = null;
+      try {
+        reportDate = parse(r.time, 'dd LLL yyyy, hh:mm:ss a', new Date());
+        if (isNaN(reportDate.getTime())) reportDate = null;
+      } catch {
+        reportDate = null;
+      }
+      if (reportDate) {
+        matchesDate = reportDate >= dateRange.from && reportDate <= dateRange.to;
+      } else {
+        // If parsing fails, include the item (fail open)
+        matchesDate = true;
+      }
+    }
+
+    return matchesLocation && matchesSearch && matchesUncollected && matchesDate;
   });
 }
 

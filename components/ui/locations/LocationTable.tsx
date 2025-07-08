@@ -3,42 +3,35 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import gsap from "gsap";
-import {
-  LocationTableItem,
-  LocationTableProps,
-  LocationSortOption,
-} from "@/lib/types/location";
-import { useRouter } from "next/navigation";
+import { LocationTableProps } from "@/lib/types/location";
+import { AggregatedLocation } from "@/lib/types/location";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
+import React from "react";
 
-export default function LocationTable({
+const LocationTable: React.FC<LocationTableProps> = ({
   locations,
   sortOption,
   sortOrder,
-  onColumnSort,
-}: LocationTableProps) {
-  const { openEditModal, openDeleteModal } = useLocationActionsStore();
+  onSort,
+  onLocationClick,
+  onAction,
+  formatCurrency,
+}) => {
   const tableRef = useRef<HTMLTableElement>(null);
-  const prevLocationsRef = useRef<LocationTableItem[]>([]);
-  const router = useRouter();
+  const prevLocationsRef = useRef<AggregatedLocation[]>(locations);
 
-  // GSAP animation for table updates
   useEffect(() => {
     if (
       locations.length > 0 &&
       JSON.stringify(locations) !== JSON.stringify(prevLocationsRef.current)
     ) {
-      // Store current locations for future comparison
-      prevLocationsRef.current = [...(locations as LocationTableItem[])];
-
-      // Animate the table rows
+      prevLocationsRef.current = [...locations];
       const rows = tableRef.current?.querySelectorAll("tbody tr");
       if (rows && rows.length > 0) {
         gsap.fromTo(
@@ -57,7 +50,7 @@ export default function LocationTable({
   }, [locations]);
 
   const handleRowClick = (locationId: string) => {
-    router.push(`/locations/${locationId}`);
+    onLocationClick(locationId);
   };
 
   return (
@@ -69,12 +62,9 @@ export default function LocationTable({
         >
           <thead className="bg-button text-white">
             <tr>
-              {/* LOCATION NAME */}
               <th
                 className="p-3 border border-border text-sm relative cursor-pointer"
-                onClick={() =>
-                  onColumnSort("locationName" as LocationSortOption)
-                }
+                onClick={() => onSort("locationName")}
               >
                 <span>LOCATION NAME</span>
                 {sortOption === "locationName" && (
@@ -83,10 +73,9 @@ export default function LocationTable({
                   </span>
                 )}
               </th>
-              {/* MONEY IN */}
               <th
                 className="p-3 border border-border text-sm relative cursor-pointer"
-                onClick={() => onColumnSort("moneyIn" as LocationSortOption)}
+                onClick={() => onSort("moneyIn")}
               >
                 <span>MONEY IN</span>
                 {sortOption === "moneyIn" && (
@@ -95,10 +84,9 @@ export default function LocationTable({
                   </span>
                 )}
               </th>
-              {/* MONEY OUT */}
               <th
                 className="p-3 border border-border text-sm relative cursor-pointer"
-                onClick={() => onColumnSort("moneyOut" as LocationSortOption)}
+                onClick={() => onSort("moneyOut")}
               >
                 <span>MONEY OUT</span>
                 {sortOption === "moneyOut" && (
@@ -107,10 +95,9 @@ export default function LocationTable({
                   </span>
                 )}
               </th>
-              {/* GROSS */}
               <th
                 className="p-3 border border-border text-sm relative cursor-pointer"
-                onClick={() => onColumnSort("gross" as LocationSortOption)}
+                onClick={() => onSort("gross")}
               >
                 <span>GROSS</span>
                 {sortOption === "gross" && (
@@ -119,7 +106,6 @@ export default function LocationTable({
                   </span>
                 )}
               </th>
-              {/* ACTIONS */}
               <th className="p-3 border border-border text-sm">ACTIONS</th>
             </tr>
           </thead>
@@ -134,7 +120,6 @@ export default function LocationTable({
                   }
                 }}
               >
-                {/* LOCATION NAME + combined "MACHINES / ONLINE" pill */}
                 <td className="p-3 bg-container border border-border text-sm text-left hover:bg-accent">
                   <div>{loc.locationName}</div>
                   <div className="mt-1 inline-flex text-primary-foreground text-[10px] leading-tight">
@@ -146,33 +131,30 @@ export default function LocationTable({
                     </span>
                   </div>
                 </td>
-                {/* MONEY IN */}
                 <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  ${loc.moneyIn.toLocaleString()}
+                  {formatCurrency(loc.moneyIn ?? 0)}
                 </td>
-                {/* MONEY OUT */}
                 <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  ${loc.moneyOut.toLocaleString()}
+                  {formatCurrency(loc.moneyOut ?? 0)}
                 </td>
-                {/* GROSS */}
                 <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
                   <span
-                    className={(loc.gross < 0
+                    className={(
+                      (loc.gross ?? 0) < 0
                       ? "text-destructive font-semibold"
                       : "text-button font-semibold"
                     ).trim()}
                   >
-                    ${loc.gross.toLocaleString()}
+                    {formatCurrency(loc.gross ?? 0)}
                   </span>
                 </td>
-                {/* ACTIONS CELL */}
                 <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openEditModal(loc);
+                        onAction("edit", loc);
                       }}
                       className="p-1 hover:bg-buttonActive/10 text-buttonActive"
                     >
@@ -188,7 +170,7 @@ export default function LocationTable({
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openDeleteModal(loc);
+                        onAction("delete", loc);
                       }}
                       className="p-1 hover:bg-destructive/10 text-destructive"
                     >
@@ -265,4 +247,6 @@ export default function LocationTable({
       )}
     </>
   );
-}
+};
+
+export default LocationTable;

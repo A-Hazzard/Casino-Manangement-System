@@ -35,6 +35,7 @@ const GamingLocationsSchema = new Schema(
     geoCoords: {
       latitude: Number,
       longitude: Number,
+      longtitude: Number,  
     },
     createdAt: Date,
     updatedAt: Date,

@@ -11,8 +11,6 @@ import { useParams, useRouter, usePathname } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -38,10 +36,10 @@ import {
 import CabinetCardsSkeleton from "@/components/ui/locations/CabinetCardsSkeleton";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
-import {
-  handleBackToLocations,
-  handleLocationChange,
-} from "@/lib/helpers/locationPage";
+
+import Link from "next/link";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { ChevronDown } from "lucide-react";
 
 export default function LocationPage() {
   const params = useParams();
@@ -73,8 +71,8 @@ export default function LocationPage() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
   );
-  const [selectedLocation, setSelectedLocation] =
-    useState<string>("All Locations");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(locationId);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   // Add back error state
@@ -100,10 +98,10 @@ export default function LocationPage() {
 
   // Use useEffect to update selectedLocation when locationName changes
   useEffect(() => {
-    if (locationName) {
+    if (locationName && !selectedLocation) {
       setSelectedLocation(locationName);
     }
-  }, [locationName]);
+  }, [locationName, selectedLocation]);
 
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
@@ -116,29 +114,48 @@ export default function LocationPage() {
           try {
             const formattedLocations = await fetchAllGamingLocations();
             setLocations(formattedLocations);
+            
+            // Set initial selected location based on URL slug
+            const currentLocation = formattedLocations.find(loc => loc.id === locationId);
+            if (currentLocation) {
+              setSelectedLocation(currentLocation.name);
+              setLocationName(currentLocation.name);
+              // Ensure selectedLocationId is set to the URL slug initially
+              setSelectedLocationId(locationId);
+            } else {
+              // If URL location not found in list, still set it for API calls
+              setSelectedLocationId(locationId);
+            }
           } catch {
             setError("Failed to load locations. Please try again later.");
           }
           hasFetchedOnce.current = true;
         }
 
-        // Fetch location details
-        try {
-          const locationData = await fetchLocationDetailsById(locationId);
-          setLocationName(locationData.name);
-        } catch {
-          setLocationName("Location"); // Default name on error
-          setError("Failed to load location details. Please try again later.");
+        // Fetch location details for the page title (always from URL slug)
+        if (!locationName) {
+          try {
+            const locationData = await fetchLocationDetailsById(locationId);
+            setLocationName(locationData.name);
+            // If this is the first load and no location selected yet, set it
+            if (!selectedLocation) {
+              setSelectedLocation(locationData.name);
+            }
+          } catch {
+            setLocationName("Location"); // Default name on error
+            setError("Failed to load location details. Please try again later.");
+          }
         }
 
-        // Fetch cabinets data
+        // Fetch cabinets data for the SELECTED location
         try {
           const cabinetsData = await fetchCabinetsForLocation(
-            locationId,
+            selectedLocationId,
             selectedLicencee,
             activeMetricsFilter
           );
           setAllCabinets(cabinetsData);
+          setError(null); // Clear any previous errors on successful fetch
         } catch {
           setAllCabinets([]);
           setError("Failed to load cabinets. Please try again later.");
@@ -150,7 +167,7 @@ export default function LocationPage() {
     };
 
     fetchData();
-  }, [locationId, selectedLicencee, activeMetricsFilter]);
+  }, [locationId, selectedLicencee, activeMetricsFilter, selectedLocationId, locationName, selectedLocation]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -225,23 +242,15 @@ export default function LocationPage() {
     setLoading(true);
     setCabinetsLoading(true);
     try {
-      // Fetch location details
-      try {
-        const locationData = await fetchLocationDetailsById(locationId);
-        setLocationName(locationData.name);
-      } catch {
-        setLocationName("Location"); // Default name on error
-        setError("Failed to load location details. Please try again later.");
-      }
-
-      // Fetch cabinets data
+      // Fetch cabinets data for the SELECTED location
       try {
         const cabinetsData = await fetchCabinetsForLocation(
-          locationId,
+          selectedLocationId,
           selectedLicencee,
           activeMetricsFilter
         );
         setAllCabinets(cabinetsData);
+        setError(null); // Clear any previous errors on successful refresh
       } catch {
         setAllCabinets([]);
         setError("Failed to refresh cabinets. Please try again later.");
@@ -251,7 +260,14 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
-  }, [locationId, selectedLicencee, activeMetricsFilter]);
+  }, [selectedLicencee, activeMetricsFilter, selectedLocationId]);
+
+  // Handle location change without navigation - just update the selected location
+  const handleLocationChangeInPlace = (newLocationId: string, locationName: string) => {
+    setSelectedLocationId(newLocationId);
+    setSelectedLocation(locationName);
+    setIsLocationDropdownOpen(false);
+  };
 
   return (
     <>
@@ -267,17 +283,34 @@ export default function LocationPage() {
             disabled={loading || cabinetsLoading || refreshing}
           />
 
-          <div className="mt-4 flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={() => handleBackToLocations(router)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft size={16} />
-              Back to Locations
-            </Button>
-
-            <div className="hidden md:block">
+          <div className="flex items-center mb-6">
+            <Link href="/locations" className="mr-4">
+              <Button
+                variant="ghost"
+                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+              >
+                <ArrowLeftIcon className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">Location Details</h1>
+            
+            {/* Location Dropdown */}
+            <div className="relative ml-4">
+              <select
+                className="bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedLocationId}
+                onChange={(e) => handleLocationChangeInPlace(e.target.value, locations.find(loc => loc.id === e.target.value)?.name || "")}
+                disabled={loading || cabinetsLoading || refreshing}
+              >
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="ml-auto">
               <RefreshButton
                 onClick={handleRefresh}
                 isSyncing={refreshing}
@@ -353,52 +386,27 @@ export default function LocationPage() {
                 />
               </Button>
               {isLocationDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute z-10 mt-1 w-full md:w-56 bg-white rounded-md shadow-lg border border-gray-200 right-0"
+                <div
+                  className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0"
                 >
                   <div className="max-h-60 overflow-y-auto">
-                    <button
-                      className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                      onClick={() =>
-                        handleLocationChange(
-                          "all",
-                          "All Locations",
-                          params.slug as string,
-                          router,
-                          setSelectedLocation,
-                          setIsLocationDropdownOpen
-                        )
-                      }
-                    >
-                      All Locations
-                    </button>
                     {locations.map((loc) => (
                       <button
                         key={loc.id}
                         className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                          selectedLocation === loc.name
+                          selectedLocationId === loc.id
                             ? "bg-gray-100 font-medium"
                             : ""
                         }`}
                         onClick={() =>
-                          handleLocationChange(
-                            loc.id,
-                            loc.name,
-                            params.slug as string,
-                            router,
-                            setSelectedLocation,
-                            setIsLocationDropdownOpen
-                          )
+                          handleLocationChangeInPlace(loc.id, loc.name)
                         }
                       >
                         {loc.name}
                       </button>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           </div>

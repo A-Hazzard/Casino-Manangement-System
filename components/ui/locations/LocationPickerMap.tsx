@@ -1,183 +1,147 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import "leaflet/dist/leaflet.css";
+import React, { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
-import { OpenStreetMapProvider } from "leaflet-geosearch";
-import "leaflet/dist/leaflet.css";
-import "leaflet-geosearch/dist/geosearch.css";
 import L, { LatLng } from "leaflet";
-import { LocationPickerMapProps } from "@/lib/types/componentProps";
-import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
-import iconUrl from "leaflet/dist/images/marker-icon.png";
-import shadowUrl from "leaflet/dist/images/marker-shadow.png";
-import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-import debounce from "lodash.debounce";
 
-// Set default icon for Leaflet markers
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: iconRetinaUrl.src,
-  iconUrl: iconUrl.src,
-  shadowUrl: shadowUrl.src,
+// Fix for custom marker icon
+const customIcon = new L.Icon({
+  iconUrl: "/leaflet/marker-icon-image.png",
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+  shadowUrl: "/leaflet/marker-shadow.png",
+  shadowSize: [41, 41],
+  shadowAnchor: [13, 41],
 });
 
-interface Suggestion {
-  x: number;
-  y: number;
-  label: string;
-  raw: {
-    place_id: string;
-  };
+type MapType = "street" | "satellite";
+
+interface LocationPickerMapProps {
+  initialLat: number;
+  initialLng: number;
+  mapType: MapType;
+  onMapTypeChange: (type: MapType) => void;
+  searchQuery: string;
+  onLocationSelect: (selectedLocation: {
+    lat: number;
+    lng: number;
+    address: string;
+  }) => void;
 }
 
-const LocationMarker = ({
-  position,
-  setPosition,
-  onLocationSelect,
-}: {
-  position: LatLng | null;
-  setPosition: (position: LatLng) => void;
-  onLocationSelect: (latlng: LatLng) => void;
-}) => {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      onLocationSelect(e.latlng);
-      map.flyTo(e.latlng, map.getZoom());
-    },
-  });
+const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
-  useMap();
-
-  return position === null ? null : <Marker position={position}></Marker>;
-};
-
-export const LocationPickerMap = ({
+const LocationPickerMap = ({
+  initialLat,
+  initialLng,
+  mapType,
+  onMapTypeChange,
+  searchQuery,
   onLocationSelect,
 }: LocationPickerMapProps) => {
-  const [position, setPosition] = useState<L.LatLng | null>(
-    new L.LatLng(10.6667, -61.5167)
-  ); // Initial center on Trinidad
-  const [mapType, setMapType] = useState("street"); // 'street' or 'satellite'
-  const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const providerRef = useRef(
-    new OpenStreetMapProvider({
-      params: {
-        countrycodes: "tt",
-      },
-    })
-  );
+  const [position, setPosition] = useState<LatLng>(new LatLng(initialLat, initialLng));
+  const [address, setAddress] = useState<string>("");
+  const mapRef = useRef<any>(null);
 
-  const debouncedSearch = useCallback(
-    debounce(async (query: string) => {
-      if (query) {
-        setLoading(true);
-        const results = await providerRef.current.search({ query });
-        setSuggestions(results as Suggestion[]);
-        setLoading(false);
-      } else {
-        setSuggestions([]);
-      }
-    }, 300),
-    []
-  );
-
+  // Geocode when searchQuery changes
   useEffect(() => {
-    debouncedSearch(searchTerm);
-  }, [searchTerm, debouncedSearch]);
+    if (searchQuery && searchQuery.length > 2) {
+      fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+      )
+        .then((res) => res.json())
+        .then((results) => {
+          if (results && results.length > 0) {
+            const { lat, lon, display_name } = results[0];
+            const latNum = parseFloat(lat);
+            const lonNum = parseFloat(lon);
+            setPosition(new LatLng(latNum, lonNum));
+            setAddress(display_name);
+            onLocationSelect({ lat: latNum, lng: lonNum, address: display_name });
+            if (mapRef.current) {
+              mapRef.current.setView([latNum, lonNum], 13);
+            }
+          }
+        });
+    }
+    // eslint-disable-next-line
+  }, [searchQuery]);
 
-  const handleSuggestionClick = (suggestion: Suggestion) => {
-    const newPosition = new L.LatLng(suggestion.y, suggestion.x);
-    setPosition(newPosition);
-    onLocationSelect(newPosition);
-    setSearchTerm(suggestion.label);
-    setSuggestions([]);
+  // Handle map click
+  const handleMapClick = (e: L.LeafletMouseEvent) => {
+    const { lat, lng } = e.latlng;
+    setPosition(new LatLng(lat, lng));
+    // Reverse geocode
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        const addr = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        setAddress(addr);
+        onLocationSelect({ lat, lng, address: addr });
+      })
+      .catch(() => {
+        setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+      });
   };
 
+  // Map click handler component
+  const ClickHandler = () => {
+    const map = useMap();
+    useEffect(() => {
+      map.on("click", handleMapClick);
+      return () => {
+        map.off("click", handleMapClick);
+      };
+    }, [map]);
+    return null;
+  };
+
+  // Update position if initialLat/initialLng change
+  useEffect(() => {
+    setPosition(new LatLng(initialLat, initialLng));
+  }, [initialLat, initialLng]);
+
   return (
-    <div className="space-y-4">
-      <div className="relative">
-        <Input
-          placeholder="Search for a location..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pr-10"
-        />
-        {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-gray-400" />
-        )}
-        {suggestions.length > 0 && (
-          <div className="absolute z-[1001] w-full mt-1 bg-white rounded-md shadow-lg">
-            <ul className="py-1">
-              {suggestions.map((suggestion) => (
-                <li
-                  key={suggestion.raw.place_id}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                >
-                  {suggestion.label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium">Select on Map</h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setMapType("street")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              mapType === "street"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-            }`}
-          >
-            Street
-          </button>
-          <button
-            onClick={() => setMapType("satellite")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              mapType === "satellite"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-            }`}
-          >
-            Satellite
-          </button>
-        </div>
-      </div>
+    <div className="relative h-80 md:h-96 w-full rounded-md overflow-hidden border border-gray-300 map-container">
       <MapContainer
-        center={position || [10.6667, -61.5167]}
-        zoom={10}
-        style={{ height: "350px", width: "100%" }}
-        className="rounded-lg shadow-inner"
+        center={position}
+        zoom={13}
+        style={{ height: "100%", width: "100%" }}
+        className="z-0"
+        scrollWheelZoom={true}
+        whenCreated={(mapInstance) => {
+          mapRef.current = mapInstance;
+        }}
       >
-        {mapType === "street" ? (
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
-        ) : (
-          <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution="Tiles &copy; Esri"
-          />
-        )}
-        <LocationMarker
-          position={position}
-          setPosition={setPosition}
-          onLocationSelect={onLocationSelect}
+        <TileLayer
+          url={mapType === "street" ? OSM_URL : SATELLITE_URL}
+          attribution={
+            mapType === "street"
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              : 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+          }
         />
+        <Marker position={position} icon={customIcon} />
+        <ClickHandler />
       </MapContainer>
+      <div className="absolute bottom-2 left-2 z-10 bg-white bg-opacity-90 rounded-md p-2 text-xs text-gray-600 max-w-[calc(100%-1rem)]">
+        <span className="hidden md:inline">Click on the map to select a location</span>
+        <span className="md:hidden">Tap to select location</span>
+      </div>
     </div>
   );
-}; 
+};
+
+export { LocationPickerMap };
+export default LocationPickerMap; 

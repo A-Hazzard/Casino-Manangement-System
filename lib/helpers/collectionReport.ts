@@ -5,22 +5,42 @@ import type {
   MonthlyReportSummary,
   MonthlyReportDetailsRow,
 } from "@/lib/types/componentProps";
-import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import type { CreateCollectionReportPayload, CollectionReportLocationWithMachines } from "@/lib/types/api";
 import type { CollectionReportData } from "@/lib/types";
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
  * @param {string} [licenceeId] - Optional licencee ID to filter reports.
+ * @param {Date} [startDate] - Optional start date for filtering reports.
+ * @param {Date} [endDate] - Optional end date for filtering reports.
  * @returns {Promise<CollectionReportRow[]>} Array of collection report documents.
  */
 export async function getAllCollectionReports(
-  licenceeId?: string
+  licenceeId?: string,
+  startDate?: Date,
+  endDate?: Date
 ): Promise<CollectionReportRow[]> {
   let rawReports;
+  
+  // Build base match criteria
+  const matchCriteria: Record<string, unknown> = {};
+  
+  // Add date range filtering if provided
+  if (startDate && endDate) {
+    matchCriteria.timestamp = { $gte: startDate, $lte: endDate };
+  }
+  
   if (!licenceeId) {
-    rawReports = await CollectionReport.find({}).sort({ timestamp: -1 }).lean();
+    // No licencee filter, just apply date filter if present
+    if (Object.keys(matchCriteria).length > 0) {
+      rawReports = await CollectionReport.find(matchCriteria).sort({ timestamp: -1 }).lean();
+    } else {
+      rawReports = await CollectionReport.find({}).sort({ timestamp: -1 }).lean();
+    }
   } else {
-    rawReports = await CollectionReport.aggregate([
+    // Apply licencee filter with aggregation, plus date filter if present
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aggregationPipeline: any[] = [
       {
         $lookup: {
           from: "gaminglocations",
@@ -30,10 +50,17 @@ export async function getAllCollectionReports(
         },
       },
       { $unwind: "$locationDetails" },
-      { $match: { "locationDetails.rel.licencee": licenceeId } },
+      { 
+        $match: { 
+          "locationDetails.rel.licencee": licenceeId,
+          ...matchCriteria
+        } 
+      },
       { $sort: { timestamp: -1 } },
-    ]);
+    ];
+    rawReports = await CollectionReport.aggregate(aggregationPipeline);
   }
+  
   // Map to CollectionReportRow
   return rawReports.map((doc: Record<string, unknown>) => ({
     _id: (doc._id as string) || "",
@@ -320,9 +347,16 @@ export async function getAllLocationNames(): Promise<string[]> {
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const { data } = await axios.get("/api/collectionReport/locations");
-    return data || [];
-  } catch (error) {
+    const response = await fetch("/api/collectionReport/locations");
+    if (!response.ok) {
+      throw new Error("Failed to fetch location names");
+    }
+    const data: Record<string, unknown> = await response.json();
+    if ("locations" in data && Array.isArray(data.locations)) {
+      return data.locations.map((location: Record<string, unknown>) => String(location.name || "Unknown"));
+    }
+    return [];
+  } catch (error: unknown) {
     console.error("Error fetching location names:", error);
     return [];
   }
@@ -343,16 +377,34 @@ export async function createCollectionReport(
 }
 
 /**
- * Fetches collection reports for a given licencee (or all).
+ * Fetches collection reports for a given licencee (or all) with optional date filtering.
  * @param licencee - The licencee name or "all" (optional)
+ * @param dateRange - Optional date range for filtering { from: Date, to: Date }
+ * @param timePeriod - Optional time period for filtering (Today, Yesterday, etc.)
  * @returns Promise resolving to an array of CollectionReportRow
  */
 export async function fetchCollectionReportsByLicencee(
-  licencee?: string
+  licencee?: string,
+  dateRange?: { from: Date; to: Date },
+  timePeriod?: string
 ): Promise<CollectionReportRow[]> {
   try {
-    const params =
-      licencee && licencee.toLowerCase() !== "all" ? { licencee } : {};
+    const params: Record<string, string> = {};
+    
+    if (licencee && licencee.toLowerCase() !== "all") {
+      params.licencee = licencee;
+    }
+    
+    // If timePeriod is provided and not Custom, use timePeriod
+    if (timePeriod && timePeriod !== "Custom") {
+      params.timePeriod = timePeriod;
+    } 
+    // Otherwise, if dateRange is provided, use custom dates
+    else if (dateRange?.from && dateRange?.to) {
+      params.startDate = dateRange.from.toISOString();
+      params.endDate = dateRange.to.toISOString();
+    }
+    
     const { data } = await axios.get("/api/collectionReport", { params });
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -466,3 +518,28 @@ export async function syncMeterDataWithCollections(reportId: string) {
     throw error;
   }
 }
+
+/**
+ * Normalizes API response for collection reports to always return CollectionReportLocationWithMachines[]
+ * Handles both { collectionReports: [...] } and { locations: [...] } shapes.
+ * See collection-report-implementation-guide.md for contract details.
+ */
+export const normalizeApiResponse = (
+  data: Record<string, unknown> | CollectionReportLocationWithMachines[]
+): CollectionReportLocationWithMachines[] => {
+  // Handle the expected format
+  if (typeof data === 'object' && data !== null && 'collectionReports' in data && Array.isArray(data.collectionReports)) {
+    return data.collectionReports as CollectionReportLocationWithMachines[];
+  }
+  // Handle the locations format (fallback) - not yet implemented but kept for future compatibility
+  if (typeof data === 'object' && data !== null && 'locations' in data && Array.isArray(data.locations)) {
+    console.warn('API returned locations format instead of collectionReports. Consider updating the backend.');
+    return data.locations as CollectionReportLocationWithMachines[];
+  }
+  // Handle direct array format
+  if (Array.isArray(data)) {
+    return data as CollectionReportLocationWithMachines[];
+  }
+  console.error('Unexpected API response format:', data);
+  return [];
+};

@@ -16,13 +16,6 @@ export default function CustomSelect(props: CustomSelectProps) {
       value={props.selectedFilter}
       onValueChange={(value) => {
         props.onSelect(value as TimePeriod);
-        if (props.isMobile && props.setShowDatePicker) {
-          if (value.toLowerCase() === "custom") {
-            props.setShowDatePicker(true);
-          } else {
-            props.setShowDatePicker(false);
-          }
-        }
       }}
       disabled={props.disabled}
     >

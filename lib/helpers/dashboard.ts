@@ -39,14 +39,15 @@ export const calculatePieChartLabelData = (props: CustomizedLabelProps) => {
  * Fetches and sets gaming locations data
  */
 export const loadGamingLocations = async (
-  setGamingLocations: (locations: locations[]) => void
+  setGamingLocations: (locations: locations[]) => void,
+  selectedLicencee?: string
 ) => {
-  const locationsData = await getAllGamingLocations();
+  const locationsData = await getAllGamingLocations(selectedLicencee);
   const validLocations = locationsData.filter(
     (loc) =>
       loc.geoCoords &&
       loc.geoCoords.latitude !== 0 &&
-      loc.geoCoords.longitude !== 0
+      (loc.geoCoords.longitude !== undefined ? loc.geoCoords.longitude !== 0 : loc.geoCoords.longtitude !== 0)
   );
   setGamingLocations(validLocations);
 };

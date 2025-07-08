@@ -39,6 +39,8 @@ export type LocationSelectItem = {
 };
 
 export type LocationTableItem = {
+  _id: string;
+  name: string;
   location: string;
   locationName: string;
   moneyIn: number;
@@ -48,6 +50,7 @@ export type LocationTableItem = {
   onlineMachines: number;
   isSmibLocation?: boolean;
   isLocalServer?: boolean;
+  hasSmib?: boolean;
   online?: boolean;
 };
 
@@ -55,7 +58,8 @@ export type LocationSortOption =
   | "locationName"
   | "moneyIn"
   | "moneyOut"
-  | "gross";
+  | "gross"
+  | "totalMachines";
 
 export type LocationFilter =
   | "NoSMIBLocation"
@@ -64,14 +68,7 @@ export type LocationFilter =
   | ""
   | null;
 
-export type LocationTableProps = {
-  locations: LocationTableItem[];
-  sortOption: LocationSortOption;
-  sortOrder: "asc" | "desc";
-  onColumnSort: (_column: LocationSortOption) => void;
-  onEdit: (_location: LocationTableItem) => void;
-  onDelete: (_location: LocationTableItem) => void;
-};
+// Re-evaluating to clear cache
 
 export type LocationSearchSelectProps = {
   locations: LocationSelectItem[];
@@ -273,3 +270,21 @@ export type LocationApiResponse = {
   isLocalServer?: boolean;
   [key: string]: unknown;
 };
+
+export interface LocationCardData {
+  location: AggregatedLocation;
+  onLocationClick: (id: string) => void;
+  onEdit: (location: AggregatedLocation) => void;
+  onDelete: (location: AggregatedLocation) => void;
+  formatCurrency: (amount: number) => string;
+}
+
+export interface LocationTableProps {
+  locations: AggregatedLocation[];
+  onSort: (column: LocationSortOption) => void;
+  sortOption: LocationSortOption;
+  sortOrder: "asc" | "desc";
+  onLocationClick: (id: string) => void;
+  onAction: (action: "edit" | "delete", location: AggregatedLocation) => void;
+  formatCurrency: (amount: number) => string;
+}

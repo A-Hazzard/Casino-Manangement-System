@@ -34,7 +34,14 @@ const getValidLongitude = (geo: {
   longitude?: number;
   longtitude?: number;
 }): number | undefined => {
-  return geo.longitude !== undefined ? geo.longitude : geo.longtitude;
+  // Prioritize longitude over longtitude
+  if (geo.longitude !== undefined && geo.longitude !== 0) {
+    return geo.longitude;
+  }
+  if (geo.longtitude !== undefined && geo.longtitude !== 0) {
+    return geo.longtitude;
+  }
+  return undefined;
 };
 
 export default function MapPreview(props: MapPreviewProps) {
@@ -114,6 +121,21 @@ export default function MapPreview(props: MapPreviewProps) {
     ? props.gamingLocations
     : [];
 
+  // Debug logging for gaming locations data
+  if (process.env.NODE_ENV === "development") {
+    console.log("MapPreview - gamingLocations:", {
+      count: gamingLocations.length,
+      locations: gamingLocations.map(loc => ({
+        id: loc._id,
+        name: loc.name || loc.locationName,
+        geoCoords: loc.geoCoords,
+        hasValidCoords: loc.geoCoords && 
+          loc.geoCoords.latitude !== 0 && 
+          (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0)
+      }))
+    });
+  }
+
   // Helper to get stats for a location from metrics or chartData
   const getLocationStats = (location: locations) => {
     // First try to get from fetched metrics
@@ -169,6 +191,18 @@ export default function MapPreview(props: MapPreviewProps) {
     locationObj: locations
   ) => {
     const lon = getValidLongitude(geo);
+    
+    // Debug logging for coordinate issues
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Location: ${label}`, {
+        latitude: lat,
+        longitude: geo.longitude,
+        longtitude: geo.longtitude,
+        validLongitude: lon,
+        hasValidCoords: lon !== undefined && lat !== 0 && lon !== 0
+      });
+    }
+    
     if (lon === undefined || lat === 0 || lon === 0) return null;
     const stats = getLocationStats(locationObj);
     return (
@@ -230,6 +264,17 @@ export default function MapPreview(props: MapPreviewProps) {
           {gamingLocations.length > 0 &&
             gamingLocations.map((location) => {
               if (!location.geoCoords) return null;
+              
+              // Get valid longitude (prioritize longitude over longtitude)
+              const validLongitude = location.geoCoords.longitude !== undefined && location.geoCoords.longitude !== 0
+                ? location.geoCoords.longitude
+                : location.geoCoords.longtitude;
+              
+              // Check if we have valid coordinates
+              if (location.geoCoords.latitude === 0 || validLongitude === 0 || validLongitude === undefined) {
+                return null;
+              }
+              
               const locationName =
                 location.name || location.locationName || "Unknown Location";
               return renderMarker(
@@ -271,6 +316,17 @@ export default function MapPreview(props: MapPreviewProps) {
 
               {gamingLocations.map((location) => {
                 if (!location.geoCoords) return null;
+                
+                // Get valid longitude (prioritize longitude over longtitude)
+                const validLongitude = location.geoCoords.longitude !== undefined && location.geoCoords.longitude !== 0
+                  ? location.geoCoords.longitude
+                  : location.geoCoords.longtitude;
+                
+                // Check if we have valid coordinates
+                if (location.geoCoords.latitude === 0 || validLongitude === 0 || validLongitude === undefined) {
+                  return null;
+                }
+                
                 const locationName =
                   location.name || location.locationName || "Unknown Location";
                 return renderMarker(

@@ -7,13 +7,16 @@ import {
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import type { TimePeriod } from "@/app/api/lib/types";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { Machine } from "@/app/api/lib/models/machines";
 import { calculateCollectionReportTotals } from "@/app/api/lib/helpers/collectionReportCalculations";
+import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 
 export async function GET(req: NextRequest) {
   await connectDB();
   const { searchParams } = new URL(req.url);
+  
   // If ?locationsOnly is present, return locations with machines
   if (searchParams.get("locationsWithMachines")) {
     // Fetch all locations
@@ -38,11 +41,15 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ locations: locationsWithMachines });
   }
+  
+  const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || undefined;
   const startDateStr = searchParams.get("startDate");
   const endDateStr = searchParams.get("endDate");
   const locationName = searchParams.get("locationName") || undefined;
-  // If startDate and endDate are present, treat as monthly aggregation
-  if (startDateStr && endDateStr) {
+  const licencee = searchParams.get("licencee") || undefined;
+  
+  // If startDate and endDate are present AND no licencee is specified, treat as monthly aggregation
+  if (startDateStr && endDateStr && !licencee && !timePeriod) {
     const startDate = new Date(startDateStr);
     const endDate = new Date(endDateStr);
     const summary = await getMonthlyCollectionReportSummary(
@@ -57,9 +64,23 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ summary, details });
   }
-  // Otherwise, return all collection reports (legacy behavior)
-  const licencee = searchParams.get("licencee") || undefined;
-  const reports = await getAllCollectionReports(licencee);
+  
+  // Handle individual collection reports with time period or date filtering
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+  
+  if (timePeriod && timePeriod !== "Custom") {
+    // Convert time period to date range
+    const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
+    startDate = s;
+    endDate = e;
+  } else if (startDateStr && endDateStr) {
+    // Use custom date range
+    startDate = new Date(startDateStr);
+    endDate = new Date(endDateStr);
+  }
+  
+  const reports = await getAllCollectionReports(licencee, startDate, endDate);
   return NextResponse.json(reports);
 }
 

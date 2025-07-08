@@ -1,20 +1,22 @@
+"use client";
+
 import React, { useRef, useEffect } from "react";
-import type { LocationSelectItem } from "@/lib/types/location";
-import { gsap } from "gsap";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@/components/ui/checkbox";
+import { gsap } from "gsap";
+import type { LocationSelectItem } from "@/lib/types/location";
 
-type ExtendedCollectionReportFiltersProps = {
+interface CollectionReportFiltersProps {
   locations: LocationSelectItem[];
   selectedLocation: string;
-  onLocationChange: (locationId: string) => void;
+  onLocationChange: (value: string) => void;
   search: string;
-  onSearchChange: (val: string) => void;
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (val: boolean) => void;
-  isSearching?: boolean;
+  onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
-};
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (checked: boolean) => void;
+  isSearching: boolean;
+}
 
 export default function CollectionReportFilters({
   locations,
@@ -22,17 +24,16 @@ export default function CollectionReportFilters({
   onLocationChange,
   search,
   onSearchChange,
+  onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
-  isSearching = false,
-  onSearchSubmit,
-}: ExtendedCollectionReportFiltersProps) {
+  isSearching,
+}: CollectionReportFiltersProps) {
   const filterRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
 
-  // Animation for search input when searching
+  // Search animation
   useEffect(() => {
     if (isSearching && filterRef.current) {
       gsap.fromTo(
@@ -47,23 +48,7 @@ export default function CollectionReportFilters({
     }
   }, [isSearching]);
 
-  // Animation for mounting
-  useEffect(() => {
-    if (filterRef.current) {
-      gsap.fromTo(
-        filterRef.current,
-        { opacity: 0, y: -10 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.4,
-          ease: "power2.out",
-        }
-      );
-    }
-  }, []);
-
-  // Animation for filter changes
+  // Location select animation
   useEffect(() => {
     if (selectRef.current) {
       gsap.fromTo(
@@ -78,6 +63,7 @@ export default function CollectionReportFilters({
     }
   }, [selectedLocation]);
 
+  // Checkbox animation
   useEffect(() => {
     if (checkboxRef.current) {
       gsap.fromTo(
@@ -92,18 +78,8 @@ export default function CollectionReportFilters({
     }
   }, [showUncollectedOnly]);
 
-  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputRef.current) {
-      // Add a flash animation on enter
-      gsap.fromTo(
-        inputRef.current,
-        { backgroundColor: "#f0f0f0" },
-        {
-          backgroundColor: "#ffffff",
-          duration: 0.3,
-          ease: "power2.out",
-        }
-      );
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
       onSearchSubmit();
     }
   };
@@ -113,15 +89,15 @@ export default function CollectionReportFilters({
       ref={filterRef}
       className="rounded-t-lg p-4 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col lg:flex-row lg:items-center lg:justify-start gap-y-3 lg:gap-2"
     >
+      {/* Search Input */}
       <div className="relative w-full lg:w-[280px]">
         <input
-          ref={inputRef}
           type="text"
           placeholder="Search Collector or Location..."
           className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          onKeyPress={handleSearchKeyPress}
+          onKeyPress={handleKeyPress}
         />
         <button
           onClick={onSearchSubmit}
@@ -130,6 +106,8 @@ export default function CollectionReportFilters({
           <MagnifyingGlassIcon className="w-5 h-5 text-black" />
         </button>
       </div>
+
+      {/* Location Select Dropdown */}
       <select
         ref={selectRef}
         className="w-full lg:w-[240px] px-4 py-2 rounded-md text-sm border border-black"
@@ -143,14 +121,14 @@ export default function CollectionReportFilters({
           </option>
         ))}
       </select>
+
+      {/* Uncollected Only Checkbox */}
       <div ref={checkboxRef} className="flex items-center w-full lg:w-auto">
         <label className="flex items-center gap-2 font-medium text-black lg:text-white cursor-pointer">
           <Checkbox
             id="uncollected-only"
             checked={showUncollectedOnly}
-            onCheckedChange={(checked) =>
-              onShowUncollectedOnlyChange(!!checked)
-            }
+            onCheckedChange={(checked) => onShowUncollectedOnlyChange(!!checked)}
             className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
           />
           <span className="text-sm font-medium whitespace-nowrap">
@@ -160,4 +138,4 @@ export default function CollectionReportFilters({
       </div>
     </div>
   );
-}
+} 

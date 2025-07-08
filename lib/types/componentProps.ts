@@ -23,8 +23,6 @@ export type DashboardLayoutProps = {
   activePieChartFilter: TimePeriod;
   activeFilters: ActiveFilters;
   pieChartSortIsOpen: boolean;
-  showDatePicker: boolean;
-  CustomDateRange: dateRange;
   totals: dashboardData | null;
   chartData: dashboardData[];
   gamingLocations: locations[];
@@ -34,7 +32,6 @@ export type DashboardLayoutProps = {
   initialLoading?: boolean;
   setLoadingChartData: (_state: boolean) => void;
   setRefreshing: (_state: boolean) => void;
-  setCustomDateRange: (_state: dateRange) => void;
   setActiveTab: (_state: ActiveTab) => void;
   setActivePieChartFilter: (_state: TimePeriod) => void;
   setActiveFilters: (_state: ActiveFilters) => void;
@@ -42,7 +39,6 @@ export type DashboardLayoutProps = {
   setTotals: (_state: dashboardData | null) => void;
   setChartData: (_state: dashboardData[]) => void;
   setPieChartSortIsOpen: (_state: boolean) => void;
-  setShowDatePicker: (_state: boolean) => void;
   setTopPerformingData: (_state: TopPerformingData[]) => void;
   onRefresh: () => void;
   renderCustomizedLabel: (_props: CustomizedLabelProps) => JSX.Element;
@@ -84,8 +80,6 @@ export type CustomSelectProps = {
   placeholder?: string;
   activePieChartFilter?: TimePeriod;
   isActive: boolean;
-  isMobile?: boolean;
-  isTopPerforming?: boolean;
   timeFrames: TimeFrames[];
   activeFilters: ActiveFilters;
   onSelect: (_value: TimePeriod) => void;
@@ -191,15 +185,6 @@ export type NewCollectionModalProps = {
 // Collection Report UI Props Types
 
 export type CollectionDesktopUIProps = {
-  locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSearchSubmit: () => void;
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (value: boolean) => void;
-  isSearching: boolean;
   loading: boolean;
   filteredReports: CollectionReportRow[];
   desktopCurrentItems: CollectionReportRow[];
@@ -209,9 +194,6 @@ export type CollectionDesktopUIProps = {
   desktopPaginationRef: React.RefObject<HTMLDivElement | null>;
   desktopTableRef: React.RefObject<HTMLDivElement | null>;
   itemsPerPage: number;
-};
-
-export type CollectionMobileUIProps = {
   locations: LocationSelectItem[];
   selectedLocation: string;
   onLocationChange: (value: string) => void;
@@ -219,8 +201,11 @@ export type CollectionMobileUIProps = {
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (value: boolean) => void;
+  onShowUncollectedOnlyChange: (checked: boolean) => void;
   isSearching: boolean;
+};
+
+export type CollectionMobileUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
   mobileCurrentItems: CollectionReportRow[];
@@ -230,6 +215,16 @@ export type CollectionMobileUIProps = {
   mobilePaginationRef: React.RefObject<HTMLDivElement | null>;
   mobileCardsRef: React.RefObject<HTMLDivElement | null>;
   itemsPerPage: number;
+  disabled?: boolean;
+  locations: LocationSelectItem[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearchSubmit: () => void;
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (checked: boolean) => void;
+  isSearching: boolean;
 };
 
 export type MonthlyDesktopUIProps = {
@@ -295,3 +290,21 @@ export type ManagerMobileUIProps = {
 export type LocationPickerMapProps = {
   onLocationSelect: (latlng: LatLng) => void;
 };
+
+export type CollectionReportDateFilter =
+  | "today"
+  | "yesterday"
+  | "last7"
+  | "last30"
+  | "custom";
+
+export type DateRangeFilterProps = {
+  dateRange?: RDPDateRange;
+  onApply: (range?: RDPDateRange) => void;
+  className?: string;
+};
+
+export interface LocationData {
+  id: string;
+  // ... existing code ...
+}

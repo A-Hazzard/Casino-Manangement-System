@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { NewCabinetFormData } from "@/lib/types/cabinets";
 import { createCabinet } from "@/lib/helpers/cabinets";
 
@@ -24,7 +23,6 @@ export const NewCabinetModal = () => {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   const [formData, setFormData] = useState<NewCabinetFormData>({
     serialNumber: "",
@@ -44,18 +42,6 @@ export const NewCabinetModal = () => {
     },
   });
 
-  // Check if we're on mobile
-  useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
-
-    return () => window.removeEventListener("resize", checkIsMobile);
-  }, []);
-
   // Update gaming location when locationId changes
   useEffect(() => {
     if (locationId) {
@@ -68,14 +54,6 @@ export const NewCabinetModal = () => {
 
   useEffect(() => {
     if (isCabinetModalOpen) {
-      if (isMobile) {
-        gsap.to(modalRef.current, {
-          y: 0,
-          duration: 0.3,
-          ease: "power2.out",
-          overwrite: true,
-        });
-      } else {
         gsap.fromTo(
           modalRef.current,
           { opacity: 0, y: -20 },
@@ -87,7 +65,6 @@ export const NewCabinetModal = () => {
             overwrite: true,
           }
         );
-      }
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
@@ -95,17 +72,9 @@ export const NewCabinetModal = () => {
         overwrite: true,
       });
     }
-  }, [isCabinetModalOpen, isMobile]);
+  }, [isCabinetModalOpen]);
 
   const handleClose = () => {
-    if (isMobile) {
-      gsap.to(modalRef.current, {
-        y: "100%",
-        duration: 0.3,
-        ease: "power2.in",
-        overwrite: true,
-      });
-    } else {
       gsap.to(modalRef.current, {
         opacity: 0,
         y: -20,
@@ -113,7 +82,6 @@ export const NewCabinetModal = () => {
         ease: "power2.in",
         overwrite: true,
       });
-    }
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
@@ -203,7 +171,6 @@ export const NewCabinetModal = () => {
   if (!isCabinetModalOpen) return null;
 
   // Desktop View
-  if (!isMobile) {
     return (
       <div className="fixed inset-0 z-50">
         <div
@@ -493,242 +460,6 @@ export const NewCabinetModal = () => {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Mobile View
-  return (
-    <div className="fixed inset-0 z-50">
-      <div
-        ref={backdropRef}
-        className="absolute inset-0 bg-black/50 opacity-0"
-        onClick={handleClose}
-      />
-      <div
-        ref={modalRef}
-        className="absolute bottom-0 left-0 right-0 translate-y-full bg-container rounded-t-xl p-6 shadow-lg max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">New Cabinet</h2>
-          <Button variant="ghost" size="icon" onClick={handleClose}>
-            <Cross2Icon className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="serialNumber">Serial Number</Label>
-            <Input
-              id="serialNumber"
-              placeholder="Machine Serial Number"
-              value={formData.serialNumber}
-              onChange={(e) =>
-                handleInputChange("serialNumber", e.target.value)
-              }
-              className="bg-container border-border"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="game">Installed Game</Label>
-            <Input
-              id="game"
-              placeholder="Enter Game Name"
-              value={formData.game}
-              onChange={(e) => handleInputChange("game", e.target.value)}
-              className="bg-container border-border"
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="gameType">Game Type</Label>
-              <Select
-                value={formData.gameType}
-                onValueChange={(value) => handleSelectChange("gameType", value)}
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Select Game Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Slot">Slot</SelectItem>
-                  <SelectItem value="Video Poker">Video Poker</SelectItem>
-                  <SelectItem value="Table Game">Table Game</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2 mt-6">
-              <Checkbox
-                id="isCronosMachine"
-                checked={formData.isCronosMachine}
-                onCheckedChange={handleCheckboxChange}
-              />
-              <Label htmlFor="isCronosMachine">Cronos Machine</Label>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="accountingDenomination">
-              Accounting Denomination{" "}
-              {formData.isCronosMachine ? "(Required for Cronos)" : ""}
-            </Label>
-            <Input
-              id="accountingDenomination"
-              placeholder="The denomination the machine uses when sending meter values"
-              value={formData.accountingDenomination}
-              onChange={(e) =>
-                handleInputChange("accountingDenomination", e.target.value)
-              }
-              className="bg-container border-border"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="cabinetType">Cabinet Type</Label>
-              <Select
-                value={formData.cabinetType}
-                onValueChange={(value) =>
-                  handleSelectChange("cabinetType", value)
-                }
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Select Cabinet Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Standing">Standing</SelectItem>
-                  <SelectItem value="Slant Top">Slant Top</SelectItem>
-                  <SelectItem value="Bar Top">Bar Top</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="assetStatus">Status</Label>
-              <Select
-                value={formData.assetStatus}
-                onValueChange={(value) =>
-                  handleSelectChange("assetStatus", value)
-                }
-              >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Functional">Functional</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Offline">Offline</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              placeholder="Enter Location"
-              value={formData.gamingLocation}
-              onChange={(e) =>
-                handleInputChange("gamingLocation", e.target.value)
-              }
-              className="bg-container border-border"
-              disabled={!!locationId}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="smibBoard">SMIB Board</Label>
-            <Input
-              id="smibBoard"
-              placeholder="Enter SMIB ID"
-              value={formData.smibBoard}
-              onChange={(e) => handleInputChange("smibBoard", e.target.value)}
-              className="bg-container border-border"
-            />
-          </div>
-
-          <div className="border-t border-border pt-4 mt-4">
-            <h3 className="font-medium mb-3">Collection Settings</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="multiplier">Collection Multiplier</Label>
-                <Input
-                  id="multiplier"
-                  placeholder="Enter multiplier (default: 1)"
-                  value={formData.collectionSettings.multiplier}
-                  onChange={(e) =>
-                    handleCollectionSettingChange("multiplier", e.target.value)
-                  }
-                  className="bg-container border-border"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastCollection">Last Collection Time</Label>
-                <Input
-                  id="lastCollection"
-                  type="datetime-local"
-                  value={formData.collectionSettings.lastCollectionTime}
-                  onChange={(e) =>
-                    handleCollectionSettingChange(
-                      "lastCollectionTime",
-                      e.target.value
-                    )
-                  }
-                  className="bg-container border-border"
-                />
-              </div>
-              <div>
-                <Label htmlFor="metersIn">Last Meters In</Label>
-                <Input
-                  id="metersIn"
-                  placeholder="Enter last meters in"
-                  value={formData.collectionSettings.lastMetersIn}
-                  onChange={(e) =>
-                    handleCollectionSettingChange(
-                      "lastMetersIn",
-                      e.target.value
-                    )
-                  }
-                  className="bg-container border-border"
-                />
-              </div>
-              <div>
-                <Label htmlFor="metersOut">Last Meters Out</Label>
-                <Input
-                  id="metersOut"
-                  placeholder="Enter last meters out"
-                  value={formData.collectionSettings.lastMetersOut}
-                  onChange={(e) =>
-                    handleCollectionSettingChange(
-                      "lastMetersOut",
-                      e.target.value
-                    )
-                  }
-                  className="bg-container border-border"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end mt-6 space-x-4">
-          <Button
-            onClick={handleClose}
-            className="bg-muted text-foreground"
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="bg-button text-container"
-            disabled={loading}
-          >
-            {loading ? "Creating..." : "Create Cabinet"}
-          </Button>
         </div>
       </div>
     </div>

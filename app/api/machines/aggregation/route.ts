@@ -63,6 +63,8 @@ export async function GET(req: NextRequest) {
     const searchTerm = searchParams.get("search")?.trim() || "";
     const licensee = searchParams.get("licensee");
     const timePeriod = searchParams.get("timePeriod") || "Today";
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
     // Log the query parameters for debugging
     console.log("📋 Query Parameters:", {
@@ -70,10 +72,23 @@ export async function GET(req: NextRequest) {
       searchTerm,
       licensee,
       timePeriod,
+      startDate: startDateParam,
+      endDate: endDateParam,
     });
 
     // Get date range for time period filtering
-    const { start, end } = getDateRangeForTimePeriod(timePeriod as TimePeriod);
+    let dateRange: DateRange;
+    if (startDateParam && endDateParam) {
+      dateRange = {
+        start: new Date(startDateParam),
+        end: new Date(endDateParam),
+      };
+    } else {
+      dateRange = getDateRangeForTimePeriod(timePeriod as TimePeriod);
+    }
+
+    const { start, end } = dateRange;
+
     console.log(
       `📅 Time period: ${timePeriod}, Date range: ${start.toISOString()} to ${end.toISOString()}`
     );

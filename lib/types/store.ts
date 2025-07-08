@@ -49,6 +49,9 @@ export type DashBoardStore = {
   customDateRange: dateRange;
   setCustomDateRange: (_state: dateRange) => void;
 
+  pendingCustomDateRange?: dateRange;
+  setPendingCustomDateRange: (_state?: dateRange) => void;
+
   topPerformingData: TopPerformingData[];
   setTopPerformingData: (_state: TopPerformingData[]) => void;
 

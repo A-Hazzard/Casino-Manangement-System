@@ -116,6 +116,7 @@ export type locations = {
   geoCoords: {
     latitude: number;
     longitude: number;
+    longtitude?: number;
   };
   totalMachines?: number;
   onlineMachines?: number;

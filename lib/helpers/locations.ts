@@ -1,6 +1,9 @@
 import axios from "axios";
 import { locations } from "@/lib/types";
 import { Cabinet } from "@/lib/types/cabinets";
+import { LocationData, AggregatedLocation } from "../types/location";
+import { TimePeriod } from "../types/api";
+import { DateRange } from "react-day-picker";
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -51,12 +54,19 @@ export async function fetchLocationAndCabinets(
 /**
  * Fetches all gaming locations from the API.
  *
+ * @param licencee - (Optional) Licencee filter for locations.
  * @returns Promise resolving to an array of locations.
  */
-export default async function getAllGamingLocations(): Promise<locations[]> {
+export default async function getAllGamingLocations(licencee?: string): Promise<locations[]> {
   try {
+    const params: Record<string, string> = {};
+    if (licencee && licencee !== "all") {
+      params.licencee = licencee;
+    }
+    
     const response = await axios.get<{ locations: locations[] }>(
-      "/api/locations"
+      "/api/locations",
+      { params }
     );
     const fetchedLocations = response.data.locations;
     console.log("\ud83d\udccd Gaming Locations Status 200");
@@ -173,30 +183,32 @@ export async function fetchLocationDetailsById(locationId: string) {
  * @param machineTypeFilter - (Optional) Machine type filter(s).
  * @returns Promise resolving to formatted location data array, or empty array on error.
  */
-export async function fetchLocationsData(
-  timePeriod: string,
-  licencee?: string,
-  machineTypeFilter?: string
-) {
+export const fetchLocationsData = async (
+  timePeriod: TimePeriod = "Today",
+  licensee?: string,
+  filters?: string,
+  customDateRange?: DateRange
+): Promise<AggregatedLocation[]> => {
   try {
-    const url =
-      `/api/locationAggregation?timePeriod=${timePeriod}` +
-      (licencee ? `&licencee=${licencee}` : "") +
-      (machineTypeFilter ? `&machineTypeFilter=${machineTypeFilter}` : "");
+    const params: Record<string, string> = {
+      timePeriod,
+    };
+    if (licensee) params.licencee = licensee;
+    if (filters) params.machineTypeFilter = filters;
 
-    const response = await axios.get(url);
-
-    if (!response.data) {
-      console.error("No data returned from locations API");
-      return [];
+    if (customDateRange?.from && customDateRange?.to) {
+      params.startDate = customDateRange.from.toISOString();
+      params.endDate = customDateRange.to.toISOString();
+      delete params.timePeriod;
     }
 
-    return response.data;
+    const response = await axios.get("/api/locationAggregation", { params });
+    return response.data || [];
   } catch (error) {
-    console.error("Error fetching location data:", error);
+    console.error("Failed to fetch locations data:", error);
     return [];
   }
-}
+};
 
 /**
  * Searches locations with filters for search term, time period, licencee, and machine type.
@@ -207,36 +219,34 @@ export async function fetchLocationsData(
  * @param machineTypeFilter - (Optional) Machine type filter(s).
  * @returns Promise resolving to filtered location data array matching the search term, or empty array on error.
  */
-export async function searchLocations(
-  searchTerm: string,
-  timePeriod: string,
-  licencee?: string,
-  machineTypeFilter?: string
-) {
+export const searchLocations = async (
+  term: string,
+  timePeriod: TimePeriod = "Today",
+  licensee?: string,
+  filters?: string,
+  customDateRange?: DateRange
+): Promise<LocationData[]> => {
   try {
-    if (!searchTerm.trim()) {
-      return await fetchLocationsData(timePeriod, licencee, machineTypeFilter);
+    const params: Record<string, string> = {
+      term,
+      timePeriod,
+    };
+    if (licensee) params.licensee = licensee;
+    if (filters) params.filters = filters;
+
+    if (customDateRange?.from && customDateRange?.to) {
+      params.startDate = customDateRange.from.toISOString();
+      params.endDate = customDateRange.to.toISOString();
+      delete params.timePeriod;
     }
 
-    const url =
-      `/api/locations/search?search=${encodeURIComponent(searchTerm)}` +
-      `&timePeriod=${timePeriod}` +
-      (licencee ? `&licencee=${licencee}` : "") +
-      (machineTypeFilter ? `&machineTypeFilter=${machineTypeFilter}` : "");
-
-    const response = await axios.get(url);
-
-    if (!response.data) {
-      console.error("No data returned from locations search API");
-      return [];
-    }
-
-    return response.data;
+    const response = await axios.get("/api/locations/search", { params });
+    return response.data.data || [];
   } catch (error) {
-    console.error("Error searching locations:", error);
+    console.error("Failed to search locations:", error);
     return [];
   }
-}
+};
 
 /**
  * Fetches location metrics for map display, including machine counts and financial data.

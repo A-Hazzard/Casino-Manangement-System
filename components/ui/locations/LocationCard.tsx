@@ -4,28 +4,22 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Database, Server } from "lucide-react";
-import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
-import { Location } from "@/lib/types/location";
-import { LocationCardProps } from "@/lib/types/cardProps";
-import gsap from "gsap";
-import { useRouter } from "next/navigation";
+import { gsap } from "gsap";
+import { LocationCardData } from "@/lib/types/location";
+import { formatCurrency } from "@/lib/utils/number";
 
-export default function LocationCard(props: LocationCardProps) {
-  const { openEditModal } = useLocationActionsStore();
+export default function LocationCard({
+  location,
+  onLocationClick,
+  onEdit,
+}: {
+  location: LocationCardData["location"];
+  onLocationClick: LocationCardData["onLocationClick"];
+  onEdit: LocationCardData["onEdit"];
+}) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const prevPropsRef = useRef<LocationCardProps | null>(null);
-  const router = useRouter();
 
-  // GSAP animation for card updates
   useEffect(() => {
-    if (
-      !prevPropsRef.current ||
-      JSON.stringify(props) !== JSON.stringify(prevPropsRef.current)
-    ) {
-      // Store current props for future comparison
-      prevPropsRef.current = { ...props };
-
-      // Animate the card
       if (cardRef.current) {
         gsap.fromTo(
           cardRef.current,
@@ -39,23 +33,10 @@ export default function LocationCard(props: LocationCardProps) {
           }
         );
       }
-    }
-  }, [props]);
-
-  // Create a Location object with required fields
-  const locationData: Partial<Location> = {
-    _id: props._id,
-    name: props.name,
-    moneyIn: props.moneyIn,
-    moneyOut: props.moneyOut,
-    gross: props.gross,
-    totalMachines: props.totalMachines,
-    onlineMachines: props.onlineMachines,
-    hasSmib: props.hasSmib,
-  };
+  }, [location]);
 
   const handleCardClick = () => {
-    router.push(`/locations/${props._id}`);
+    onLocationClick(location.location);
   };
 
   return (
@@ -63,32 +44,28 @@ export default function LocationCard(props: LocationCardProps) {
       ref={cardRef}
       className="bg-container shadow-sm rounded-lg p-4 w-full mx-auto relative cursor-pointer hover:shadow-md transition-shadow border border-border"
       onClick={(e) => {
-        // Only handle the click if it's not on the action buttons
         if (!(e.target as HTMLElement).closest(".action-buttons")) {
           handleCardClick();
         }
       }}
     >
-      {/* Online/Offline Status Circle */}
-      {typeof props.onlineMachines === "number" && (
+      {typeof location.onlineMachines === "number" && (
         <span
-          className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white z-10 \
-            ${
-              props.onlineMachines > 0
+          className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white z-10 ${
+            location.onlineMachines > 0
                 ? "bg-green-500 animate-pulse-slow"
                 : "bg-red-500"
             }`}
-          title={props.onlineMachines > 0 ? "Online" : "Offline"}
+          title={location.onlineMachines > 0 ? "Online" : "Offline"}
         />
       )}
-      {/* Title + Action Icons */}
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-base font-semibold">{props.name}</h3>
+        <h3 className="text-base font-semibold">{location.locationName}</h3>
         <div className="flex gap-2 action-buttons">
           <button
             onClick={(e) => {
-              e.stopPropagation(); // Prevent card click
-              openEditModal(locationData);
+              e.stopPropagation();
+              onEdit(location);
             }}
             className="text-button"
           >
@@ -103,49 +80,46 @@ export default function LocationCard(props: LocationCardProps) {
         </div>
       </div>
 
-      {/* Money In & Out */}
       <div className="flex flex-col space-y-2 text-sm mb-2">
         <div className="flex justify-between">
           <span className="font-medium">Money In</span>
           <span className="text-foreground font-semibold">
-            ${(props.moneyIn || 0).toLocaleString()}
+            {formatCurrency(location.moneyIn ?? 0)}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="font-medium">Money Out</span>
           <span className="text-foreground font-semibold">
-            ${(props.moneyOut || 0).toLocaleString()}
+            {formatCurrency(location.moneyOut ?? 0)}
           </span>
         </div>
       </div>
 
-      {/* Gross */}
       <div className="flex justify-between mt-1 mb-3">
         <span className="font-medium">Gross</span>
         <span
           className={`font-semibold ${
-            (props.gross || 0) < 0 ? "text-destructive" : "text-button"
+            (location.gross ?? 0) < 0 ? "text-destructive" : "text-button"
           }`}
         >
-          ${(props.gross || 0).toLocaleString()}
+          {formatCurrency(location.gross ?? 0)}
         </span>
       </div>
 
-      {/* Machines & Online Buttons */}
       <div className="flex gap-2 justify-between mt-2 action-buttons">
         <Button
           className="bg-blueHighlight text-primary-foreground flex items-center space-x-1 rounded-md px-2 py-1 h-auto text-xs"
-          onClick={(e) => e.stopPropagation()} // Prevent card click
+          onClick={(e) => e.stopPropagation()}
         >
           <Database className="w-3 h-3 mr-1" />
-          {props.totalMachines} MACHINES
+          {location.totalMachines} MACHINES
         </Button>
         <Button
           className="bg-button text-primary-foreground flex items-center space-x-1 rounded-md px-2 py-1 h-auto text-xs"
-          onClick={(e) => e.stopPropagation()} // Prevent card click
+          onClick={(e) => e.stopPropagation()}
         >
           <Server className="w-3 h-3 mr-1" />
-          {props.onlineMachines} ONLINE
+          {location.onlineMachines} ONLINE
         </Button>
       </div>
     </div>

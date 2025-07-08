@@ -33,6 +33,7 @@ import {
   calculateLocationTotal,
   calculateSasMetricsTotals,
 } from "@/lib/helpers/collectionReportDetailPage";
+import { formatCurrency } from "@/lib/utils/currency";
 
 // Types
 import type { CollectionReportData } from "@/lib/types/index";
@@ -666,7 +667,7 @@ export default function CollectionReportPage() {
               </p>
               <p className="text-lg font-semibold text-gray-700">
                 Location Total: $
-                {calculateLocationTotal(collections).toLocaleString()}
+                {formatCurrency(calculateLocationTotal(collections))}
               </p>
               <div className="lg:hidden mt-4">
                 <Button

@@ -1,28 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getCollectionReportById } from "@/app/api/lib/helpers/accountingDetails";
-
-// Define a type for the route context parameters
-type RouteContext = {
-  params: Promise<{
-    reportId: string;
-  }>;
-};
 
 /**
  * API route handler for fetching a collection report by reportId.
  * @param request - The incoming request object.
- * @param context - The route context containing params.
  * @returns NextResponse with the collection report data or error message.
  */
-export async function GET(
-  request: Request,
-  context: RouteContext
-): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     await connectDB();
-    const routeParams = await context.params;
-    const reportId = routeParams.reportId;
+    const reportId = request.nextUrl.pathname.split("/").pop();
 
     if (!reportId) {
       return NextResponse.json(

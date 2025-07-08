@@ -7,26 +7,24 @@ export default function MachineStatusWidget({
   offlineCount,
 }: MachineStatusWidgetProps) {
   return (
-    <div className="flex items-center bg-white rounded-xl shadow px-4 py-2 space-x-4">
-      <div className="flex items-center mr-2">
+    <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-100 px-4 py-2.5">
         <Image
           src="/cabinetsIcon.svg"
           alt="Machine"
-          className="w-7 h-7 mr-2"
-          width={28}
-          height={28}
+        className="w-5 h-5"
+        width={20}
+        height={20}
         />
-        <span className="text-gray-700 font-medium text-base">
+      <span className="text-gray-600 text-sm">
           Machine Status
         </span>
-      </div>
-      <div className="flex items-center">
-        <span className="flex items-center bg-green-50 border border-green-400 text-green-700 rounded-full px-4 py-1 font-semibold text-base mr-2">
-          <span className="w-3 h-3 bg-green-500 rounded-full mr-2 inline-block" />
+      <div className="flex gap-3">
+        <span className="flex items-center gap-1.5 bg-green-50 text-green-700 rounded-full px-4 py-1 text-sm">
+          <span className="w-2 h-2 bg-green-500 rounded-full" />
           {onlineCount.toLocaleString()} Online
         </span>
-        <span className="flex items-center bg-red-50 border border-red-400 text-red-700 rounded-full px-4 py-1 font-semibold text-base">
-          <span className="w-3 h-3 bg-red-500 rounded-full mr-2 inline-block" />
+        <span className="flex items-center gap-1.5 bg-red-50 text-red-700 rounded-full px-4 py-1 text-sm">
+          <span className="w-2 h-2 bg-red-500 rounded-full" />
           {offlineCount.toLocaleString()} Offline
         </span>
       </div>

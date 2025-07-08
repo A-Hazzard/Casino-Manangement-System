@@ -114,6 +114,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "mongodb": "6.17.0"
+    }
   }
 }

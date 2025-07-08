@@ -5,6 +5,7 @@ import {
   CabinetFormData,
 } from "../types/cabinets";
 import mongoose from "mongoose";
+import { DateRange } from "react-day-picker";
 
 // Define the CabinetDetails type based on Cabinet with any additional properties that might be returned from API
 export type CabinetDetails = Cabinet & {
@@ -61,9 +62,14 @@ export type CabinetMetrics = {
  *
  * @param licensee - (Optional) Licensee filter for cabinets.
  * @param timePeriod - (Optional) Time period filter for cabinets.
+ * @param customDateRange - (Optional) Custom date range filter for cabinets.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
-export const fetchCabinets = async (licensee?: string, timePeriod?: string) => {
+export const fetchCabinets = async (
+  licensee?: string,
+  timePeriod?: string,
+  customDateRange?: DateRange
+) => {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/machines/aggregation`;
@@ -71,8 +77,13 @@ export const fetchCabinets = async (licensee?: string, timePeriod?: string) => {
     // Add query parameters if they exist
     const queryParams = [];
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
-    if (timePeriod)
+
+    if (customDateRange?.from && customDateRange?.to) {
+      queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
+      queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+    } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
 
     // Append query string if we have parameters
     if (queryParams.length > 0) {

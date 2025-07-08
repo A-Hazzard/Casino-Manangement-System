@@ -5,10 +5,22 @@ import fs from "fs";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    await connectDB();
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const licencee = searchParams.get('licencee');
+    
+    // Build query filter
+    const queryFilter: Record<string, string> = {};
+    if (licencee && licencee !== "all") {
+      queryFilter["rel.licencee"] = licencee;
+    }
+    
     // Fetch locations, only include `geoCoords`, `name`, and `_id`, sorted alphabetically by name
-    const locations = await GamingLocations.find({}, "geoCoords name _id")
+    const locations = await GamingLocations.find(queryFilter)
       .sort({ name: 1 })
       .lean();
 
@@ -23,9 +35,12 @@ export async function GET() {
         return false;
       }
 
-      const { latitude, longitude } = location.geoCoords;
+      const { latitude, longitude, longtitude } = location.geoCoords;
+      
+      // Use longitude if available, otherwise fallback to longtitude
+      const validLongitude = longitude !== undefined ? longitude : longtitude;
 
-      if ((latitude === 0 || longitude === 0) && location._id) {
+      if ((latitude === 0 || validLongitude === 0) && location._id) {
         // Case: Zero-valued geoCoords
         zeroGeoCoords.push(`${location._id.toString()} (${location.name})`);
         return false;

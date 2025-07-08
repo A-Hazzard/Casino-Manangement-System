@@ -6,7 +6,6 @@ import { PcLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import CustomSelect from "../ui/CustomSelect";
-import DateRange from "../ui/dateRange";
 import dayjs from "dayjs";
 import StatCardSkeleton, {
   ChartSkeleton,
@@ -30,15 +29,6 @@ export default function PcLayout(props: PcLayoutProps) {
     <>
       <div className="hidden lg:flex lg:gap-6">
         <div className="flex-[2] space-y-6 flex flex-col">
-          {/* Date Range Picker */}
-          {props.showDatePicker && (
-            <DateRange
-              CustomDateRange={props.CustomDateRange}
-              setCustomDateRange={props.setCustomDateRange}
-              setActiveFilters={props.setActiveFilters}
-            />
-          )}
-
           <div className="flex items-center gap-2 mb-2">
             <h2 className="text-lg">Total for all Locations and Machines</h2>
             <div
@@ -204,7 +194,6 @@ export default function PcLayout(props: PcLayoutProps) {
                             }
                           }}
                           isActive={true}
-                          isTopPerforming={true}
                           placeholder="Select Time Frame"
                           disabled={props.loadingTopPerforming}
                         />

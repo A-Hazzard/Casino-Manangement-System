@@ -9,11 +9,11 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import ActivityDateRangeFilter from "@/components/administration/ActivityDateRangeFilter";
+import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
 import { DateRange } from "react-day-picker";
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ReactNode } from "react";
 
 const filterButtons = [
@@ -183,6 +183,9 @@ export default function UserActivityLogModal({
   const [activeFilter, setActiveFilter] = useState("date");
   const [activityType, setActivityType] = useState("update");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [pendingDateRange, setPendingDateRange] = useState<
+    DateRange | undefined
+  >(dateRange);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,13 +258,15 @@ export default function UserActivityLogModal({
     } finally {
       setLoading(false);
     }
-  }, [activeFilter, activityType, dateRange, currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, activeFilter, activityType, dateRange]);
 
   useEffect(() => {
     if (open) {
       fetchActivities();
     }
   }, [open, fetchActivities]);
+
+  const activityGroups = groupActivitiesByDate(activities);
 
   const handleFilterChange = (filterKey: string) => {
     setActiveFilter(filterKey);
@@ -277,11 +282,11 @@ export default function UserActivityLogModal({
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    setCurrentPage(1);
+    setPendingDateRange(range);
   };
 
   const handleGoClick = () => {
+    setDateRange(pendingDateRange);
     setCurrentPage(1);
     fetchActivities();
   };
@@ -291,9 +296,16 @@ export default function UserActivityLogModal({
     setIsDetailsModalOpen(true);
   };
 
-  if (!open) return null;
+  const handleSetLastMonth = () => {
+    const now = new Date();
+    const lastMonth = subMonths(now, 1);
+    setPendingDateRange({
+      from: startOfMonth(lastMonth),
+      to: endOfMonth(lastMonth),
+    });
+  };
 
-  const activityGroups = groupActivitiesByDate(activities);
+  if (!open) return null;
 
   return (
     <>
@@ -354,10 +366,11 @@ export default function UserActivityLogModal({
           {/* Date Range Filter */}
           {activeFilter === "date" && (
             <div className="bg-white border-b border-gray-200">
-              <ActivityDateRangeFilter
-                value={dateRange}
+              <ModernDateRangePicker
+                value={pendingDateRange}
                 onChange={handleDateRangeChange}
                 onGo={handleGoClick}
+                onSetLastMonth={handleSetLastMonth}
               />
             </div>
           )}
@@ -489,64 +502,66 @@ export default function UserActivityLogModal({
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Footer with Pagination */}
-          <div className="bg-white border-t border-gray-200 px-6 py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Pagination Info */}
-              {!loading && !error && activities.length > 0 && (
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages} ({activities.length}{" "}
-                  activities)
-                </div>
-              )}
+            {/* Footer with Pagination */}
+            <div className="bg-white border-t border-gray-200 px-6 py-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Pagination Info */}
+                {!loading && !error && activities.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages} ({activities.length}{" "}
+                    activities)
+                  </div>
+                )}
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1 || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-3 py-1 text-sm">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
-                    disabled={currentPage === totalPages || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1 || loading}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1 text-sm">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(totalPages, prev + 1)
+                        )
+                      }
+                      disabled={currentPage === totalPages || loading}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
 
-              {/* Save Button */}
-              <Button className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
-                Save
-              </Button>
+                {/* Save Button */}
+                <Button className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
+                  Save
+                </Button>
+              </div>
             </div>
           </div>
+
+          {/* Activity Details Modal */}
+          <ActivityDetailsModal
+            open={isDetailsModalOpen}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedActivity(null);
+            }}
+            activity={selectedActivity}
+          />
         </div>
       </div>
-
-      {/* Activity Details Modal */}
-      <ActivityDetailsModal
-        open={isDetailsModalOpen}
-        onClose={() => {
-          setIsDetailsModalOpen(false);
-          setSelectedActivity(null);
-        }}
-        activity={selectedActivity}
-      />
     </>
   );
 }

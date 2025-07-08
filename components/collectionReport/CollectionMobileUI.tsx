@@ -1,17 +1,18 @@
 import React from "react";
-import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
 import CollectionReportCards from "@/components/collectionReport/CollectionReportCards";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
+import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
 import PaginationControls from "@/components/ui/PaginationControls";
+import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
+  loading,
+  filteredReports,
+  mobileCurrentItems,
+  mobileTotalPages,
+  mobilePage,
+  onPaginateMobile,
+  mobileCardsRef,
+  // Filter props
   locations,
   selectedLocation,
   onLocationChange,
@@ -21,64 +22,47 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
   isSearching,
-  loading,
-  filteredReports,
-  mobileCurrentItems,
-  mobileTotalPages,
-  mobilePage,
-  onPaginateMobile,
-  mobileCardsRef,
 }) => {
   return (
     <div className="w-full absolute left-0 right-0 lg:hidden bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
+      {/* Filter Container - positioned at the top */}
       <CollectionReportFilters
         locations={locations}
         selectedLocation={selectedLocation}
         onLocationChange={onLocationChange}
         search={search}
         onSearchChange={onSearchChange}
-        onSearchSubmit={onSearchSubmit} // Pass this down
+        onSearchSubmit={onSearchSubmit}
         showUncollectedOnly={showUncollectedOnly}
         onShowUncollectedOnlyChange={onShowUncollectedOnlyChange}
         isSearching={isSearching}
       />
+      
+      {/* Cards Content - below filters */}
+      <div ref={mobileCardsRef} className="space-y-4">
+        {loading ? (
+          <p>Loading...</p>
+        ) : filteredReports.length === 0 ? (
+          <p className="text-center text-gray-500 py-10">
+            No collection reports found.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4">
+              <CollectionReportCards data={mobileCurrentItems} />
+            </div>
 
-      <div className="flex justify-center w-full">
-        <Select defaultValue="today">
-          <SelectTrigger className="bg-buttonActive text-white text-md font-semibold py-2.5 px-4 rounded-md h-auto w-auto min-w-[180px]">
-            <SelectValue placeholder="Sort by: Today" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Sort by: Today</SelectItem>
-            <SelectItem value="yesterday">Sort by: Yesterday</SelectItem>
-            <SelectItem value="last7">Sort by: Last 7 Days</SelectItem>
-          </SelectContent>
-        </Select>
+            {/* Pagination - below cards */}
+            {mobileTotalPages > 1 && (
+              <PaginationControls
+                currentPage={mobilePage - 1}
+                totalPages={mobileTotalPages}
+                setCurrentPage={(page) => onPaginateMobile(page + 1)}
+              />
+            )}
+          </>
+        )}
       </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-40">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-buttonActive"></div>
-        </div>
-      ) : filteredReports.length === 0 ? (
-        <p className="text-center text-gray-500 py-10">
-          No collection reports found.
-        </p>
-      ) : (
-        <>
-          <div ref={mobileCardsRef} className="grid grid-cols-1 gap-4">
-            <CollectionReportCards data={mobileCurrentItems} />
-          </div>
-
-          {mobileTotalPages > 1 && (
-            <PaginationControls
-              currentPage={mobilePage - 1}
-              totalPages={mobileTotalPages}
-              setCurrentPage={(page) => onPaginateMobile(page + 1)}
-            />
-          )}
-        </>
-      )}
     </div>
   );
 };

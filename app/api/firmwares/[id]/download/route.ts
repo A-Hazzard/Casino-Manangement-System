@@ -7,10 +7,7 @@ import { GridFSBucket } from "mongodb";
  * GET /api/firmwares/[id]/download
  * Downloads a firmware file from GridFS
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     const db = await connectDB();
     if (!db) {
@@ -19,7 +16,7 @@ export async function GET(
     const bucket = new GridFSBucket(db, { bucketName: "firmwares" });
 
     // Find the firmware document
-    const { id } = await params;
+    const id = request.nextUrl.pathname.split("/")[3];
     const firmware = await Firmware.findById(id);
     if (!firmware) {
       return NextResponse.json(

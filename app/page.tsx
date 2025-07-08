@@ -6,7 +6,6 @@ import PcLayout from "@/components/layout/PcLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import { dashboardData } from "@/lib/types";
 import { useCallback, useEffect, useRef } from "react";
-import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -16,9 +15,9 @@ import {
   fetchMetricsData,
   fetchTopPerformingDataHelper,
   handleDashboardRefresh,
-  getTimeFilterButtons,
 } from "@/lib/helpers/dashboard";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -50,10 +49,8 @@ function DashboardContent() {
     setGamingLocations,
     selectedLicencee,
     setSelectedLicencee,
-    showDatePicker,
     setShowDatePicker,
     customDateRange,
-    setCustomDateRange,
     topPerformingData,
     setTopPerformingData,
     pieChartSortIsOpen,
@@ -62,13 +59,11 @@ function DashboardContent() {
   const pathname = usePathname();
   // To compare new totals with previous ones.
   const prevTotals = useRef<dashboardData | null>(null);
-  // To prevent double fetch on initial load
-  const hasFetchedOnce = useRef(false);
 
   useEffect(() => {
-    // On initial load, if no licensee is selected, default to "all"
+    // On initial load, if no licensee is selected, default to empty string
     if (!selectedLicencee) {
-      setSelectedLicencee("all");
+      setSelectedLicencee("");
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
@@ -77,10 +72,8 @@ function DashboardContent() {
       if (!selectedLicencee) return; // Don't fetch until a licensee is selected
       setLoadingChartData(true);
       try {
-        if (!hasFetchedOnce.current) {
-          await loadGamingLocations(setGamingLocations);
-          hasFetchedOnce.current = true;
-        }
+        // Always fetch gaming locations when licencee changes
+        await loadGamingLocations(setGamingLocations, selectedLicencee);
 
         await fetchMetricsData(
           activeMetricsFilter,
@@ -187,8 +180,6 @@ function DashboardContent() {
     setTopPerformingData,
   ]);
 
-  const timeFilterButtons = getTimeFilterButtons();
-
   // Render function for pie chart labels
   const renderCustomizedLabel = (props: CustomizedLabelProps) => {
     const labelData = calculatePieChartLabelData(props);
@@ -229,50 +220,9 @@ function DashboardContent() {
               Dashboard
             </h1>
           </div>
-          {/* Date Filter Controls (Desktop) */}
-          <div className="hidden lg:flex space-x-2 overflow-x-auto flex-wrap justify-start mt-2">
-            {timeFilterButtons.map((filter) => (
-              <button
-                key={filter.label}
-                className={`px-2 py-1 text-xs lg:text-base rounded-full mb-1 whitespace-nowrap ${
-                  activeMetricsFilter === filter.value
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-buttonActive"
-                } ${
-                  loadingChartData || refreshing
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                onClick={() =>
-                  !(loadingChartData || refreshing) &&
-                  setActiveMetricsFilter(filter.value)
-                }
-                disabled={loadingChartData || refreshing}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-          {/* Date Filter Controls (Mobile) */}
-          <div className="flex lg:hidden justify-center my-4">
-            <select
-              className={`px-4 py-2 rounded-full text-sm bg-buttonActive text-white ${
-                loadingChartData || refreshing
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-              value={activeMetricsFilter}
-              onChange={(e) =>
-                setActiveMetricsFilter(e.target.value as TimePeriod)
-              }
-              disabled={loadingChartData || refreshing}
-            >
-              {timeFilterButtons.map((filter) => (
-                <option key={filter.value} value={filter.value}>
-                  {filter.label}
-                </option>
-              ))}
-            </select>
+          {/* Date Filter Controls */}
+          <div className="mt-2">
+            <DashboardDateFilters disabled={loadingChartData || refreshing} />
           </div>
 
           {/* Main dashboard layouts */}
@@ -288,17 +238,13 @@ function DashboardContent() {
             activeMetricsFilter={activeMetricsFilter}
             activePieChartFilter={activePieChartFilter}
             topPerformingData={topPerformingData}
-            showDatePicker={showDatePicker}
             setLoadingChartData={setLoadingChartData}
             setRefreshing={setRefreshing}
-            CustomDateRange={customDateRange}
-            setCustomDateRange={setCustomDateRange}
             setActiveFilters={setActiveFilters}
             setActiveTab={setActiveTab}
             setTotals={setTotals}
             setChartData={setChartData}
             setPieChartSortIsOpen={setPieChartSortIsOpen}
-            setShowDatePicker={setShowDatePicker}
             setTopPerformingData={setTopPerformingData}
             setActiveMetricsFilter={setActiveMetricsFilter}
             setActivePieChartFilter={setActivePieChartFilter}
@@ -319,17 +265,13 @@ function DashboardContent() {
             activeMetricsFilter={activeMetricsFilter}
             activePieChartFilter={activePieChartFilter}
             topPerformingData={topPerformingData}
-            showDatePicker={showDatePicker}
             setLoadingChartData={setLoadingChartData}
             setRefreshing={setRefreshing}
-            CustomDateRange={customDateRange}
-            setCustomDateRange={setCustomDateRange}
             setActiveFilters={setActiveFilters}
             setActiveTab={setActiveTab}
             setTotals={setTotals}
             setChartData={setChartData}
             setPieChartSortIsOpen={setPieChartSortIsOpen}
-            setShowDatePicker={setShowDatePicker}
             setTopPerformingData={setTopPerformingData}
             setActiveMetricsFilter={setActiveMetricsFilter}
             setActivePieChartFilter={setActivePieChartFilter}

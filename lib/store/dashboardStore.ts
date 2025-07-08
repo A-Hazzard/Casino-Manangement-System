@@ -24,6 +24,7 @@ const dummyState: DashBoardStore = {
   gamingLocations: [],
   selectedLicencee: "",
   customDateRange: { startDate: new Date(), endDate: new Date() },
+  pendingCustomDateRange: undefined,
   topPerformingData: [],
   setInitialLoading: () => {},
   setLoadingChartData: () => {},
@@ -40,6 +41,7 @@ const dummyState: DashBoardStore = {
   setGamingLocations: () => {},
   setSelectedLicencee: () => {},
   setCustomDateRange: () => {},
+  setPendingCustomDateRange: () => {},
   setTopPerformingData: () => {},
 };
 
@@ -67,6 +69,7 @@ const createStore = () => {
     gamingLocations: [],
     selectedLicencee: "",
     customDateRange: { startDate: new Date(), endDate: new Date() },
+    pendingCustomDateRange: undefined,
     topPerformingData: [],
 
     setInitialLoading: (initialLoading) => set({ initialLoading }),
@@ -87,6 +90,8 @@ const createStore = () => {
     setGamingLocations: (gamingLocations) => set({ gamingLocations }),
     setSelectedLicencee: (selectedLicencee) => set({ selectedLicencee }),
     setCustomDateRange: (customDateRange) => set({ customDateRange }),
+    setPendingCustomDateRange: (pendingCustomDateRange) =>
+      set({ pendingCustomDateRange }),
     setTopPerformingData: (topPerformingData) => set({ topPerformingData }),
   }));
 };
