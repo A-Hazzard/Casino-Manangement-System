@@ -18,7 +18,6 @@ import axios from "axios";
 import { getNames } from "country-list";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { Search, Grid, List } from "lucide-react";
 
 const LocationPickerMap = dynamic(
   () => import("@/components/ui/locations/LocationPickerMap"),
@@ -38,11 +37,6 @@ const ALLOWED_COUNTRIES = [
   { name: "Barbados", code: "bb" },
 ];
 
-function getCountryCodeByName(name: string) {
-  const found = ALLOWED_COUNTRIES.find(c => c.name.toLowerCase() === name.toLowerCase());
-  return found ? found.code : "tt";
-}
-
 export const NewLocationModal: React.FC<NewLocationModalProps> = ({
   onLocationAdded,
 }) => {
@@ -50,16 +44,13 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [useMap, setUseMap] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
   const [searchQuery, setSearchQuery] = useState("");
   const [initialLat, setInitialLat] = useState(POS_LAT);
   const [initialLng, setInitialLng] = useState(POS_LNG);
   const [locationReady, setLocationReady] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [detectedCountry, setDetectedCountry] = useState<string>("Trinidad and Tobago");
+  const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
   const [countryCode, setCountryCode] = useState<string>("tt");
+  const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
 
   const [formData, setFormData] = useState({
     name: "",
@@ -186,7 +177,6 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
             const country = data.address?.country || "Trinidad and Tobago";
             let allowed = ALLOWED_COUNTRIES.find(c => c.name.toLowerCase() === country.toLowerCase());
             if (!allowed) allowed = ALLOWED_COUNTRIES[0];
-            setDetectedCountry(allowed.name);
             setCountryCode(allowed.code);
           },
           async () => {
@@ -197,17 +187,14 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
               const country = data.country_name || "Trinidad and Tobago";
               let allowed = ALLOWED_COUNTRIES.find(c => c.name.toLowerCase() === country.toLowerCase());
               if (!allowed) allowed = ALLOWED_COUNTRIES[0];
-              setDetectedCountry(allowed.name);
               setCountryCode(allowed.code);
             } catch {
-              setDetectedCountry("Trinidad and Tobago");
               setCountryCode("tt");
             }
           },
           { timeout: 5000 }
         );
       } else {
-        setDetectedCountry("Trinidad and Tobago");
         setCountryCode("tt");
       }
     }
@@ -267,19 +254,19 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
     }));
   };
 
-  const handleSuggestionSelect = (s: any) => {
-    setSearchQuery(s.display_name);
+  const handleSuggestionSelect = (s: Array<{ display_name: string; lat: string; lon: string }>) => {
+    setSearchQuery(s[0].display_name);
     setSuggestions([]);
-    if (s.lat && s.lon) {
+    if (s[0].lat && s[0].lon) {
       // Only update the form fields when a suggestion is selected
       setFormData(prev => ({
         ...prev,
-        latitude: parseFloat(s.lat).toFixed(6),
-        longitude: parseFloat(s.lon).toFixed(6),
-        address: s.display_name,
+        latitude: parseFloat(s[0].lat).toFixed(6),
+        longitude: parseFloat(s[0].lon).toFixed(6),
+        address: s[0].display_name,
       }));
       // Optionally, you can also update the map position by calling handleLocationSelect
-      handleLocationSelect({ lat: parseFloat(s.lat), lng: parseFloat(s.lon), address: s.display_name });
+      handleLocationSelect({ lat: parseFloat(s[0].lat), lng: parseFloat(s[0].lon), address: s[0].display_name });
     }
   };
 
@@ -516,7 +503,7 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
                           <li
                             key={idx}
                             className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                            onClick={() => handleSuggestionSelect(s)}
+                            onClick={() => handleSuggestionSelect([s])}
                           >
                             {s.display_name}
                           </li>
@@ -548,7 +535,6 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
                   initialLat={parseFloat(formData.latitude) || initialLat}
                   initialLng={parseFloat(formData.longitude) || initialLng}
                   mapType={mapType}
-                  onMapTypeChange={setMapType}
                   searchQuery={searchQuery}
                   onLocationSelect={handleLocationSelect}
                 />

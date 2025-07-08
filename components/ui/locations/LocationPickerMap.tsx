@@ -9,6 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import L, { LatLng } from "leaflet";
+import { Map as LeafletMap } from 'leaflet';
 
 // Fix for custom marker icon
 const customIcon = new L.Icon({
@@ -27,7 +28,6 @@ interface LocationPickerMapProps {
   initialLat: number;
   initialLng: number;
   mapType: MapType;
-  onMapTypeChange: (type: MapType) => void;
   searchQuery: string;
   onLocationSelect: (selectedLocation: {
     lat: number;
@@ -43,13 +43,11 @@ const LocationPickerMap = ({
   initialLat,
   initialLng,
   mapType,
-  onMapTypeChange,
   searchQuery,
   onLocationSelect,
 }: LocationPickerMapProps) => {
   const [position, setPosition] = useState<LatLng>(new LatLng(initialLat, initialLng));
-  const [address, setAddress] = useState<string>("");
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
 
   // Geocode when searchQuery changes
   useEffect(() => {
@@ -64,7 +62,6 @@ const LocationPickerMap = ({
             const latNum = parseFloat(lat);
             const lonNum = parseFloat(lon);
             setPosition(new LatLng(latNum, lonNum));
-            setAddress(display_name);
             onLocationSelect({ lat: latNum, lng: lonNum, address: display_name });
             if (mapRef.current) {
               mapRef.current.setView([latNum, lonNum], 13);
@@ -86,11 +83,9 @@ const LocationPickerMap = ({
       .then((res) => res.json())
       .then((data) => {
         const addr = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        setAddress(addr);
         onLocationSelect({ lat, lng, address: addr });
       })
       .catch(() => {
-        setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
       });
   };
@@ -120,9 +115,6 @@ const LocationPickerMap = ({
         style={{ height: "100%", width: "100%" }}
         className="z-0"
         scrollWheelZoom={true}
-        whenCreated={(mapInstance) => {
-          mapRef.current = mapInstance;
-        }}
       >
         <TileLayer
           url={mapType === "street" ? OSM_URL : SATELLITE_URL}
