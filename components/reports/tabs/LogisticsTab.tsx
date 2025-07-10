@@ -1,4 +1,6 @@
 import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
+import { useState } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { LogisticsEntry } from "@/lib/types/reports";
 import { format } from "date-fns";
-import { useState } from "react";
 
 const StatusBadge = ({ status }: { status: LogisticsEntry["status"] }) => {
   const statusStyles = {
@@ -30,7 +31,8 @@ const StatusBadge = ({ status }: { status: LogisticsEntry["status"] }) => {
 
 export default function LogisticsTab() {
   const { logisticsEntries } = useAnalyticsDataStore();
-  const [isLoading] = useState(false);
+  // TODO: Add logistics filtering state to reports store
+  const isLoading = false;
   const [logisticsSearchTerm, setLogisticsSearchTerm] = useState("");
   const [logisticsStatusFilter, setLogisticsStatusFilter] = useState("all");
 

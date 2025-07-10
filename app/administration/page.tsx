@@ -782,9 +782,7 @@ export default function AdministrationPage() {
     <>
       <Sidebar pathname={pathname} />
       <div
-        className={`w-full min-h-screen bg-background flex ${
-          "md:pl-[8rem]"
-        }`}
+        className={`w-full min-h-screen bg-background flex md:pl-[8rem] transition-all duration-300`}
       >
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
           <Header />

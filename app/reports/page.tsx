@@ -14,16 +14,10 @@ import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 // Types
-import type { ReportView } from "@/lib/types/reports";
-
-// Constants
-import {
-  reportsTabsConfig,
-  pageVariants,
-  tabVariants,
-} from "@/lib/constants/uiConstants";
+import type { ReportView, ReportTab } from "@/lib/types/reports";
 
 // Tab components
+import DashboardTab from "@/components/reports/tabs/DashboardTab";
 import LocationsTab from "@/components/reports/tabs/LocationsTab";
 import MachinesTab from "@/components/reports/tabs/MachinesTab";
 
@@ -45,6 +39,40 @@ import {
   FileText,
 } from "lucide-react";
 
+const reportsTabsConfig: ReportTab[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: "📊",
+    description: "Real-time overview of casino operations and KPIs",
+  },
+  {
+    id: "locations",
+    label: "Locations",
+    icon: "🏢",
+    description: "Location performance analysis and comparisons",
+  },
+  {
+    id: "machines",
+    label: "Machines",
+    icon: "🎰",
+    description: "Individual machine performance and revenue tracking",
+  },
+];
+
+// Animation variants
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+const tabVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20 },
+};
+
 export default function ReportsPage() {
   const pathname = usePathname();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
@@ -58,38 +86,19 @@ export default function ReportsPage() {
     fullscreenMode,
     toggleFullscreen,
     refreshAllData,
+    realTimeMetrics,
   } = useReportsStore();
 
+  const [isMobile, setIsMobile] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
-  const [isLicenseeReady, setIsLicenseeReady] = useState(false);
 
+  // Check if mobile
   useEffect(() => {
-    const ensureLicenseeIsSelected = async () => {
-      if (selectedLicencee) {
-        setIsLicenseeReady(true);
-        return;
-      }
-      try {
-        const response = await fetch("/api/licensees");
-        if (!response.ok) throw new Error("Failed to fetch");
-        const data = await response.json();
-        if (data.licensees && data.licensees.length > 0) {
-          setSelectedLicencee(data.licensees[0]._id);
-          setIsLicenseeReady(true);
-        } else {
-          setError("No licensees found");
-          toast.error("No licensees available to display reports.");
-          setIsLicenseeReady(false); // Can't proceed
-        }
-      } catch (error) {
-        console.error("Failed to fetch licensees:", error);
-        setError("Failed to load default licensee");
-        toast.error("Failed to load default licensee");
-        setIsLicenseeReady(false); // Can't proceed
-      }
-    };
-    ensureLicenseeIsSelected();
-  }, [selectedLicencee, setSelectedLicencee, setError]);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Handle tab change with loading state
   const handleTabChange = async (tabId: ReportView) => {
@@ -121,7 +130,8 @@ export default function ReportsPage() {
   };
 
   const renderTabContent = () => {
-    const tabComponents: Record<string, React.ReactElement> = {
+    const tabComponents = {
+      dashboard: <DashboardTab />,
       locations: <LocationsTab />,
       machines: <MachinesTab />,
     };
@@ -137,7 +147,7 @@ export default function ReportsPage() {
           transition={{ duration: 0.2 }}
           className="w-full h-full"
         >
-          {tabComponents[activeView] || <LocationsTab />}
+          {tabComponents[activeView] || <DashboardTab />}
         </motion.div>
       </AnimatePresence>
     );
@@ -150,8 +160,8 @@ export default function ReportsPage() {
       <Sidebar pathname={pathname} />
       <div
         className={`w-full max-w-full min-h-screen bg-background flex overflow-hidden transition-all duration-300 ${
-          fullscreenMode ? "fixed inset-0 z-50" : ""
-        }`}
+          !isMobile ? "md:pl-20 lg:pl-36" : ""
+        } ${fullscreenMode ? "fixed inset-0 z-50" : ""}`}
       >
         <motion.main
           className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4"
@@ -164,7 +174,7 @@ export default function ReportsPage() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            disabled={isLoading || !isLicenseeReady}
+            disabled={isLoading}
             hideLicenceeFilter={false}
           />
 
@@ -197,6 +207,14 @@ export default function ReportsPage() {
                 >
                   {currentTab?.label}
                 </Badge>
+                {realTimeMetrics && (
+                  <Badge
+                    variant="outline"
+                    className="text-green-600 border-green-600"
+                  >
+                    Live • {realTimeMetrics.currentPlayers} players
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -256,7 +274,6 @@ export default function ReportsPage() {
                 isSyncing={isLoading}
                 disabled={isLoading}
                 className="bg-button hover:bg-buttonActive text-white"
-                label="Refresh"
               />
             </div>
           </div>
@@ -265,7 +282,7 @@ export default function ReportsPage() {
           <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex space-x-8 overflow-x-auto px-6">
-              {reportsTabsConfig.map((tab) => (
+              {reportsTabsConfig.filter(tab => tab.id !== "dashboard").map((tab) => (
                 <motion.button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
@@ -279,10 +296,15 @@ export default function ReportsPage() {
                   `}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={isLoading || !isLicenseeReady}
+                  disabled={isLoading}
                 >
                   <span className="text-lg">{tab.icon}</span>
                   <span>{tab.label}</span>
+                  {tab.id === "dashboard" && realTimeMetrics && (
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {realTimeMetrics.activeTerminals}
+                    </Badge>
+                  )}
                 </motion.button>
               ))}
             </nav>
@@ -293,9 +315,9 @@ export default function ReportsPage() {
                 value={activeView}
                 onChange={(e) => handleTabChange(e.target.value as ReportView)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-                disabled={isLoading || !isLicenseeReady}
+                disabled={isLoading}
               >
-                {reportsTabsConfig.map((tab) => (
+                {reportsTabsConfig.filter(tab => tab.id !== "dashboard").map((tab) => (
                   <option key={tab.id} value={tab.id}>
                     {tab.icon} {tab.label}
                   </option>
@@ -332,15 +354,7 @@ export default function ReportsPage() {
           </AnimatePresence>
 
           {/* Tab Content */}
-          <div className="flex-1 min-h-0">
-            {isLicenseeReady ? (
-              renderTabContent()
-            ) : (
-              <div className="flex justify-center items-center h-full">
-                <p>Loading reports...</p>
-              </div>
-            )}
-          </div>
+          <div className="flex-1 min-h-0">{renderTabContent()}</div>
         </motion.main>
       </div>
 

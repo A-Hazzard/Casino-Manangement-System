@@ -294,22 +294,7 @@ export default function LocationPage() {
             </Link>
             <h1 className="text-2xl font-bold">Location Details</h1>
             
-            {/* Location Dropdown */}
-            <div className="relative ml-4">
-              <select
-                className="bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedLocationId}
-                onChange={(e) => handleLocationChangeInPlace(e.target.value, locations.find(loc => loc.id === e.target.value)?.name || "")}
-                disabled={loading || cabinetsLoading || refreshing}
-              >
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
+            {/* Remove Location Dropdown */}
             <div className="ml-auto">
               <RefreshButton
                 onClick={handleRefresh}

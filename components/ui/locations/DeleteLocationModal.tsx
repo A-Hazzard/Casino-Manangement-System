@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import axios from "axios";
 import { toast } from "sonner";
+import Image from "next/image";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 interface DeleteLocationModalProps {
   onLocationDeleted: () => void;

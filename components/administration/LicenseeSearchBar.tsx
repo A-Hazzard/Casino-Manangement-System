@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import activityLogIcon from "@/public/activityLogIcon.svg";
 
 type LicenseeSearchBarProps = {
   searchValue: string;
@@ -34,7 +35,7 @@ export default function LicenseeSearchBar({
         className="bg-button text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-buttonActive transition-colors"
       >
         <Image
-          src="/activityLogIcon.svg"
+          src={activityLogIcon}
           alt="Activity Log"
           width={20}
           height={20}

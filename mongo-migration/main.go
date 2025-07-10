@@ -73,7 +73,7 @@ func main() {
 		"schedulers",
 		"licencees",
 		"movementrequests",
-		"activitylogs",
+		"activityLogs",
 		"firmwares",
 	}
 

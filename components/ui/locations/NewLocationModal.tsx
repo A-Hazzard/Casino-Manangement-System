@@ -1,231 +1,191 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useLocationStore } from "@/lib/store/locationStore";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import axios from "axios";
-import { getNames } from "country-list";
-import dynamic from "next/dynamic";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-
-const LocationPickerMap = dynamic(
-  () => import("@/components/ui/locations/LocationPickerMap"),
-  { ssr: false }
-);
-
-const POS_LAT = 10.6549;
-const POS_LNG = -61.5019;
+import { useRouter } from "next/navigation";
+import { useLocationStore } from "@/lib/store/locationStore";
+import LocationPickerMap from "./LocationPickerMap";
+import { SelectedLocation, LocationCoordinates } from "@/lib/types/maps";
 
 interface NewLocationModalProps {
-  onLocationAdded: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-const ALLOWED_COUNTRIES = [
-  { name: "Trinidad and Tobago", code: "tt" },
-  { name: "Guyana", code: "gy" },
-  { name: "Barbados", code: "bb" },
-];
+export default function NewLocationModal({ isOpen, onClose }: NewLocationModalProps) {
+  const router = useRouter();
+  const { createLocation } = useLocationStore();
 
-export const NewLocationModal: React.FC<NewLocationModalProps> = ({
-  onLocationAdded,
-}) => {
-  const { isLocationModalOpen, closeLocationModal } = useLocationStore();
-  const modalRef = useRef<HTMLDivElement>(null);
-  const backdropRef = useRef<HTMLDivElement>(null);
-  const [useMap, setUseMap] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [initialLat, setInitialLat] = useState(POS_LAT);
-  const [initialLng, setInitialLng] = useState(POS_LNG);
-  const [locationReady, setLocationReady] = useState(false);
-  const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
-  const [countryCode, setCountryCode] = useState<string>("tt");
-  const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
-
+  // Form state - all fields blank by default
   const [formData, setFormData] = useState({
     name: "",
-    address: "",
-    country: "Guyana",
+    street: "",
+    city: "",
+    country: "",
     profitShare: "",
+    licencee: "",
     isLocalServer: false,
     latitude: "",
     longitude: "",
-    licensee: "",
   });
+  const [useMap, setUseMap] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(null);
 
-  const [loading, setLoading] = useState(false);
-
-  const countryNames = getNames();
-
-  // Handle modal animations
+  // Detect user location on modal open
   useEffect(() => {
-    if (isLocationModalOpen) {
-      gsap.fromTo(
-        modalRef.current,
-        { opacity: 0, y: -20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.3,
-          ease: "power2.out",
-          overwrite: true,
-        }
-      );
-
-      gsap.to(backdropRef.current, {
-        opacity: 1,
-        duration: 0.2,
-        ease: "power2.out",
-        overwrite: true,
-      });
+    if (isOpen) {
+      detectUserLocation();
     }
-  }, [isLocationModalOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
-  // Map animation on toggle
+  // Reset form when modal closes
   useEffect(() => {
-    if (useMap) {
-      const mapContainer = document.querySelector('.map-container');
-      if (mapContainer) {
-        gsap.fromTo(
-          mapContainer,
-          { 
-            opacity: 0, 
-            y: -20,
-            scale: 0.95
-          },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.4,
-            ease: "power2.out",
-          }
-        );
-      }
-    }
-  }, [useMap]);
-
-  // Default location logic
-  useEffect(() => {
-    // Try browser geolocation
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setInitialLat(pos.coords.latitude);
-        setInitialLng(pos.coords.longitude);
-        setLocationReady(true);
-      },
-      async () => {
-        // Fallback to IP geolocation
-        try {
-          const res = await fetch("https://ipapi.co/json/");
-          const data = await res.json();
-          if (data && data.latitude && data.longitude) {
-            setInitialLat(data.latitude);
-            setInitialLng(data.longitude);
-          } else {
-            setInitialLat(POS_LAT);
-            setInitialLng(POS_LNG);
-          }
-        } catch {
-          setInitialLat(POS_LAT);
-          setInitialLng(POS_LNG);
-        }
-        setLocationReady(true);
-      },
-      { timeout: 5000 }
-    );
-  }, []);
-
-  // Clear all fields when modal opens
-  useEffect(() => {
-    if (isLocationModalOpen) {
+    if (!isOpen) {
       setFormData({
         name: "",
-        address: "",
-        country: "Guyana",
+        street: "",
+        city: "",
+        country: "",
         profitShare: "",
+        licencee: "",
         isLocalServer: false,
         latitude: "",
         longitude: "",
-        licensee: "",
       });
-      setSearchQuery("");
+      setUseMap(false);
     }
-  }, [isLocationModalOpen]);
+  }, [isOpen]);
 
-  // On modal open, prompt for geolocation
-  useEffect(() => {
-    if (isLocationModalOpen) {
-      // Try browser geolocation
+  const detectUserLocation = async () => {
+    setIsDetectingLocation(true);
+    
+    try {
+      // First try to get user's browser location
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            // Reverse geocode to get country
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            const data = await res.json();
-            const country = data.address?.country || "Trinidad and Tobago";
-            let allowed = ALLOWED_COUNTRIES.find(c => c.name.toLowerCase() === country.toLowerCase());
-            if (!allowed) allowed = ALLOWED_COUNTRIES[0];
-            setCountryCode(allowed.code);
-          },
-          async () => {
-            // If denied, use IP geolocation
-            try {
-              const res = await fetch("https://ipapi.co/json/");
-              const data = await res.json();
-              const country = data.country_name || "Trinidad and Tobago";
-              let allowed = ALLOWED_COUNTRIES.find(c => c.name.toLowerCase() === country.toLowerCase());
-              if (!allowed) allowed = ALLOWED_COUNTRIES[0];
-              setCountryCode(allowed.code);
-            } catch {
-              setCountryCode("tt");
-            }
-          },
-          { timeout: 5000 }
-        );
-      } else {
-        setCountryCode("tt");
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          });
+        });
+
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+        
+        // Get address from coordinates using reverse geocoding
+        const address = await getAddressFromCoordinates(latitude, longitude);
+        
+        setFormData(prev => ({
+          ...prev,
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+          country: address.country || "Trinidad and Tobago",
+          city: address.city || "",
+        }));
+
+        // Don't show toast for browser location detection
+        return;
       }
+    } catch {
+      console.log("Browser location access denied or failed, trying IP-based location");
     }
-  }, [isLocationModalOpen]);
 
-  useEffect(() => {
-    if (searchQuery.length > 2) {
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=${countryCode}`)
-        .then(res => res.json())
-        .then(data => setSuggestions(data || []));
-    } else {
-      setSuggestions([]);
+    try {
+      // Fallback to IP-based location detection
+      const ipLocation = await getLocationFromIP();
+      setUserLocation({ lat: ipLocation.latitude, lng: ipLocation.longitude });
+      
+      setFormData(prev => ({
+        ...prev,
+        latitude: ipLocation.latitude.toFixed(6),
+        longitude: ipLocation.longitude.toFixed(6),
+        country: ipLocation.country || "Trinidad and Tobago",
+        city: ipLocation.city || "",
+      }));
+
+      // Don't show toast for IP location detection
+    } catch {
+      console.log("IP location detection failed, using default");
+      
+      // Final fallback to Trinidad and Tobago POS
+      const defaultLat = 10.6599;
+      const defaultLng = -61.5199;
+      setUserLocation({ lat: defaultLat, lng: defaultLng });
+      
+      setFormData(prev => ({
+        ...prev,
+        latitude: defaultLat.toFixed(6),
+        longitude: defaultLng.toFixed(6),
+        country: "Trinidad and Tobago",
+        city: "Port of Spain",
+      }));
+
+      // Don't show toast for default location
+    } finally {
+      setIsDetectingLocation(false);
     }
-  }, [searchQuery, countryCode]);
+  };
 
-  const handleClose = () => {
-    gsap.to(modalRef.current, {
-      opacity: 0,
-      y: -20,
-      duration: 0.3,
-      ease: "power2.in",
-      overwrite: true,
-    });
+  const getAddressFromCoordinates = async (lat: number, lng: number): Promise<{ country: string; city: string }> => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+      
+      if (data.results && data.results[0]) {
+        const result = data.results[0];
+        let country = "";
+        let city = "";
+        
+        for (const component of result.address_components) {
+          const types = component.types;
+          
+          if (types.includes("locality")) {
+            city = component.long_name;
+          } else if (types.includes("administrative_area_level_1") && !city) {
+            // Fallback to state/province if no city found
+            city = component.long_name;
+          }
+          
+          if (types.includes("country")) {
+            country = component.long_name;
+          }
+        }
+        
+        return { country, city };
+      }
+    } catch {
+      console.error("Error getting address from coordinates:");
+    }
+    
+    return { country: "Trinidad and Tobago", city: "" };
+  };
 
-    gsap.to(backdropRef.current, {
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.in",
-      overwrite: true,
-      onComplete: closeLocationModal,
-    });
+  const getLocationFromIP = async (): Promise<{ latitude: number; longitude: number; country: string; city: string }> => {
+    try {
+      const response = await fetch("https://ipapi.co/json/");
+      const data = await response.json();
+      
+      return {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        country: data.country_name || "Trinidad and Tobago",
+        city: data.city || "",
+      };
+    } catch {
+      console.error("Error getting location from IP:");
+      throw new Error("Failed to get location from IP");
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,326 +201,263 @@ export const NewLocationModal: React.FC<NewLocationModalProps> = ({
     setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
-  const handleLocationSelect = (selectedLocation: {
-    lat: number;
-    lng: number;
-    address: string;
-  }) => {
+  const handleLocationSelect = (location: SelectedLocation) => {
     setFormData((prev) => ({
       ...prev,
-      latitude: selectedLocation.lat.toFixed(6),
-      longitude: selectedLocation.lng.toFixed(6),
-      address: selectedLocation.address,
+      latitude: location.lat.toFixed(6),
+      longitude: location.lng.toFixed(6),
+      // Update city and country if they were provided by the map
+      ...(location.city && { city: location.city }),
+      ...(location.country && { country: location.country }),
     }));
   };
 
-  const handleSuggestionSelect = (s: Array<{ display_name: string; lat: string; lon: string }>) => {
-    setSearchQuery(s[0].display_name);
-    setSuggestions([]);
-    if (s[0].lat && s[0].lon) {
-      // Only update the form fields when a suggestion is selected
-      setFormData(prev => ({
-        ...prev,
-        latitude: parseFloat(s[0].lat).toFixed(6),
-        longitude: parseFloat(s[0].lon).toFixed(6),
-        address: s[0].display_name,
-      }));
-      // Optionally, you can also update the map position by calling handleLocationSelect
-      handleLocationSelect({ lat: parseFloat(s[0].lat), lng: parseFloat(s[0].lon), address: s[0].display_name });
-    }
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  const handleSubmit = async () => {
     try {
-      setLoading(true);
+      // Validate form
+      if (!formData.name || !formData.street) {
+        throw new Error("Please fill in all required fields");
+      }
 
+      // Create location object matching the expected interface
       const locationData = {
         name: formData.name,
-        address: {
-          street: formData.address,
-          line2: "",
-          city: "",
-        },
-        country: formData.country,
-        profitShare: parseInt(formData.profitShare),
-        rel: {
-          licensee: formData.licensee,
-        },
-        isLocalServer: formData.isLocalServer,
-        geoCoords: {
-          latitude: parseFloat(formData.latitude),
-          longitude: parseFloat(formData.longitude),
-        },
+        address: formData.street, // Just pass the street as address string
+        latitude: parseFloat(formData.latitude),
+        longitude: parseFloat(formData.longitude),
       };
 
-      await axios.post("/api/locations", locationData);
-      toast.success("Location created successfully!");
-      onLocationAdded();
-      handleClose();
-      // You might want to refresh the locations list after adding a new one
+      // Add location
+      await createLocation(locationData);
+
+      // Show success message
+      toast.success("Location added successfully");
+
+      // Close modal and refresh
+      onClose();
+      router.refresh();
     } catch (error) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error creating location:", error);
-      }
+      console.error("Error adding location:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add location");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (!isLocationModalOpen) return null;
-
-  // Desktop View
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div
-        ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
-      />
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-white">
+        <DialogHeader className="p-6 border-b border-gray-200">
+          <DialogTitle className="text-2xl font-bold text-gray-800">
+            Add New Location
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Location Detection Status */}
+          {isDetectingLocation && !formData.latitude && !formData.longitude && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                🔍 Detecting your location...
+              </p>
+            </div>
+          )}
 
-      {/* Desktop Modal Content */}
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div
-          ref={modalRef}
-          className="bg-blue-50 rounded-md shadow-lg max-w-xl w-full max-h-[90vh] overflow-y-auto"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
-        >
-          <div className="p-4">
-            <h2 className="text-xl font-semibold text-center mb-4">
-              New Location
-            </h2>
+          {/* Location Name */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-grayHighlight mb-1">
+              Location Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Enter location name"
+              className="w-full bg-container border-border"
+            />
           </div>
 
-          <div className="px-4 sm:px-8 pb-8 space-y-4">
-            {/* Location Name */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-grayHighlight mb-1">
-                Location Name
-              </label>
-              <Input
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Mixtura Brasileira 2 LT"
-                className="w-full bg-container border-border"
-              />
-            </div>
+          {/* Address */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-grayHighlight mb-1">
+              Address <span className="text-red-500">*</span>
+            </label>
+            <Input
+              name="street"
+              value={formData.street}
+              onChange={handleInputChange}
+              placeholder="Street"
+              className="w-full bg-container border-border"
+            />
+          </div>
 
-            {/* Address */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-grayHighlight mb-1">
-                Address
-              </label>
-              <Input
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                placeholder="Street"
-                className="w-full bg-container border-border"
-              />
-            </div>
+          {/* Line 2 */}
+          <div className="mb-4">
+            <Input
+              name="city"
+              value={formData.city}
+              onChange={handleInputChange}
+              placeholder="City"
+              className="w-full bg-container border-border"
+            />
+          </div>
 
-            {/* Country */}
-            <div className="mb-4">
+          {/* City and Country */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
               <label className="block text-sm font-medium text-grayHighlight mb-1">
                 Country
               </label>
-              <Select
+              <select
+                name="country"
                 value={formData.country}
-                onValueChange={(value) => handleSelectChange("country", value)}
+                onChange={(e) => handleSelectChange("country", e.target.value)}
+                className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
               >
-                <SelectTrigger className="bg-container border-border">
-                  <SelectValue placeholder="Country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryNames.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Select Country</option>
+                <option value="Guyana">Guyana</option>
+                <option value="Trinidad and Tobago">Trinidad and Tobago</option>
+                <option value="Barbados">Barbados</option>
+                <option value="Jamaica">Jamaica</option>
+              </select>
             </div>
-
-            {/* Profit Share and Day Start Time */}
-            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center">
-                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
-                  <span className="text-sm font-medium">Profit Share</span>
-                </div>
-                <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
-                  <Input
-                    name="profitShare"
-                    value={formData.profitShare}
-                    onChange={handleInputChange}
-                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                  <span className="pr-4">%</span>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
-                  <span className="text-sm font-medium">Day Start Time</span>
-                </div>
-                <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
-                  <Input
-                    name="dayStartTime"
-                    value="Curr. day, 08:00"
-                    readOnly
-                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* No SMIB Location */}
-            <div className="mb-4 flex justify-center">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="noSMIBLocation"
-                  checked={formData.isLocalServer}
-                  onCheckedChange={(checked) =>
-                    handleCheckboxChange("isLocalServer", checked === true)
-                  }
-                  className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
-                />
-                <Label
-                  htmlFor="noSMIBLocation"
-                  className="text-sm font-medium"
-                >
-                  No SMIB Location
-                </Label>
-              </div>
-            </div>
-
-            {/* GEO Coordinates */}
-            <div className="mb-4">
-              <p className="text-sm font-medium mb-2">GEO Coordinates</p>
-              {/* Map Toggle Checkbox */}
-              <div className="flex items-center space-x-2 mb-4">
-                <Checkbox
-                  id="useMap"
-                  checked={useMap}
-                  onCheckedChange={(checked) => setUseMap(checked === true)}
-                  className="text-buttonActive border-buttonActive focus:ring-buttonActive"
-                />
-                <Label htmlFor="useMap" className="font-medium text-gray-700">
-                  Use Map to Select Location
-                </Label>
-              </div>
-              {/* Coordinate Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div className="flex items-center">
-                  <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
-                    <span className="text-sm font-medium">Latitude</span>
-                  </div>
-                  <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
-                    <Input
-                      name="latitude"
-                      value={formData.latitude}
-                      onChange={handleInputChange}
-                      className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
-                      readOnly={useMap}
-                      placeholder="6.809985"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
-                    <span className="text-sm font-medium">Longitude</span>
-                  </div>
-                  <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
-                    <Input
-                      name="longitude"
-                      value={formData.longitude}
-                      onChange={handleInputChange}
-                      className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
-                      readOnly={useMap}
-                      placeholder="-58.166204"
-                    />
-                  </div>
-                </div>
-              </div>
-              {/* Search bar and map type toggle above the map */}
-              {useMap && (
-                <div className="mb-4 flex flex-col sm:flex-row gap-2 items-center relative">
-                  <div className="relative w-full sm:w-auto">
-                    <Input
-                      type="text"
-                      placeholder="Search for a location..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full sm:w-auto"
-                      autoComplete="off"
-                    />
-                    {/* Suggestions dropdown */}
-                    {searchQuery.length > 2 && suggestions.length > 0 && (
-                      <ul className="absolute z-[1000] left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto mt-1">
-                        {suggestions.map((s, idx) => (
-                          <li
-                            key={idx}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                            onClick={() => handleSuggestionSelect([s])}
-                          >
-                            {s.display_name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={mapType === 'street' ? 'default' : 'outline'}
-                      onClick={() => setMapType('street')}
-                    >
-                      Street
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={mapType === 'satellite' ? 'default' : 'outline'}
-                      onClick={() => setMapType('satellite')}
-                    >
-                      Satellite
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {/* Map Component */}
-              {useMap && locationReady && (
-                <LocationPickerMap
-                  initialLat={parseFloat(formData.latitude) || initialLat}
-                  initialLng={parseFloat(formData.longitude) || initialLng}
-                  mapType={mapType}
-                  searchQuery={searchQuery}
-                  onLocationSelect={handleLocationSelect}
-                />
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4 mt-6">
-              <Button
-                className="bg-button hover:bg-button/90 text-primary-foreground px-6 w-full sm:w-auto"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
-              </Button>
-              <Button
-                variant="outline"
-                className="border-button text-button hover:bg-button/10 px-6 w-full sm:w-auto"
-                onClick={handleClose}
-              >
-                Close
-              </Button>
+            <div>
+              <label className="block text-sm font-medium text-grayHighlight mb-1">
+                Profit Share (%)
+              </label>
+              <Input
+                name="profitShare"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.profitShare}
+                onChange={handleInputChange}
+                placeholder="50"
+                className="w-full bg-container border-border"
+              />
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+
+          {/* Licensee */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-grayHighlight mb-1">
+              Licensee
+            </label>
+            <Input
+              name="licencee"
+              value={formData.licencee}
+              onChange={handleInputChange}
+              placeholder="Enter licensee"
+              className="w-full bg-container border-border"
+            />
+          </div>
+
+          {/* No SMIB Location Checkbox */}
+          <div className="mb-4 flex justify-center">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isLocalServer"
+                checked={formData.isLocalServer}
+                onCheckedChange={(checked) =>
+                  handleCheckboxChange("isLocalServer", checked === true)
+                }
+                className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="isLocalServer"
+                className="text-sm font-medium"
+              >
+                No SMIB Location
+              </Label>
+            </div>
+          </div>
+
+          {/* Map Toggle */}
+          <div className="mb-4 flex items-center space-x-2">
+            <Checkbox
+              id="useMap"
+              checked={useMap}
+              onCheckedChange={(checked) => setUseMap(checked === true)}
+              className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+            />
+            <Label htmlFor="useMap" className="text-sm font-medium">
+              Use Map to Select Location
+            </Label>
+          </div>
+
+          {/* GEO Coordinates */}
+          <div className="mb-4">
+            <p className="text-sm font-medium mb-2">GEO Coordinates</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center">
+                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
+                  <span className="text-sm font-medium">Latitude</span>
+                </div>
+                <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
+                  <Input
+                    name="latitude"
+                    value={formData.latitude}
+                    onChange={handleInputChange}
+                    placeholder="0.000000"
+                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    readOnly={useMap}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
+                  <span className="text-sm font-medium">Longitude</span>
+                </div>
+                <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
+                  <Input
+                    name="longitude"
+                    value={formData.longitude}
+                    onChange={handleInputChange}
+                    placeholder="0.000000"
+                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    readOnly={useMap}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Map Component with Integrated Search */}
+          {useMap && (
+            <div className="mt-4">
+              <LocationPickerMap
+                initialLat={formData.latitude ? parseFloat(formData.latitude) : 10.6599}
+                initialLng={formData.longitude ? parseFloat(formData.longitude) : -61.5199}
+                mapType="street"
+                onLocationSelect={handleLocationSelect}
+                userLocation={userLocation}
+              />
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="px-6 py-2"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="px-6 py-2 bg-buttonActive hover:bg-buttonActive/90 text-white"
+            >
+              {isLoading ? "Adding..." : "Add Location"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
-};
+}

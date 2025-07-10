@@ -4,6 +4,8 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import type { User } from "@/lib/types/administration";
 import gsap from "gsap";
+import defaultAvatar from "@/public/defaultAvatar.svg";
+import cameraIcon from "@/public/cameraIcon.svg";
 
 type AddUserDetailsModalProps = {
   open: boolean;
@@ -93,7 +95,7 @@ export default function AddUserDetailsModal({
             <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-start justify-center">
               <div className="relative mb-4 flex justify-center">
                 <Image
-                  src={formState.profilePicture || "/defaultAvatar.svg"}
+                  src={formState.profilePicture || defaultAvatar}
                   alt="Avatar"
                   width={160}
                   height={160}
@@ -101,7 +103,7 @@ export default function AddUserDetailsModal({
                 />
                 <span className="absolute bottom-4 right-4 rounded-full border-2 border-border shadow flex items-center justify-center bg-transparent">
                   <Image
-                    src="/cameraIcon.svg"
+                    src={cameraIcon}
                     alt="Edit Avatar"
                     width={32}
                     height={32}

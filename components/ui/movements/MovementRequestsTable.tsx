@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 import {
   getStatusColor,
   formatMovementRequestDate,
@@ -122,11 +124,10 @@ export default function MovementRequestsTable({
                     className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
                   >
                     <Image
-                      src="/editIcon.svg"
+                      src={editIcon}
+                      alt="Edit"
                       width={20}
                       height={20}
-                      alt="Edit"
-                      className="w-5 h-5"
                     />
                   </Button>
                   <Button
@@ -135,11 +136,10 @@ export default function MovementRequestsTable({
                     className="p-1 hover:bg-destructive/10 text-destructive"
                   >
                     <Image
-                      src="/deleteIcon.svg"
+                      src={deleteIcon}
+                      alt="Delete"
                       width={20}
                       height={20}
-                      alt="Delete"
-                      className="w-5 h-5"
                     />
                   </Button>
                 </div>

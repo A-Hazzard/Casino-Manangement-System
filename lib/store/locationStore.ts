@@ -6,6 +6,7 @@ const dummyState: LocationStore = {
   isLocationModalOpen: false,
   openLocationModal: () => {},
   closeLocationModal: () => {},
+  createLocation: async () => {},
 };
 
 // Make sure store is created only on client-side
@@ -14,6 +15,33 @@ const createStore = () => {
     isLocationModalOpen: false,
     openLocationModal: () => set({ isLocationModalOpen: true }),
     closeLocationModal: () => set({ isLocationModalOpen: false }),
+    createLocation: async (location) => {
+      try {
+        const response = await fetch("/api/locations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: location.name,
+            address: {
+              street: location.address,
+            },
+            geoCoords: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create location");
+        }
+      } catch (error) {
+        console.error("Error creating location:", error);
+        throw error;
+      }
+    },
   }));
 };
 

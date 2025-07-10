@@ -2,7 +2,6 @@
 import type { ExtendedCabinetDetail } from "./pages";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { ButtonProps } from "./componentProps";
-import type { ChartDataPoint } from "@/lib/types/reports";
 import type { MovementRequest } from "@/lib/types/movementRequests";
 import type { Licensee } from "@/lib/types/licensee";
 import type {
@@ -35,18 +34,6 @@ export type ActivityLog = {
   }>;
   description?: string;
   ipAddress?: string;
-};
-
-export type User = {
-  _id: string;
-  emailAddress: string;
-  firstName?: string;
-  lastName?: string;
-  isEnabled: boolean;
-  roles: string[];
-  permissions: string[];
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 export type SmibConfig = {
@@ -283,7 +270,7 @@ export type SimpleBarChartProps = {
 };
 
 export type PerformanceChartProps = {
-  data: ChartDataPoint[];
+  data: unknown[];
   height?: number;
 };
 
@@ -415,15 +402,15 @@ export type ActivityLogTableProps = {
 
 // Administration Component Props
 export type UserTableProps = {
-  users: User[];
+  users: unknown[];
   loading?: boolean;
-  onUserClick?: (user: User) => void;
-  onUserEdit?: (user: User) => void;
+  onUserClick?: (user: unknown) => void;
+  onUserEdit?: (user: unknown) => void;
   onUserDelete?: (userId: string) => void;
 };
 
 export type UserCardProps = {
-  user: User;
+  user: unknown;
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -541,8 +528,8 @@ export type AddUserRolesModalProps = {
 export type AddUserDetailsModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (user: Partial<User>) => void;
-  initialData?: Partial<User>;
+  onSave: (user: Partial<unknown>) => void;
+  initialData?: Partial<unknown>;
 };
 
 export type AddLicenseeModalProps = {

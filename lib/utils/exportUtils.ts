@@ -40,8 +40,21 @@ export type ExportData = {
   };
 };
 
-// Base64 encoded EOS logo (placeholder - you'll need to replace with actual logo)
-const EOS_LOGO_BASE64 = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
+// Function to load and convert the EOS logo to base64
+const getEOSLogoBase64 = async (): Promise<string> => {
+  try {
+    const response = await fetch('/EOS_Logo.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn("Could not load EOS logo:", error);
+    return '';
+  }
+};
 
 export class ExportUtils {
   static async exportToPDF(data: ExportData): Promise<void> {
@@ -49,7 +62,10 @@ export class ExportUtils {
 
     // Add logo
     try {
-      doc.addImage(EOS_LOGO_BASE64, "PNG", 15, 15, 30, 15);
+      const logoBase64 = await getEOSLogoBase64();
+      if (logoBase64) {
+        doc.addImage(logoBase64, "PNG", 15, 15, 30, 15);
+      }
     } catch (error) {
       console.warn("Could not add logo to PDF:", error);
     }

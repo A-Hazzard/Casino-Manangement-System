@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { deleteMovementRequest } from "@/lib/helpers/movementRequests";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export default function DeleteMovementRequestModal({
   onDeleted,
@@ -38,7 +39,7 @@ export default function DeleteMovementRequestModal({
         </div>
         <div className="text-center text-foreground space-y-4">
           <div className="flex justify-center mb-4">
-            <Image src="/deleteIcon.svg" alt="Delete" width={64} height={64} />
+            <Image src={deleteIcon} alt="Delete" width={64} height={64} />
           </div>
           <p className="text-lg font-semibold">
             Are you sure you want to delete this movement request?

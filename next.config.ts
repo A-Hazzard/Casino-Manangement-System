@@ -5,6 +5,28 @@ const nextConfig: NextConfig = {
   images: {
     loader: "default",
   },
+  // Exclude backup folder from compilation
+  transpilePackages: [],
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  async redirects() {
+    return [
+      {
+        source: "/collection",
+        destination: "/collection-report",
+        permanent: true,
+      },
+      {
+        source: "/collections",
+        destination: "/collection-report",
+        permanent: true,
+      },
+      {
+        source: "/collection-reports",
+        destination: "/collection-report",
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config) => {
     // Fix for react-day-picker internal module resolution issues
     config.resolve.fallback = {

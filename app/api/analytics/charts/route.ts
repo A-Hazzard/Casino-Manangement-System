@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Meter } from "@/app/api/lib/models/meters";
 import { subDays } from "date-fns";
-import type { PipelineStage } from "mongoose";
+import mongoose, { PipelineStage } from "mongoose";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
 
     let startDate: Date;
     const endDate = new Date();
+    const licenseeId = new mongoose.Types.ObjectId(licensee);
 
     if (period === "last7days") {
       startDate = subDays(endDate, 7);
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
       {
         $match: {
-          "locationDetails.rel.licencee": licensee,
+          "locationDetails.licensee": licenseeId,
         },
       },
       {

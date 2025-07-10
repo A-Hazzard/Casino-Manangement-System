@@ -7,6 +7,9 @@ import {
 } from "@/lib/utils/licensee";
 import { useState, useEffect, useRef } from "react";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
+import creditCardIcon from "@/public/creditCardIcon.svg";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 type LicenseeCardProps = {
   licensee: Licensee;
@@ -149,7 +152,7 @@ export default function LicenseeCard({
         </div>
         <div className="flex gap-3">
           <Image
-            src="/creditCardIcon.svg"
+            src={creditCardIcon}
             alt="Payment History"
             width={22}
             height={22}
@@ -157,7 +160,7 @@ export default function LicenseeCard({
             onClick={() => onPaymentHistory(licensee)}
           />
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
             alt="Edit"
             width={22}
             height={22}
@@ -165,7 +168,7 @@ export default function LicenseeCard({
             onClick={() => onEdit(licensee)}
           />
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
             alt="Delete"
             width={22}
             height={22}

@@ -62,7 +62,7 @@ import {
           row[fieldId] = location?.region || "N/A";
           break;
         case "machineGameTitle":
-          row[fieldId] = machine.model;
+          row[fieldId] = machine.gameTitle;
           break;
         case "machineManufacturer":
           row[fieldId] = machine.manufacturer;

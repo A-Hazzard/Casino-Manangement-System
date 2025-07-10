@@ -12,8 +12,9 @@ import StatCardSkeleton, {
 import dayjs from "dayjs";
 import Chart from "@/components/ui/dashboard/Chart";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import OnlineOfflineIndicator from "@/components/ui/OnlineOfflineIndicator";
-import RefreshButton from "@/components/ui/RefreshButton";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 
 dayjs.extend(customParseFormat);
 
@@ -25,73 +26,122 @@ export default function MobileLayout(props: MobileLayoutProps) {
     </div>
   );
 
+  // State for aggregated location data
+  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
+  const [aggLoading, setAggLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLocationAggregation = async () => {
+      setAggLoading(true);
+      try {
+        const res = await fetch('/api/locationAggregation?timePeriod=Today');
+        const data = await res.json();
+        setLocationAggregates(data);
+      } catch (err) {
+        setLocationAggregates([]);
+      } finally {
+        setAggLoading(false);
+      }
+    };
+    fetchLocationAggregation();
+  }, []);
+
+  // Calculate total online/offline from aggregation
+  const onlineCount = locationAggregates.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+  const totalMachines = locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+  const offlineCount = totalMachines - onlineCount;
+
   return (
-    <>
-      <div className="lg:hidden flex flex-col space-y-6">
-        {/* Metrics Cards */}
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-lg">Total for all Locations and Machines</h2>
-          <RefreshButton
-            onClick={props.onRefresh}
-            isSyncing={props.refreshing}
-            disabled={props.loadingChartData || props.refreshing}
-            iconOnly
-            className="ml-2"
+    <div className="lg:hidden space-y-6">
+      <div className="flex items-center gap-2 mb-2">
+        <h2 className="text-lg">Total for all Locations and Machines</h2>
+        <div
+          className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
+            props.loadingChartData || props.refreshing
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-buttonActive/90"
+          }`}
+          onClick={() => {
+            if (!(props.loadingChartData || props.refreshing))
+              props.onRefresh();
+          }}
+          aria-disabled={props.loadingChartData || props.refreshing}
+          tabIndex={0}
+          role="button"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
+            aria-hidden="true"
           />
+          <span className="font-semibold">Refresh</span>
         </div>
-        <div className="flex flex-wrap gap-4">
-          {props.loadingChartData ? (
-            <StatCardSkeleton count={3} />
-          ) : !props.totals ? (
-            <NoDataMessage message="No metrics data available for the selected period" />
-          ) : (
-            <>
-              {/* Metrics Cards */}
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
-                <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                  Money In
-                </p>
-                <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-                {/* Check if props.totals is not null before rendering */}
-                <p className="font-bold">
-                  {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-                </p>
-              </div>
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
-                <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                  Money Out
-                </p>
-                <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-                {/* Check if props.totals is not null before rendering */}
-                <p className="font-bold">
-                  {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-                </p>
-              </div>
-              <div className="flex-1 px-8 py-6 bg-container shadow-md rounded-lg text-center shadow-buttonActive">
-                <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                  Gross
-                </p>
-                <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-                {/* Check if props.totals is not null before rendering */}
-                <p className="font-bold">
-                  {props.totals ? formatNumber(props.totals.gross) : "--"}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
+      </div>
 
+      {/* Machine Status Widget */}
+      <div className="mb-4">
+        <MachineStatusWidget
+          isLoading={aggLoading}
+          onlineCount={onlineCount}
+          offlineCount={offlineCount}
+        />
+      </div>
+
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {props.loadingChartData ? (
-          <ChartSkeleton />
+          <StatCardSkeleton count={3} />
         ) : (
-          <Chart
-            loadingChartData={props.loadingChartData}
-            chartData={props.chartData}
-            activeMetricsFilter={props.activeMetricsFilter}
-          />
+          <>
+            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                Money In
+              </p>
+              <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
+              <p className="font-bold">
+                {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
+              </p>
+            </div>
+            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                Money Out
+              </p>
+              <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
+              <p className="font-bold">
+                {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
+              </p>
+            </div>
+            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                Gross
+              </p>
+              <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
+              <p className="font-bold">
+                {props.totals ? formatNumber(props.totals.gross) : "--"}
+              </p>
+            </div>
+          </>
         )}
+      </div>
 
-        {/* Top Performing Section */}
+      {props.loadingChartData ? (
+        <ChartSkeleton />
+      ) : (
+        <Chart
+          loadingChartData={props.loadingChartData}
+          chartData={props.chartData}
+          activeMetricsFilter={props.activeMetricsFilter}
+        />
+      )}
+
+      <MapPreview
+        chartData={props.chartData}
+        gamingLocations={props.gamingLocations}
+      />
+
+      {/* Top Performing Section */}
+      {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
+        <NoDataMessage message="No top performing data available for the selected period" />
+      ) : (
         <div className="space-y-2">
           <h2 className="text-lg">Top Performing</h2>
           <div
@@ -145,6 +195,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                 Cabinets
               </button>
             </div>
+
             <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
               <div className="flex justify-between items-center mb-4">
                 <div className="mb-4">
@@ -207,27 +258,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
             </div>
           </div>
         </div>
-
-        {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
-          <NoDataMessage message="No top performing data available for the selected period" />
-        ) : (
-          <>
-            {/* Online/Offline Machines Indicator for Mobile */}
-            <div className="mb-4">
-              <OnlineOfflineIndicator
-                showTitle={true}
-                size="md"
-                className="bg-container p-4 rounded-lg shadow-md"
-              />
-            </div>
-
-            <MapPreview
-              chartData={props.chartData}
-              gamingLocations={props.gamingLocations}
-            />
-          </>
-        )}
-      </div>
-    </>
+      )}
+    </div>
   );
 }

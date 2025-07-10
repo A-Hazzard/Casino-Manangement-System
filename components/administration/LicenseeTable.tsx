@@ -7,6 +7,9 @@ import {
 } from "@/lib/utils/licensee";
 import { useState, useEffect, useRef } from "react";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
+import creditCardIcon from "@/public/creditCardIcon.svg";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 type LicenseeTableProps = {
   licensees: Licensee[];
@@ -186,7 +189,7 @@ export default function LicenseeTable({
                   <td className="py-3 px-4 text-center">
                     <div className="flex items-center justify-center gap-3">
                       <Image
-                        src="/creditCardIcon.svg"
+                        src={creditCardIcon}
                         alt="Payment History"
                         width={20}
                         height={20}
@@ -194,7 +197,7 @@ export default function LicenseeTable({
                         onClick={() => onPaymentHistory(licensee)}
                       />
                       <Image
-                        src="/editIcon.svg"
+                        src={editIcon}
                         alt="Edit"
                         width={20}
                         height={20}
@@ -202,7 +205,7 @@ export default function LicenseeTable({
                         onClick={() => onEdit(licensee)}
                       />
                       <Image
-                        src="/deleteIcon.svg"
+                        src={deleteIcon}
                         alt="Delete"
                         width={20}
                         height={20}

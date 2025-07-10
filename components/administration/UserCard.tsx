@@ -1,5 +1,9 @@
 import Image from "next/image";
 import type { User } from "@/lib/types/administration";
+import defaultAvatar from "@/public/defaultAvatar.svg";
+import leftHamburgerMenu from "@/public/leftHamburgerMenu.svg";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 type UserCardProps = {
   user: User;
@@ -33,7 +37,7 @@ export default function UserCard({
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end mt-2 sm:mt-0">
           <Image
-            src={user.profilePicture || "/defaultAvatar.svg"}
+            src={user.profilePicture || defaultAvatar}
             alt={`${user.username} avatar`}
             width={24}
             height={24}
@@ -56,7 +60,7 @@ export default function UserCard({
         </div>
         <div className="flex justify-end gap-3 items-center">
           <Image
-            src="/leftHamburgerMenu.svg"
+            src={leftHamburgerMenu}
             alt="Menu"
             width={22}
             height={22}
@@ -64,7 +68,7 @@ export default function UserCard({
             onClick={() => onMenu?.(user)}
           />
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
             alt="Edit"
             width={22}
             height={22}
@@ -72,7 +76,7 @@ export default function UserCard({
             onClick={() => onEdit?.(user)}
           />
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
             alt="Delete"
             width={22}
             height={22}

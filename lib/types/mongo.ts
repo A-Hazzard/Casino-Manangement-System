@@ -1,58 +1,37 @@
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
+import type {
+  DateRangeFilter,
+  RegexFilter as DbRegexFilter,
+  ArrayFilter,
+  ExpressionFilter,
+  MongoDBQueryValue,
+  MongooseCache,
+  MongoQuery,
+  MeterMovement,
+  SasMeters,
+  MeterData,
+  CollectionMetersHistoryEntry,
+  BillValidatorData,
+} from "@shared/types";
 
-export type DateRangeFilter = {
-  $gte: Date;
-  $lte: Date;
+// Re-export shared database types
+export type {
+  DateRangeFilter,
+  ArrayFilter,
+  ExpressionFilter,
+  MongoDBQueryValue,
+  MongooseCache,
+  MongoQuery,
+  MeterMovement,
+  SasMeters,
+  MeterData,
+  CollectionMetersHistoryEntry,
+  BillValidatorData,
 };
 
-export type RegexFilter = {
-  $regex: string;
-  $options: string;
-};
-
-export type ArrayFilter = {
-  $in: (Date | null | string | number | undefined)[];
-};
-
-export type ExpressionFilter = {
-  $eq?: string | number | boolean | Date | null;
-  $ne?: string | number | boolean | Date | null;
-  $gt?: Date | number;
-  $gte?: Date | number;
-  $lt?: Date | number;
-  $lte?: Date | number;
-  $in?: (string | number | Date | null | undefined)[];
-  $nin?: (string | number | Date | null)[];
-  $exists?: boolean;
-};
-
-export type MongoDBQueryValue =
-  | string
-  | number
-  | boolean
-  | Date
-  | null
-  | undefined
-  | RegexFilter
-  | DateRangeFilter
-  | ArrayFilter
-  | ExpressionFilter
-  | ObjectId;
-
-export type MongooseCache = {
-  conn: mongoose.Connection | null;
-  promise: Promise<mongoose.Connection> | null;
-};
-
-// Generic MongoDB query type with string indexer to allow dynamic keys
-export type MongoQuery<T = Record<string, unknown>> = T & {
-  [key: string]:
-    | MongoDBQueryValue
-    | MongoDBQueryValue[]
-    | MongoQuery
-    | MongoQuery[];
-};
+// Legacy alias for backward compatibility
+export type RegexFilter = DbRegexFilter;
 
 // Create more specific nested query types
 export type StringIdQuery = {
@@ -76,55 +55,7 @@ export type CabinetsQuery = MongoQuery<{
   "rel.licencee"?: string;
 }>;
 
-// Specific query for meter data
-export type MeterMovement = {
-  drop?: number;
-  totalCancelledCredits?: number;
-  gamesPlayed?: number;
-  jackpot?: number;
-  coinIn?: number;
-  coinOut?: number;
-};
 
-// Type for SAS meters data
-export type SasMeters = {
-  coinIn: number;
-  coinOut: number;
-  jackpot: number;
-  gamesPlayed: number;
-  gamesWon: number;
-  currentCredits: number;
-  totalCancelledCredits?: number;
-  [key: string]: unknown;
-};
-
-// Meter data type matching Mongoose document structure
-export type MeterData = {
-  _id?: string;
-  machine?: string | ObjectId;
-  location?: string | ObjectId;
-  locationSession?: string | ObjectId;
-  readAt?: Date;
-  movement?: MeterMovement;
-  viewingAccountDenomination?: {
-    drop?: number;
-    totalCancelledCredits?: number;
-    jackpot?: number;
-  };
-  coinIn?: number;
-  coinOut?: number;
-  totalCancelledCredits?: number;
-  totalHandPaidCancelledCredits?: number;
-  totalWonCredits?: number;
-  drop?: number;
-  jackpot?: number;
-  currentCredits?: number;
-  gamesPlayed?: number;
-  gamesWon?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-  __v?: number;
-};
 
 // Type for machine documents from MongoDB
 export type MachineDocument = {

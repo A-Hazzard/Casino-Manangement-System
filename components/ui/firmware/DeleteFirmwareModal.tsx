@@ -6,6 +6,7 @@ import { Cross1Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
 import { toast } from "sonner";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export const DeleteFirmwareModal = ({
   onDeleteComplete,
@@ -93,7 +94,7 @@ export const DeleteFirmwareModal = ({
               <div className="text-center">
                 <div className="flex justify-center mb-4">
                   <Image
-                    src="/deleteIcon.svg"
+                    src={deleteIcon}
                     alt="Delete"
                     width={64}
                     height={64}

@@ -1,12 +1,37 @@
 import React from "react";
+import CollectorScheduleFilters from "@/components/collectionReport/CollectorScheduleFilters";
+import CollectorScheduleTable from "@/components/collectionReport/CollectorScheduleTable";
+import { CollectorScheduleDesktopUIProps } from "@/lib/types/componentProps";
 
-const CollectorDesktopUI: React.FC = () => {
+const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
+  selectedLocation,
+  onLocationChange,
+  selectedStatus,
+  onStatusChange,
+  selectedCollector,
+  onCollectorChange,
+  collectors,
+  locations,
+  onResetFilters,
+  collectorSchedules,
+  loadingCollectorSchedules,
+}) => {
   return (
-    <div className="hidden md:block bg-white rounded-lg shadow-md p-8 text-center">
-      <h2 className="text-xl font-semibold text-gray-700">Coming Soon...</h2>
-      <p className="text-gray-500 mt-2">
-        Collectors Schedule functionality will be available in a future update.
-      </p>
+    <div className="hidden md:block bg-white rounded-lg shadow-md">
+      <CollectorScheduleFilters
+        selectedLocation={selectedLocation}
+        onLocationChange={onLocationChange}
+        selectedStatus={selectedStatus}
+        onStatusChange={onStatusChange}
+        selectedCollector={selectedCollector}
+        onCollectorChange={onCollectorChange}
+        collectors={collectors}
+        locations={locations}
+        onResetFilters={onResetFilters}
+        loading={loadingCollectorSchedules}
+      />
+      
+      <CollectorScheduleTable data={collectorSchedules} loading={loadingCollectorSchedules} />
     </div>
   );
 };

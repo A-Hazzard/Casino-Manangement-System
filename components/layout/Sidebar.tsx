@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ExitIcon } from "@radix-ui/react-icons";
-import { BarChart3, User as UserIcon } from "lucide-react";
+import { User as UserIcon } from "lucide-react";
 import { logoutUser } from "@/lib/helpers/auth";
 import SettingsModal from "./SettingsModal";
 import ProfileModal from "./ProfileModal";
@@ -20,6 +20,8 @@ import collectionsButton from "@/public/collectionsButton.svg";
 import collectionsButtonNoBg from "@/public/collectionsButtonNoBg.svg";
 import adminButton from "@/public/adminButton.svg";
 import adminButtonNoBg from "@/public/adminButtonNoBg.svg";
+import reportsButton from "@/public/reportsButton.svg";
+import reportsButtonNoBg from "@/public/reportsButtonNoBg.svg";
 
 export default function Sidebar({ pathname }: { pathname: string }) {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -37,12 +39,12 @@ export default function Sidebar({ pathname }: { pathname: string }) {
   const isCollectionsPath =
     safePath === "/collection-report" ||
     safePath.startsWith("/collection-report/");
-  // Check if the current path is related to administration
-  const isAdminPath =
-    safePath === "/administration" || safePath.startsWith("/administration/");
   // Check if the current path is related to reports
   const isReportsPath =
     safePath === "/reports" || safePath.startsWith("/reports/");
+  // Check if the current path is related to administration
+  const isAdminPath =
+    safePath === "/administration" || safePath.startsWith("/administration/");
 
   return (
     <>
@@ -95,7 +97,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
         {/* Collections button */}
         <div
           className={`${isCollectionsPath ? "-mt-8" : "mb-6"} ${
-            isAdminPath ? "mb-0" : ""
+            isReportsPath ? "mb-0" : ""
           }`}
         >
           <Link href="/collection-report">
@@ -107,6 +109,25 @@ export default function Sidebar({ pathname }: { pathname: string }) {
                 !isCollectionsPath ? "-ml-2" : ""
               } cursor-pointer`}
               alt="Collections Button"
+              priority
+            />
+          </Link>
+        </div>
+        {/* Reports button */}
+        <div
+          className={`${isReportsPath ? "-mt-4" : ""} ${
+            isAdminPath ? "mb-0" : "mb-6"
+          }`}
+        >
+          <Link href="/reports">
+            <Image
+              src={isReportsPath ? reportsButton : reportsButtonNoBg}
+              width={50}
+              height={50}
+              className={`w-[7rem] cursor-pointer ${
+                !isReportsPath ? "-ml-2" : ""
+              }`}
+              alt="Reports Button"
               priority
             />
           </Link>
@@ -124,25 +145,6 @@ export default function Sidebar({ pathname }: { pathname: string }) {
               alt="Administration Button"
               priority
             />
-          </Link>
-        </div>
-        {/* Reports button */}
-        <div className={`${isReportsPath ? "-mt-4" : ""}`}>
-          <Link href="/reports">
-            <div
-              className={`
-              w-[7rem] cursor-pointer flex items-center justify-center px-3 py-3 rounded-lg transition-colors font-medium text-sm
-              ${
-                isReportsPath
-                  ? "bg-buttonActive text-white shadow-md"
-                  : "text-grayHighlight hover:bg-gray-100 hover:text-gray-900"
-              }
-              ${!isReportsPath ? "w-[6rem] -ml-6" : ""}
-            `}
-            >
-              <BarChart3 className="h-5 w-5 mr-2" />
-              Reports
-            </div>
           </Link>
         </div>
         {/* Settings and Logout container */}

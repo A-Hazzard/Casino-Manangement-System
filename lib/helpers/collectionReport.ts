@@ -1,5 +1,6 @@
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import { CollectionReportRow } from "@/lib/types/componentProps";
+import { PipelineStage } from "mongoose";
 import axios from "axios";
 import type {
   MonthlyReportSummary,
@@ -39,8 +40,7 @@ export async function getAllCollectionReports(
     }
   } else {
     // Apply licencee filter with aggregation, plus date filter if present
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const aggregationPipeline: any[] = [
+    const aggregationPipeline: PipelineStage[] = [
       {
         $lookup: {
           from: "gaminglocations",

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 import {
   getStatusColor,
   formatMovementRequestDate,
@@ -51,11 +53,10 @@ export default function MovementRequestCard({
           className="text-green-500 flex-shrink-0"
         >
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
+            alt="Edit"
             width={20}
             height={20}
-            alt="Edit"
-            className="w-5 h-5"
           />
         </button>
       </div>
@@ -106,11 +107,10 @@ export default function MovementRequestCard({
           className="text-red-500 flex-shrink-0"
         >
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
+            alt="Delete"
             width={20}
             height={20}
-            alt="Delete"
-            className="w-5 h-5"
           />
         </button>
       </div>

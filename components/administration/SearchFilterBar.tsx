@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
 } from "@radix-ui/react-icons";
 import Image from "next/image";
+import activityLogIcon from "@/public/activityLogIcon.svg";
 
 type SearchFilterBarProps = {
   searchValue: string;
@@ -92,7 +93,7 @@ export default function SearchFilterBar({
             className="bg-button text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-buttonActive transition-colors"
           >
             <Image
-              src="/activityLogIcon.svg"
+              src={activityLogIcon}
               alt="User Activity Log"
               width={20}
               height={20}

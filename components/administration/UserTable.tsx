@@ -1,5 +1,9 @@
 import Image from "next/image";
 import type { User, SortKey } from "@/lib/types/administration";
+import defaultAvatar from "@/public/defaultAvatar.svg";
+import leftHamburgerMenu from "@/public/leftHamburgerMenu.svg";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 type UserTableProps = {
   users: User[];
@@ -68,7 +72,7 @@ export default function UserTable({
                     </div>
                   </div>
                   <Image
-                    src={user.profilePicture || "/defaultAvatar.svg"}
+                    src={user.profilePicture || defaultAvatar}
                     alt={`${user.username} avatar`}
                     width={32}
                     height={32}
@@ -82,7 +86,7 @@ export default function UserTable({
               </td>
               <td className="py-3 px-4 flex gap-2 items-center max-w-[120px]">
                 <Image
-                  src="/leftHamburgerMenu.svg"
+                  src={leftHamburgerMenu}
                   alt="Menu"
                   width={20}
                   height={20}
@@ -90,7 +94,7 @@ export default function UserTable({
                   onClick={() => onMenu?.(user)}
                 />
                 <Image
-                  src="/editIcon.svg"
+                  src={editIcon}
                   alt="Edit"
                   width={20}
                   height={20}
@@ -98,7 +102,7 @@ export default function UserTable({
                   onClick={() => onEdit?.(user)}
                 />
                 <Image
-                  src="/deleteIcon.svg"
+                  src={deleteIcon}
                   alt="Delete"
                   width={20}
                   height={20}

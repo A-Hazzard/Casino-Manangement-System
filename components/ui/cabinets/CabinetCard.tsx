@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { CabinetCardProps } from "@/lib/types/cardProps";
 import { motion } from "framer-motion";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -86,10 +88,10 @@ export default function CabinetCard(props: CabinetCardProps) {
           className="text-green-500 flex-shrink-0"
         >
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
+            alt="Edit"
             width={20}
             height={20}
-            alt="Edit"
             className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5"
           />
         </button>
@@ -150,10 +152,10 @@ export default function CabinetCard(props: CabinetCardProps) {
           className="text-red-500"
         >
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
+            alt="Delete"
             width={20}
             height={20}
-            alt="Delete"
             className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5"
           />
         </button>

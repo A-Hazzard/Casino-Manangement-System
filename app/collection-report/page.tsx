@@ -39,6 +39,7 @@ import {
   fetchAndFormatSchedulers,
   setLastMonthDateRange,
 } from "@/lib/helpers/collectionReportPage";
+import { fetchAndFormatCollectorSchedules } from "@/lib/helpers/collectorSchedules";
 
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
 import CollectionDesktopUI from "@/components/collectionReport/CollectionDesktopUI";
@@ -46,8 +47,11 @@ import MonthlyMobileUI from "@/components/collectionReport/MonthlyMobileUI";
 import MonthlyDesktopUI from "@/components/collectionReport/MonthlyDesktopUI";
 import ManagerMobileUI from "@/components/collectionReport/ManagerMobileUI";
 import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
+import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
+import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
+import type { CollectorSchedule } from "@/lib/types/components";
 
 /**
  * Main page component for the Collection Report.
@@ -71,7 +75,7 @@ const TAB_OPTIONS: TabOption[] = [
   { value: "collection", label: "Collection Reports" },
   { value: "monthly", label: "Monthly Report" },
   { value: "manager", label: "Manager Schedule" },
-  { value: "collector", label: "Collectors Schedule", disabled: true, tooltip: "Coming Soon" },
+  { value: "collector", label: "Collectors Schedule" },
 ];
 
 /**
@@ -139,6 +143,14 @@ export default function CollectionReportPage() {
   const [selectedCollector, setSelectedCollector] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [collectors, setCollectors] = useState<string[]>([]);
+
+  // Collector Schedule state
+  const [collectorSchedules, setCollectorSchedules] = useState<CollectorSchedule[]>([]);
+  const [loadingCollectorSchedules, setLoadingCollectorSchedules] = useState(true);
+  const [selectedCollectorLocation, setSelectedCollectorLocation] = useState("all");
+  const [selectedCollectorFilter, setSelectedCollectorFilter] = useState("all");
+  const [selectedCollectorStatus, setSelectedCollectorStatus] = useState("all");
+  const [collectorsList, setCollectorsList] = useState<string[]>([]);
 
   // Monthly Report state
   const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
@@ -383,6 +395,41 @@ export default function CollectionReportPage() {
     setSelectedStatus("all");
   };
 
+  // Fetch collector schedules when collector tab is active or filters change
+  useEffect(() => {
+    if (activeTab === "collector") {
+      setLoadingCollectorSchedules(true);
+      fetchAndFormatCollectorSchedules(
+        selectedLicencee === "" ? undefined : selectedLicencee,
+        selectedCollectorLocation,
+        selectedCollectorFilter,
+        selectedCollectorStatus
+      )
+        .then(({ collectorSchedules, collectors }) => {
+          setCollectorsList(collectors);
+          setCollectorSchedules(collectorSchedules);
+          setLoadingCollectorSchedules(false);
+        })
+        .catch((error) => {
+          console.error("Error fetching collector schedules:", error);
+          setLoadingCollectorSchedules(false);
+        });
+    }
+  }, [
+    activeTab,
+    selectedLicencee,
+    selectedCollectorLocation,
+    selectedCollectorFilter,
+    selectedCollectorStatus,
+  ]);
+
+  // Reset all collector schedule filters
+  const handleResetCollectorFilters = () => {
+    setSelectedCollectorLocation("all");
+    setSelectedCollectorFilter("all");
+    setSelectedCollectorStatus("all");
+  };
+
   // Fetch all location names and monthly data when monthly tab is active
   useEffect(() => {
     if (activeTab === "monthly") {
@@ -485,7 +532,7 @@ export default function CollectionReportPage() {
   // console.log("DEBUG: filters", { selectedLocation, showUncollectedOnly, collectionDateRange });
 
   return (
-    <div className="flex flex-row min-h-screen bg-background">
+    <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col overflow-hidden transition-all duration-300">
       {/* Sidebar */}
       <div className="hidden md:block w-26">
         <Sidebar pathname={pathname} />
@@ -664,8 +711,34 @@ export default function CollectionReportPage() {
             )}
             {activeTab === "collector" && (
               <div className="tab-content-wrapper">
-                {/* Placeholder for Collectors Schedule Tab Content */}
-                <div className="p-8 text-center text-gray-500">Collectors Schedule tab coming soon.</div>
+                {/* Desktop */}
+                <CollectorDesktopUI
+                  locations={locations}
+                  collectors={collectorsList}
+                  selectedLocation={selectedCollectorLocation}
+                  onLocationChange={setSelectedCollectorLocation}
+                  selectedCollector={selectedCollectorFilter}
+                  onCollectorChange={setSelectedCollectorFilter}
+                  selectedStatus={selectedCollectorStatus}
+                  onStatusChange={setSelectedCollectorStatus}
+                  onResetFilters={handleResetCollectorFilters}
+                  collectorSchedules={collectorSchedules}
+                  loadingCollectorSchedules={loadingCollectorSchedules}
+                />
+                {/* Mobile */}
+                <CollectorMobileUI
+                  locations={locations}
+                  collectors={collectorsList}
+                  selectedLocation={selectedCollectorLocation}
+                  onLocationChange={setSelectedCollectorLocation}
+                  selectedCollector={selectedCollectorFilter}
+                  onCollectorChange={setSelectedCollectorFilter}
+                  selectedStatus={selectedCollectorStatus}
+                  onStatusChange={setSelectedCollectorStatus}
+                  onResetFilters={handleResetCollectorFilters}
+                  collectorSchedules={collectorSchedules}
+                  loadingCollectorSchedules={loadingCollectorSchedules}
+                />
               </div>
             )}
           </div>

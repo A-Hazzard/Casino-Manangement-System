@@ -4,42 +4,56 @@
   <img src="public/EOS_Logo.png" alt="EOS Logo" width="200"/>
 </div>
 
-**Evolution1 CMS** is a robust casino management system designed to oversee casino operations, financial tracking, gaming reports, and compliance monitoring. It provides a seamless dashboard for real-time data visualization, revenue tracking, and slot machine performance monitoring.
+**Evolution1 CMS** is a robust casino management system for real-time casino operations, financial tracking, and compliance monitoring. It features a modern dashboard, detailed reporting, and comprehensive management of locations, cabinets, collections, and users.
 
 ## 🚀 Features
-- 📊 **Dashboard with Real-Time Reports & Analytics**
-- 🎮 **Slot Machine & Gaming Floor Management**
-- 💰 **Financial Tracking (Wager, Gross, Games Won)**
-- 📈 **Advanced Reporting System with Multiple Report Types**
-- 🔍 **Role-Based Access Control (RBAC)**
-- 📊 **Interactive Charts & Data Visualization**
-- 🗺️ **Interactive Location Maps with Performance Indicators**
-- 📧 **Automated Report Scheduling & Email Delivery**
+- 📊 **Dashboard with Real-Time Analytics** ([docs](Documentation/dashboard.md))
+- 🎮 **Slot Machine & Gaming Floor Management** ([docs](Documentation/cabinets.md))
+  - 🔧 **Cabinet Details & SMIB Configuration** ([docs](Documentation/cabinet-details.md))
+- 💰 **Financial Tracking & Collection Reporting** ([docs](Documentation/collection-report.md))
+  - 📈 **Collection Report Details** ([docs](Documentation/collection-report-details.md))
+- 📍 **Location Management** ([docs](Documentation/locations.md))
+  - 🎰 **Location Cabinets** ([docs](Documentation/location-cabinets.md))
+  - 📊 **Location Details & Analytics** ([docs](Documentation/location-details.md))
+- 👥 **User & Licensee Administration** ([docs](Documentation/administration.md))
+- 🔐 **Secure Authentication** ([docs](Documentation/login.md))
+- 📊 **Comprehensive Reports Module** ([docs](Documentation/reports.md)) ✅ **Recently Implemented**
+  - Dashboard, Locations, Machines, Customers, Vouchers, Movements, Compliance, Analytics, Templates, and Scheduled Reports
+- 🔄 **URL Redirects & SEO Optimization** ([docs](Documentation/redirect-pages.md))
+- 📑 **Pages Overview & Architecture** ([docs](Documentation/pages-overview.md))
+- 🤖 **AI Assistant Integration** ([docs](Documentation/prompt.md))
+- 📋 **Meeting Management** ([docs](Documentation/meeting.md))
 
 ## 🛠️ Tech Stack
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type safety and better developer experience
-- **Tailwind CSS** - Utility-first styling
-- **MongoDB** - NoSQL database
-- **Zustand** - State management
-- **Recharts** - Data visualization and charting
-- **React Leaflet** - Interactive maps
-- **Shadcn/UI** - Modern UI components
+- **Next.js 15** (App Router)
+- **TypeScript**
+- **Tailwind CSS**
+- **MongoDB**
+- **Zustand** (state management)
+- **Recharts** (charts)
+- **React Leaflet** (maps)
+- **Shadcn/UI** (UI components)
 
 ## ⚙️ Installation & Setup
 
-### **1️⃣ Clone the Repository**
+### 1️⃣ Clone the Repository
 ```sh
-git clone <repository-url>
+git clone https://gitlab.com/sunny-group/sas/evolution-one-cms.git
 cd "Evolution1 CMS"
 ```
 
-### **2️⃣ Install Dependencies**
+### 2️⃣ Install pnpm (if you don't have it)
+If you don't have pnpm installed globally, run:
+```sh
+npm i -g pnpm@latest
+```
+
+### 3️⃣ Install Dependencies
 ```sh
 pnpm install
 ```
 
-### **3️⃣ Run the Development Server**
+### 4️⃣ Run the Development Server
 ```sh
 pnpm run dev
 ```
@@ -47,12 +61,12 @@ Open http://localhost:3000 to see the application.
 
 ## 🐳 Docker Setup
 
-### **1️⃣ Build the Docker Image Locally**
+### 1️⃣ Build the Docker Image Locally
 ```sh
 docker build -t evolution1-cms:local .
 ```
 
-### **2️⃣ Run the Docker Container Locally**
+### 2️⃣ Run the Docker Container Locally
 ```sh
 docker run --rm -p 3000:3000 \
   -e MONGO_URI="your_mongodb_connection_string" \
@@ -61,7 +75,7 @@ docker run --rm -p 3000:3000 \
   evolution1-cms:local
 ```
 
-### **3️⃣ GitLab Container Registry**
+### 3️⃣ GitLab Container Registry
 
 **Authenticate:**
 ```sh
@@ -70,21 +84,28 @@ docker login registry.gitlab.com
 
 **Build for GitLab Registry:**
 ```sh
-docker build -t registry.gitlab.com/sunny-group/sas/dynamic-cms .
+docker build -t registry.gitlab.com/sunny-group/sas/evolution-one-cms .
 ```
 
 **Push to Registry:**
 ```sh
-docker push registry.gitlab.com/sunny-group/sas/dynamic-cms
+docker push registry.gitlab.com/sunny-group/sas/evolution-one-cms
 ```
 
 **Run from Registry:**
 ```sh
+# Windows (CMD or PowerShell): run as one line (no backslashes)
+docker run --rm -p 3000:3000 -e MONGO_URI="mongo uri in .env" -e JWT_SECRET="jwt secret in .env" -e NODE_ENV="production" -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" registry.gitlab.com/sunny-group/sas/evolution-one-cms
+```
+
+```sh
+# Mac/Linux (bash/zsh): use backslash \ to split lines
 docker run --rm -p 3000:3000 \
-  -e MONGO_URI="your_mongodb_connection_string" \
-  -e JWT_SECRET="your_jwt_secret" \
+  -e MONGO_URI="mongo uri in .env" \
+  -e JWT_SECRET="jwt secret in .env" \
   -e NODE_ENV="production" \
-  registry.gitlab.com/sunny-group/sas/dynamic-cms
+  -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" \
+  registry.gitlab.com/sunny-group/sas/evolution-one-cms
 ```
 
 ## 🖥️ Development Commands
@@ -134,7 +155,6 @@ Evolution1 CMS/
 │   ├── cabinets/          # Cabinet management
 │   ├── collection-report/ # Collection reporting
 │   ├── locations/         # Location management
-│   └── reports/           # Reports module
 ├── components/            # Reusable UI components
 ├── lib/                   # Utilities, helpers, types, stores
 ├── shared/                # Shared types between frontend/backend
@@ -142,28 +162,35 @@ Evolution1 CMS/
 └── middleware.ts          # Next.js middleware
 ```
 
-## 📊 Key Modules
+## 📊 Key Modules & Documentation
 
-### Reports Module
-- **Dashboard Reports** - Real-time performance overview
-- **Machine Reports** - Detailed machine performance analysis
-- **Location Reports** - Location-based revenue tracking
-- **Compliance Reports** - GLI compliance monitoring
-- **Logistics Reports** - Movement tracking
-- **Scheduled Reports** - Automated report generation
+- **Dashboard:** Real-time analytics and metrics ([dashboard.md](Documentation/dashboard.md))
+- **Login:** Secure authentication ([login.md](Documentation/login.md))
+- **Administration:** User and licensee management ([administration.md](Documentation/administration.md))
+- **Collection Report:** Collection reporting, monthly summaries, scheduling ([collection-report.md](Documentation/collection-report.md))
+- **Cabinets:** Slot machine/cabinet management, firmware, SMIB ([cabinets.md](Documentation/cabinets.md))
+- **Locations:** Location management, metrics, cabinet assignment ([locations.md](Documentation/locations.md))
 
-### Authentication & Security
-- JWT-based authentication with secure HTTP-only cookies
-- Role-based access control (RBAC)
-- OWASP security standards compliance
-- Input validation and sanitization
+See [pages-overview.md](Documentation/pages-overview.md) for a full list of pages and documentation status.
+
+## ❌ Reports Module Status
+- The previous Reports module has been **removed** pending a full redesign and stakeholder review.
+- See [reports.md](Documentation/reports.md) for historical context and [Reports FRD.md](Documentation/Reports%20FRD.md) for planned requirements.
+- Reporting features are currently integrated into the dashboard, collection report, and other modules as described above.
 
 ## 📝 Summary
 
 Evolution1 CMS enforces strict engineering discipline in type safety, code style, modularity, and security. All contributors must follow these guidelines to maintain a robust, maintainable, and secure codebase.
 
 **Key Principles:**
-- **Build Integrity**: Always ensure clean builds with zero errors
-- **Type Safety**: Comprehensive TypeScript coverage
-- **Code Organization**: Clear separation of concerns
-- **Security First**: Follow OWASP standards and secure practices 
+- **Build Integrity:** Always ensure clean builds with zero errors
+- **Type Safety:** Comprehensive TypeScript coverage
+- **Code Organization:** Clear separation of concerns
+- **Security First:** Follow OWASP standards and secure practices
+
+**User Management:** Add, edit, and manage user roles and permissions.
+**Activity Logs:** Track all significant actions for auditing and security.
+
+## ✨ Core Principles
+- **Modularity**: Easy to extend and maintain
+- **Documentation**: See the `Documentation/` folder for detailed specs, requirements, and page summaries.

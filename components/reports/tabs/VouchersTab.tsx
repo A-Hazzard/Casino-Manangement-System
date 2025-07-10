@@ -243,10 +243,7 @@ export default function VouchersTab() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to export voucher data:", errorMessage);
-      }
+      console.error("Failed to export voucher data:", errorMessage);
       toast.error("Failed to export voucher data");
     }
   };

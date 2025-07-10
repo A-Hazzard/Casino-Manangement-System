@@ -10,7 +10,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
-import type { Option } from "@/lib/types/components";
+
+type Option = Record<"value" | "label", string>;
 
 export function MultiSelect({
   options,

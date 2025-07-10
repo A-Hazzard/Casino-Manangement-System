@@ -18,6 +18,8 @@ import {
 } from "@/lib/helpers/dashboard";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import dashboardIcon from "@/public/dashboardIcon.svg";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -69,7 +71,6 @@ function DashboardContent() {
 
   useEffect(() => {
     const fetchMetrics = async () => {
-      if (!selectedLicencee) return; // Don't fetch until a licensee is selected
       setLoadingChartData(true);
       try {
         // Always fetch gaming locations when licencee changes
@@ -201,7 +202,7 @@ function DashboardContent() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
@@ -211,10 +212,10 @@ function DashboardContent() {
 
           <div className="flex flex-col lg:hidden items-center justify-center w-full max-w-full">
             <Image
-              src="/dashboardIcon.svg"
-              alt="Dashboard Icon"
-              width={20}
-              height={20}
+              src={dashboardIcon}
+              alt="Dashboard"
+              width={24}
+              height={24}
             />
             <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left w-full max-w-full">
               Dashboard

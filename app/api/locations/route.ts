@@ -24,30 +24,45 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
+    console.log(`🔍 Found ${locations.length} total locations`);
+    
+    // Debug: Log first few locations to see their structure
+    if (locations.length > 0) {
+      console.log("📊 Sample location data:", JSON.stringify(locations.slice(0, 3), null, 2));
+    }
+
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];
+    const validLocations: any[] = [];
 
-    // Filter valid locations
-    const validLocations = locations.filter((location) => {
+    // Process all locations
+    locations.forEach((location) => {
       if (!location.geoCoords && location._id) {
         // Case: Missing geoCoords
         missingGeoCoords.push(`${location._id.toString()} (${location.name})`);
-        return false;
+      } else if (location.geoCoords) {
+        const { latitude, longitude, longtitude } = location.geoCoords;
+        
+        // Use longitude if available, otherwise fallback to longtitude
+        const validLongitude = longitude !== undefined ? longitude : longtitude;
+
+        if ((latitude === 0 || validLongitude === 0) && location._id) {
+          // Case: Zero-valued geoCoords
+          zeroGeoCoords.push(`${location._id.toString()} (${location.name})`);
+        } else {
+          // Case: Valid coordinates
+          validLocations.push(location);
+        }
       }
-
-      const { latitude, longitude, longtitude } = location.geoCoords;
-      
-      // Use longitude if available, otherwise fallback to longtitude
-      const validLongitude = longitude !== undefined ? longitude : longtitude;
-
-      if ((latitude === 0 || validLongitude === 0) && location._id) {
-        // Case: Zero-valued geoCoords
-        zeroGeoCoords.push(`${location._id.toString()} (${location.name})`);
-        return false;
-      }
-
-      return true;
     });
+
+    console.log(`✅ Valid locations with coordinates: ${validLocations.length}`);
+    console.log(`❌ Missing geoCoords: ${missingGeoCoords.length}`);
+    console.log(`⚠️ Zero-valued geoCoords: ${zeroGeoCoords.length}`);
+
+    // TEMPORARILY: Return all locations for debugging
+    // TODO: Change back to validLocations once we have proper coordinates
+    const locationsToReturn = locations; // Changed from validLocations to locations
 
     // Prepare log directory
     const logDir = path.join(process.cwd(), "logs");
@@ -68,7 +83,7 @@ export async function GET(request: Request) {
     // Append log entry
     fs.appendFileSync(logFile, logData);
 
-    return NextResponse.json({ locations: validLocations }, { status: 200 });
+    return NextResponse.json({ locations: locationsToReturn }, { status: 200 });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";

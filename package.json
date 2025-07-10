@@ -13,6 +13,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@googlemaps/js-api-loader": "^1.16.10",
     "@mui/material": "^7.1.0",
     "@mui/system": "^7.1.0",
     "@mui/x-date-pickers": "^8.3.1",
@@ -30,6 +31,7 @@
     "@radix-ui/react-slot": "^1.2.0",
     "@radix-ui/react-switch": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.12",
+    "@react-google-maps/api": "^2.20.7",
     "@sendgrid/mail": "^8.1.5",
     "@splinetool/react-spline": "^4.0.0",
     "@splinetool/runtime": "^1.10.8",
@@ -92,6 +94,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@types/country-list": "^2.1.4",
+    "@types/google.maps": "^3.58.1",
+    "@types/googlemaps": "^3.43.3",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/jspdf": "^2.0.0",
     "@types/jwt-decode": "^3.1.0",

@@ -30,13 +30,41 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
     fileInputRef.current?.click();
   };
 
-  const handleUpload = () => {
-    if (selectedFile) {
-      // console.log('Uploading:', selectedFile, comments);
-      // onUpload(selectedFile, comments); // Implement actual upload
-      onClose(); // Close modal after 'upload'
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('comments', comments);
+      
+      const response = await fetch('/api/firmware/upload-smib-data', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Upload successful:', result);
+      
+      // Close modal and clear form on success
+      onClose();
       setSelectedFile(null);
       setComments("");
+      
+      // Optional: Show success message
+      if (typeof window !== 'undefined') {
+        alert('SMIB data uploaded successfully!');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Optional: Show error message
+      if (typeof window !== 'undefined') {
+        alert('Upload failed. Please try again.');
+      }
     }
   };
 

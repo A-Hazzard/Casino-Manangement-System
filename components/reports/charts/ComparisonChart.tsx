@@ -16,7 +16,7 @@ import {
 } from "recharts/types/component/DefaultTooltipContent";
 import { formatCurrency } from "@/lib/helpers/reports";
 
-type ExtendedComparisonChartProps = {
+type ComparisonChartProps = {
   data: Record<string, string | number>[];
   keys: {
     name: string;
@@ -55,10 +55,7 @@ const CustomTooltip = ({
   return null;
 };
 
-export default function ComparisonChart({
-  data,
-  keys,
-}: ExtendedComparisonChartProps) {
+export default function ComparisonChart({ data, keys }: ComparisonChartProps) {
   return (
     <ResponsiveContainer width="100%" height={400}>
       <BarChart

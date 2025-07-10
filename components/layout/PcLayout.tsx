@@ -13,7 +13,8 @@ import StatCardSkeleton, {
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import Chart from "@/components/ui/dashboard/Chart";
 import { RefreshCw } from "lucide-react";
-import OnlineOfflineIndicator from "@/components/ui/OnlineOfflineIndicator";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import { useEffect, useState } from "react";
 
 dayjs.extend(customParseFormat);
 
@@ -24,6 +25,31 @@ export default function PcLayout(props: PcLayoutProps) {
       <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
   );
+
+  // State for aggregated location data
+  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
+  const [aggLoading, setAggLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLocationAggregation = async () => {
+      setAggLoading(true);
+      try {
+        const res = await fetch('/api/locationAggregation?timePeriod=Today');
+        const data = await res.json();
+        setLocationAggregates(data);
+      } catch (err) {
+        setLocationAggregates([]);
+      } finally {
+        setAggLoading(false);
+      }
+    };
+    fetchLocationAggregation();
+  }, []);
+
+  // Calculate total online/offline from aggregation
+  const onlineCount = locationAggregates.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+  const totalMachines = locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+  const offlineCount = totalMachines - onlineCount;
 
   return (
     <>
@@ -111,12 +137,12 @@ export default function PcLayout(props: PcLayoutProps) {
             <NoDataMessage message="No top performing data available for the selected period" />
           ) : (
             <>
-              {/* Online/Offline Machines Indicator */}
+              {/* Machine Status Widget */}
               <div className="mb-4">
-                <OnlineOfflineIndicator
-                  showTitle={true}
-                  size="lg"
-                  className="bg-container p-4 rounded-lg shadow-md"
+                <MachineStatusWidget
+                  isLoading={aggLoading}
+                  onlineCount={onlineCount}
+                  offlineCount={offlineCount}
                 />
               </div>
 

@@ -72,7 +72,7 @@ const movementReasons = [
   "Other",
 ];
 
-type NewMovementModalProps = {
+interface NewMovementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMovementCreated?: (movement: {
@@ -90,7 +90,7 @@ type NewMovementModalProps = {
     createdAt: string;
     updatedAt: string;
   }) => void;
-};
+}
 
 export default function NewMovementModal({
   open,
@@ -178,10 +178,7 @@ export default function NewMovementModal({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to create movement request:", errorMessage);
-      }
+      console.error("Failed to create movement request:", errorMessage);
       toast.error("Failed to create movement request");
     } finally {
       setIsSubmitting(false);

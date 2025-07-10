@@ -1,6 +1,18 @@
 import type { Document } from "mongoose";
 import type { CollectionReportMachineEntry } from "./collections";
-import type { MongooseId } from "@shared/types";
+import type { 
+  MongooseId,
+  MongoMatchStage,
+  WithTimestamps,
+  ApiResponse,
+  DateRange,
+  RegexFilter,
+  TimePeriod,
+  PipelineStage,
+  QueryFilter,
+  ApiParamsType,
+  CustomDate,
+} from "@shared/types";
 
 // Re-export shared types for convenience
 export type {
@@ -15,7 +27,7 @@ export type {
   QueryFilter,
   ApiParamsType,
   CustomDate,
-} from "@shared/types";
+};
 
 export type AcceptedBill = {
   _id: string;

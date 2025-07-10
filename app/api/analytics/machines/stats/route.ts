@@ -87,7 +87,12 @@ export async function GET(request: NextRequest) {
       sasMachines: 0,
     };
 
-    return NextResponse.json({ stats });
+    return NextResponse.json({
+      stats,
+      totalMachines: stats.totalMachines,
+      onlineMachines: stats.onlineMachines,
+      offlineMachines: stats.totalMachines - stats.onlineMachines
+    });
   } catch (error) {
     console.error("Error fetching machine stats:", error);
     return NextResponse.json(

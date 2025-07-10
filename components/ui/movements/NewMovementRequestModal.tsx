@@ -66,11 +66,16 @@ const NewMovementRequestModal: React.FC<NewMovementRequestModalProps> = ({
           setAvailableCabinets(cabs);
           setSelectedCabinets([]);
         })
-        .catch(() => {
-          // Handle error silently - could implement proper error reporting
+        .catch((error) => {
+          console.error('Failed to fetch cabinets for location:', error);
           setCabinets([]);
           setAvailableCabinets([]);
           setSelectedCabinets([]);
+          // Show user-friendly error if needed
+          setErrors(prev => ({
+            ...prev,
+            fromLocation: 'Failed to load machines for this location'
+          }));
         })
         .finally(() => {
           setLoadingCabinets(false);

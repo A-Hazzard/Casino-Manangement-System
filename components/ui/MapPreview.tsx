@@ -8,8 +8,6 @@ import "leaflet/dist/leaflet.css";
 import { MapPreviewProps } from "@/lib/types/componentProps";
 import { locations } from "@/lib/types";
 import MapSkeleton from "@/components/ui/MapSkeleton";
-import { fetchLocationMetricsForMap } from "@/lib/helpers/locations";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useRouter } from "next/navigation";
 
 // Dynamically import react-leaflet components (SSR disabled)
@@ -44,12 +42,30 @@ const getValidLongitude = (geo: {
   return undefined;
 };
 
+// Helper function to get location stats from chart data
+const getLocationStats = (location: locations, chartData: any[]) => {
+  // Try to find matching data in chartData
+  const stats = chartData.find(
+    (d) =>
+      (d.locationName && d.locationName === location.locationName) ||
+      (d.location && d.location === location.locationName) ||
+      (d.locationName && d.locationName === location.name) ||
+      (d.location && d.location === location.name)
+  );
+
+  return {
+    moneyIn: stats?.moneyIn ?? location.moneyIn ?? 0,
+    moneyOut: stats?.moneyOut ?? location.moneyOut ?? 0,
+    gross: stats?.gross ?? location.gross ?? 0,
+    totalMachines: location.totalMachines ?? 0,
+    onlineMachines: location.onlineMachines ?? 0,
+  };
+};
+
 export default function MapPreview(props: MapPreviewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [locationMetrics, setLocationMetrics] = useState<locations[]>([]);
-  const { activeMetricsFilter, selectedLicencee } = useDashBoardStore();
   const router = useRouter();
 
   // Initialize Leaflet on client side
@@ -65,29 +81,6 @@ export default function MapPreview(props: MapPreviewProps) {
       setMapReady(true);
     });
   }, []);
-
-  // Fetch location metrics when component mounts or filters change
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const metrics = await fetchLocationMetricsForMap(
-          activeMetricsFilter,
-          selectedLicencee
-        );
-        setLocationMetrics(metrics);
-      } catch (error) {
-        // Log error for debugging in development
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error fetching location metrics:", error);
-        }
-        setLocationMetrics([]);
-      }
-    };
-
-    if (mapReady) {
-      fetchMetrics();
-    }
-  }, [activeMetricsFilter, selectedLicencee, mapReady]);
 
   // Modal animation using GSAP
   useEffect(() => {
@@ -120,6 +113,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const gamingLocations = Array.isArray(props.gamingLocations)
     ? props.gamingLocations
     : [];
+  const chartData = Array.isArray(props.chartData) ? props.chartData : [];
 
   // Debug logging for gaming locations data
   if (process.env.NODE_ENV === "development") {
@@ -134,48 +128,13 @@ export default function MapPreview(props: MapPreviewProps) {
           (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0)
       }))
     });
+    
+    // Log chart data structure
+    console.log("MapPreview - chartData:", {
+      count: chartData.length,
+      sampleData: chartData.slice(0, 2)
+    });
   }
-
-  // Helper to get stats for a location from metrics or chartData
-  const getLocationStats = (location: locations) => {
-    // First try to get from fetched metrics
-    const metricsData = locationMetrics.find(
-      (metric) =>
-        metric._id === location._id ||
-        metric.name === location.name ||
-        metric.locationName === location.locationName
-    );
-
-    if (metricsData) {
-      return {
-        moneyIn: metricsData.moneyIn ?? 0,
-        moneyOut: metricsData.moneyOut ?? 0,
-        gross: metricsData.gross ?? 0,
-        totalMachines: metricsData.totalMachines ?? 0,
-        onlineMachines: metricsData.onlineMachines ?? 0,
-      };
-    }
-
-    // Fallback to chartData if metrics not available
-    const stats = Array.isArray(props.chartData)
-      ? props.chartData.find(
-          (d) =>
-            (d.locationName &&
-              (d.locationName === location.locationName ||
-                d.locationName === location.name)) ||
-            (d.location &&
-              (d.location === location.locationName ||
-                d.location === location.name))
-        )
-      : undefined;
-    return {
-      moneyIn: stats?.moneyIn ?? location.moneyIn ?? 0,
-      moneyOut: stats?.moneyOut ?? location.moneyOut ?? 0,
-      gross: stats?.gross ?? location.gross ?? 0,
-      totalMachines: location.totalMachines ?? 0,
-      onlineMachines: location.onlineMachines ?? 0,
-    };
-  };
 
   // Handle navigation to location details
   const handleLocationClick = (locationId: string) => {
@@ -204,7 +163,9 @@ export default function MapPreview(props: MapPreviewProps) {
     }
     
     if (lon === undefined || lat === 0 || lon === 0) return null;
-    const stats = getLocationStats(locationObj);
+    
+    const stats = getLocationStats(locationObj, chartData);
+    
     return (
       <Marker key={key} position={[lat, lon]}>
         <Popup>
@@ -238,6 +199,32 @@ export default function MapPreview(props: MapPreviewProps) {
     );
   };
 
+  // Filter valid locations with coordinates
+  const validLocations = gamingLocations.filter(location => {
+    if (!location.geoCoords) {
+      console.log(`📍 Location "${location.name || location.locationName}" has no geoCoords`);
+      return false;
+    }
+    
+    const validLongitude = getValidLongitude(location.geoCoords);
+    const hasValidCoords = location.geoCoords.latitude !== 0 && 
+                          validLongitude !== undefined && 
+                          validLongitude !== 0;
+    
+    if (!hasValidCoords) {
+      console.log(`📍 Location "${location.name || location.locationName}" has invalid coordinates:`, {
+        latitude: location.geoCoords.latitude,
+        longitude: location.geoCoords.longitude,
+        longtitude: location.geoCoords.longtitude,
+        validLongitude
+      });
+    }
+    
+    return hasValidCoords;
+  });
+
+  console.log(`🗺️ MapPreview: ${validLocations.length} valid locations out of ${gamingLocations.length} total`);
+
   return (
     <>
       {/* Small Map Preview */}
@@ -260,31 +247,18 @@ export default function MapPreview(props: MapPreviewProps) {
             attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
 
-          {/* Always render all valid markers if gamingLocations is not empty */}
-          {gamingLocations.length > 0 &&
-            gamingLocations.map((location) => {
-              if (!location.geoCoords) return null;
-              
-              // Get valid longitude (prioritize longitude over longtitude)
-              const validLongitude = location.geoCoords.longitude !== undefined && location.geoCoords.longitude !== 0
-                ? location.geoCoords.longitude
-                : location.geoCoords.longtitude;
-              
-              // Check if we have valid coordinates
-              if (location.geoCoords.latitude === 0 || validLongitude === 0 || validLongitude === undefined) {
-                return null;
-              }
-              
-              const locationName =
-                location.name || location.locationName || "Unknown Location";
-              return renderMarker(
-                location.geoCoords.latitude,
-                location.geoCoords,
-                locationName,
-                location._id,
-                location
-              );
-            })}
+          {/* Render valid markers */}
+          {validLocations.map((location) => {
+            const locationName =
+              location.name || location.locationName || "Unknown Location";
+            return renderMarker(
+              location.geoCoords.latitude,
+              location.geoCoords,
+              locationName,
+              location._id,
+              location
+            );
+          })}
         </MapContainer>
       </div>
 
@@ -314,19 +288,7 @@ export default function MapPreview(props: MapPreviewProps) {
                 attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
 
-              {gamingLocations.map((location) => {
-                if (!location.geoCoords) return null;
-                
-                // Get valid longitude (prioritize longitude over longtitude)
-                const validLongitude = location.geoCoords.longitude !== undefined && location.geoCoords.longitude !== 0
-                  ? location.geoCoords.longitude
-                  : location.geoCoords.longtitude;
-                
-                // Check if we have valid coordinates
-                if (location.geoCoords.latitude === 0 || validLongitude === 0 || validLongitude === undefined) {
-                  return null;
-                }
-                
+              {validLocations.map((location) => {
                 const locationName =
                   location.name || location.locationName || "Unknown Location";
                 return renderMarker(

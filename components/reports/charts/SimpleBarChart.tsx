@@ -9,7 +9,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency } from "@/lib/helpers/reports";
-import type { SimpleBarChartProps } from "@/lib/types/components";
+
+type SimpleBarChartProps = {
+  data: { name: string; value: number }[];
+};
 
 export default function SimpleBarChart({ data }: SimpleBarChartProps) {
   return (

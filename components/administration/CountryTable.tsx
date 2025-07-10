@@ -1,5 +1,7 @@
 import type { Country } from "@/lib/types/country";
 import Image from "next/image";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 type CountryTableProps = {
   countries: Country[];
@@ -61,7 +63,7 @@ export default function CountryTable({
                 </td>
                 <td className="py-3 px-4 flex gap-2 items-center justify-center max-w-[120px]">
                   <Image
-                    src="/editIcon.svg"
+                    src={editIcon}
                     alt="Edit"
                     width={20}
                     height={20}
@@ -69,7 +71,7 @@ export default function CountryTable({
                     onClick={() => onEdit(country)}
                   />
                   <Image
-                    src="/deleteIcon.svg"
+                    src={deleteIcon}
                     alt="Delete"
                     width={20}
                     height={20}

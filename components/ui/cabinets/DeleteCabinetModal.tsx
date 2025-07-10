@@ -7,6 +7,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { deleteCabinet } from "@/lib/helpers/cabinets";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export const DeleteCabinetModal = () => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
@@ -101,7 +102,7 @@ export const DeleteCabinetModal = () => {
               <div className="text-center text-foreground space-y-4">
                 <div className="flex justify-center mb-4">
                   <Image
-                    src="/deleteIcon.svg"
+                    src={deleteIcon}
                     alt="Delete"
                     width={64}
                     height={64}

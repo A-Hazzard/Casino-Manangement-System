@@ -7,6 +7,8 @@ import { Database, Server } from "lucide-react";
 import { gsap } from "gsap";
 import { LocationCardData } from "@/lib/types/location";
 import { formatCurrency } from "@/lib/utils/number";
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export default function LocationCard({
   location,
@@ -70,11 +72,10 @@ export default function LocationCard({
             className="text-button"
           >
             <Image
-              src="/editIcon.svg"
-              width={16}
-              height={16}
+              src={editIcon}
               alt="Edit"
-              className="w-4 h-4"
+              width={20}
+              height={20}
             />
           </button>
         </div>

@@ -3,10 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Senior Software Engineering Rules for Ourlime Web Project
+# Senior Software Engineering Rules for Next.js Projects
 
-This project follows strict engineering guidelines to ensure code quality, maintainability, and security.  
-All contributors must adhere to the following rules, which are enforced throughout the codebase.
+This document provides strict engineering guidelines to ensure code quality, maintainability, and security for Next.js projects.  
+All contributors should adhere to the following rules, which are enforced throughout the codebase.
 
 ---
 
@@ -19,24 +19,35 @@ All contributors must adhere to the following rules, which are enforced througho
 - For development, use `pnpm dev` to start the local development server.
 
 **Reference:**  
-- [package.json](mdc:package.json)
+- `package.json` - Project dependencies and scripts
 
 ---
 
 ## 2. TypeScript Discipline & Types Organization
 
 - **All type definitions must reside in the appropriate types directories:**
+  - **Shared types** (used across frontend and backend) should be in [`shared/types/`](mdc:shared/types)
   - Application-wide types should be in [`types/`](mdc:types)
   - Component or library-specific types should be in [`lib/types/`](mdc:lib/types)
   - Do not define types or interfaces directly in component, helper, or utility files.
 - **Prefer `type` over `interface`** for consistency across the codebase.
 - **No `any` allowed** - Create appropriate type definitions for all variables and functions.
+- **Always check dependencies before deleting types or functions** - Use `grep_search` to verify usage before removal.
+- **Avoid type duplication** - Import and re-export from shared types instead of redefining.
 - Always import types from their respective type files - avoid redefining types.
 - Ensure type exports are properly named and documented.
 
+**Shared Types Structure:**
+- `shared/types/database.ts` - Database-related types
+- `shared/types/entities.ts` - Core entity types
+- `shared/types/api.ts` - API request/response types
+- `shared/types/common.ts` - Common utility types
+- `shared/types/auth.ts` - Authentication types
+
 **References:**  
-- [types/](mdc:types)
-- [lib/types/](mdc:lib/types)
+- `shared/types/` - Shared types across frontend and backend
+- `types/` - Application-wide types
+- `lib/types/` - Component or library-specific types
 
 ---
 
@@ -49,7 +60,7 @@ All contributors must adhere to the following rules, which are enforced througho
 - Use ESLint's auto-fix feature when possible: `pnpm lint --fix`.
 
 **Reference:**  
-- [eslint.config.mjs](mdc:eslint.config.mjs)
+- `eslint.config.mjs` - ESLint configuration
 
 ---
 
@@ -60,13 +71,22 @@ All contributors must adhere to the following rules, which are enforced througho
 - **API-related logic should reside in [`lib/helpers/`](mdc:lib/helpers) or specific feature directories.**
 - **Shared utilities should reside in [`lib/utils/`](mdc:lib/utils) or [`utils/`](mdc:utils).**
 - **Context providers should be in [`lib/contexts/`](mdc:lib/contexts) or [`context/`](mdc:context).**
+- **Feature-specific code should be organized within their related directories** in `lib/` (e.g., `lib/chat/`, `lib/profile/`).
 - Do not mix API logic with UI or utility logic.
 
+**Folder Structure Best Practices:**
+- **Shared code** → `shared/` (types, utilities, constants)
+- **Frontend-specific** → `lib/` (helpers, utils, contexts, types)
+- **Backend-specific** → `app/api/` (routes, models, helpers)
+- **Components** → `components/` (UI components, pages)
+- **Feature modules** → `lib/[feature]/` (e.g., `lib/chat/`, `lib/auth/`)
+
 **References:**  
-- [lib/helpers/](mdc:lib/helpers)
-- [lib/utils/](mdc:lib/utils)
-- [components/](mdc:components)
-- [app/](mdc:app)
+- `shared/` - Shared code (types, utilities, constants)
+- `lib/helpers/` - API-related logic and helpers
+- `lib/utils/` - Shared utilities
+- `components/` - UI components and pages
+- `app/` - Next.js app directory structure
 
 ---
 
@@ -93,8 +113,8 @@ All contributors must adhere to the following rules, which are enforced througho
 - Store JWT tokens in secure HTTP-only cookies with proper expiration.
 
 **References:**  
-- [middleware.ts](mdc:middleware.ts)
-- [app/api/lib/helpers/auth.ts](mdc:app/api/lib/helpers/auth.ts)
+- `middleware.ts` - Next.js middleware for route protection
+- `app/api/lib/helpers/auth.ts` - Authentication helpers
 
 ---
 
@@ -117,6 +137,9 @@ All contributors must adhere to the following rules, which are enforced througho
 - Minimize unnecessary re-renders with memoization techniques.
 - Use efficient data fetching patterns to prevent waterfalls.
 - Implement proper caching strategies for API responses.
+- **Use debouncing for search inputs** to prevent excessive API calls.
+- **Implement proper cleanup** for event listeners, timeouts, and subscriptions.
+- **Memoize expensive computations** and callback functions to prevent unnecessary re-renders.
 
 ---
 
@@ -128,7 +151,7 @@ All contributors must adhere to the following rules, which are enforced througho
 - Use TypeScript for compile-time error catching.
 
 **Reference:**  
-- [package.json](mdc:package.json) - Jest configuration for future testing setup
+- `package.json` - Jest configuration for future testing setup
 
 ---
 
@@ -141,10 +164,65 @@ All contributors must adhere to the following rules, which are enforced througho
 
 ---
 
+## 11. Code Cleanup & Dependency Management
+
+- **Always check dependencies before deleting code:**
+  - Use `grep_search` to find all usages of a type, function, or variable
+  - Check both import statements and direct usage
+  - Verify no code depends on the item before removal
+- **Handle type conflicts properly:**
+  - When importing types from multiple sources, ensure no naming conflicts
+  - Use explicit imports or aliases to resolve conflicts
+  - Prefer shared types over local duplicates
+- **Clean up unused imports and exports:**
+  - Remove unused imports to reduce bundle size
+  - Update index files when removing exports
+  - Verify all imports are still valid after changes
+- **Follow the dependency chain:**
+  - When removing a type/function, check what imports it
+  - Update or remove dependent code accordingly
+  - Ensure the build still passes after cleanup
+
+---
+
+## 12. Frontend-Backend Type Consistency
+
+- **Before creating or modifying types that represent backend data:**
+  - **Trace the data flow** from API endpoint to frontend usage
+  - **Check the original API source** in `app/api/` routes to understand the data structure
+  - **Verify database schema** if the type represents database entities
+  - **Ensure shared types match** the actual API response structure
+- **Type synchronization workflow:**
+  1. **Identify the API endpoint** that provides the data
+  2. **Examine the response structure** in the route handler
+  3. **Check database models** if applicable (MongoDB schemas, Prisma models)
+  4. **Update shared types** to match the actual data structure
+  5. **Verify frontend usage** aligns with the updated types
+- **Common patterns to check:**
+  - **API response transformations** (e.g., `_id` to `id`, date formatting)
+  - **Optional vs required fields** based on API behavior
+  - **Nested object structures** and their relationships
+  - **Array types** and their element structures
+- **Validation approach:**
+  - **Use TypeScript strict mode** to catch type mismatches
+  - **Test API endpoints** to verify response structure
+  - **Check runtime data** in browser dev tools
+  - **Validate against database schema** for entity types
+
+**References:**
+- `app/api/` - API route handlers
+- `shared/types/` - Shared type definitions
+- `app/api/lib/models/` - Database models
+
+---
+
 **Summary:**  
 Persistence: Keep going until the job is completely solved before ending your turn.
 Plan than reflect: Plan thoroughly before every tool call then reflect on the outcome after
 This project enforces strict discipline in type safety, code style, modularity, security, and build integrity.  
 Use your tools don't guess: If you're unsure about code or files, open them - do not hallucinate.
+**Always check dependencies before deleting code** - Use grep_search to verify usage patterns.
+**Prefer shared types over duplicates** - Maintain single source of truth for types.
+**Trace API data flow** - Check original backend source before creating/modifying types.
 
 All contributors must follow these rules to ensure a robust, maintainable, and secure codebase.

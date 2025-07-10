@@ -15,6 +15,7 @@ import type { LocationSelectItem } from "./location";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 import type { CollectionReportLocationWithMachines } from "./api";
 import { LatLng } from "leaflet";
+import type { CollectorSchedule } from "@/lib/types/components";
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
@@ -287,6 +288,58 @@ export type ManagerMobileUIProps = {
   loadingSchedulers: boolean;
 };
 
+// Collector Schedule prop types
+export type CollectorScheduleDesktopUIProps = {
+  locations: LocationSelectItem[];
+  collectors: string[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  onResetFilters: () => void;
+  collectorSchedules: CollectorSchedule[];
+  loadingCollectorSchedules: boolean;
+};
+
+export type CollectorScheduleMobileUIProps = {
+  locations: LocationSelectItem[];
+  collectors: string[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  onResetFilters: () => void;
+  collectorSchedules: CollectorSchedule[];
+  loadingCollectorSchedules: boolean;
+};
+
+export type CollectorScheduleFiltersProps = {
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  collectors: string[];
+  locations: LocationSelectItem[];
+  onResetFilters: () => void;
+  loading?: boolean;
+};
+
+export type CollectorScheduleTableProps = {
+  data: CollectorSchedule[];
+  loading?: boolean;
+};
+
+export type CollectorScheduleCardsProps = {
+  data: CollectorSchedule[];
+  loading?: boolean;
+};
+
 export type LocationPickerMapProps = {
   onLocationSelect: (latlng: LatLng) => void;
 };
@@ -303,8 +356,3 @@ export type DateRangeFilterProps = {
   onApply: (range?: RDPDateRange) => void;
   className?: string;
 };
-
-export interface LocationData {
-  id: string;
-  // ... existing code ...
-}

@@ -6,6 +6,8 @@ import type { ExtendedCabinetDetail } from "@/lib/types/pages";
 import type { CabinetGridProps } from "@/lib/types/components";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import CabinetTable from "@/components/ui/cabinets/CabinetTable";
+import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
+import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import gsap from "gsap";
 
 function CabinetCardMobile({
@@ -94,6 +96,11 @@ export default function CabinetGrid({
     React.useState<CabinetSortOption>("moneyIn");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
+  // Modal states
+  const [selectedCabinet, setSelectedCabinet] = React.useState<ExtendedCabinetDetail | null>(null);
+  const [showEditModal, setShowEditModal] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+
   const handleColumnSort = (column: CabinetSortOption) => {
     if (sortOption === column) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -104,14 +111,38 @@ export default function CabinetGrid({
   };
 
   // Handle cabinet actions
-  const handleEdit = () => {
-    // This would typically open the cabinet edit modal
-    // Edit cabinet functionality would be implemented here
+  const handleEdit = (cabinet: ExtendedCabinetDetail) => {
+    setSelectedCabinet(cabinet);
+    setShowEditModal(true);
   };
 
-  const handleDelete = () => {
-    // This would typically open the cabinet delete confirmation
-    // Delete cabinet functionality would be implemented here
+  const handleDelete = (cabinet: ExtendedCabinetDetail) => {
+    setSelectedCabinet(cabinet);
+    setShowDeleteModal(true);
+  };
+
+  const handleEditSuccess = () => {
+    setShowEditModal(false);
+    setSelectedCabinet(null);
+    // Optionally refresh the cabinet data
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  };
+
+  const handleDeleteSuccess = () => {
+    setShowDeleteModal(false);
+    setSelectedCabinet(null);
+    // Optionally refresh the cabinet data
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  };
+
+  const handleCloseModals = () => {
+    setShowEditModal(false);
+    setShowDeleteModal(false);
+    setSelectedCabinet(null);
   };
 
   return (
@@ -123,14 +154,14 @@ export default function CabinetGrid({
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet) => ({
               ...(cabinet as Cabinet),
-              onEdit: handleEdit,
-              onDelete: handleDelete,
+              onEdit: () => handleEdit(cabinet),
+              onDelete: () => handleDelete(cabinet),
             }))}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onColumnSort={handleColumnSort}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={(cabinet) => handleEdit(cabinet as ExtendedCabinetDetail)}
+          onDelete={(cabinet) => handleDelete(cabinet as ExtendedCabinetDetail)}
         />
       </div>
 
@@ -165,6 +196,16 @@ export default function CabinetGrid({
             No cabinets match your search criteria.
           </p>
         </div>
+      )}
+
+      {/* Edit Cabinet Modal */}
+      {showEditModal && selectedCabinet && (
+        <EditCabinetModal />
+      )}
+
+      {/* Delete Cabinet Modal */}
+      {showDeleteModal && selectedCabinet && (
+        <DeleteCabinetModal />
       )}
     </div>
   );

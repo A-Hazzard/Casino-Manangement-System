@@ -9,7 +9,6 @@ import React, {
 import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
-import { useLocationStore } from "@/lib/store/locationStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { fetchLocationsData } from "@/lib/helpers/locations";
 import { AggregatedLocation } from "@/lib/types/location";
@@ -40,7 +39,7 @@ import { DeleteLocationModal } from "@/components/ui/locations/DeleteLocationMod
 import LocationCard from "@/components/ui/locations/LocationCard";
 import LocationSkeleton from "@/components/ui/locations/LocationSkeleton";
 import LocationTable from "@/components/ui/locations/LocationTable";
-import { NewLocationModal } from "@/components/ui/locations/NewLocationModal";
+import NewLocationModal from "@/components/ui/locations/NewLocationModal";
 import Image from "next/image";
 
 export default function LocationsPage() {
@@ -60,7 +59,12 @@ export default function LocationsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { openLocationModal } = useLocationStore();
+  // Add isOpen state for NewLocationModal
+  const [isNewLocationModalOpen, setIsNewLocationModalOpen] = useState(false);
+
+  // Replace openLocationModal with our local state handler
+  const openLocationModalLocal = () => setIsNewLocationModalOpen(true);
+  const closeLocationModal = () => setIsNewLocationModalOpen(false);
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -246,7 +250,7 @@ export default function LocationsPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -269,7 +273,7 @@ export default function LocationsPage() {
             </div>
             {/* Add New Location button (desktop only) */}
             <Button
-              onClick={openLocationModal}
+              onClick={openLocationModalLocal}
               className="hidden md:flex bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
             >
               <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
@@ -282,7 +286,7 @@ export default function LocationsPage() {
           {/* Mobile: New Location button below title */}
           <div className="md:hidden mt-4 w-full">
             <Button
-              onClick={openLocationModal}
+              onClick={openLocationModalLocal}
               className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
             >
               <Plus size={20} />
@@ -432,7 +436,10 @@ export default function LocationsPage() {
       </div>
       <EditLocationModal onLocationUpdated={fetchData} />
       <DeleteLocationModal onLocationDeleted={fetchData} />
-      <NewLocationModal onLocationAdded={fetchData} />
+      <NewLocationModal 
+        isOpen={isNewLocationModalOpen} 
+        onClose={closeLocationModal}
+      />
     </>
   );
 }

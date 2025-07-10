@@ -3,7 +3,7 @@ import type {
   ApiParamsType,
   CustomDate,
   TimePeriod,
-} from "@/lib/types/api";
+} from "@shared/types";
 
 export type { QueryFilter };
 export type { ApiParamsType as ParamsType };

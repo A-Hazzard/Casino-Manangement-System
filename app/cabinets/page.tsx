@@ -350,7 +350,7 @@ export default function CabinetsPage() {
         onClose={closeUploadSmibDataModal}
       />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}

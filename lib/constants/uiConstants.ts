@@ -1,7 +1,6 @@
 import { TimeFrames } from "../types";
 import { licenceeOption } from "../types";
 import { TimePeriod } from "../types/api";
-import type { ReportTab } from "../types/reports";
 
 /**
  * Color palette used for charts and UI elements throughout the dashboard (e.g., PieChart, StatCards)
@@ -58,40 +57,3 @@ export const licenceeOptions: licenceeOption[] = [
  * Constant for converting degrees to radians, used in pie chart label calculations (e.g., app/page.tsx).
  */
 export const RADIAN = Math.PI / 180;
-
-/**
- * Configuration for reports tabs in the reports page
- * Used in reports page for tab navigation and content rendering
- */
-export const reportsTabsConfig: ReportTab[] = [
-  {
-    id: "locations",
-    label: "Locations",
-    icon: "🏢",
-    description: "Location performance analysis, top performers, and comparisons",
-  },
-  {
-    id: "machines",
-    label: "Machines",
-    icon: "🎰",
-    description: "Individual machine performance, revenue tracking, and analytics",
-  },
-];
-
-/**
- * Animation variants for page transitions in reports
- */
-export const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-/**
- * Animation variants for tab transitions in reports
- */
-export const tabVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-};

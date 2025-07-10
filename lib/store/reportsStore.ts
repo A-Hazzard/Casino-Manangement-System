@@ -7,15 +7,12 @@ import type {
   DashboardWidget,
   CustomerMetrics,
   VoucherMetrics,
-  MachineMovementRecord,
   ComplianceMetrics,
   RealTimeMetrics,
-  ReportTemplate,
   ScheduledReport,
   UserReportPreferences,
   ReportGenerationStatus,
   PerformanceComparison,
-  PredictiveAnalytics,
 } from "@/lib/types/reports";
 
 type ReportsState = {
@@ -38,20 +35,13 @@ type ReportsState = {
   // Voucher tracking
   voucherMetrics: VoucherMetrics | null;
 
-  // Machine movements
-  machineMovements: MachineMovementRecord[];
-
   // Compliance data
   complianceMetrics: ComplianceMetrics | null;
 
   // Performance comparisons
   performanceComparisons: PerformanceComparison[];
 
-  // Predictive analytics
-  predictiveAnalytics: PredictiveAnalytics | null;
-
-  // Templates and scheduling
-  reportTemplates: ReportTemplate[];
+  // Scheduling
   scheduledReports: ScheduledReport[];
 
   // User preferences
@@ -100,29 +90,12 @@ type ReportsActions = {
   // Voucher tracking actions
   updateVoucherMetrics: (metrics: VoucherMetrics) => void;
 
-  // Machine movement actions
-  updateMachineMovements: (movements: MachineMovementRecord[]) => void;
-  addMachineMovement: (movement: MachineMovementRecord) => void;
-  updateMachineMovement: (
-    id: string,
-    updates: Partial<MachineMovementRecord>
-  ) => void;
-
   // Compliance actions
   updateComplianceMetrics: (metrics: ComplianceMetrics) => void;
 
   // Performance comparison actions
   updatePerformanceComparisons: (comparisons: PerformanceComparison[]) => void;
   addPerformanceComparison: (comparison: PerformanceComparison) => void;
-
-  // Predictive analytics actions
-  updatePredictiveAnalytics: (analytics: PredictiveAnalytics) => void;
-
-  // Template actions
-  updateReportTemplates: (templates: ReportTemplate[]) => void;
-  addReportTemplate: (template: ReportTemplate) => void;
-  updateReportTemplate: (id: string, updates: Partial<ReportTemplate>) => void;
-  deleteReportTemplate: (id: string) => void;
 
   // Scheduled reports actions
   updateScheduledReports: (reports: ScheduledReport[]) => void;
@@ -162,7 +135,6 @@ type ReportsActions = {
   refreshDashboard: () => Promise<void>;
   refreshCustomerData: () => Promise<void>;
   refreshVoucherData: () => Promise<void>;
-  refreshMovementData: () => Promise<void>;
   refreshComplianceData: () => Promise<void>;
 };
 
@@ -186,20 +158,13 @@ const initialState: ReportsState = {
   // Voucher tracking
   voucherMetrics: null,
 
-  // Machine movements
-  machineMovements: [],
-
   // Compliance data
   complianceMetrics: null,
 
   // Performance comparisons
   performanceComparisons: [],
 
-  // Predictive analytics
-  predictiveAnalytics: null,
-
-  // Templates and scheduling
-  reportTemplates: [],
+  // Scheduling
   scheduledReports: [],
 
   // User preferences
@@ -266,20 +231,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       // Voucher tracking actions
       updateVoucherMetrics: (metrics) => set({ voucherMetrics: metrics }),
 
-      // Machine movement actions
-      updateMachineMovements: (movements) =>
-        set({ machineMovements: movements }),
-      addMachineMovement: (movement) =>
-        set((state) => ({
-          machineMovements: [movement, ...state.machineMovements],
-        })),
-      updateMachineMovement: (id, updates) =>
-        set((state) => ({
-          machineMovements: state.machineMovements.map((m) =>
-            m.id === id ? { ...m, ...updates } : m
-          ),
-        })),
-
       // Compliance actions
       updateComplianceMetrics: (metrics) => set({ complianceMetrics: metrics }),
 
@@ -289,27 +240,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       addPerformanceComparison: (comparison) =>
         set((state) => ({
           performanceComparisons: [...state.performanceComparisons, comparison],
-        })),
-
-      // Predictive analytics actions
-      updatePredictiveAnalytics: (analytics) =>
-        set({ predictiveAnalytics: analytics }),
-
-      // Template actions
-      updateReportTemplates: (templates) => set({ reportTemplates: templates }),
-      addReportTemplate: (template) =>
-        set((state) => ({
-          reportTemplates: [...state.reportTemplates, template],
-        })),
-      updateReportTemplate: (id, updates) =>
-        set((state) => ({
-          reportTemplates: state.reportTemplates.map((t) =>
-            t.id === id ? { ...t, ...updates } : t
-          ),
-        })),
-      deleteReportTemplate: (id) =>
-        set((state) => ({
-          reportTemplates: state.reportTemplates.filter((t) => t.id !== id),
         })),
 
       // Scheduled reports actions
@@ -392,7 +322,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
           refreshDashboard,
           refreshCustomerData,
           refreshVoucherData,
-          refreshMovementData,
           refreshComplianceData,
         } = get();
         set({ isLoading: true, error: null });
@@ -401,7 +330,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
             refreshDashboard(),
             refreshCustomerData(),
             refreshVoucherData(),
-            refreshMovementData(),
             refreshComplianceData(),
           ]);
         } catch (error) {
@@ -427,11 +355,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       refreshVoucherData: async () => {
         // Implementation would fetch voucher data from API
         console.log("Refreshing voucher data...");
-      },
-
-      refreshMovementData: async () => {
-        // Implementation would fetch movement data from API
-        console.log("Refreshing movement data...");
       },
 
       refreshComplianceData: async () => {

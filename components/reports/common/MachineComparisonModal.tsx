@@ -18,9 +18,9 @@ export default function MachineComparisonModal() {
   const { machineComparisons } = useAnalyticsDataStore();
 
   const chartData = machineComparisons.map((machine) => ({
-    name: machine.model,
-    totalHandle: machine.coinIn,
-    totalWin: machine.coinIn - machine.coinOut,
+    name: machine.gameTitle,
+    totalHandle: machine.totalHandle,
+    totalWin: machine.totalWin,
   }));
 
   const chartKeys = {
@@ -29,14 +29,6 @@ export default function MachineComparisonModal() {
       { key: "totalHandle", color: "#3b82f6" },
       { key: "totalWin", color: "#10b981" },
     ],
-  };
-
-  const getActualHold = (machine: GamingMachine) => {
-    return machine.coinIn > 0 ? (machine.coinIn - machine.coinOut) / machine.coinIn : 0;
-  };
-
-  const getAverageWager = (machine: GamingMachine) => {
-    return machine.gamesPlayed > 0 ? machine.coinIn / machine.gamesPlayed : 0;
   };
 
   return (
@@ -70,7 +62,7 @@ export default function MachineComparisonModal() {
                     className="p-4 bg-gray-50 rounded-lg border"
                   >
                     <h4 className="font-bold text-gray-900 truncate">
-                      {machine.model}
+                      {machine.gameTitle}
                     </h4>
                     <p className="text-sm text-gray-500">
                       {machine.manufacturer}
@@ -79,7 +71,7 @@ export default function MachineComparisonModal() {
                       <div className="flex justify-between">
                         <span>Hold %:</span>{" "}
                         <span className="font-semibold">
-                          {formatPercentage(getActualHold(machine))}
+                          {formatPercentage(machine.actualHold)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -89,9 +81,11 @@ export default function MachineComparisonModal() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Avg. Wager:</span>{" "}
+                        <span>Average Bet:</span>{" "}
                         <span className="font-semibold">
-                          {formatCurrency(getAverageWager(machine))}
+                          {formatCurrency(
+                            machine.avgBet || machine.averageWager || 0
+                          )}
                         </span>
                       </div>
                       <div className="flex justify-between">

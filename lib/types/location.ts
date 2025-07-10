@@ -1,24 +1,10 @@
-export type Location = {
-  _id: string;
-  locationName: string;
-  name?: string;
-  country: string;
-  address?: Address;
-  rel?: RelationshipInfo;
-  profitShare: number;
-  isLocalServer?: boolean;
-  geoCoords?: GeoCoordinates;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  totalMachines?: number;
-  onlineMachines?: number;
-  hasSmib?: boolean;
-  noSMIBLocation?: boolean;
-};
+import type { Location as SharedLocation, Address, RelationshipInfo, GeoCoordinates, AggregatedLocation } from "@shared/types";
+
+// Re-export shared location types
+export type { Address, RelationshipInfo, GeoCoordinates, AggregatedLocation };
+
+// Use shared Location type
+export type Location = SharedLocation;
 
 export type UpdateLocationData = {
   name?: string;
@@ -105,6 +91,7 @@ export type LocationStore = {
   isLocationModalOpen: boolean;
   openLocationModal: () => void;
   closeLocationModal: () => void;
+  createLocation: (location: { name: string; address: string; latitude: number; longitude: number }) => Promise<void>;
 };
 
 export type LocationActionsState = {
@@ -195,18 +182,7 @@ export type LocationDateRange = {
   endDate: Date;
 };
 
-export type AggregatedLocation = {
-  location: string;
-  locationName: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  totalMachines: number;
-  onlineMachines: number;
-  isLocalServer: boolean;
-  noSMIBLocation: boolean;
-  hasSmib: boolean;
-};
+
 
 import { ObjectId } from "mongodb";
 
@@ -219,27 +195,7 @@ export type GamingLocation = {
   noSMIBLocation?: boolean;
 };
 
-export type Address = {
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-  [key: string]: string | undefined;
-};
 
-export type RelationshipInfo = {
-  licencee?: string;
-  [key: string]: string | undefined;
-};
-
-export type GeoCoordinates = {
-  lat?: number;
-  lng?: number;
-  latitude?: number;
-  longitude?: number;
-  [key: string]: number | undefined;
-};
 
 export type LocationInfo = {
   _id?: string;
@@ -271,15 +227,15 @@ export type LocationApiResponse = {
   [key: string]: unknown;
 };
 
-export interface LocationCardData {
+export type LocationCardData = {
   location: AggregatedLocation;
   onLocationClick: (id: string) => void;
   onEdit: (location: AggregatedLocation) => void;
   onDelete: (location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
-}
+};
 
-export interface LocationTableProps {
+export type LocationTableProps = {
   locations: AggregatedLocation[];
   onSort: (column: LocationSortOption) => void;
   sortOption: LocationSortOption;
@@ -287,4 +243,4 @@ export interface LocationTableProps {
   onLocationClick: (id: string) => void;
   onAction: (action: "edit" | "delete", location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
-}
+};
