@@ -21,6 +21,13 @@ type ReportsState = {
   isLoading: boolean;
   error: string | null;
 
+  // User permissions and access control
+  userPermissions: {
+    roles: string[];
+    permissions: string[];
+    locationIds: string[];
+  } | null;
+
   // Dashboard state
   dashboardWidgets: DashboardWidget[];
   realTimeMetrics: RealTimeMetrics | null;
@@ -70,6 +77,11 @@ type ReportsActions = {
   setActiveView: (view: ReportView) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setUserPermissions: (permissions: {
+    roles: string[];
+    permissions: string[];
+    locationIds: string[];
+  } | null) => void;
 
   // Dashboard actions
   updateDashboardWidgets: (widgets: DashboardWidget[]) => void;
@@ -143,6 +155,7 @@ const initialState: ReportsState = {
   activeView: "locations",
   isLoading: false,
   error: null,
+  userPermissions: null,
 
   // Dashboard state
   dashboardWidgets: [],
@@ -197,6 +210,7 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       setActiveView: (view) => set({ activeView: view }),
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
+      setUserPermissions: (permissions) => set({ userPermissions: permissions }),
 
       // Dashboard actions
       updateDashboardWidgets: (widgets) => set({ dashboardWidgets: widgets }),

@@ -57,7 +57,6 @@ export type ChartProps = {
 };
 
 export type MapPreviewProps = {
-  chartData: dashboardData[];
   gamingLocations: locations[];
 };
 

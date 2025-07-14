@@ -147,7 +147,6 @@ export default function PcLayout(props: PcLayoutProps) {
               </div>
 
               <MapPreview
-                chartData={props.chartData}
                 gamingLocations={props.gamingLocations}
               />
               <div className="space-y-2">

@@ -432,6 +432,7 @@ export type ReportTab = {
   label: string;
   icon: string;
   description: string;
+  requiredRoles?: string[];
   requiredPermissions?: string[];
 };
 
@@ -557,4 +558,137 @@ export type MachineAnalytics = {
   gross: number;
   isOnline: boolean;
   hasSas: boolean;
+};
+
+// New report data types for FRD requirements
+export type DailyCountsReport = {
+  locationId: string;
+  locationName: string;
+  date: string;
+  meterReadings: {
+    machineId: string;
+    machineName: string;
+    openingReading: number;
+    closingReading: number;
+    netRevenue: number;
+    variance: number;
+  }[];
+  voucherData: {
+    issued: number;
+    redeemed: number;
+    outstanding: number;
+  };
+  physicalCounts: {
+    expectedCash: number;
+    actualCash: number;
+    variance: number;
+  };
+};
+
+export type ActiveCustomersReport = {
+  totalRegistered: number;
+  activeToday: number;
+  activeThisWeek: number;
+  activeThisMonth: number;
+  locationBreakdown: {
+    locationId: string;
+    locationName: string;
+    activeCustomers: number;
+    signInRecords: number;
+  }[];
+  trends: {
+    date: string;
+    activeCustomers: number;
+  }[];
+};
+
+export type LocationStatsReport = {
+  locationId: string;
+  locationName: string;
+  machineCount: number;
+  onlineMachines: number;
+  offlineMachines: number;
+  dailyIntake: number;
+  dailyPayouts: number;
+  netRevenue: number;
+  uptime: number;
+  performance: "excellent" | "good" | "average" | "poor";
+};
+
+export type BarConcessionReport = {
+  locationId: string;
+  locationName: string;
+  date: string;
+  revenue: number;
+  transactions: number;
+  averageTicket: number;
+  trends: {
+    period: string;
+    revenue: number;
+  }[];
+};
+
+export type MachinePerformanceReport = {
+  machineId: string;
+  machineName: string;
+  locationName: string;
+  moneyIn: number;
+  moneyOut: number;
+  playCount: number;
+  averagePlayDuration: number;
+  totalIncome: number;
+  holdPercentage: number;
+  payoutRatio: number;
+  manufacturer: string;
+  gameType: string;
+};
+
+export type CashBalancesReport = {
+  locationId: string;
+  locationName: string;
+  date: string;
+  openingBalance: number;
+  closingBalance: number;
+  cashOnHand: number;
+  collectionEntries: number;
+  reconciliationStatus: "balanced" | "variance" | "pending";
+  variance: number;
+};
+
+export type DailySnapshotReport = {
+  date: string;
+  locationId: string;
+  locationName: string;
+  startingCash: number;
+  endingCash: number;
+  cashFlow: number;
+  collections: number;
+  payouts: number;
+  netChange: number;
+};
+
+export type FinancialPerformanceReport = {
+  machineId: string;
+  machineName: string;
+  gameType: string;
+  gameName: string;
+  revenue: number;
+  netPerformance: number;
+  payoutRatio: number;
+  holdPercentage: number;
+  earningsPerGame: number;
+  totalPlays: number;
+};
+
+export type TerminalCountsReport = {
+  manufacturer: string;
+  gameType: string;
+  totalTerminals: number;
+  onlineTerminals: number;
+  offlineTerminals: number;
+  locations: {
+    locationId: string;
+    locationName: string;
+    count: number;
+  }[];
 };

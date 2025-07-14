@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, Toaster } from "sonner";
+import type { ReactElement } from "react";
 
 // Layout components
 import Sidebar from "@/components/layout/Sidebar";
@@ -12,6 +13,9 @@ import Header from "@/components/layout/Header";
 // Store
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+
+// Hooks
+import { useAuth } from "@/lib/hooks/useAuth";
 
 // Types
 import type { ReportView, ReportTab } from "@/lib/types/reports";
@@ -76,6 +80,7 @@ const tabVariants = {
 export default function ReportsPage() {
   const pathname = usePathname();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { canAccessReport, getUserLocationIds, isLoading: authLoading } = useAuth();
 
   const {
     activeView,
@@ -92,6 +97,21 @@ export default function ReportsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
+  // Filter tabs based on user permissions
+  const availableTabs = reportsTabsConfig.filter(tab => 
+    canAccessReport(tab.requiredRoles, tab.requiredPermissions)
+  );
+
+  // Ensure user has access to current view, fallback to first available tab
+  useEffect(() => {
+    if (!authLoading && availableTabs.length > 0) {
+      const currentTabExists = availableTabs.some(tab => tab.id === activeView);
+      if (!currentTabExists) {
+        setActiveView(availableTabs[0].id);
+      }
+    }
+  }, [authLoading, availableTabs, activeView, setActiveView]);
+
   // Check if mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -100,9 +120,16 @@ export default function ReportsPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Handle tab change with loading state
+  // Handle tab change with loading state and permission check
   const handleTabChange = async (tabId: ReportView) => {
     if (tabId === activeView) return;
+
+    // Check if user has access to this tab
+    const targetTab = availableTabs.find(tab => tab.id === tabId);
+    if (!targetTab) {
+      toast.error("You don&apos;t have permission to access this report");
+      return;
+    }
 
     setLoading(true);
     setActiveView(tabId);
@@ -110,11 +137,7 @@ export default function ReportsPage() {
     // Simulate loading delay for better UX
     setTimeout(() => {
       setLoading(false);
-      toast.success(
-        `Switched to ${
-          reportsTabsConfig.find((t) => t.id === tabId)?.label
-        } view`
-      );
+      toast.success(`Switched to ${targetTab.label} view`);
     }, 300);
   };
 
@@ -130,7 +153,7 @@ export default function ReportsPage() {
   };
 
   const renderTabContent = () => {
-    const tabComponents = {
+    const tabComponents: Record<ReportView, ReactElement> = {
       dashboard: <DashboardTab />,
       locations: <LocationsTab />,
       machines: <MachinesTab />,
@@ -153,7 +176,42 @@ export default function ReportsPage() {
     );
   };
 
-  const currentTab = reportsTabsConfig.find((tab) => tab.id === activeView);
+  const currentTab = availableTabs.find((tab) => tab.id === activeView);
+
+  // Show loading state while authentication is loading
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-buttonActive" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if no tabs are available
+  if (availableTabs.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Bell className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600 mb-4">
+            You don&apos;t have permission to access any reports. Please contact your administrator for access.
+          </p>
+          <Button 
+            onClick={() => window.location.href = "/"}
+            className="bg-buttonActive hover:bg-buttonActive/90"
+          >
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -282,7 +340,7 @@ export default function ReportsPage() {
           <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex space-x-8 overflow-x-auto px-6">
-              {reportsTabsConfig.filter(tab => tab.id !== "dashboard").map((tab) => (
+              {availableTabs.filter(tab => tab.id !== "dashboard").map((tab) => (
                 <motion.button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
@@ -317,7 +375,7 @@ export default function ReportsPage() {
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                 disabled={isLoading}
               >
-                {reportsTabsConfig.filter(tab => tab.id !== "dashboard").map((tab) => (
+                {availableTabs.filter(tab => tab.id !== "dashboard").map((tab) => (
                   <option key={tab.id} value={tab.id}>
                     {tab.icon} {tab.label}
                   </option>
@@ -367,12 +425,11 @@ export default function ReportsPage() {
           style: {
             background: "white",
             border: "1px solid #e5e7eb",
-            color: "#374151",
           },
         }}
       />
 
-      {/* Modals */}
+      {/* Machine Comparison Modal */}
       <MachineComparisonModal />
     </>
   );

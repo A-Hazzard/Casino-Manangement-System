@@ -134,7 +134,6 @@ export default function MobileLayout(props: MobileLayoutProps) {
       )}
 
       <MapPreview
-        chartData={props.chartData}
         gamingLocations={props.gamingLocations}
       />
 
