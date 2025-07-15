@@ -23,7 +23,10 @@ const dummyState: DashBoardStore = {
   chartData: [],
   gamingLocations: [],
   selectedLicencee: "",
-  customDateRange: { startDate: new Date(), endDate: new Date() },
+  customDateRange: { 
+    startDate: new Date(new Date().setHours(0, 0, 0, 0)), 
+    endDate: new Date(new Date().setHours(23, 59, 59, 999)) 
+  },
   pendingCustomDateRange: undefined,
   topPerformingData: [],
   setInitialLoading: () => {},
@@ -68,7 +71,10 @@ const createStore = () => {
     chartData: [],
     gamingLocations: [],
     selectedLicencee: "",
-    customDateRange: { startDate: new Date(), endDate: new Date() },
+    customDateRange: { 
+      startDate: new Date(new Date().setHours(0, 0, 0, 0)), 
+      endDate: new Date(new Date().setHours(23, 59, 59, 999)) 
+    },
     pendingCustomDateRange: undefined,
     topPerformingData: [],
 

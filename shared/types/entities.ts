@@ -56,6 +56,10 @@ export type AggregatedLocation = {
   gross: number;
   totalMachines: number;
   onlineMachines: number;
+  sasMachines: number;
+  nonSasMachines: number;
+  hasSasMachines: boolean;
+  hasNonSasMachines: boolean;
   isLocalServer: boolean;
   noSMIBLocation: boolean;
   hasSmib: boolean;

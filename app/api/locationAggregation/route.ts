@@ -12,6 +12,11 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
+    
+    // Pagination parameters
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
 
     let startDate: Date, endDate: Date;
 
@@ -39,7 +44,8 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
 
-    const data = await getLocationsWithMetrics(
+    // Get total count first
+    const totalData = await getLocationsWithMetrics(
       db,
       { startDate, endDate },
       true,
@@ -47,7 +53,23 @@ export async function GET(req: NextRequest) {
       machineTypeFilter
     );
 
-    return NextResponse.json(data);
+    const totalCount = totalData.length;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get paginated data
+    const paginatedData = totalData.slice(skip, skip + limit);
+
+    return NextResponse.json({
+      data: paginatedData,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (err: unknown) {
     console.error("Error in locationAggregation route:", err);
     return NextResponse.json(

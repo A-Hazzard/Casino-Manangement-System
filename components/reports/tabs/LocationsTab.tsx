@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import {
   MapPin,
@@ -14,6 +14,8 @@ import {
   DollarSign,
   TrendingUp,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -42,7 +44,31 @@ import { ExportUtils } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
+// SAS Evaluation Components
+import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
+import EnhancedLocationTable from "@/components/reports/common/EnhancedLocationTable";
+import HandleChart from "@/components/reports/charts/HandleChart";
+import WinLossChart from "@/components/reports/charts/WinLossChart";
+import JackpotChart from "@/components/reports/charts/JackpotChart";
+import PlaysChart from "@/components/reports/charts/PlaysChart";
+import TopMachinesTable from "@/components/reports/common/TopMachinesTable";
+
+// Reports helpers and components
+import { AggregatedLocation } from "@/lib/types/location";
+import axios from "axios";
+
 // Types for location data
+type MachineData = {
+  id: string;
+  name: string;
+  revenue: number;
+  hold: number;
+};
+
+type HourlyRevenueData = {
+  hour: number;
+  revenue: number;
+};
 type LocationMetrics = {
   totalGross: number;
   totalDrop: number;
@@ -126,6 +152,227 @@ const TopLocationsSkeleton = () => (
   </div>
 );
 
+// SimpleBarChart Component
+  const SimpleBarChart = ({
+    data,
+    title,
+  }: {
+    data: Array<{ hour: number; revenue: number }>;
+    title: string;
+  }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">{title}</h4>
+          <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
+            <span className="text-sm text-gray-500">No data available</span>
+          </div>
+        </div>
+      );
+    }
+
+    const maxRevenue = Math.max(...data.map((d) => d.revenue));
+    const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+
+    // Transform data for Recharts
+    const chartData = data.map((item) => ({
+      hour: `${item.hour}:00`,
+      revenue: item.revenue,
+    }));
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium">{title}</h4>
+          <span className="text-xs text-muted-foreground">
+            Total: ${totalRevenue.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+            >
+              <XAxis
+                dataKey="hour"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "#6b7280" }}
+                interval={5} // Show every 6th hour
+              />
+              <YAxis hide />
+              <Tooltip
+                formatter={(value: number) => [
+                  `$${value.toLocaleString()}`,
+                  "Revenue",
+                ]}
+                labelStyle={{ color: "#374151" }}
+                contentStyle={{
+                  backgroundColor: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                }}
+              />
+              <Bar dataKey="revenue" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Peak: ${maxRevenue.toLocaleString()}</span>
+          <span>
+            Avg: ${Math.round(totalRevenue / data.length).toLocaleString()}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+// Real data fetching functions
+const useHourlyRevenueData = (locationId: string, timePeriod: string) => {
+  const [data, setData] = useState<HourlyRevenueData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const url = `/api/metrics/hourly-trends?locationId=${locationId}&timePeriod=${timePeriod}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const result = await response.json();
+          setData(result.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching hourly revenue data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (locationId) {
+      fetchData();
+    }
+  }, [locationId, timePeriod]);
+
+  return { data, loading };
+};
+
+const useTopMachinesData = (locationId: string, timePeriod: string) => {
+  const [data, setData] = useState<MachineData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const url = `/api/metrics/top-performers?locationId=${locationId}&timePeriod=${timePeriod}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const result = await response.json();
+          setData(result.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching top machines data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (locationId) {
+      fetchData();
+    }
+  }, [locationId, timePeriod]);
+
+  return { data, loading };
+};
+
+// Location Revenue Chart Component
+const LocationRevenueChart = ({ locationId, timePeriod }: { locationId: string; timePeriod: string }) => {
+  const { data, loading } = useHourlyRevenueData(locationId, timePeriod);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium">24-Hour Revenue Pattern</h4>
+        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
+          <span className="text-sm text-gray-500">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SimpleBarChart
+      data={data}
+      title="24-Hour Revenue Pattern"
+    />
+  );
+};
+
+// Location Top Machines Component
+const LocationTopMachines = ({ locationId, timePeriod }: { locationId: string; timePeriod: string }) => {
+  const { data, loading } = useTopMachinesData(locationId, timePeriod);
+
+  if (loading) {
+    return (
+      <div>
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <Star className="h-4 w-4 text-yellow-500" />
+          Top 5 Performing Machines
+        </h4>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center justify-between text-sm animate-pulse">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-gray-200"></span>
+                <span className="h-4 bg-gray-200 rounded w-24"></span>
+              </div>
+              <div className="text-right">
+                <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h4 className="font-medium mb-3 flex items-center gap-2">
+        <Star className="h-4 w-4 text-yellow-500" />
+        Top 5 Performing Machines
+      </h4>
+      <div className="space-y-2">
+        {data.map((machine, index) => (
+          <div
+            key={machine.id}
+            className="flex items-center justify-between text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                {index + 1}
+              </span>
+              <span className="font-medium">{machine.name}</span>
+            </div>
+            <div className="text-right">
+              <div className="font-medium text-green-600">
+                ${machine.revenue.toLocaleString()}
+              </div>
+              <div className="text-muted-foreground text-xs">
+                {machine.hold}% hold
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Casino Location Card Component
 const CasinoLocationCard = ({ location, isSelected, onClick }: { 
   location: TopLocation; 
@@ -180,7 +427,7 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
         const performance = target > 0 ? ((current - target) / target) * 100 : 0;
         setDailyPerformance(Math.round(performance));
         
-      } catch (error) {
+    } catch (error) {
         console.error("Error fetching revenue trend:", error);
         // Fallback to mock data
         const mockTrend = Array.from({ length: 24 }, (_, i) => ({
@@ -281,14 +528,14 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
     return "text-red-700";
   };
 
-  return (
+    return (
     <div 
       className={`bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-auto border border-gray-200 cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] ${
         isSelected ? "ring-2 ring-blue-500 shadow-xl bg-blue-50" : "hover:ring-1 hover:ring-gray-300"
       }`}
       onClick={onClick}
     >
-      {/* Header */}
+          {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg font-semibold text-gray-900">{location.locationName}</span>
@@ -304,11 +551,11 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
       </div>
       <div className="text-sm text-gray-500 mb-4">
         {location.onlineMachines}/{location.totalMachines} machines online • {location.sasEnabled ? "SAS Enabled" : "Non-SAS"}
-      </div>
+        </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-        <div>
+            <div>
           <div className="text-xs text-gray-500">Gross Revenue:</div>
           <div className="text-green-600 font-bold text-lg">${location.gross.toLocaleString()}</div>
         </div>
@@ -340,32 +587,32 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
           <div className="h-24 w-full bg-gray-200 rounded animate-pulse"></div>
         ) : (
           <div className="h-24 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={false} />
                 <XAxis dataKey="hour" hide />
-                <YAxis hide />
-                <Tooltip 
+              <YAxis hide />
+              <Tooltip
                   formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
                   labelFormatter={(label) => `${label}:00`}
                 />
               </LineChart>
-            </ResponsiveContainer>
+          </ResponsiveContainer>
           </div>
         )}
         <div className="flex justify-between text-xs text-gray-500 mt-1">
           <span>Peak: <span className="font-semibold text-gray-900">${peakRevenue.toLocaleString()}</span></span>
           <span>Avg: <span className="font-semibold text-gray-900">${avgRevenue.toLocaleString()}</span></span>
         </div>
-      </div>
+        </div>
 
       {/* Daily Trend */}
       <div className="flex items-center gap-2 mb-2">
         <span className={`w-2 h-2 rounded-full ${getDailyTrendColor(dailyPerformance)} inline-block`}></span>
         <span className={`${getDailyTrendTextColor(dailyPerformance)} text-sm font-semibold`}>
           {dailyPerformance >= 0 ? '+' : ''}{dailyPerformance}% {dailyPerformance >= 0 ? 'above' : 'below'} target
-        </span>
-      </div>
+          </span>
+        </div>
 
       {/* Top Performer */}
       <div className="border-t pt-3 mt-2">
@@ -391,9 +638,9 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
           <div className="text-xs text-gray-500">No data available</div>
         )}
       </div>
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
 export default function LocationsTab() {
   const { isLoading, setLoading } = useReportsStore();
@@ -408,28 +655,61 @@ export default function LocationsTab() {
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [paginatedLocations, setPaginatedLocations] = useState<AggregatedLocation[]>([]);
+  const [paginationLoading, setPaginationLoading] = useState(true); // Start with loading true
 
-  // Fetch all locations and aggregate metrics
-  const fetchLocationsData = async () => {
+  // Fetch all locations and aggregate metrics using the reports API
+  const fetchLocationsDataAsync = async () => {
+    console.log("🔍 Starting fetchLocationsDataAsync - setting loading states to true");
     setMetricsLoading(true);
     setLocationsLoading(true);
+    setPaginationLoading(true); // Set pagination loading to true during initial load
     try {
-      // Build query params
-      let url = "/api/locationAggregation?";
+      console.log("🔍 LocationsTab - selectedLicencee:", selectedLicencee);
+      console.log("🔍 LocationsTab - activeMetricsFilter:", activeMetricsFilter);
+      
+      // Build API parameters
+      const params: Record<string, string> = {
+        limit: "10", // Use limit of 10 for faster loading
+        page: "1", // Start with page 1
+      };
+      
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+      
       if (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
-        url += `timePeriod=Custom&startDate=${encodeURIComponent(customDateRange.startDate.toISOString())}&endDate=${encodeURIComponent(customDateRange.endDate.toISOString())}`;
-      } else {
-        url += `timePeriod=${encodeURIComponent(activeMetricsFilter)}`;
+        params.startDate = customDateRange.startDate.toISOString();
+        params.endDate = customDateRange.endDate.toISOString();
+      } else if (activeMetricsFilter !== "Custom") {
+        params.timePeriod = activeMetricsFilter;
       }
-      if (selectedLicencee) {
-        url += `&licencee=${encodeURIComponent(selectedLicencee)}`;
-      }
-      // Fetch all locations with metrics
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch location metrics");
-      const locations = await res.json();
+      
+      console.log("🔍 API params:", params);
+      
+      // Call the reports locations API
+      const response = await axios.get("/api/reports/locations", { params });
+      const { data: allLocations, pagination } = response.data;
+      
+      console.log("🔍 Total locations from API:", allLocations.length);
+      console.log("🔍 Pagination info:", pagination);
+      console.log("🔍 totalPages value:", pagination.totalPages);
+      console.log("🔍 totalCount value:", pagination.totalCount);
+      
+      // Check if we have any locations with data
+      const locationsWithData = allLocations.filter((loc: any) => loc.gross > 0 || loc.moneyIn > 0 || loc.moneyOut > 0);
+      console.log("🔍 Locations with data:", locationsWithData.length);
+      
       // Aggregate metrics overview
-      const overview = locations.reduce(
+      const overview = allLocations.reduce(
         (acc: LocationMetrics, loc: any) => {
           acc.totalGross += loc.gross || 0;
           acc.totalDrop += loc.moneyIn || 0;
@@ -442,42 +722,122 @@ export default function LocationsTab() {
       );
       setMetricsOverview(overview);
       setMetricsLoading(false);
-      // Top 5 locations by gross
-      const sorted = [...locations]
-        .sort((a, b) => (b.gross || 0) - (a.gross || 0))
-        .slice(0, 5)
-        .map((loc: any) => ({
-          locationId: loc.location,
-          locationName: loc.locationName,
-          gross: loc.gross || 0,
-          drop: loc.moneyIn || 0,
-          cancelledCredits: loc.moneyOut || 0,
-          onlineMachines: loc.onlineMachines || 0,
-          totalMachines: loc.totalMachines || 0,
-          performance: "average" as const, // You can add logic for performance if needed
-          sasEnabled: loc.hasSmib !== false,
-          coordinates: loc.geoCoords
-            ? { lat: loc.geoCoords.latitude, lng: loc.geoCoords.longitude }
-            : undefined,
-          // Additional fields for the new card design
-          holdPercentage: loc.drop > 0 ? (loc.gross / loc.drop) * 100 : 0,
-        }));
+      
+      // Get top locations for overview (include all locations, even those with no data)
+      const sorted = allLocations
+        .sort((a: any, b: any) => (b.gross || 0) - (a.gross || 0))
+        .slice(0, 20)
+        .map((loc: any) => {
+          const sasEnabled = loc.hasSasMachines;
+          console.log(`🔍 Location ${loc.locationName}: hasSasMachines=${loc.hasSasMachines}, hasNonSasMachines=${loc.hasNonSasMachines}, sasEnabled=${sasEnabled}`);
+          return {
+            locationId: loc.location,
+            locationName: loc.locationName,
+            gross: loc.gross || 0,
+            drop: loc.moneyIn || 0,
+            cancelledCredits: loc.moneyOut || 0,
+            onlineMachines: loc.onlineMachines || 0,
+            totalMachines: loc.totalMachines || 0,
+            performance: "average" as const,
+            sasEnabled: sasEnabled,
+            coordinates: undefined, // Will be added if needed
+            holdPercentage: loc.moneyIn > 0 ? (loc.gross / loc.moneyIn) * 100 : 0,
+          };
+        });
       setTopLocations(sorted);
       setLocationsLoading(false);
+      
+      // Set paginated data from API response
+      setPaginatedLocations(allLocations);
+      setCurrentPage(pagination.page);
+      setTotalPages(pagination.totalPages);
+      setTotalCount(pagination.totalCount);
+      setHasNextPage(pagination.hasNextPage);
+      setHasPrevPage(pagination.hasPrevPage);
+      console.log("🔍 API call successful - setting paginationLoading to false");
+      // Add a longer delay to make loading state more visible
+      setTimeout(() => {
+        setPaginationLoading(false);
+      }, 1000);
     } catch (error) {
+      console.log("🔍 API call failed - setting paginationLoading to false");
       toast.error("Failed to load location data");
       setMetricsLoading(false);
       setLocationsLoading(false);
+      setPaginationLoading(false); // Make sure to set pagination loading to false on error
       setMetricsOverview(null);
       setTopLocations([]);
+      setPaginatedLocations([]);
       console.error("Error fetching location data:", error);
     }
   };
 
+  // Handle pagination (server-side)
+  const handlePageChange = useCallback(async (page: number) => {
+    console.log("🔍 handlePageChange called - setting paginationLoading to true");
+    setPaginationLoading(true);
+    try {
+      // Build API parameters for the new page
+      const params: Record<string, string> = {
+        limit: "10",
+        page: page.toString(),
+      };
+      
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+      
+      if (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
+        params.startDate = customDateRange.startDate.toISOString();
+        params.endDate = customDateRange.endDate.toISOString();
+      } else if (activeMetricsFilter !== "Custom") {
+        params.timePeriod = activeMetricsFilter;
+      }
+      
+      console.log("🔍 Pagination API params:", params);
+      
+      // Call the reports locations API for the new page
+      const response = await axios.get("/api/reports/locations", { params });
+      const { data: newLocations, pagination: newPagination } = response.data;
+      
+      // Update paginated data
+      setPaginatedLocations(newLocations);
+      setCurrentPage(newPagination.page);
+      setTotalPages(newPagination.totalPages);
+      setTotalCount(newPagination.totalCount);
+      setHasNextPage(newPagination.hasNextPage);
+      setHasPrevPage(newPagination.hasPrevPage);
+      console.log("🔍 Pagination API call successful - setting paginationLoading to false");
+      // Add a longer delay to make loading state more visible
+      setTimeout(() => {
+        setPaginationLoading(false);
+      }, 1000);
+    } catch (error) {
+      console.log("🔍 Pagination API call failed - setting paginationLoading to false");
+      toast.error("Failed to load page data");
+      console.error("Error fetching page data:", error);
+    } finally {
+      setPaginationLoading(false);
+    }
+  }, [selectedLicencee, activeMetricsFilter, customDateRange]);
+
   useEffect(() => {
-    fetchLocationsData();
+    fetchLocationsDataAsync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMetricsFilter, customDateRange, selectedLicencee]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
+
+  // Debug effect to log state changes
+  useEffect(() => {
+    console.log("🔍 State Debug - paginationLoading:", paginationLoading, "locations count:", paginatedLocations.length, "currentPage:", currentPage, "totalPages:", totalPages, "totalCount:", totalCount);
+    console.log("🔍 Table Props Debug - totalPages:", totalPages, "totalCount:", totalCount, "onPageChange exists:", !!handlePageChange);
+    console.log("🔍 Loading State Debug - paginationLoading:", paginationLoading, "should show skeleton:", paginationLoading);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginationLoading, paginatedLocations.length, currentPage, totalPages, totalCount]);
 
   const handleLocationSelect = (locationId: string) => {
     setSelectedLocations(prev => 
@@ -535,49 +895,90 @@ export default function LocationsTab() {
     }
   };
 
+  // Filter locations by SAS status
+  const sasLocations = useMemo(() => {
+    const filtered = topLocations.filter((location) => location.sasEnabled);
+    console.log('🔍 SAS Locations:', filtered.length, 'out of', topLocations.length);
+    return filtered;
+  }, [topLocations]);
+
+  const nonSasLocations = useMemo(() => {
+    const filtered = topLocations.filter((location) => !location.sasEnabled);
+    console.log('🔍 Non-SAS Locations:', filtered.length, 'out of', topLocations.length);
+    console.log('🔍 Sample non-SAS locations:', filtered.slice(0, 3).map(loc => ({ name: loc.locationName, sasEnabled: loc.sasEnabled })));
+    return filtered;
+  }, [topLocations]);
+
   return (
     <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Location Performance Overview</h2>
-              <p className="text-sm text-gray-600">Compare performance across all casino locations</p>
-              <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                <span role="img" aria-label="lightbulb">💡</span> Click any location card to view detailed information
+          <h2 className="text-2xl font-bold text-gray-900">Location Performance Overview</h2>
+          <p className="text-sm text-gray-600">Compare performance across all casino locations</p>
+          <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+            <span role="img" aria-label="lightbulb">💡</span> Click any location card to view detailed information
               </p>
             </div>
-            <button
-              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition-all text-base ml-4"
-              onClick={handleExportLocationRevenue}
-            >
-              <Download className="w-5 h-5" />
+        <button
+          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition-all text-base ml-4"
+          onClick={handleExportLocationRevenue}
+        >
+          <Download className="w-5 h-5" />
               Export Report
-            </button>
+        </button>
           </div>
 
       {/* Date Filter */}
       <div className="bg-white rounded-lg p-4 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">Date Filter</h3>
         <DashboardDateFilters />
-          </div>
+      </div>
 
+      {/* Three-Tab Navigation System */}
+      <div className="bg-white rounded-lg p-4 border border-gray-200 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Navigation Tabs</h3>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+            <TabsTrigger 
+              value="overview" 
+              className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="location-evaluation" 
+              className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              SAS Evaluation
+            </TabsTrigger>
+            <TabsTrigger 
+              value="location-revenue" 
+              className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              Revenue Analysis
+            </TabsTrigger>
+          </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
           {/* Interactive Map */}
           <LocationMap
             selectedLocations={selectedLocations}
             onLocationSelect={handleLocationSelect}
           />
 
-      {/* Metrics Overview */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Metrics Overview</h3>
-        {metricsLoading ? (
-          <MetricsOverviewSkeleton />
-        ) : metricsOverview ? (
+          {/* Metrics Overview */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Metrics Overview</h3>
+            {metricsLoading ? (
+              <MetricsOverviewSkeleton />
+            ) : metricsOverview ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-green-600">
-                  ${metricsOverview.totalGross.toLocaleString()}
+                      ${metricsOverview.totalGross.toLocaleString()}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Total Gross Revenue
@@ -590,7 +991,7 @@ export default function LocationsTab() {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-yellow-600">
-                  ${metricsOverview.totalDrop.toLocaleString()}
+                      ${metricsOverview.totalDrop.toLocaleString()}
                 </div>
                 <p className="text-sm text-muted-foreground">Total Drop</p>
                 <p className="text-xs text-yellow-600 font-medium">
@@ -601,7 +1002,7 @@ export default function LocationsTab() {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-black">
-                  ${metricsOverview.totalCancelledCredits.toLocaleString()}
+                      ${metricsOverview.totalCancelledCredits.toLocaleString()}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Total Cancelled Credits
@@ -614,45 +1015,321 @@ export default function LocationsTab() {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-blue-600">
-                  {metricsOverview.onlineMachines}/{metricsOverview.totalMachines}
+                      {metricsOverview.onlineMachines}/{metricsOverview.totalMachines}
                 </div>
                 <p className="text-sm text-muted-foreground">Online Machines</p>
                 <Progress
-                  value={(metricsOverview.onlineMachines / metricsOverview.totalMachines) * 100}
+                      value={(metricsOverview.onlineMachines / metricsOverview.totalMachines) * 100}
                   className="mt-2"
                 />
               </CardContent>
             </Card>
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 py-8">
-            No metrics data available
-          </div>
-        )}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                No metrics data available
+              </div>
+            )}
           </div>
 
-      {/* Top 5 Locations */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Locations (Sorted by Gross)</h3>
-        {locationsLoading ? (
-          <TopLocationsSkeleton />
-        ) : topLocations.length > 0 ? (
+          {/* Top 5 Locations */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Locations (Sorted by Gross)</h3>
+            {locationsLoading ? (
+              <TopLocationsSkeleton />
+            ) : topLocations.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {topLocations.map((location) => (
-              <CasinoLocationCard
+                {topLocations.map((location) => (
+                  <CasinoLocationCard
                 key={location.locationId}
-                location={location}
-                isSelected={selectedLocations.includes(location.locationId)}
+                    location={location}
+                    isSelected={selectedLocations.includes(location.locationId)}
                 onClick={() => handleLocationSelect(location.locationId)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 py-8">
-            No location data available
-                    </div>
+                  />
+                ))}
+                        </div>
+                      ) : (
+              <div className="text-center text-gray-500 py-8">
+                No location data available
+                        </div>
                       )}
+          </div>
+        </TabsContent>
+
+        {/* SAS Evaluation Tab */}
+        <TabsContent value="location-evaluation" className="space-y-6">
+          {/* Enhanced SAS Evaluation Interface */}
+          <div className="space-y-6">
+            {/* Header with Export Buttons */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">SAS Evaluation Dashboard</h3>
+                <p className="text-sm text-gray-600">Comprehensive location evaluation with interactive filtering and real-time data visualization</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportLocationRevenue}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </Button>
+              </div>
+            </div>
+
+            {/* Location Selection Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5" />
+                  Location Selection & Controls
+                </CardTitle>
+                <CardDescription>
+                  Select specific locations to filter data or view all locations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Locations
+                    </label>
+                    <LocationMultiSelect
+                      options={topLocations.map(loc => ({
+                        id: loc.locationId,
+                        name: loc.locationName,
+                        sasEnabled: loc.sasEnabled
+                      }))}
+                      selectedIds={selectedLocations}
+                      onSelectionChange={setSelectedLocations}
+                      placeholder="Choose locations to filter..."
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedLocations([])}
+                      className="w-full"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                  <div className="flex items-end">
+                    <div className="text-sm text-gray-600">
+                      {selectedLocations.length > 0 
+                        ? `${selectedLocations.length} location${selectedLocations.length > 1 ? 's' : ''} selected`
+                        : 'Showing all locations'
+                      }
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Location Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Location Evaluation Table
+                </CardTitle>
+                <CardDescription>
+                  Comprehensive location metrics with SAS status indicators
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EnhancedLocationTable
+                  locations={(selectedLocations.length > 0 
+                    ? paginatedLocations.filter(loc => selectedLocations.includes(loc.location))
+                    : paginatedLocations
+                  ).map(loc => ({
+                    location: loc.location,
+                    locationName: loc.locationName,
+                    moneyIn: loc.moneyIn,
+                    moneyOut: loc.moneyOut,
+                    gross: loc.gross,
+                    totalMachines: loc.totalMachines,
+                    onlineMachines: loc.onlineMachines,
+                    sasMachines: loc.sasMachines,
+                    nonSasMachines: loc.nonSasMachines,
+                    hasSasMachines: loc.hasSasMachines,
+                    hasNonSasMachines: loc.hasNonSasMachines,
+                    isLocalServer: loc.isLocalServer,
+                    noSMIBLocation: !loc.hasSasMachines,
+                    hasSmib: loc.hasSasMachines,
+                  }))}
+                  onLocationClick={(locationId) => {
+                    // Handle location click - could navigate to location details
+                    console.log('Location clicked:', locationId);
+                  }}
+                  loading={paginationLoading}
+                  error={null}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  onPageChange={handlePageChange}
+                  itemsPerPage={10}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <HandleChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <WinLossChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <JackpotChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <PlaysChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+            </div>
+
+            {/* Top Machines Section */}
+            <TopMachinesTable
+              timePeriod={activeMetricsFilter}
+              locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+              licencee={selectedLicencee}
+              limit={5}
+            />
+
+
+          </div>
+        </TabsContent>
+
+                {/* Revenue Analysis Tab */}
+        <TabsContent value="location-revenue" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Location Revenue Report - Non-SAS Analysis
+              </CardTitle>
+              <CardDescription>
+                Track non-SAS machine performance with drop, cancelled credits, and gross revenue analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Revenue Analysis Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {nonSasLocations.length > 0 ? (
+                    nonSasLocations.map((location) => (
+                    <Card key={location.locationId}>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center justify-between">
+                          {location.locationName}
+                          <Badge variant="secondary">Non-SAS</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Color-coded metrics */}
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-green-600">
+                              ${location.gross.toLocaleString()}
+                            </div>
+                            <div className="text-muted-foreground">Gross Revenue</div>
+                            <div className="text-xs text-green-600">Green</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-yellow-600">
+                              ${location.drop.toLocaleString()}
+                            </div>
+                            <div className="text-muted-foreground">Drop</div>
+                            <div className="text-xs text-yellow-600">Yellow</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-black">
+                              ${location.cancelledCredits.toLocaleString()}
+                            </div>
+                            <div className="text-muted-foreground">Cancelled</div>
+                            <div className="text-xs text-black">Black</div>
+                          </div>
+                        </div>
+
+                        {/* Hourly Revenue Graph */}
+                        <LocationRevenueChart locationId={location.locationId} timePeriod={activeMetricsFilter} />
+
+                        {/* Top 5 Machines */}
+                        <LocationTopMachines locationId={location.locationId} timePeriod={activeMetricsFilter} />
+                      </CardContent>
+                    </Card>
+                  ))
+                  ) : (
+                    <div className="col-span-2 text-center py-8">
+                      <div className="text-gray-500 mb-4">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <h3 className="text-lg font-medium">No Non-SAS Locations Found</h3>
+                        <p className="text-sm">All locations appear to be SAS-enabled. Check the SAS Evaluation tab for detailed analysis.</p>
+                                </div>
+                      <div className="text-xs text-gray-400">
+                        Debug: Found {topLocations.length} total locations, {sasLocations.length} SAS locations, {nonSasLocations.length} non-SAS locations
+                                  </div>
+                                  </div>
+                  )}
+                </div>
+
+                {/* Summary Section */}
+                {nonSasLocations.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Non-SAS Location Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                            ${nonSasLocations.reduce((sum, loc) => sum + loc.gross, 0).toLocaleString()}
+                        </div>
+                          <p className="text-sm text-muted-foreground">Total Gross Revenue</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-yellow-600">
+                            ${nonSasLocations.reduce((sum, loc) => sum + loc.drop, 0).toLocaleString()}
+                        </div>
+                          <p className="text-sm text-muted-foreground">Total Drop</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-black">
+                            ${nonSasLocations.reduce((sum, loc) => sum + loc.cancelledCredits, 0).toLocaleString()}
+                        </div>
+                          <p className="text-sm text-muted-foreground">Total Cancelled Credits</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {(
+                            nonSasLocations.reduce(
+                                (sum, loc) => sum + (loc.drop > 0 ? (loc.gross / loc.drop) * 100 : 0),
+                              0
+                            ) / nonSasLocations.length
+                            ).toFixed(1)}%
+                        </div>
+                          <p className="text-sm text-muted-foreground">Average Hold</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      </div>
     </div>
   );
 }

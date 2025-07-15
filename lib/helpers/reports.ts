@@ -8,6 +8,7 @@ import {
   PerformanceStatus,
 } from "@/lib/types/reports";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import axios from "axios";
 
 /**
  * Get date range based on time period selection
@@ -479,4 +480,130 @@ export const sortLocations = (
 
     return 0;
   });
+};
+
+export interface ReportsLocationData {
+  location: string;
+  locationName: string;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
+  nonSasMachines: number;
+  hasSasMachines: boolean;
+  hasNonSasMachines: boolean;
+  isLocalServer: boolean;
+  machines: Array<{
+    id: string;
+    serialNumber: string;
+    game: string;
+    isSasMachine: boolean;
+    lastActivity?: Date;
+  }>;
+  meters: Array<{
+    id: string;
+    machineId: string;
+    drop: number;
+    cancelledCredits: number;
+    createdAt: Date;
+  }>;
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface ReportsLocationsResponse {
+  data: ReportsLocationData[];
+  pagination: PaginationInfo;
+}
+
+/**
+ * Fetches locations data for reports with pagination and licencee filtering
+ */
+export const fetchReportsLocations = async (
+  timePeriod: TimePeriod = "Today",
+  selectedLicencee?: string,
+  page: number = 1,
+  limit: number = 50,
+  customDateRange?: DateRange
+): Promise<ReportsLocationsResponse> => {
+  try {
+    const params: Record<string, string> = {
+      timePeriod,
+      page: page.toString(),
+      limit: limit.toString(),
+    };
+
+    if (selectedLicencee && selectedLicencee !== "all") {
+      params.licencee = selectedLicencee;
+    }
+
+    if (customDateRange?.start && customDateRange?.end) {
+      params.startDate = customDateRange.start.toISOString();
+      params.endDate = customDateRange.end.toISOString();
+      delete params.timePeriod;
+    }
+
+    const response = await axios.get("/api/reports/locations", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch reports locations data:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches all locations for a licencee (without pagination for overview)
+ */
+export const fetchAllReportsLocations = async (
+  timePeriod: TimePeriod = "Today",
+  selectedLicencee?: string,
+  customDateRange?: DateRange
+): Promise<ReportsLocationData[]> => {
+  try {
+    const params: Record<string, string> = {
+      timePeriod,
+      limit: "50", // Reduced limit to prevent timeouts
+    };
+
+    console.log("🔍 fetchAllReportsLocations - selectedLicencee:", selectedLicencee);
+
+    if (selectedLicencee && selectedLicencee !== "all") {
+      params.licencee = selectedLicencee;
+      console.log("🔍 Added licencee to params:", selectedLicencee);
+    } else {
+      console.log("🔍 No licencee filter applied (selectedLicencee:", selectedLicencee, ")");
+    }
+
+    if (customDateRange?.start && customDateRange?.end) {
+      params.startDate = customDateRange.start.toISOString();
+      params.endDate = customDateRange.end.toISOString();
+      delete params.timePeriod;
+    }
+
+    console.log("🔍 Final params:", params);
+    const response = await axios.get("/api/reports/locations", { params });
+    console.log("🔍 Response data:", response.data);
+    
+    // Handle both paginated and non-paginated responses
+    if (response.data.data) {
+      return response.data.data;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      console.error("🔍 Unexpected response format:", response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error("Failed to fetch all reports locations data:", error);
+    return [];
+  }
 };

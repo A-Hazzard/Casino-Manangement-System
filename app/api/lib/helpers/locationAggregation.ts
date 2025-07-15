@@ -97,10 +97,11 @@ export const getLocationsWithMetrics = async (
       _id: 1,
       gamingLocation: 1,
       lastActivity: 1,
+      isSasMachine: 1,
     })
     .toArray();
 
-  const locationMachines: Record<string, { total: number; online: number }> =
+  const locationMachines: Record<string, { total: number; online: number; sasMachines: number; nonSasMachines: number }> =
     {};
 
   allMachines.forEach((machine) => {
@@ -108,7 +109,7 @@ export const getLocationsWithMetrics = async (
 
     const locationId = machine.gamingLocation.toString();
     if (!locationMachines[locationId]) {
-      locationMachines[locationId] = { total: 0, online: 0 };
+      locationMachines[locationId] = { total: 0, online: 0, sasMachines: 0, nonSasMachines: 0 };
     }
 
     locationMachines[locationId].total++;
@@ -119,6 +120,13 @@ export const getLocationsWithMetrics = async (
     ) {
       locationMachines[locationId].online++;
     }
+
+    // Count SAS vs non-SAS machines
+    if (machine.isSasMachine === true) {
+      locationMachines[locationId].sasMachines++;
+    } else {
+      locationMachines[locationId].nonSasMachines++;
+    }
   });
 
   const enhancedMetrics = metrics.map((metric) => {
@@ -126,14 +134,25 @@ export const getLocationsWithMetrics = async (
     const machineInfo = locationMachines[locationId] || {
       total: 0,
       online: 0,
+      sasMachines: 0,
+      nonSasMachines: 0,
     };
+
+    // Determine if location has SAS machines
+    const hasSasMachines = machineInfo.sasMachines > 0;
+    const hasNonSasMachines = machineInfo.nonSasMachines > 0;
 
     return {
       ...metric,
       totalMachines: machineInfo.total,
       onlineMachines: machineInfo.online,
-      noSMIBLocation: metric.noSMIBLocation === true,
-      hasSmib: metric.noSMIBLocation !== true,
+      sasMachines: machineInfo.sasMachines,
+      nonSasMachines: machineInfo.nonSasMachines,
+      hasSasMachines: hasSasMachines,
+      hasNonSasMachines: hasNonSasMachines,
+      // For backward compatibility
+      noSMIBLocation: !hasSasMachines,
+      hasSmib: hasSasMachines,
     } as AggregatedLocation;
   });
 
@@ -148,6 +167,9 @@ export const getLocationsWithMetrics = async (
             online: 0,
           };
 
+          const hasSasMachines = machineInfo.sasMachines > 0;
+          const hasNonSasMachines = machineInfo.nonSasMachines > 0;
+
           return {
             location: locationId,
             locationName: loc.name ?? "Unknown Location",
@@ -156,9 +178,13 @@ export const getLocationsWithMetrics = async (
             gross: 0,
             totalMachines: machineInfo.total,
             onlineMachines: machineInfo.online,
+            sasMachines: machineInfo.sasMachines,
+            nonSasMachines: machineInfo.nonSasMachines,
+            hasSasMachines: hasSasMachines,
+            hasNonSasMachines: hasNonSasMachines,
             isLocalServer: !!loc.isLocalServer,
-            noSMIBLocation: loc.noSMIBLocation === true,
-            hasSmib: loc.noSMIBLocation !== true,
+            noSMIBLocation: !hasSasMachines,
+            hasSmib: hasSasMachines,
           };
         })
     : [];

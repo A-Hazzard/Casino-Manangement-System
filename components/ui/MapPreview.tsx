@@ -422,14 +422,14 @@ export default function MapPreview(props: MapPreviewProps) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
-                Casino Locations Map
-              </h3>
-              <button
+              Casino Locations Map
+            </h3>
+            <button
                 className="p-2 bg-gray-200 rounded-full shadow-md hover:scale-110 transition-all duration-200 ease-in-out"
-                onClick={closeModal}
-              >
-                <ExitFullScreenIcon className="w-5 h-5" />
-              </button>
+              onClick={closeModal}
+            >
+              <ExitFullScreenIcon className="w-5 h-5" />
+            </button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
               Interactive map showing casino location performance metrics
@@ -477,28 +477,28 @@ export default function MapPreview(props: MapPreviewProps) {
               </div>
               {/* Map */}
               <div className="flex-1">
-                <MapContainer
-                  center={[10.654, -61.501]}
-                  zoom={10}
+            <MapContainer
+              center={[10.654, -61.501]}
+              zoom={10}
                   className="h-[70vh] w-full rounded-lg"
                   ref={handleMapCreated}
-                >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  />
-                  {validLocations.map((location) => {
-                    const locationName =
-                      location.name || location.locationName || "Unknown Location";
-                    return renderMarker(
-                      location.geoCoords.latitude,
-                      location.geoCoords,
-                      locationName,
-                      `modal-${location._id}`,
-                      location
-                    );
-                  })}
-                </MapContainer>
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              {validLocations.map((location) => {
+                const locationName =
+                  location.name || location.locationName || "Unknown Location";
+                return renderMarker(
+                  location.geoCoords.latitude,
+                  location.geoCoords,
+                  locationName,
+                  `modal-${location._id}`,
+                  location
+                );
+              })}
+            </MapContainer>
                 {/* Map Legend */}
                 <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
