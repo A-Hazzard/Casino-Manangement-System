@@ -65,8 +65,8 @@ export default function SMIBFirmwareSection() {
 
       <div className="w-full max-w-full">
         {/* Header with Add Button */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="w-full sm:w-auto">
             <h2 className="text-xl font-semibold text-gray-800">
               SMIB Firmware
             </h2>
@@ -76,7 +76,7 @@ export default function SMIBFirmwareSection() {
           </div>
           <Button
             onClick={openModal}
-            className="bg-button hover:bg-button/90 text-white px-4 py-2 rounded-md flex items-center gap-2"
+            className="w-full sm:w-auto bg-button hover:bg-button/90 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2"
           >
             <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
               <Plus className="w-4 h-4 text-white" />
@@ -86,7 +86,7 @@ export default function SMIBFirmwareSection() {
         </div>
 
         {/* Firmware Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <SMIBFirmwareTable
             firmwares={firmwares}
             loading={loading}

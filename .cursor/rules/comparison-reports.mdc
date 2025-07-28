@@ -1,0 +1,462 @@
+# Comparison Reports Section Implementation
+
+This rule defines the implementation requirements for the Comparison Reports section based on the dashboard analytics images, ensuring responsive design and proper data visualization.
+
+## Section Overview
+
+**Location**: `app/reports/page.tsx` - Add as a new tab/section
+**Purpose**: Display comprehensive performance metrics and comparisons for gaming machines
+**Responsive Design**: Mobile-first with desktop table views
+
+## Data Structure Requirements
+
+### 1. Overview Cards Data
+```typescript
+type OverviewCard = {
+  title: string;
+  type: 'chart' | 'table' | 'metric';
+  data: {
+    // For Net Win/Revenue chart
+    chartData?: {
+      labels: string[];
+      datasets: {
+        label: string;
+        data: number[];
+        backgroundColor: string;
+      }[];
+    };
+    // For comparison tables
+    tableData?: {
+      headers: string[];
+      rows: {
+        label: string;
+        reported: string;
+        collected: string;
+        variance: string;
+      }[];
+    };
+    // For metric cards
+    metricValue?: string;
+    metricSubtitle?: string;
+  };
+};
+
+type OverviewSection = {
+  title: string;
+  cards: OverviewCard[];
+};
+```
+
+### 2. Individual Machine Performance Data
+```typescript
+type MachinePerformance = {
+  machineId: string;
+  holdComparison: {
+    theoretical: string;
+    actual: string;
+    variance: string;
+  };
+  jackpot: {
+    metered: string;
+    actual: string;
+    variance: string;
+  };
+  netWinRevenue: {
+    value: string;
+    range: string;
+  };
+};
+
+type MachineDropData = {
+  machineId: string;
+  bills: {
+    denomination: string;
+    count: number;
+    total: string;
+  }[];
+};
+```
+
+## Component Structure
+
+### 1. Main Comparison Reports Component
+```typescript
+// components/reports/ComparisonReports.tsx
+interface ComparisonReportsProps {
+  locationId: string;
+  dateRange: DateRange;
+}
+
+const ComparisonReports: React.FC<ComparisonReportsProps> = ({
+  locationId,
+  dateRange
+}) => {
+  // State management for filters and data
+  // Responsive layout with mobile cards and desktop tables
+  // Loading states and error handling
+};
+```
+
+### 2. Overview Cards Components
+```typescript
+// components/reports/overview/NetWinRevenueChart.tsx
+// components/reports/overview/DropComparisonTable.tsx
+// components/reports/overview/JackpotComparisonTable.tsx
+// components/reports/overview/HoldsMetricCard.tsx
+```
+
+### 3. Machine Performance Components
+```typescript
+// components/reports/machines/MachinePerformanceTable.tsx
+// components/reports/machines/MachineDropTable.tsx
+// components/reports/machines/TopPerformingMachinesChart.tsx
+```
+
+## Implementation Requirements
+
+### 1. Overview Section Layout
+**Desktop (1024px+)**: 4 cards in a 2x2 grid
+**Mobile/Tablet**: Single column stack
+
+```typescript
+// Responsive grid layout
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+  <NetWinRevenueChart />
+  <DropComparisonTable />
+  <JackpotComparisonTable />
+  <HoldsMetricCard />
+</div>
+```
+
+### 2. Net Win/Revenue Chart
+**Features**:
+- Bar chart with orange bars
+- Y-axis: -200,000 to 400,000
+- X-axis: Today, Yesterday, Last Week
+- Responsive chart container
+
+**Data Example**:
+```typescript
+const chartData = {
+  labels: ['Today', 'Yesterday', 'Last Week'],
+  datasets: [{
+    label: 'Net Win/Revenue',
+    data: [-70000, 25000, 300000],
+    backgroundColor: '#f97316' // orange-500
+  }]
+};
+```
+
+### 3. Drop Comparison Table
+**Structure**:
+- Reported vs Collected comparison
+- Variance calculation
+- Clean table layout
+
+**Data Example**:
+```typescript
+const dropData = {
+  reported: '$78,700.00',
+  collected: '$78,700.00',
+  variance: '0%'
+};
+```
+
+### 4. Jackpot Comparison Table
+**Structure**:
+- Metered vs Actual comparison
+- Variance calculation
+- Consistent with drop comparison styling
+
+### 5. Holds Metric Card
+**Features**:
+- Large metric display
+- Subtitle support
+- Color coding for positive/negative values
+
+### 6. Individual Machine Performance Table
+**Desktop Layout**:
+- Full table with all columns
+- Grouped headers (Hold Comparison, Jackpot)
+- Sortable columns
+
+**Mobile Layout**:
+- Card-based display
+- Collapsible sections
+- Touch-friendly interactions
+
+**Columns**:
+1. Machine ID (green text for active machines)
+2. Hold Comparison (Theoretical, Actual, Variance)
+3. Jackpot (Metered, Actual, Variance)
+4. Net Win/Revenue (value + range)
+
+### 7. Machine Drop Table
+**Features**:
+- Nested table structure
+- Bill denomination breakdown
+- Count and total calculations
+- Machine grouping
+
+### 8. Top Performing Machines Chart
+**Features**:
+- Horizontal bar chart
+- Multiple time periods (Today, Yesterday, Last Week)
+- Color-coded legend
+- Responsive chart sizing
+
+## API Integration
+
+### 1. Data Fetching Functions
+```typescript
+// lib/helpers/reports.ts
+export const fetchComparisonData = async (
+  locationId: string,
+  dateRange: DateRange
+): Promise<ComparisonData> => {
+  // API call to /api/reports/comparison
+  // Include authentication headers
+  // Error handling and data transformation
+};
+
+export const fetchMachinePerformance = async (
+  locationId: string,
+  dateRange: DateRange
+): Promise<MachinePerformance[]> => {
+  // API call to /api/reports/machine-performance
+};
+
+export const fetchMachineDrop = async (
+  locationId: string,
+  dateRange: DateRange
+): Promise<MachineDropData[]> => {
+  // API call to /api/reports/machine-drop
+};
+```
+
+### 2. Type Definitions
+```typescript
+// lib/types/reports.ts
+export type ComparisonData = {
+  overview: OverviewSection;
+  machinePerformance: MachinePerformance[];
+  machineDrop: MachineDropData[];
+  topPerformers: TopPerformerData[];
+};
+
+export type DateRange = {
+  start: Date;
+  end: Date;
+};
+```
+
+## Responsive Design Patterns
+
+### 1. Mobile-First Approach
+```typescript
+// Base mobile styles
+<div className="w-full p-4 space-y-4">
+
+// Tablet breakpoint (768px+)
+<div className="md:grid md:grid-cols-2 md:gap-4">
+
+// Desktop breakpoint (1024px+)
+<div className="lg:grid lg:grid-cols-4 lg:gap-6">
+```
+
+### 2. Table Responsiveness
+```typescript
+// Desktop table
+<div className="hidden lg:block overflow-x-auto">
+  <table className="w-full">
+    {/* Full table structure */}
+  </table>
+</div>
+
+// Mobile cards
+<div className="block lg:hidden space-y-4">
+  {/* Card-based layout */}
+</div>
+```
+
+### 3. Chart Responsiveness
+```typescript
+// Responsive chart container
+<div className="w-full h-64 lg:h-80">
+  <ResponsiveContainer width="100%" height="100%">
+    {/* Chart component */}
+  </ResponsiveContainer>
+</div>
+```
+
+## State Management
+
+### 1. Zustand Store Integration
+```typescript
+// lib/store/comparisonReportsStore.ts
+interface ComparisonReportsStore {
+  // Data state
+  overviewData: OverviewSection | null;
+  machinePerformance: MachinePerformance[];
+  machineDrop: MachineDropData[];
+  topPerformers: TopPerformerData[];
+  
+  // UI state
+  loading: boolean;
+  error: string | null;
+  selectedLocation: string;
+  dateRange: DateRange;
+  
+  // Actions
+  fetchData: () => Promise<void>;
+  setDateRange: (range: DateRange) => void;
+  setLocation: (locationId: string) => void;
+}
+```
+
+### 2. Loading States
+```typescript
+// Skeleton components for loading states
+<ComparisonReportsSkeleton />
+<OverviewCardsSkeleton />
+<MachineTableSkeleton />
+```
+
+## Error Handling
+
+### 1. API Error Handling
+```typescript
+try {
+  const data = await fetchComparisonData(locationId, dateRange);
+  setData(data);
+} catch (error) {
+  setError(error.message);
+  // Show user-friendly error message
+  toast.error('Failed to load comparison data');
+}
+```
+
+### 2. Data Validation
+```typescript
+// Validate data structure before rendering
+const isValidData = (data: any): data is ComparisonData => {
+  return data && 
+         data.overview && 
+         Array.isArray(data.machinePerformance);
+};
+```
+
+## Performance Optimization
+
+### 1. Memoization
+```typescript
+// Memoize expensive calculations
+const processedData = useMemo(() => {
+  return processMachineData(rawData);
+}, [rawData]);
+
+// Memoize chart data
+const chartData = useMemo(() => {
+  return transformToChartFormat(data);
+}, [data]);
+```
+
+### 2. Lazy Loading
+```typescript
+// Lazy load chart components
+const NetWinRevenueChart = lazy(() => import('./overview/NetWinRevenueChart'));
+const MachinePerformanceTable = lazy(() => import('./machines/MachinePerformanceTable'));
+```
+
+## Testing Requirements
+
+### 1. Component Testing
+- Test responsive behavior on different screen sizes
+- Verify data loading and error states
+- Test chart interactions and table sorting
+
+### 2. Integration Testing
+- Test API integration with authentication
+- Verify data transformation and display
+- Test filter and date range functionality
+
+## Accessibility
+
+### 1. ARIA Labels
+```typescript
+// Proper ARIA labels for charts and tables
+<BarChart 
+  aria-label="Net Win/Revenue over time"
+  role="img"
+/>
+
+<table aria-label="Machine performance comparison">
+  {/* Table content */}
+</table>
+```
+
+### 2. Keyboard Navigation
+- Ensure all interactive elements are keyboard accessible
+- Provide skip links for table navigation
+- Support screen reader announcements for data changes
+
+## File Organization
+
+### 1. Component Structure
+```
+components/reports/
+├── ComparisonReports.tsx
+├── overview/
+│   ├── NetWinRevenueChart.tsx
+│   ├── DropComparisonTable.tsx
+│   ├── JackpotComparisonTable.tsx
+│   └── HoldsMetricCard.tsx
+├── machines/
+│   ├── MachinePerformanceTable.tsx
+│   ├── MachineDropTable.tsx
+│   └── TopPerformingMachinesChart.tsx
+└── skeletons/
+    ├── ComparisonReportsSkeleton.tsx
+    ├── OverviewCardsSkeleton.tsx
+    └── MachineTableSkeleton.tsx
+```
+
+### 2. Type Definitions
+```
+lib/types/
+└── reports.ts (add comparison types)
+```
+
+### 3. Helper Functions
+```
+lib/helpers/
+└── reports.ts (add comparison data fetching)
+```
+
+## Compliance with Next.js Rules
+
+### 1. TypeScript Discipline
+- All components use proper type definitions
+- No `any` types in comparison components
+- Proper type imports from `lib/types/`
+
+### 2. File Organization
+- Components in `components/reports/`
+- Helper functions in `lib/helpers/`
+- Types in `lib/types/`
+
+### 3. Build Integrity
+- All changes tested with `pnpm build`
+- No ESLint violations
+- Clean TypeScript compilation
+
+### 4. Performance Optimization
+- Proper memoization for expensive calculations
+- Lazy loading for chart components
+- Efficient data fetching patterns
+
+This rule ensures the Comparison Reports section is implemented with proper responsive design, clean code structure, and follows all Next.js best practices.
+description:
+globs:
+alwaysApply: false
+---

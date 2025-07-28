@@ -48,7 +48,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
 
   return (
     <>
-      <aside className="hidden md:flex fixed left-0 top-0 h-full bg-container shadow-md shadow-purple-500 z-50 flex-col items-end pt-6 pb-6 pl-4">
+      <aside className="hidden xl:flex fixed left-0 top-0 h-full bg-container shadow-md shadow-purple-500 z-50 flex-col items-end pt-6 pb-6 pl-4">
         {/* Dashboard button */}
         <div className={isDashboardPath ? "" : "mb-6"}>
           <Link href="/">
@@ -102,7 +102,9 @@ export default function Sidebar({ pathname }: { pathname: string }) {
         >
           <Link href="/collection-report">
             <Image
-              src={isCollectionsPath ? collectionsButton : collectionsButtonNoBg}
+              src={
+                isCollectionsPath ? collectionsButton : collectionsButtonNoBg
+              }
               width={50}
               height={50}
               className={`w-[7rem] ${

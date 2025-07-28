@@ -90,7 +90,7 @@ export default function SMIBManagement() {
       {/* Buttons and SMIB Selection Row */}
       <div className="flex flex-col lg:flex-row gap-4 items-center justify-between w-full">
         {/* Button Group */}
-        <div className="flex gap-2 flex-wrap justify-center lg:justify-start">
+        <div className="flex gap-2 flex-wrap justify-center lg:justify-start w-full lg:w-auto">
           <Button
             variant="outline"
             className="bg-white border-button text-button hover:bg-button/10"
@@ -101,49 +101,21 @@ export default function SMIBManagement() {
             variant="outline"
             className="bg-white border-button text-button hover:bg-button/10"
           >
-            STOP SEARCH
+            ADD SMIB
           </Button>
           <Button
             variant="outline"
             className="bg-white border-button text-button hover:bg-button/10"
           >
-            GET SMIB CONFIG
+            REMOVE SMIB
           </Button>
         </div>
-        {/* SMIB Selection Group */}
-        <div className="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
-          <select
-            className="w-full sm:w-auto h-11 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
-            onChange={(e) => {
-              const smib = MOCK_SMIBS.find((s) => s.id === e.target.value);
-              if (smib) handleSelectSMIB(smib);
-            }}
-            value=""
-          >
-            <option value="" disabled>
-              Select SMIB
-            </option>
-            {MOCK_SMIBS.map((smib) => (
-              <option key={smib.id} value={smib.id}>
-                {smib.label}
-              </option>
-            ))}
-          </select>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Input
-              placeholder="Custom SMIB"
-              value={customSMIB}
-              onChange={(e) => setCustomSMIB(e.target.value)}
-              className="w-full sm:w-32 h-11 bg-white border-gray-300 text-gray-700 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive placeholder-gray-400"
-            />
-            <Button
-              onClick={handleAddCustomSMIB}
-              variant="outline"
-              className="bg-white border-button text-button hover:bg-button/10 h-11"
-            >
-              Add
-            </Button>
-          </div>
+        {/* Location Display */}
+        <div className="text-center lg:text-right">
+          <p className="text-sm text-gray-600">Current Location:</p>
+          <p className="font-semibold text-gray-800">
+            {currentSelectedLocationName}
+          </p>
         </div>
       </div>
 

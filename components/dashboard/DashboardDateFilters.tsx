@@ -45,9 +45,9 @@ export default function DashboardDateFilters({
     const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
     setPendingCustomDateRange({ startDate: firstDay, endDate: lastDay });
   };
-  
+
   const handleFilterClick = (filter: TimePeriod) => {
-    if (filter === 'Custom') {
+    if (filter === "Custom") {
       setShowCustomPicker(true);
     } else {
       setShowCustomPicker(false);
@@ -55,16 +55,15 @@ export default function DashboardDateFilters({
     setActiveMetricsFilter(filter);
   };
 
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       {timeFilterButtons.map((filter) => (
         <Button
           key={filter.value}
-          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+          className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md transition-colors ${
             activeMetricsFilter === filter.value
-              ? 'bg-buttonActive text-white'
-              : 'bg-button text-white hover:bg-button/90'
+              ? "bg-buttonActive text-white"
+              : "bg-button text-white hover:bg-button/90"
           }`}
           onClick={() => handleFilterClick(filter.value)}
           disabled={disabled}
@@ -73,19 +72,28 @@ export default function DashboardDateFilters({
         </Button>
       ))}
       {showCustomPicker && activeMetricsFilter === "Custom" && (
-        <ModernDateRangePicker
-          value={pendingCustomDateRange ? { from: pendingCustomDateRange.startDate, to: pendingCustomDateRange.endDate } : undefined}
-          onChange={range =>
-            setPendingCustomDateRange(
-              range && range.from && range.to
-                ? { startDate: range.from, endDate: range.to }
+        <div className="w-full sm:w-auto">
+          <ModernDateRangePicker
+            value={
+              pendingCustomDateRange
+                ? {
+                    from: pendingCustomDateRange.startDate,
+                    to: pendingCustomDateRange.endDate,
+                  }
                 : undefined
-            )
-          }
-          onGo={handleApplyCustomRange}
-          onSetLastMonth={handleSetLastMonth}
-        />
+            }
+            onChange={(range) =>
+              setPendingCustomDateRange(
+                range && range.from && range.to
+                  ? { startDate: range.from, endDate: range.to }
+                  : undefined
+              )
+            }
+            onGo={handleApplyCustomRange}
+            onSetLastMonth={handleSetLastMonth}
+          />
+        </div>
       )}
     </div>
   );
-} 
+}

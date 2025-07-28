@@ -1,21 +1,12 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { gsap } from "gsap";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { fetchLocationsData } from "@/lib/helpers/locations";
 import { AggregatedLocation } from "@/lib/types/location";
-import {
-  LocationFilter,
-  LocationSortOption,
-} from "@/lib/types/location";
+import { LocationFilter, LocationSortOption } from "@/lib/types/location";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -90,12 +81,6 @@ export default function LocationsPage() {
           from: customDateRange.startDate,
           to: customDateRange.endDate,
         };
-      } else if (activeMetricsFilter !== "Custom") {
-        dateRangeForFetch = undefined;
-      } else {
-        // Custom selected but no range: do not fetch
-        setLoading(false);
-        return;
       }
 
       // Use empty string as fallback if selectedLicencee is empty
@@ -110,41 +95,22 @@ export default function LocationsPage() {
       setLocationData(data);
     } catch (err) {
       console.error(err);
+      setLocationData([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    selectedFilters,
-    customDateRange,
-  ]);
+  }, [selectedLicencee, activeMetricsFilter, selectedFilters, customDateRange]);
 
   useEffect(() => {
     // Always fetch data on mount and when dependencies change
-    // Only skip if Custom is selected but no date range is set
-    if (
-      activeMetricsFilter !== "Custom" ||
-      (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate)
-    ) {
-      fetchData();
-    }
-  }, [fetchData, activeMetricsFilter, customDateRange, selectedLicencee]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [sortOrder, sortOption, searchTerm, selectedFilters]);
+  }, [searchTerm, selectedFilters]);
 
   const handleSortToggle = () => {
-    const sortIconElement = document.querySelector(".sort-icon");
-    if (sortIconElement) {
-      gsap.to(sortIconElement, {
-        rotation: sortOrder === "desc" ? 0 : 180,
-        duration: 0.3,
-        ease: "back.out(1.7)",
-      });
-    }
-
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
   };
 
@@ -157,30 +123,33 @@ export default function LocationsPage() {
     }
   };
 
-  const filtered = useMemo(
-    () =>
-      locationData.filter((loc) => {
-        // Filter by search term
-        if (searchTerm.trim()) {
-          const searchLower = searchTerm.toLowerCase();
-          const locationName = loc.locationName?.toLowerCase() || "";
-          const locationId = loc.location?.toLowerCase() || "";
-          if (!locationName.includes(searchLower) && !locationId.includes(searchLower)) {
-            return false;
-          }
-        }
-        
-        // Filter by selected filters
-        if (selectedFilters.length === 0) return true;
-        return selectedFilters.some((filter) => {
-          if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
-          if (filter === "SMIBLocationsOnly" && !loc.noSMIBLocation) return true;
-          if (filter === "NoSMIBLocation" && loc.noSMIBLocation === true) return true;
+  const filtered = useMemo(() => {
+    const result = locationData.filter((loc) => {
+      // Filter by search term
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const locationName = loc.locationName?.toLowerCase() || "";
+        const locationId = loc.location?.toLowerCase() || "";
+        if (
+          !locationName.includes(searchLower) &&
+          !locationId.includes(searchLower)
+        ) {
           return false;
-        });
-      }),
-    [locationData, selectedFilters, searchTerm]
-  );
+        }
+      }
+
+      // Filter by selected filters
+      if (selectedFilters.length === 0) return true;
+      return selectedFilters.some((filter) => {
+        if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
+        if (filter === "SMIBLocationsOnly" && !loc.noSMIBLocation) return true;
+        if (filter === "NoSMIBLocation" && loc.noSMIBLocation === true)
+          return true;
+        return false;
+      });
+    });
+    return result;
+  }, [locationData, selectedFilters, searchTerm]);
 
   const totalOnline = filtered.reduce(
     (sum, loc) => sum + (loc.onlineMachines || 0),
@@ -217,6 +186,13 @@ export default function LocationsPage() {
     (currentPage + 1) * itemsPerPage
   );
 
+  // Reset current page if it exceeds total pages
+  useEffect(() => {
+    if (currentPage >= totalPages && totalPages > 0) {
+      setCurrentPage(0);
+    }
+  }, [currentPage, totalPages]);
+
   const handleFirstPage = () => setCurrentPage(0);
   const handleLastPage = () => setCurrentPage(totalPages - 1);
   const handlePrevPage = () =>
@@ -250,7 +226,7 @@ export default function LocationsPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto lg:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -269,12 +245,12 @@ export default function LocationsPage() {
                 width={32}
                 height={32}
                 className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
-                />
+              />
             </div>
             {/* Add New Location button (desktop only) */}
             <Button
               onClick={openLocationModalLocal}
-              className="hidden md:flex bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              className="hidden lg:flex bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
             >
               <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
                 <Plus className="w-4 h-4 text-white" />
@@ -284,7 +260,7 @@ export default function LocationsPage() {
           </div>
 
           {/* Mobile: New Location button below title */}
-          <div className="md:hidden mt-4 w-full">
+          <div className="lg:hidden mt-4 w-full">
             <Button
               onClick={openLocationModalLocal}
               className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
@@ -300,23 +276,29 @@ export default function LocationsPage() {
               <DashboardDateFilters />
             </div>
             <div className="flex-shrink-0 ml-4 w-auto">
-              <MachineStatusWidget onlineCount={totalOnline} offlineCount={totalOffline} />
+              <MachineStatusWidget
+                onlineCount={totalOnline}
+                offlineCount={totalOffline}
+              />
             </div>
           </div>
           {/* Mobile: Search and Status stacked */}
           <div className="lg:hidden flex flex-col gap-4 mt-4">
             <div className="relative w-full">
-                  <Input
-                    type="text"
+              <Input
+                type="text"
                 placeholder="Search locations..."
                 className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
               <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                </div>
+            </div>
             <div className="w-full">
-              <MachineStatusWidget onlineCount={totalOnline} offlineCount={totalOffline} />
+              <MachineStatusWidget
+                onlineCount={totalOnline}
+                offlineCount={totalOffline}
+              />
             </div>
           </div>
 
@@ -331,15 +313,15 @@ export default function LocationsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              </div>
             </div>
+          </div>
 
           {/* Content Section */}
           <div className="flex-1 w-full">
             {loading ? (
               <>
                 {/* Mobile: show 3 card skeletons */}
-                <div className="block md:hidden">
+                <div className="block lg:hidden">
                   <div className="grid grid-cols-1 gap-4">
                     {[...Array(3)].map((_, i) => (
                       <LocationSkeleton key={i} />
@@ -347,19 +329,21 @@ export default function LocationsPage() {
                   </div>
                 </div>
                 {/* Desktop: show 1 table skeleton */}
-                <div className="hidden md:block">
+                <div className="hidden lg:block">
                   <CabinetTableSkeleton />
                 </div>
               </>
             ) : currentItems.length === 0 ? (
               <div className="flex justify-center items-center py-12">
-                <span className="text-gray-500 text-lg">No locations found.</span>
+                <span className="text-gray-500 text-lg">
+                  No locations found.
+                </span>
               </div>
             ) : (
               <>
                 {/* Mobile: show cards */}
                 <div className="block lg:hidden">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:hidden gap-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                     {!loading ? (
                       currentItems.map((location) => (
                         <LocationCard
@@ -377,7 +361,7 @@ export default function LocationsPage() {
                       </>
                     )}
                   </div>
-              </div>
+                </div>
                 {/* Desktop: show table */}
                 <div className="hidden lg:block">
                   <LocationTable
@@ -391,44 +375,44 @@ export default function LocationsPage() {
                   />
                 </div>
               </>
-              )}
+            )}
           </div>
 
           {/* Pagination */}
-              {totalPages > 1 && (
+          {totalPages > 1 && (
             <div className="flex justify-center items-center space-x-2 mt-4">
-                  <Button
-                    onClick={handleFirstPage}
-                    disabled={currentPage === 0}
+              <Button
+                onClick={handleFirstPage}
+                disabled={currentPage === 0}
                 variant="ghost"
-                  >
+              >
                 <DoubleArrowLeftIcon />
-                  </Button>
-                  <Button
-                    onClick={handlePrevPage}
-                    disabled={currentPage === 0}
+              </Button>
+              <Button
+                onClick={handlePrevPage}
+                disabled={currentPage === 0}
                 variant="ghost"
-                  >
+              >
                 <ChevronLeftIcon />
-                  </Button>
+              </Button>
               <span className="text-sm">
                 Page {currentPage + 1} of {totalPages}
               </span>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={currentPage === totalPages - 1}
+              <Button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages - 1}
                 variant="ghost"
-                  >
+              >
                 <ChevronRightIcon />
-                  </Button>
-                  <Button
-                    onClick={handleLastPage}
-                    disabled={currentPage === totalPages - 1}
+              </Button>
+              <Button
+                onClick={handleLastPage}
+                disabled={currentPage === totalPages - 1}
                 variant="ghost"
-                  >
+              >
                 <DoubleArrowRightIcon />
-                  </Button>
-                </div>
+              </Button>
+            </div>
           )}
 
           <Toaster richColors />
@@ -436,8 +420,8 @@ export default function LocationsPage() {
       </div>
       <EditLocationModal onLocationUpdated={fetchData} />
       <DeleteLocationModal onLocationDeleted={fetchData} />
-      <NewLocationModal 
-        isOpen={isNewLocationModalOpen} 
+      <NewLocationModal
+        isOpen={isNewLocationModalOpen}
         onClose={closeLocationModal}
       />
     </>

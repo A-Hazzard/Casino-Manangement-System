@@ -38,17 +38,17 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const url = new URL(request.url);
     const locationId = url.searchParams.get("locationId");
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
+    const _startDate = url.searchParams.get("startDate");
+    const _endDate = url.searchParams.get("endDate");
 
     // Apply location-based filtering if user has resource permissions
     const userPermissions = user.resourcePermissions as Record<string, any>;
     const allowedLocationIds = userPermissions?.["gaming-locations"]?.resources || [];
     
     // Filter by user's allowed locations if not admin
-    let locationFilter = {};
+    let _locationFilter = {};
     if (!userRoles.includes("admin") && allowedLocationIds.length > 0) {
-      locationFilter = { locationId: { $in: allowedLocationIds } };
+      _locationFilter = { locationId: { $in: allowedLocationIds } };
     }
 
     // Add specific location filter if requested
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           { status: 403 }
         );
       }
-      locationFilter = { ...locationFilter, locationId };
+      _locationFilter = { ..._locationFilter, locationId };
     }
 
     // TODO: Implement actual data fetching logic

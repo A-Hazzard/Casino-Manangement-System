@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { Meter } from "@/app/api/lib/models/meters";
+import { Meters } from "@/app/api/lib/models/meters";
 import { subDays } from "date-fns";
 import mongoose, { PipelineStage } from "mongoose";
 
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    const series = await Meter.aggregate(chartsPipeline);
+    const series = await Meters.aggregate(chartsPipeline);
 
     return NextResponse.json({ series });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { Machine } from "@/app/api/lib/models/machines";
-import { Meter } from "@/app/api/lib/models/meters";
+import { Meters } from "@/app/api/lib/models/meters";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import type { CollectionReportMachineEntry } from "@/lib/types/collections";
 import type { Machine as MachineType } from "@/lib/types/machines";
@@ -38,7 +38,7 @@ export async function calculateCollectionReportTotals(
   let sasDrop = 0;
   let sasCancelled = 0;
   for (const m of machines) {
-    const meterDocs = await Meter.find({ machine: m.machineId }).lean();
+    const meterDocs = await Meters.find({ machine: m.machineId }).lean();
     for (const meter of meterDocs) {
       sasDrop += meter?.movement?.drop || 0;
       sasCancelled += meter?.movement?.totalCancelledCredits || 0;

@@ -74,7 +74,27 @@ export async function GET(req: NextRequest) {
           locationName: { $first: "$locationDetails.name" },
           machineId: { $first: "$machineDetails.serialNumber" },
           game: { $first: "$machineDetails.game" },
-          manufacturer: { $first: "$machineDetails.gameConfig.manufacturer" },
+          manufacturer: { 
+            $first: {
+              $cond: [
+                { $and: [
+                  { $ne: ["$machineDetails.manufacturer", null] },
+                  { $ne: ["$machineDetails.manufacturer", ""] }
+                ]},
+                "$machineDetails.manufacturer",
+                {
+                  $cond: [
+                    { $and: [
+                      { $ne: ["$machineDetails.manuf", null] },
+                      { $ne: ["$machineDetails.manuf", ""] }
+                    ]},
+                    "$machineDetails.manuf",
+                    "Not Specified"
+                  ]
+                }
+              ]
+            }
+          },
           handle: { $sum: { $ifNull: ["$movement.drop", 0] } },
           winLoss: {
             $sum: {
@@ -137,7 +157,7 @@ export async function GET(req: NextRequest) {
           locationName: { $ifNull: ["$locationName", "Unknown Location"] },
           machineId: { $ifNull: ["$machineId", "Unknown Machine"] },
           game: { $ifNull: ["$game", "Unknown Game"] },
-          manufacturer: { $ifNull: ["$manufacturer", "Unknown"] },
+          manufacturer: { $ifNull: ["$manufacturer", "Not Specified"] },
           handle: { $round: ["$handle", 2] },
           winLoss: { $round: ["$winLoss", 2] },
           jackpot: { $round: ["$jackpot", 2] },

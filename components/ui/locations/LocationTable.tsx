@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import gsap from "gsap";
 import { LocationTableProps } from "@/lib/types/location";
 import { AggregatedLocation } from "@/lib/types/location";
 import {
@@ -26,30 +25,6 @@ const LocationTable: React.FC<LocationTableProps> = ({
   formatCurrency,
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
-  const prevLocationsRef = useRef<AggregatedLocation[]>(locations);
-
-  useEffect(() => {
-    if (
-      locations.length > 0 &&
-      JSON.stringify(locations) !== JSON.stringify(prevLocationsRef.current)
-    ) {
-      prevLocationsRef.current = [...locations];
-      const rows = tableRef.current?.querySelectorAll("tbody tr");
-      if (rows && rows.length > 0) {
-        gsap.fromTo(
-          rows,
-          { opacity: 0, y: 20 },
-          {
-            opacity: 1,
-            y: 0,
-            stagger: 0.05,
-            duration: 0.4,
-            ease: "power2.out",
-          }
-        );
-      }
-    }
-  }, [locations]);
 
   const handleRowClick = (locationId: string) => {
     onLocationClick(locationId);
@@ -141,8 +116,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                 </td>
                 <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
                   <span
-                    className={(
-                      (loc.gross ?? 0) < 0
+                    className={((loc.gross ?? 0) < 0
                       ? "text-destructive font-semibold"
                       : "text-button font-semibold"
                     ).trim()}
@@ -160,12 +134,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       }}
                       className="p-1 hover:bg-buttonActive/10 text-buttonActive"
                     >
-                      <Image
-                        src={editIcon}
-                        alt="Edit"
-                        width={20}
-                        height={20}
-                      />
+                      <Image src={editIcon} alt="Edit" width={20} height={20} />
                     </Button>
                     <Button
                       variant="ghost"

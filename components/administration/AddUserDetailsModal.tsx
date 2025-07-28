@@ -27,7 +27,7 @@ type AddUserDetailsModalProps = {
     idNumber?: string;
     notes?: string;
   };
-  setFormState: (data: Partial<AddUserDetailsModalProps["formState"]>) => void;
+  setFormState: (_data: Partial<AddUserDetailsModalProps["formState"]>) => void;
 };
 
 export default function AddUserDetailsModal({

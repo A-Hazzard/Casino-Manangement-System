@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, Toaster } from "sonner";
 import type { ReactElement } from "react";
@@ -24,24 +24,21 @@ import type { ReportView, ReportTab } from "@/lib/types/reports";
 import DashboardTab from "@/components/reports/tabs/DashboardTab";
 import LocationsTab from "@/components/reports/tabs/LocationsTab";
 import MachinesTab from "@/components/reports/tabs/MachinesTab";
+import MetersTab from "@/components/reports/tabs/MetersTab";
+import ComparisonTab from "@/components/reports/tabs/ComparisonTab";
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import RefreshButton from "@/components/ui/RefreshButton";
+
 import { Badge } from "@/components/ui/badge";
 import MachineComparisonModal from "@/components/reports/common/MachineComparisonModal";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import { getTimeFilterButtons } from "@/lib/helpers/dashboard";
+import { TimePeriod } from "@/app/api/lib/types";
 
 // Icons
-import {
-  Settings,
-  Download,
-  Filter,
-  Bell,
-  Maximize,
-  Minimize,
-  RefreshCw,
-  FileText,
-} from "lucide-react";
+import { RefreshCw, FileText, Bell } from "lucide-react";
 
 const reportsTabsConfig: ReportTab[] = [
   {
@@ -62,6 +59,18 @@ const reportsTabsConfig: ReportTab[] = [
     icon: "🎰",
     description: "Individual machine performance and revenue tracking",
   },
+  {
+    id: "meters",
+    label: "Meters",
+    icon: "📈",
+    description: "Meter readings and financial data by location",
+  },
+  {
+    id: "comparison",
+    label: "Comparison",
+    icon: "📊",
+    description: "Comprehensive performance metrics and comparisons",
+  },
 ];
 
 // Animation variants
@@ -77,10 +86,133 @@ const tabVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-export default function ReportsPage() {
+// Reports Date Filters Component - Syncs with both dashboard and reports stores
+function ReportsDateFilters() {
+  const {
+    activeMetricsFilter,
+    setActiveMetricsFilter,
+    setCustomDateRange,
+    pendingCustomDateRange,
+    setPendingCustomDateRange,
+  } = useDashBoardStore();
+
+  const { setDateRange } = useReportsStore();
+
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const timeFilterButtons = getTimeFilterButtons();
+
+  const handleApplyCustomRange = () => {
+    if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
+      // Update both stores
+      setCustomDateRange({
+        startDate: pendingCustomDateRange.startDate,
+        endDate: pendingCustomDateRange.endDate,
+      });
+      setDateRange(
+        pendingCustomDateRange.startDate,
+        pendingCustomDateRange.endDate
+      );
+      setActiveMetricsFilter("Custom");
+      setShowCustomPicker(false);
+    }
+  };
+
+  const handleSetLastMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+    setPendingCustomDateRange({ startDate: firstDay, endDate: lastDay });
+  };
+
+  const handleFilterClick = (filter: TimePeriod) => {
+    if (filter === "Custom") {
+      setShowCustomPicker(true);
+    } else {
+      setShowCustomPicker(false);
+
+      // Update reports store based on filter
+      const now = new Date();
+      let startDate: Date, endDate: Date;
+
+      switch (filter) {
+        case "Today":
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          endDate = new Date(now.setHours(23, 59, 59, 999));
+          break;
+        case "Yesterday":
+          startDate = new Date(now.setDate(now.getDate() - 1));
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(startDate);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last7days":
+          startDate = new Date(now.setDate(now.getDate() - 7));
+          endDate = new Date();
+          break;
+        case "last30days":
+          startDate = new Date(now.setDate(now.getDate() - 30));
+          endDate = new Date();
+          break;
+        default:
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          endDate = new Date(now.setHours(23, 59, 59, 999));
+      }
+
+      setDateRange(startDate, endDate);
+    }
+    setActiveMetricsFilter(filter);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {timeFilterButtons.map((filter) => (
+        <Button
+          key={filter.value}
+          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+            activeMetricsFilter === filter.value
+              ? "bg-buttonActive text-white"
+              : "bg-button text-white hover:bg-button/90"
+          }`}
+          onClick={() => handleFilterClick(filter.value)}
+        >
+          {filter.label}
+        </Button>
+      ))}
+      {showCustomPicker && activeMetricsFilter === "Custom" && (
+        <ModernDateRangePicker
+          value={
+            pendingCustomDateRange
+              ? {
+                  from: pendingCustomDateRange.startDate,
+                  to: pendingCustomDateRange.endDate,
+                }
+              : undefined
+          }
+          onChange={(range) =>
+            setPendingCustomDateRange(
+              range && range.from && range.to
+                ? { startDate: range.from, endDate: range.to }
+                : undefined
+            )
+          }
+          onGo={handleApplyCustomRange}
+          onSetLastMonth={handleSetLastMonth}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReportsContent() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
-  const { canAccessReport, getUserLocationIds, isLoading: authLoading } = useAuth();
+  const {
+    canAccessReport,
+    getUserLocationIds,
+    isLoading: authLoading,
+  } = useAuth();
 
   const {
     activeView,
@@ -88,44 +220,51 @@ export default function ReportsPage() {
     isLoading,
     setLoading,
     setError,
-    fullscreenMode,
-    toggleFullscreen,
-    refreshAllData,
     realTimeMetrics,
   } = useReportsStore();
 
-  const [isMobile, setIsMobile] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(false);
-
   // Filter tabs based on user permissions
-  const availableTabs = reportsTabsConfig.filter(tab => 
+  const availableTabs = reportsTabsConfig.filter((tab) =>
     canAccessReport(tab.requiredRoles, tab.requiredPermissions)
   );
+
+  // URL state management for tab selection
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section === "machines") {
+      setActiveView("machines");
+    } else if (section === "locations") {
+      setActiveView("locations");
+    } else if (section === "meters") {
+      setActiveView("meters");
+    } else if (section === "dashboard") {
+      setActiveView("dashboard");
+    } else if (section === "comparison") {
+      setActiveView("comparison");
+    } else {
+      // Default to locations if no section specified
+      setActiveView("locations");
+    }
+  }, [searchParams, setActiveView]);
 
   // Ensure user has access to current view, fallback to first available tab
   useEffect(() => {
     if (!authLoading && availableTabs.length > 0) {
-      const currentTabExists = availableTabs.some(tab => tab.id === activeView);
+      const currentTabExists = availableTabs.some(
+        (tab) => tab.id === activeView
+      );
       if (!currentTabExists) {
         setActiveView(availableTabs[0].id);
       }
     }
   }, [authLoading, availableTabs, activeView, setActiveView]);
 
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
   // Handle tab change with loading state and permission check
   const handleTabChange = async (tabId: ReportView) => {
     if (tabId === activeView) return;
 
     // Check if user has access to this tab
-    const targetTab = availableTabs.find(tab => tab.id === tabId);
+    const targetTab = availableTabs.find((tab) => tab.id === tabId);
     if (!targetTab) {
       toast.error("You don&apos;t have permission to access this report");
       return;
@@ -134,6 +273,19 @@ export default function ReportsPage() {
     setLoading(true);
     setActiveView(tabId);
 
+    // Update URL based on tab selection
+    if (tabId === "machines") {
+      router.push("/reports?section=machines");
+    } else if (tabId === "locations") {
+      router.push("/reports?section=locations");
+    } else if (tabId === "meters") {
+      router.push("/reports?section=meters");
+    } else if (tabId === "comparison") {
+      router.push("/reports?section=comparison");
+    } else {
+      router.push("/reports?section=dashboard");
+    }
+
     // Simulate loading delay for better UX
     setTimeout(() => {
       setLoading(false);
@@ -141,22 +293,13 @@ export default function ReportsPage() {
     }, 300);
   };
 
-  // Handle refresh all data
-  const handleRefreshAll = async () => {
-    try {
-      await refreshAllData();
-      toast.success("All data refreshed successfully");
-    } catch {
-      setError("Failed to refresh data");
-      toast.error("Failed to refresh data");
-    }
-  };
-
   const renderTabContent = () => {
     const tabComponents: Record<ReportView, ReactElement> = {
       dashboard: <DashboardTab />,
       locations: <LocationsTab />,
       machines: <MachinesTab />,
+      meters: <MetersTab />,
+      comparison: <ComparisonTab />,
     };
 
     return (
@@ -198,12 +341,15 @@ export default function ReportsPage() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Bell className="w-8 h-8 text-red-600" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Access Restricted
+          </h2>
           <p className="text-gray-600 mb-4">
-            You don&apos;t have permission to access any reports. Please contact your administrator for access.
+            You don&apos;t have permission to access any reports. Please contact
+            your administrator for access.
           </p>
-          <Button 
-            onClick={() => window.location.href = "/"}
+          <Button
+            onClick={() => (window.location.href = "/")}
             className="bg-buttonActive hover:bg-buttonActive/90"
           >
             Return to Dashboard
@@ -216,11 +362,7 @@ export default function ReportsPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div
-        className={`w-full max-w-full min-h-screen bg-background flex overflow-hidden transition-all duration-300 ${
-          !isMobile ? "md:pl-20 lg:pl-36" : ""
-        } ${fullscreenMode ? "fixed inset-0 z-50" : ""}`}
-      >
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden transition-all duration-300 xl:pl-36">
         <motion.main
           className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4"
           variants={pageVariants}
@@ -237,10 +379,10 @@ export default function ReportsPage() {
           />
 
           {/* Page Title and Actions */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {/* Mobile: Icon and Title */}
-              <div className="flex lg:hidden items-center gap-3">
+              <div className="flex xl:hidden items-center gap-3">
                 <div className="p-2 bg-buttonActive rounded-lg">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
@@ -255,7 +397,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Desktop: Title and Badge */}
-              <div className="hidden lg:flex items-center gap-4">
+              <div className="hidden xl:flex items-center gap-4">
                 <h1 className="text-3xl font-bold text-gray-900">
                   Casino Reports
                 </h1>
@@ -275,76 +417,27 @@ export default function ReportsPage() {
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              {/* Quick Actions Dropdown */}
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowQuickActions(!showQuickActions)}
-                  className="hidden md:flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Quick Actions
-                </Button>
-
-                {showQuickActions && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20"
-                  >
-                    <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      Export Data
-                    </button>
-                    <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                      <Filter className="w-4 h-4" />
-                      Advanced Filters
-                    </button>
-                    <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                      <Bell className="w-4 h-4" />
-                      Set Alerts
-                    </button>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Fullscreen Toggle */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleFullscreen}
-                className="hidden lg:flex items-center gap-2"
-              >
-                {fullscreenMode ? (
-                  <Minimize className="w-4 h-4" />
-                ) : (
-                  <Maximize className="w-4 h-4" />
-                )}
-              </Button>
-
-              {/* Refresh Button */}
-              <RefreshButton
-                onClick={handleRefreshAll}
-                isSyncing={isLoading}
-                disabled={isLoading}
-                className="bg-button hover:bg-buttonActive text-white"
-              />
-            </div>
+          {/* Date Filter - Global for all tabs */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Date Filter
+            </h3>
+            <ReportsDateFilters />
           </div>
 
           {/* Tab Navigation */}
           <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex space-x-8 overflow-x-auto px-6">
-              {availableTabs.filter(tab => tab.id !== "dashboard").map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`
+            <nav className="hidden xl:flex space-x-8 overflow-x-auto px-6">
+              {availableTabs
+                .filter((tab) => tab.id !== "dashboard")
+                .map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`
                     flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200
                     ${
                       activeView === tab.id
@@ -352,34 +445,36 @@ export default function ReportsPage() {
                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }
                   `}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={isLoading}
-                >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                  {tab.id === "dashboard" && realTimeMetrics && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {realTimeMetrics.activeTerminals}
-                    </Badge>
-                  )}
-                </motion.button>
-              ))}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={isLoading}
+                  >
+                    <span className="text-lg">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    {tab.id === "dashboard" && realTimeMetrics && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {realTimeMetrics.activeTerminals}
+                      </Badge>
+                    )}
+                  </motion.button>
+                ))}
             </nav>
 
             {/* Mobile Navigation */}
-            <div className="lg:hidden px-4 py-2">
+            <div className="xl:hidden px-4 py-2">
               <select
                 value={activeView}
                 onChange={(e) => handleTabChange(e.target.value as ReportView)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                 disabled={isLoading}
               >
-                {availableTabs.filter(tab => tab.id !== "dashboard").map((tab) => (
-                  <option key={tab.id} value={tab.id}>
-                    {tab.icon} {tab.label}
-                  </option>
-                ))}
+                {availableTabs
+                  .filter((tab) => tab.id !== "dashboard")
+                  .map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.icon} {tab.label}
+                    </option>
+                  ))}
               </select>
               <p className="text-xs text-gray-600 mt-2">
                 {currentTab?.description}
@@ -432,5 +527,22 @@ export default function ReportsPage() {
       {/* Machine Comparison Modal */}
       <MachineComparisonModal />
     </>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-buttonActive" />
+            <p className="text-gray-600">Loading reports...</p>
+          </div>
+        </div>
+      }
+    >
+      <ReportsContent />
+    </Suspense>
   );
 }

@@ -65,7 +65,7 @@ export type TopPerformingData = {
   color?: string;
 };
 
-// Analytics filters
+// Analytics filtersChartData
 export type ActiveFilters = {
   Today: boolean;
   Yesterday: boolean;

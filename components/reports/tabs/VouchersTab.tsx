@@ -35,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useReportsStore } from "@/lib/store/reportsStore";
 
 // Utils
-import { ExportUtils } from "@/lib/utils/exportUtils";
+import { exportData } from "@/lib/utils/exportUtils";
 
 // Types
 import type { VoucherMetrics } from "@/lib/types/reports";
@@ -182,7 +182,7 @@ export default function VouchersTab() {
 
   const handleExportData = async () => {
     try {
-      const exportData = {
+      const voucherExportData = {
         title: "Voucher Management Report",
         subtitle: "Voucher issuance, redemption, and fraud analysis",
         headers: [
@@ -200,37 +200,14 @@ export default function VouchersTab() {
           `${((location.redeemed / location.issued) * 100).toFixed(1)}%`,
         ]),
         summary: [
-          {
-            label: "Total Vouchers Issued",
-            value: metrics.totalVouchersIssued.toLocaleString(),
-          },
-          {
-            label: "Total Vouchers Redeemed",
-            value: metrics.totalVouchersRedeemed.toLocaleString(),
-          },
-          {
-            label: "Total Voucher Value",
-            value: `$${metrics.totalVoucherValue.toLocaleString()}`,
-          },
-          {
-            label: "Overall Redemption Rate",
-            value: `${metrics.redemptionRate.toFixed(1)}%`,
-          },
-          {
-            label: "Average Voucher Value",
-            value: `$${metrics.averageVoucherValue.toFixed(2)}`,
-          },
-          {
-            label: "Expired Vouchers",
-            value: metrics.expiredVouchers.toLocaleString(),
-          },
-          {
-            label: "Fraudulent Vouchers",
-            value: metrics.fraudulentVouchers.toLocaleString(),
-          },
+          { label: "Total Vouchers Issued", value: metrics.totalVouchersIssued.toLocaleString() },
+          { label: "Total Vouchers Redeemed", value: metrics.totalVouchersRedeemed.toLocaleString() },
+          { label: "Total Value", value: `$${metrics.totalVoucherValue.toLocaleString()}` },
+          { label: "Redemption Rate", value: `${metrics.redemptionRate.toFixed(1)}%` },
+          { label: "Avg. Voucher Value", value: `$${metrics.averageVoucherValue.toFixed(2)}` },
         ],
         metadata: {
-          generatedBy: "Evolution1 CMS - Voucher Management",
+          generatedBy: "Evolution1 CMS - Vouchers Export",
           generatedAt: new Date().toISOString(),
           dateRange: selectedDateRange
             ? `${selectedDateRange.start?.toDateString()} - ${selectedDateRange.end?.toDateString()}`
@@ -238,7 +215,7 @@ export default function VouchersTab() {
         },
       };
 
-      await ExportUtils.exportData(exportData, "pdf");
+      await exportData(voucherExportData, "pdf");
       toast.success("Voucher management data exported successfully");
     } catch (error) {
       const errorMessage =

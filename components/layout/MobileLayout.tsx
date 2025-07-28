@@ -9,14 +9,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import StatCardSkeleton, {
   ChartSkeleton,
 } from "@/components/ui/SkeletonLoader";
-import dayjs from "dayjs";
 import Chart from "@/components/ui/dashboard/Chart";
-import customParseFormat from "dayjs/plugin/customParseFormat";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-
-dayjs.extend(customParseFormat);
 
 export default function MobileLayout(props: MobileLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -34,10 +30,11 @@ export default function MobileLayout(props: MobileLayoutProps) {
     const fetchLocationAggregation = async () => {
       setAggLoading(true);
       try {
-        const res = await fetch('/api/locationAggregation?timePeriod=Today');
-        const data = await res.json();
-        setLocationAggregates(data);
-      } catch (err) {
+        const res = await fetch("/api/locationAggregation?timePeriod=Today");
+        const response = await res.json();
+        // Extract the data array from the response
+        setLocationAggregates(response.data || []);
+      } catch {
         setLocationAggregates([]);
       } finally {
         setAggLoading(false);
@@ -47,12 +44,19 @@ export default function MobileLayout(props: MobileLayoutProps) {
   }, []);
 
   // Calculate total online/offline from aggregation
-  const onlineCount = locationAggregates.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
-  const totalMachines = locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+  const onlineCount = Array.isArray(locationAggregates)
+    ? locationAggregates.reduce(
+        (sum, loc) => sum + (loc.onlineMachines || 0),
+        0
+      )
+    : 0;
+  const totalMachines = Array.isArray(locationAggregates)
+    ? locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
+    : 0;
   const offlineCount = totalMachines - onlineCount;
 
   return (
-    <div className="lg:hidden space-y-6">
+    <div className="xl:hidden space-y-6">
       <div className="flex items-center gap-2 mb-2">
         <h2 className="text-lg">Total for all Locations and Machines</h2>
         <div
@@ -133,9 +137,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
         />
       )}
 
-      <MapPreview
-        gamingLocations={props.gamingLocations}
-      />
+      <MapPreview gamingLocations={props.gamingLocations} />
 
       {/* Top Performing Section */}
       {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (

@@ -513,7 +513,7 @@ export default function AdministrationPage() {
             setSearchValue={setLicenseeSearchValue}
             onActivityLogClick={() => setIsActivityLogModalOpen(true)}
           />
-          <div className="block lg:hidden space-y-3 mt-6">
+          <div className="block xl:hidden space-y-3 mt-6">
             {paginatedLicensees.length > 0 ? (
               paginatedLicensees.map((licensee) => (
                 <LicenseeCard
@@ -531,7 +531,7 @@ export default function AdministrationPage() {
               </p>
             )}
           </div>
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <LicenseeTable
               licensees={paginatedLicensees}
               onEdit={handleOpenEditLicensee}
@@ -614,10 +614,10 @@ export default function AdministrationPage() {
     if (isLoading) {
       return (
         <>
-          <div className="block lg:hidden md:block">
+          <div className="block xl:hidden md:block">
             <UserCardSkeleton />
           </div>
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <UserTableSkeleton />
           </div>
         </>
@@ -635,7 +635,7 @@ export default function AdministrationPage() {
           setSearchDropdownOpen={setSearchDropdownOpen}
           onActivityLogClick={() => setIsUserActivityLogModalOpen(true)}
         />
-        <div className="block lg:hidden md:block space-y-3 mt-4">
+        <div className="block xl:hidden md:block space-y-3 mt-4">
           {paginatedUsers.length > 0 ? (
             paginatedUsers.map((user) => (
               <UserCard
@@ -652,7 +652,7 @@ export default function AdministrationPage() {
             </p>
           )}
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden xl:block">
           {paginatedUsers.length > 0 ? (
             <UserTable
               users={paginatedUsers}
@@ -781,86 +781,76 @@ export default function AdministrationPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div
-        className={`w-full min-h-screen bg-background flex md:pl-[8rem] transition-all duration-300`}
-      >
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto xl:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
           <Header />
           {/* Admin icon and title layout, matching original design */}
-          <div
-            className={`flex items-center ${
-              "mt-6 justify-between"
-            }`}
-          >
-                <div className="flex items-center">
-                  <h1 className="text-3xl font-bold mr-4">Administration</h1>
-                  <Image
-                    src="/adminIcon.svg"
-                    alt="Admin Icon"
-                    width={32}
-                    height={32}
-                  />
-                </div>
-                {activeSection === "users" ? (
-                  <Button
-                    onClick={openAddUserModal}
-                    className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
-                  >
-                    <Image
-                      src="/plusButtonWhite.svg"
-                      width={16}
-                      height={16}
-                      alt="Add"
-                    />
-                    <span>Add User</span>
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleOpenAddLicensee}
-                    className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
-                  >
-                    <Image
-                      src="/plusButtonWhite.svg"
-                      width={16}
-                      height={16}
-                      alt="Add"
-                    />
-                    <span>Add Licensee</span>
-                  </Button>
+          <div className={`flex items-center ${"mt-6 justify-between"}`}>
+            <div className="flex items-center">
+              <h1 className="text-3xl font-bold mr-4">Administration</h1>
+              <Image
+                src="/adminIcon.svg"
+                alt="Admin Icon"
+                width={32}
+                height={32}
+              />
+            </div>
+            {activeSection === "users" ? (
+              <Button
+                onClick={openAddUserModal}
+                className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
+              >
+                <Image
+                  src="/plusButtonWhite.svg"
+                  width={16}
+                  height={16}
+                  alt="Add"
+                />
+                <span>Add User</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={handleOpenAddLicensee}
+                className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
+              >
+                <Image
+                  src="/plusButtonWhite.svg"
+                  width={16}
+                  height={16}
+                  alt="Add"
+                />
+                <span>Add Licensee</span>
+              </Button>
             )}
           </div>
 
-          <div
-            className={`mt-6 ${
-              "flex gap-3 justify-start"
-            }`}
-          >
-                <Button
-                  className={`px-6 py-2 text-sm font-medium ${
-                    activeSection === "users"
-                      ? "bg-buttonActive text-white"
-                      : "bg-button text-white"
-                  }`}
-                  onClick={() => {
-                    setActiveSection("users");
-                    setCurrentPage(0);
-                  }}
-                >
-                  Users
-                </Button>
-                <Button
-                  className={`px-6 py-2 text-sm font-medium ${
-                    activeSection === "licensees"
-                      ? "bg-buttonActive text-white"
-                      : "bg-button text-white"
-                  }`}
-                  onClick={() => {
-                    setActiveSection("licensees");
-                    setCurrentPage(0);
-                  }}
-                >
-                  Licensees
-                </Button>
+          <div className={`mt-6 ${"flex gap-3 justify-start"}`}>
+            <Button
+              className={`px-6 py-2 text-sm font-medium ${
+                activeSection === "users"
+                  ? "bg-buttonActive text-white"
+                  : "bg-button text-white"
+              }`}
+              onClick={() => {
+                setActiveSection("users");
+                setCurrentPage(0);
+              }}
+            >
+              Users
+            </Button>
+            <Button
+              className={`px-6 py-2 text-sm font-medium ${
+                activeSection === "licensees"
+                  ? "bg-buttonActive text-white"
+                  : "bg-button text-white"
+              }`}
+              onClick={() => {
+                setActiveSection("licensees");
+                setCurrentPage(0);
+              }}
+            >
+              Licensees
+            </Button>
           </div>
 
           {renderSectionContent()}

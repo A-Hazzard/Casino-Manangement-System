@@ -1,41 +1,41 @@
 import { Schema, model, models } from "mongoose";
 
-const MeterSchema = new Schema({
-  _id: String,
-  machine: { type: Schema.Types.ObjectId, ref: "Machine", required: true },
-  location: { type: Schema.Types.ObjectId, ref: "Location", required: true },
-  locationSession: { type: Schema.Types.ObjectId, ref: "LocationSession" },
-  readAt: { type: Date, required: true },
-  movement: {
-    drop: Number,
-    totalCancelledCredits: Number,
-    gamesPlayed: Number,
-    jackpot: Number,
-    coinIn: Number,
-    coinOut: Number,
+const MetersSchema = new Schema(
+  {
+    machine: { type: String, required: true },
+    location: { type: String, required: true },
+    movement: {
+      coinIn: { type: Number, default: 0 },
+      coinOut: { type: Number, default: 0 },
+      totalCancelledCredits: { type: Number, default: 0 },
+      totalHandPaidCancelledCredits: { type: Number, default: 0 },
+      totalWonCredits: { type: Number, default: 0 },
+      drop: { type: Number, default: 0 },
+      jackpot: { type: Number, default: 0 },
+      currentCredits: { type: Number, default: 0 },
+      gamesPlayed: { type: Number, default: 0 },
+      gamesWon: { type: Number, default: 0 },
+      metersIn: { type: Number, default: 0 },
+      metersOut: { type: Number, default: 0 },
+      billIn: { type: Number, default: 0 },
+      voucherOut: { type: Number, default: 0 },
+      attPaidCredits: { type: Number, default: 0 },
+    },
+    createdAt: { type: Date, default: Date.now },
+    readAt: { type: Date, default: Date.now },
+    machineId: { type: String },
   },
-  viewingAccountDenomination: {
-    drop: Number,
-    totalCancelledCredits: Number,
-    jackpot: Number,
-  },
-  coinIn: { type: Number },
-  coinOut: { type: Number },
-  totalCancelledCredits: { type: Number },
-  totalHandPaidCancelledCredits: { type: Number },
-  totalWonCredits: { type: Number },
-  drop: { type: Number },
-  jackpot: { type: Number },
-  currentCredits: { type: Number },
-  gamesPlayed: { type: Number },
-  gamesWon: { type: Number },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
+  { timestamps: true, versionKey: false }
+);
+
+// Critical indexes for aggregation performance
+MetersSchema.index({ location: 1, createdAt: 1 }); // For location-based queries with date filtering
+MetersSchema.index({ machine: 1, readAt: 1 }); // For machine-based queries
+MetersSchema.index({ createdAt: 1 }); // For date range queries
+MetersSchema.index({ location: 1, machine: 1 }); // For location-machine combinations
 
 /**
  * Mongoose model for meter readings, including references to machines and locations, and all meter fields.
- * Exported as 'Meter' for use in API routes and data access layers.
+ * Exported as 'Meters' for use in API routes and data access layers.
  */
-const Meter = models.Meter || model("Meter", MeterSchema);
-export { Meter };
+export const Meters = models.Meters || model("Meters", MetersSchema);

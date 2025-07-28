@@ -31,7 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useReportsStore } from "@/lib/store/reportsStore";
 
 // Utils
-import { ExportUtils } from "@/lib/utils/exportUtils";
+import { exportData } from "@/lib/utils/exportUtils";
 
 // Types
 import type { ComplianceMetrics } from "@/lib/types/reports";
@@ -143,7 +143,7 @@ export default function ComplianceTab() {
 
   const handleExportData = async () => {
     try {
-      const exportData = {
+      const exportDataObj = {
         title: "Compliance Management Report",
         subtitle: "Regulatory compliance tracking and audit documentation",
         headers: [
@@ -198,7 +198,7 @@ export default function ComplianceTab() {
         },
       };
 
-      await ExportUtils.exportData(exportData, "pdf");
+      await exportData(exportDataObj, "pdf");
       toast.success("Compliance management data exported successfully");
     } catch (error) {
       const errorMessage =

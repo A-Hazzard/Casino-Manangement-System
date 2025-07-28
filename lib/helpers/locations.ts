@@ -4,6 +4,7 @@ import { Cabinet } from "@/lib/types/cabinets";
 import { LocationData, AggregatedLocation } from "../types/location";
 import { TimePeriod } from "../types/api";
 import { DateRange } from "react-day-picker";
+import { getAuthHeaders } from "@/lib/utils/auth";
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -57,16 +58,21 @@ export async function fetchLocationAndCabinets(
  * @param licencee - (Optional) Licencee filter for locations.
  * @returns Promise resolving to an array of locations.
  */
-export default async function getAllGamingLocations(licencee?: string): Promise<locations[]> {
+export default async function getAllGamingLocations(
+  licencee?: string
+): Promise<locations[]> {
   try {
     const params: Record<string, string> = {};
     if (licencee && licencee !== "all") {
       params.licencee = licencee;
     }
-    
+
     const response = await axios.get<{ locations: locations[] }>(
       "/api/locations",
-      { params }
+      {
+        params,
+        headers: getAuthHeaders(),
+      }
     );
     const fetchedLocations = response.data.locations;
     console.log("\ud83d\udccd Gaming Locations Status 200");
@@ -86,7 +92,10 @@ export default async function getAllGamingLocations(licencee?: string): Promise<
 export async function fetchLocationDetails(locationId: string) {
   try {
     const response = await axios.get(
-      `/api/locations/${locationId}?basicInfo=true`
+      `/api/locations/${locationId}?basicInfo=true`,
+      {
+        headers: getAuthHeaders(),
+      }
     );
     return Array.isArray(response.data) ? response.data[0] : response.data;
   } catch (error) {
@@ -111,6 +120,7 @@ export async function fetchCabinets(locationId: string, timePeriod?: string) {
     if (timePeriod) params.timePeriod = timePeriod;
     const response = await axios.get(`/api/locations/${locationId}/cabinets`, {
       params,
+      headers: getAuthHeaders(),
     });
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -155,7 +165,10 @@ export async function fetchLocationDetailsById(locationId: string) {
   try {
     console.log(`Fetching location details for ID: ${locationId}`);
     const url = `/api/locations/${locationId}?basicInfo=true`; // Fetch only basic info initially
-    const response = await axios.get(url, { timeout: 15000 });
+    const response = await axios.get(url, {
+      timeout: 15000,
+      headers: getAuthHeaders(),
+    });
 
     if (!response.data) {
       throw new Error("No location data returned from API");
@@ -203,7 +216,10 @@ export const fetchLocationsData = async (
     }
 
     const response = await axios.get("/api/locationAggregation", { params });
-    return response.data || [];
+    // Handle both old array format and new paginated format
+    return Array.isArray(response.data)
+      ? response.data
+      : response.data?.data || [];
   } catch (error) {
     console.error("Failed to fetch locations data:", error);
     return [];
@@ -271,7 +287,10 @@ export async function fetchLocationMetricsForMap(
       return [];
     }
 
-    return response.data;
+    // Handle both old array format and new paginated format
+    return Array.isArray(response.data)
+      ? response.data
+      : response.data?.data || [];
   } catch (error) {
     console.error("Error fetching location metrics for map:", error);
     return [];

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
+import { useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import formatCurrency from "@/lib/utils/currency";
-import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
   CabinetProps,
@@ -25,33 +24,7 @@ export default function CabinetTable({
   onDelete,
 }: CabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
-  const prevCabinetsRef = useRef<CabinetProps[]>([]);
   const router = useRouter();
-
-  // Animate table rows on data change
-  useEffect(() => {
-    if (
-      cabinets.length > 0 &&
-      JSON.stringify(cabinets) !== JSON.stringify(prevCabinetsRef.current)
-    ) {
-      prevCabinetsRef.current = [...cabinets];
-
-      const rows = tableRef.current?.querySelectorAll("tbody tr");
-      if (rows && rows.length > 0) {
-        gsap.fromTo(
-          rows,
-          { opacity: 0, y: 20 },
-          {
-            opacity: 1,
-            y: 0,
-            stagger: 0.05,
-            duration: 0.4,
-            ease: "power2.out",
-          }
-        );
-      }
-    }
-  }, [cabinets]);
 
   // Navigate to cabinet detail page
   const navigateToCabinet = (cabinetId: string) => {
@@ -211,12 +184,7 @@ export default function CabinetTable({
                       }}
                       className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
                     >
-                      <Image
-                        src={editIcon}
-                        alt="Edit"
-                        width={20}
-                        height={20}
-                      />
+                      <Image src={editIcon} alt="Edit" width={20} height={20} />
                     </Button>
                     <Button
                       variant="ghost"

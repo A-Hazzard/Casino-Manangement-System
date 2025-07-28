@@ -7,6 +7,7 @@ import type {
   MachineExportData,
   LocationExportData,
 } from "@/lib/types/reports";
+import { toast } from "sonner";
 
 declare module "jspdf" {
   interface jsPDF {
@@ -25,6 +26,20 @@ declare module "jspdf" {
 export type ExportFormat = "pdf" | "csv" | "excel";
 
 export type ExportData = {
+  overview: any[];
+  sasEvaluation: any[];
+  revenueAnalysis: any[];
+  machines: any[];
+  metadata: {
+    generatedAt: Date;
+    timePeriod: string;
+    selectedLocations: string[];
+    selectedLicencee?: string;
+  };
+};
+
+// Legacy export data type for individual reports
+export type LegacyExportData = {
   title: string;
   subtitle?: string;
   headers: string[];
@@ -57,7 +72,7 @@ const getEOSLogoBase64 = async (): Promise<string> => {
 };
 
 export class ExportUtils {
-  static async exportToPDF(data: ExportData): Promise<void> {
+  static async exportToPDF(data: LegacyExportData): Promise<void> {
     const doc = new jsPDF();
 
     // Add logo
@@ -161,7 +176,7 @@ export class ExportUtils {
     doc.save(fileName);
   }
 
-  static exportToCSV(data: ExportData): void {
+  static exportToCSV(data: LegacyExportData): void {
     let csvContent = "";
 
     // Add title and metadata
@@ -216,7 +231,7 @@ export class ExportUtils {
     document.body.removeChild(link);
   }
 
-  static exportToExcel(data: ExportData): void {
+  static exportToExcel(data: LegacyExportData): void {
     const workbook = XLSX.utils.book_new();
 
     // Create worksheet data
@@ -260,9 +275,34 @@ export class ExportUtils {
     // Create worksheet
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Set column widths
-    const colWidths = data.headers.map(() => ({ wch: 15 }));
+    // Set column widths - make them wider for better number display
+    const colWidths = data.headers.map((header) => {
+      // Make numeric columns wider
+      if (header.includes("Meters") || header.includes("Money") || header.includes("Games") || 
+          header.includes("Bill") || header.includes("Voucher") || header.includes("Jackpot")) {
+        return { wch: 20 }; // Wider for large numbers
+      }
+      return { wch: 15 }; // Standard width for other columns
+    });
     worksheet["!cols"] = colWidths;
+
+    // Apply number formatting to numeric columns
+    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
+    for (let col = 0; col < data.headers.length; col++) {
+      const header = data.headers[col];
+      if (header.includes("Meters") || header.includes("Money") || header.includes("Games") || 
+          header.includes("Bill") || header.includes("Voucher") || header.includes("Jackpot")) {
+        // Apply number format to all cells in this column (skip header row)
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (worksheet[cellAddress]) {
+            // Set cell type to number and format
+            worksheet[cellAddress].t = 'n';
+            worksheet[cellAddress].z = '#,##0'; // Number format with thousands separator
+          }
+        }
+      }
+    }
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
@@ -276,7 +316,7 @@ export class ExportUtils {
   }
 
   static async exportData(
-    data: ExportData,
+    data: LegacyExportData,
     format: ExportFormat
   ): Promise<void> {
     try {
@@ -421,3 +461,321 @@ export function formatLocationDataForExport(
     },
   };
 }
+
+// Fetch overview data
+const fetchOverviewData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+  try {
+    const params = new URLSearchParams({
+      timePeriod,
+      ...(licencee && { licencee }),
+      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+    });
+
+    const response = await fetch(`/api/analytics/dashboard?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch overview data');
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching overview data:', error);
+    return [];
+  }
+};
+
+// Fetch SAS evaluation data
+const fetchSASEvaluationData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+  try {
+    const params = new URLSearchParams({
+      timePeriod,
+      ...(licencee && { licencee }),
+      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+    });
+
+    const response = await fetch(`/api/analytics/locations?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch SAS evaluation data');
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching SAS evaluation data:', error);
+    return [];
+  }
+};
+
+// Fetch revenue analysis data
+const fetchRevenueAnalysisData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+  try {
+    const params = new URLSearchParams({
+      timePeriod,
+      ...(licencee && { licencee }),
+      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+    });
+
+    const response = await fetch(`/api/metrics/top-machines?${params}&limit=100`);
+    if (!response.ok) throw new Error('Failed to fetch revenue analysis data');
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching revenue analysis data:', error);
+    return [];
+  }
+};
+
+// Fetch machines data
+const fetchMachinesData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+  try {
+    const params = new URLSearchParams({
+      timePeriod,
+      limit: "100", // Get more machines for export
+      ...(licencee && licencee !== "all" && { licencee }),
+      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+    });
+
+    const response = await fetch(`/api/reports/machines?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch machines data');
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching machines data:', error);
+    return [];
+  }
+};
+
+// Convert data to Excel format
+const convertToExcelFormat = (data: ExportData) => {
+  const workbook = {
+    sheets: [
+      {
+        name: 'Overview',
+        data: data.overview.map(item => ({
+          'Location': item.locationName || 'Unknown',
+          'Total Revenue': item.moneyIn || 0,
+          'Total Payout': item.moneyOut || 0,
+          'Gross Profit': item.gross || 0,
+          'Date': item.day || 'Unknown'
+        }))
+      },
+      {
+        name: 'SAS Evaluation',
+        data: data.sasEvaluation.map(item => ({
+          'Location': item.locationName || 'Unknown',
+          'Total Machines': item.totalMachines || 0,
+          'Online Machines': item.onlineMachines || 0,
+          'Performance': item.performance || 'Unknown',
+          'Revenue': item.moneyIn || 0
+        }))
+      },
+      {
+        name: 'Revenue Analysis',
+        data: data.revenueAnalysis.map(item => ({
+          'Location': item.locationName || 'Unknown',
+          'Machine ID': item.machineId || 'Unknown',
+          'Game': item.game || 'Unknown',
+          'Manufacturer': item.manufacturer || 'Not Specified',
+          'Handle': item.handle || 0,
+          'Win/Loss': item.winLoss || 0,
+          'Jackpot': item.jackpot || 0,
+          'Games Played': item.gamesPlayed || 0,
+          'Avg Wager': item.avgWagerPerGame || 0,
+          'Actual Hold %': item.actualHold || 0
+        }))
+      },
+      {
+        name: 'Machines',
+        data: data.machines.map(item => ({
+          'Machine ID': item.machineId || 'Unknown',
+          'Machine Name': item.machineName || 'Unknown',
+          'Game Title': item.gameTitle || 'Unknown',
+          'Location': item.locationName || 'Unknown',
+          'Manufacturer': item.manufacturer || 'Unknown',
+          'Type': item.machineType || 'Unknown',
+          'Net Win': item.netWin || 0,
+          'Drop': item.drop || 0,
+          'Cancelled Credits': item.totalCancelledCredits || 0,
+          'Jackpot': item.jackpot || 0,
+          'Games Played': item.gamesPlayed || 0,
+          'Hold %': item.actualHold || 0,
+          'Status': item.isOnline ? 'Online' : 'Offline',
+          'SAS Enabled': item.isSasEnabled ? 'Yes' : 'No'
+        }))
+      },
+      {
+        name: 'Metadata',
+        data: [
+          { 'Generated At': data.metadata.generatedAt.toLocaleString() },
+          { 'Time Period': data.metadata.timePeriod },
+          { 'Selected Locations': data.metadata.selectedLocations.join(', ') || 'All' },
+          { 'Licencee': data.metadata.selectedLicencee || 'All' }
+        ]
+      }
+    ]
+  };
+
+  return workbook;
+};
+
+// Download Excel file
+const downloadExcel = (workbook: any, filename: string) => {
+  // For now, we'll create a CSV-like format that can be opened in Excel
+  // In a production environment, you'd use a library like xlsx or exceljs
+  
+  let csvContent = '';
+  
+  workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
+    csvContent += `\n=== ${sheet.name} ===\n`;
+    
+    if (sheet.data.length > 0) {
+      // Headers
+      const headers = Object.keys(sheet.data[0]);
+      csvContent += headers.join(',') + '\n';
+      
+      // Data rows
+      sheet.data.forEach((row: any) => {
+        const values = headers.map(header => {
+          const value = row[header];
+          // Escape commas and quotes
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        });
+        csvContent += values.join(',') + '\n';
+      });
+    }
+    
+    csvContent += '\n';
+  });
+  
+  // Create and download file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Main export function for all reports
+export const exportAllReports = async (
+  timePeriod: string,
+  licencee?: string,
+  locationIds?: string[]
+) => {
+  try {
+    toast.loading('Preparing export...');
+    
+    // Fetch all data including machines
+    const [overviewData, sasData, revenueData, machinesData] = await Promise.all([
+      fetchOverviewData(timePeriod, licencee, locationIds),
+      fetchSASEvaluationData(timePeriod, licencee, locationIds),
+      fetchRevenueAnalysisData(timePeriod, licencee, locationIds),
+      fetchMachinesData(timePeriod, licencee, locationIds)
+    ]);
+    
+    // Prepare export data
+    const exportData: ExportData = {
+      overview: overviewData,
+      sasEvaluation: sasData,
+      revenueAnalysis: revenueData,
+      machines: machinesData,
+      metadata: {
+        generatedAt: new Date(),
+        timePeriod,
+        selectedLocations: locationIds || [],
+        selectedLicencee: licencee
+      }
+    };
+    
+    // Convert to Excel format
+    const workbook = convertToExcelFormat(exportData);
+    
+    // Generate filename
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `casino-reports-${timePeriod}-${timestamp}.csv`;
+    
+    // Download file
+    downloadExcel(workbook, filename);
+    
+    toast.dismiss();
+    toast.success('Export completed successfully!');
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    toast.dismiss();
+    toast.error('Failed to export reports. Please try again.');
+  }
+};
+
+// Legacy export function for individual reports (maintains backward compatibility)
+export const exportData = async (data: LegacyExportData, format: string = "csv") => {
+  try {
+    toast.loading('Preparing export...');
+    
+    // For now, we'll create a CSV-like format that can be opened in Excel
+    let csvContent = '';
+    
+    // Title and subtitle
+    csvContent += `${data.title}\n`;
+    if (data.subtitle) {
+      csvContent += `${data.subtitle}\n`;
+    }
+    csvContent += '\n';
+    
+    // Headers
+    csvContent += data.headers.join(',') + '\n';
+    
+    // Data rows
+    data.data.forEach(row => {
+      const values = row.map(value => {
+        // Escape commas and quotes
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
+      csvContent += values.join(',') + '\n';
+    });
+    
+    // Summary
+    if (data.summary && data.summary.length > 0) {
+      csvContent += '\nSummary:\n';
+      data.summary.forEach(item => {
+        csvContent += `${item.label}: ${item.value}\n`;
+      });
+    }
+    
+    // Metadata
+    if (data.metadata) {
+      csvContent += '\nMetadata:\n';
+      csvContent += `Generated by: ${data.metadata.generatedBy}\n`;
+      csvContent += `Generated at: ${data.metadata.generatedAt}\n`;
+      if (data.metadata.dateRange) {
+        csvContent += `Date range: ${data.metadata.dateRange}\n`;
+      }
+    }
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${data.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.dismiss();
+    toast.success('Export completed successfully!');
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    toast.dismiss();
+    toast.error('Failed to export data. Please try again.');
+  }
+};

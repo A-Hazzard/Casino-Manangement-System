@@ -6,6 +6,7 @@ import {
 } from "../types/cabinets";
 import mongoose from "mongoose";
 import { DateRange } from "react-day-picker";
+import { getAuthHeaders } from "@/lib/utils/auth";
 
 // Define the CabinetDetails type based on Cabinet with any additional properties that might be returned from API
 export type CabinetDetails = Cabinet & {
@@ -90,7 +91,9 @@ export const fetchCabinets = async (
       url += `?${queryParams.join("&")}`;
     }
 
-    const response = await axios.get(url);
+    const response = await axios.get(url, {
+      headers: getAuthHeaders(),
+    });
 
     // Check if the response contains a data property with an array
     if (response.status === 200) {
@@ -257,7 +260,10 @@ export const fetchCabinetLocations = async (licensee?: string) => {
       params = { licensee, licencee: licensee };
     }
 
-    const response = await axios.get("/api/machines/locations", { params });
+    const response = await axios.get("/api/machines/locations", {
+      params,
+      headers: getAuthHeaders(),
+    });
 
     if (!response.status || response.status >= 400) {
       console.error(`Error fetching locations: ${response.status}`);
@@ -318,6 +324,7 @@ export async function fetchCabinetsForLocation(
       {
         headers: {
           "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
       }
     );

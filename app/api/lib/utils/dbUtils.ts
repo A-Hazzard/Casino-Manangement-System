@@ -1,6 +1,6 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { dashboardData, Meter } from "@/lib/types";
-import { Meter as MeterModel } from "../models/meters";
+import { Meters as MeterModel } from "../models/meters";
 
 /**
  * Fetches all meter records from the database as plain JavaScript objects.

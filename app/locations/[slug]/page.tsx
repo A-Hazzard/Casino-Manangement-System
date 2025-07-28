@@ -72,7 +72,8 @@ export default function LocationPage() {
     []
   );
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [selectedLocationId, setSelectedLocationId] = useState<string>(locationId);
+  const [selectedLocationId, setSelectedLocationId] =
+    useState<string>(locationId);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   // Add back error state
@@ -114,9 +115,11 @@ export default function LocationPage() {
           try {
             const formattedLocations = await fetchAllGamingLocations();
             setLocations(formattedLocations);
-            
+
             // Set initial selected location based on URL slug
-            const currentLocation = formattedLocations.find(loc => loc.id === locationId);
+            const currentLocation = formattedLocations.find(
+              (loc) => loc.id === locationId
+            );
             if (currentLocation) {
               setSelectedLocation(currentLocation.name);
               setLocationName(currentLocation.name);
@@ -143,7 +146,9 @@ export default function LocationPage() {
             }
           } catch {
             setLocationName("Location"); // Default name on error
-            setError("Failed to load location details. Please try again later.");
+            setError(
+              "Failed to load location details. Please try again later."
+            );
           }
         }
 
@@ -167,7 +172,14 @@ export default function LocationPage() {
     };
 
     fetchData();
-  }, [locationId, selectedLicencee, activeMetricsFilter, selectedLocationId, locationName, selectedLocation]);
+  }, [
+    locationId,
+    selectedLicencee,
+    activeMetricsFilter,
+    selectedLocationId,
+    locationName,
+    selectedLocation,
+  ]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -263,7 +275,10 @@ export default function LocationPage() {
   }, [selectedLicencee, activeMetricsFilter, selectedLocationId]);
 
   // Handle location change without navigation - just update the selected location
-  const handleLocationChangeInPlace = (newLocationId: string, locationName: string) => {
+  const handleLocationChangeInPlace = (
+    newLocationId: string,
+    locationName: string
+  ) => {
     setSelectedLocationId(newLocationId);
     setSelectedLocation(locationName);
     setIsLocationDropdownOpen(false);
@@ -272,7 +287,7 @@ export default function LocationPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-6 w-full max-w-full overflow-x-hidden">
           <Header
             selectedLicencee={selectedLicencee}
@@ -293,7 +308,7 @@ export default function LocationPage() {
               </Button>
             </Link>
             <h1 className="text-2xl font-bold">Location Details</h1>
-            
+
             {/* Remove Location Dropdown */}
             <div className="ml-auto">
               <RefreshButton
@@ -371,9 +386,7 @@ export default function LocationPage() {
                 />
               </Button>
               {isLocationDropdownOpen && (
-                <div
-                  className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0"
-                >
+                <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0">
                   <div className="max-h-60 overflow-y-auto">
                     {locations.map((loc) => (
                       <button

@@ -1,31 +1,22 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  MapPin,
   Download,
   BarChart3,
   Monitor,
   Wifi,
   WifiOff,
-  Star,
-  ExternalLink,
-  DollarSign,
-  TrendingUp,
   CheckCircle,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line,
+  XAxis,
+  YAxis,
+  Tooltip,
 } from "recharts";
 import {
   Card,
@@ -35,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useReportsStore } from "@/lib/store/reportsStore";
@@ -47,6 +38,7 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 // SAS Evaluation Components
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import EnhancedLocationTable from "@/components/reports/common/EnhancedLocationTable";
+import RevenueAnalysisTable from "@/components/reports/common/RevenueAnalysisTable";
 import HandleChart from "@/components/reports/charts/HandleChart";
 import WinLossChart from "@/components/reports/charts/WinLossChart";
 import JackpotChart from "@/components/reports/charts/JackpotChart";
@@ -58,42 +50,7 @@ import { AggregatedLocation } from "@/lib/types/location";
 import axios from "axios";
 
 // Types for location data
-type MachineData = {
-  id: string;
-  name: string;
-  revenue: number;
-  hold: number;
-};
-
-type HourlyRevenueData = {
-  hour: number;
-  revenue: number;
-};
-type LocationMetrics = {
-  totalGross: number;
-  totalDrop: number;
-  totalCancelledCredits: number;
-  onlineMachines: number;
-  totalMachines: number;
-};
-
-type TopLocation = {
-  locationId: string;
-  locationName: string;
-  gross: number;
-  drop: number;
-  cancelledCredits: number;
-  onlineMachines: number;
-  totalMachines: number;
-  performance: "excellent" | "good" | "average" | "poor";
-  sasEnabled: boolean;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
-  // Additional fields for the new card design
-  holdPercentage: number;
-};
+import { LocationMetrics, TopLocation } from "@/shared/types";
 
 // Skeleton loader components
 const MetricsOverviewSkeleton = () => (
@@ -152,227 +109,6 @@ const TopLocationsSkeleton = () => (
   </div>
 );
 
-// SimpleBarChart Component
-  const SimpleBarChart = ({
-    data,
-    title,
-  }: {
-    data: Array<{ hour: number; revenue: number }>;
-    title: string;
-  }) => {
-    if (!data || data.length === 0) {
-      return (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">{title}</h4>
-          <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
-            <span className="text-sm text-gray-500">No data available</span>
-          </div>
-        </div>
-      );
-    }
-
-    const maxRevenue = Math.max(...data.map((d) => d.revenue));
-    const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
-
-    // Transform data for Recharts
-    const chartData = data.map((item) => ({
-      hour: `${item.hour}:00`,
-      revenue: item.revenue,
-    }));
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium">{title}</h4>
-          <span className="text-xs text-muted-foreground">
-            Total: ${totalRevenue.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="h-32 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-            >
-              <XAxis
-                dataKey="hour"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: "#6b7280" }}
-                interval={5} // Show every 6th hour
-              />
-              <YAxis hide />
-              <Tooltip
-                formatter={(value: number) => [
-                  `$${value.toLocaleString()}`,
-                  "Revenue",
-                ]}
-                labelStyle={{ color: "#374151" }}
-                contentStyle={{
-                  backgroundColor: "#f9fafb",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                }}
-              />
-              <Bar dataKey="revenue" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Peak: ${maxRevenue.toLocaleString()}</span>
-          <span>
-            Avg: ${Math.round(totalRevenue / data.length).toLocaleString()}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-// Real data fetching functions
-const useHourlyRevenueData = (locationId: string, timePeriod: string) => {
-  const [data, setData] = useState<HourlyRevenueData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const url = `/api/metrics/hourly-trends?locationId=${locationId}&timePeriod=${timePeriod}`;
-        const response = await fetch(url);
-        if (response.ok) {
-          const result = await response.json();
-          setData(result.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching hourly revenue data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (locationId) {
-      fetchData();
-    }
-  }, [locationId, timePeriod]);
-
-  return { data, loading };
-};
-
-const useTopMachinesData = (locationId: string, timePeriod: string) => {
-  const [data, setData] = useState<MachineData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const url = `/api/metrics/top-performers?locationId=${locationId}&timePeriod=${timePeriod}`;
-        const response = await fetch(url);
-        if (response.ok) {
-          const result = await response.json();
-          setData(result.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching top machines data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (locationId) {
-      fetchData();
-    }
-  }, [locationId, timePeriod]);
-
-  return { data, loading };
-};
-
-// Location Revenue Chart Component
-const LocationRevenueChart = ({ locationId, timePeriod }: { locationId: string; timePeriod: string }) => {
-  const { data, loading } = useHourlyRevenueData(locationId, timePeriod);
-
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">24-Hour Revenue Pattern</h4>
-        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
-          <span className="text-sm text-gray-500">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <SimpleBarChart
-      data={data}
-      title="24-Hour Revenue Pattern"
-    />
-  );
-};
-
-// Location Top Machines Component
-const LocationTopMachines = ({ locationId, timePeriod }: { locationId: string; timePeriod: string }) => {
-  const { data, loading } = useTopMachinesData(locationId, timePeriod);
-
-  if (loading) {
-    return (
-      <div>
-        <h4 className="font-medium mb-3 flex items-center gap-2">
-          <Star className="h-4 w-4 text-yellow-500" />
-          Top 5 Performing Machines
-        </h4>
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center justify-between text-sm animate-pulse">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-gray-200"></span>
-                <span className="h-4 bg-gray-200 rounded w-24"></span>
-              </div>
-              <div className="text-right">
-                <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-12"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <h4 className="font-medium mb-3 flex items-center gap-2">
-        <Star className="h-4 w-4 text-yellow-500" />
-        Top 5 Performing Machines
-      </h4>
-      <div className="space-y-2">
-        {data.map((machine, index) => (
-          <div
-            key={machine.id}
-            className="flex items-center justify-between text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                {index + 1}
-              </span>
-              <span className="font-medium">{machine.name}</span>
-            </div>
-            <div className="text-right">
-              <div className="font-medium text-green-600">
-                ${machine.revenue.toLocaleString()}
-              </div>
-              <div className="text-muted-foreground text-xs">
-                {machine.hold}% hold
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // Casino Location Card Component
 const CasinoLocationCard = ({ location, isSelected, onClick }: { 
   location: TopLocation; 
@@ -385,7 +121,7 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
     revenue: number;
     holdPercentage: number;
   } | null>(null);
-  const [dailyTarget, setDailyTarget] = useState<number>(0);
+
   const [dailyPerformance, setDailyPerformance] = useState<number>(0);
   const [trendLoading, setTrendLoading] = useState(true);
   const [performerLoading, setPerformerLoading] = useState(true);
@@ -420,7 +156,6 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
         const data = await res.json();
         
         setRevenueTrend(data.hourlyTrends || []);
-        setDailyTarget(Math.round(data.previousPeriodAverage || 0));
         // Calculate daily performance percentage using new API fields
         const current = data.currentPeriodRevenue || 0;
         const target = data.previousPeriodAverage || 0;
@@ -435,7 +170,6 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
           revenue: Math.floor(Math.random() * 20000) + 1000
         }));
         setRevenueTrend(mockTrend);
-        setDailyTarget(100000);
         setDailyPerformance(Math.floor(Math.random() * 200) - 50);
       } finally {
         setTrendLoading(false);
@@ -643,7 +377,7 @@ const CasinoLocationCard = ({ location, isSelected, onClick }: {
   };
 
 export default function LocationsTab() {
-  const { isLoading, setLoading } = useReportsStore();
+
   const {
     activeMetricsFilter,
     customDateRange,
@@ -656,13 +390,12 @@ export default function LocationsTab() {
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [hasPrevPage, setHasPrevPage] = useState(false);
+
   const [paginatedLocations, setPaginatedLocations] = useState<AggregatedLocation[]>([]);
   const [paginationLoading, setPaginationLoading] = useState(true); // Start with loading true
 
@@ -752,8 +485,7 @@ export default function LocationsTab() {
       setCurrentPage(pagination.page);
       setTotalPages(pagination.totalPages);
       setTotalCount(pagination.totalCount);
-      setHasNextPage(pagination.hasNextPage);
-      setHasPrevPage(pagination.hasPrevPage);
+
       console.log("🔍 API call successful - setting paginationLoading to false");
       // Add a longer delay to make loading state more visible
       setTimeout(() => {
@@ -805,8 +537,7 @@ export default function LocationsTab() {
       setCurrentPage(newPagination.page);
       setTotalPages(newPagination.totalPages);
       setTotalCount(newPagination.totalCount);
-      setHasNextPage(newPagination.hasNextPage);
-      setHasPrevPage(newPagination.hasPrevPage);
+
       console.log("🔍 Pagination API call successful - setting paginationLoading to false");
       // Add a longer delay to make loading state more visible
       setTimeout(() => {
@@ -847,72 +578,131 @@ export default function LocationsTab() {
     );
   };
 
-  const handleExportLocationRevenue = async () => {
+
+
+
+
+  const handleExportSASEvaluation = async () => {
     try {
+      const filteredData = selectedLocations.length > 0 
+        ? paginatedLocations.filter(loc => {
+            // Find the corresponding topLocation to get the correct locationId
+            const topLocation = topLocations.find(tl => tl.locationName === loc.locationName);
+            return topLocation ? selectedLocations.includes(topLocation.locationId) : false;
+          })
+        : paginatedLocations;
+
       const exportData = {
-        title: "Location Revenue Report",
-        subtitle: "Top performing locations sorted by gross revenue",
+        title: "SAS Evaluation Report",
+        subtitle: "SAS machine evaluation and performance metrics",
         headers: [
           "Location ID",
           "Location Name",
-          "Gross Revenue",
-          "Drop",
-          "Cancelled Credits",
-          "Online Machines",
+          "Money In",
+          "Money Out",
+          "Gross",
           "Total Machines",
-          "Performance",
-          "SAS Status",
+          "Online Machines",
+          "SAS Machines",
+          "Non-SAS Machines",
+          "Has SAS Machines",
+          "Has Non-SAS Machines",
+          "Is Local Server",
         ],
-        data: topLocations.map(location => [
-          location.locationId,
-          location.locationName,
-          location.gross.toLocaleString(),
-          location.drop.toLocaleString(),
-          location.cancelledCredits.toLocaleString(),
-          location.onlineMachines,
-          location.totalMachines,
-          location.performance,
-          location.sasEnabled ? "SAS Enabled" : "Non-SAS",
+        data: filteredData.map(loc => [
+          loc.location,
+          loc.locationName,
+          loc.moneyIn.toLocaleString(),
+          loc.moneyOut.toLocaleString(),
+          loc.gross.toLocaleString(),
+          loc.totalMachines,
+          loc.onlineMachines,
+          loc.sasMachines,
+          loc.nonSasMachines,
+          loc.hasSasMachines ? "Yes" : "No",
+          loc.hasNonSasMachines ? "Yes" : "No",
+          loc.isLocalServer ? "Yes" : "No",
         ]),
-        summary: metricsOverview ? [
-          { label: "Total Gross Revenue", value: `$${metricsOverview.totalGross.toLocaleString()}` },
-          { label: "Total Drop", value: `$${metricsOverview.totalDrop.toLocaleString()}` },
-          { label: "Total Cancelled Credits", value: `$${metricsOverview.totalCancelledCredits.toLocaleString()}` },
-          { label: "Online Machines", value: `${metricsOverview.onlineMachines}/${metricsOverview.totalMachines}` },
-        ] : [],
+        summary: [
+          { label: "Total Locations", value: filteredData.length.toString() },
+          { label: "Total SAS Machines", value: filteredData.reduce((sum, loc) => sum + loc.sasMachines, 0).toString() },
+          { label: "Total Non-SAS Machines", value: filteredData.reduce((sum, loc) => sum + loc.nonSasMachines, 0).toString() },
+          { label: "Total Gross Revenue", value: `$${filteredData.reduce((sum, loc) => sum + loc.gross, 0).toLocaleString()}` },
+        ],
         metadata: {
           generatedBy: "Reports System",
           generatedAt: new Date().toISOString(),
           dateRange: `${activeMetricsFilter}`,
+          tab: "SAS Evaluation",
+          selectedLocations: selectedLocations.length > 0 ? selectedLocations.length : "All",
         },
       };
 
       await ExportUtils.exportToExcel(exportData);
-      toast.success("Location revenue report exported successfully");
+      toast.success("SAS evaluation report exported successfully");
     } catch (error) {
       toast.error("Failed to export report");
       console.error("Export error:", error);
     }
   };
 
-  // Filter locations by SAS status
-  const sasLocations = useMemo(() => {
-    const filtered = topLocations.filter((location) => location.sasEnabled);
-    console.log('🔍 SAS Locations:', filtered.length, 'out of', topLocations.length);
-    return filtered;
-  }, [topLocations]);
+  const handleExportRevenueAnalysis = async () => {
+    try {
+      const filteredData = selectedLocations.length > 0 
+        ? paginatedLocations.filter(loc => {
+            // Find the corresponding topLocation to get the correct locationId
+            const topLocation = topLocations.find(tl => tl.locationName === loc.locationName);
+            return topLocation ? selectedLocations.includes(topLocation.locationId) : false;
+          })
+        : paginatedLocations;
 
-  const nonSasLocations = useMemo(() => {
-    const filtered = topLocations.filter((location) => !location.sasEnabled);
-    console.log('🔍 Non-SAS Locations:', filtered.length, 'out of', topLocations.length);
-    console.log('🔍 Sample non-SAS locations:', filtered.slice(0, 3).map(loc => ({ name: loc.locationName, sasEnabled: loc.sasEnabled })));
-    return filtered;
-  }, [topLocations]);
+      const exportData = {
+        title: "Revenue Analysis Report",
+        subtitle: "Location revenue metrics with machine numbers, drop, cancelled credits, and gross revenue",
+        headers: [
+          "Location Name",
+          "Machine Numbers",
+          "Drop",
+          "Cancelled Credits",
+          "Gross Revenue",
+        ],
+        data: filteredData.map(loc => [
+          loc.locationName,
+          loc.totalMachines.toString(),
+          loc.moneyIn.toLocaleString(),
+          loc.moneyOut.toLocaleString(),
+          loc.gross.toLocaleString(),
+        ]),
+        summary: [
+          { label: "Total Locations", value: filteredData.length.toString() },
+          { label: "Total Machines", value: filteredData.reduce((sum, loc) => sum + loc.totalMachines, 0).toString() },
+          { label: "Total Drop", value: `$${filteredData.reduce((sum, loc) => sum + loc.moneyIn, 0).toLocaleString()}` },
+          { label: "Total Cancelled Credits", value: `$${filteredData.reduce((sum, loc) => sum + loc.moneyOut, 0).toLocaleString()}` },
+          { label: "Total Gross Revenue", value: `$${filteredData.reduce((sum, loc) => sum + loc.gross, 0).toLocaleString()}` },
+        ],
+        metadata: {
+          generatedBy: "Reports System",
+          generatedAt: new Date().toISOString(),
+          dateRange: `${activeMetricsFilter}`,
+          tab: "Revenue Analysis",
+          selectedLocations: selectedLocations.length > 0 ? selectedLocations.length : "All",
+        },
+      };
+
+      await ExportUtils.exportToExcel(exportData);
+      toast.success("Revenue analysis report exported successfully");
+    } catch (error) {
+      toast.error("Failed to export report");
+      console.error("Export error:", error);
+    }
+  };
+
+
 
   return (
     <div className="space-y-6">
           {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
             <div>
           <h2 className="text-2xl font-bold text-gray-900">Location Performance Overview</h2>
           <p className="text-sm text-gray-600">Compare performance across all casino locations</p>
@@ -920,20 +710,9 @@ export default function LocationsTab() {
             <span role="img" aria-label="lightbulb">💡</span> Click any location card to view detailed information
               </p>
             </div>
-        <button
-          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition-all text-base ml-4"
-          onClick={handleExportLocationRevenue}
-        >
-          <Download className="w-5 h-5" />
-              Export Report
-        </button>
           </div>
 
-      {/* Date Filter */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Date Filter</h3>
-        <DashboardDateFilters />
-      </div>
+
 
       {/* Three-Tab Navigation System */}
       <div className="bg-white rounded-lg p-4 border border-gray-200 mb-6">
@@ -1069,7 +848,7 @@ export default function LocationsTab() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={handleExportLocationRevenue}
+                  onClick={handleExportSASEvaluation}
                   className="flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
@@ -1079,16 +858,16 @@ export default function LocationsTab() {
             </div>
 
             {/* Location Selection Controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Monitor className="h-5 w-5" />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
                   Location Selection & Controls
-                </CardTitle>
-                <CardDescription>
+              </CardTitle>
+              <CardDescription>
                   Select specific locations to filter data or view all locations
-                </CardDescription>
-              </CardHeader>
+              </CardDescription>
+            </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -1105,7 +884,7 @@ export default function LocationsTab() {
                       onSelectionChange={setSelectedLocations}
                       placeholder="Choose locations to filter..."
                     />
-                  </div>
+                    </div>
                   <div className="flex items-end">
                     <Button
                       variant="outline"
@@ -1114,7 +893,7 @@ export default function LocationsTab() {
                     >
                       Clear Selection
                     </Button>
-                  </div>
+                    </div>
                   <div className="flex items-end">
                     <div className="text-sm text-gray-600">
                       {selectedLocations.length > 0 
@@ -1124,11 +903,11 @@ export default function LocationsTab() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
             {/* Enhanced Location Table */}
-            <Card>
+                <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
@@ -1141,7 +920,11 @@ export default function LocationsTab() {
               <CardContent>
                 <EnhancedLocationTable
                   locations={(selectedLocations.length > 0 
-                    ? paginatedLocations.filter(loc => selectedLocations.includes(loc.location))
+                    ? paginatedLocations.filter(loc => {
+                        // Find the corresponding topLocation to get the correct locationId
+                        const topLocation = topLocations.find(tl => tl.locationName === loc.locationName);
+                        return topLocation ? selectedLocations.includes(topLocation.locationId) : false;
+                      })
                     : paginatedLocations
                   ).map(loc => ({
                     location: loc.location,
@@ -1171,8 +954,8 @@ export default function LocationsTab() {
                   onPageChange={handlePageChange}
                   itemsPerPage={10}
                 />
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1196,7 +979,7 @@ export default function LocationsTab() {
                 locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
                 licencee={selectedLicencee}
               />
-            </div>
+              </div>
 
             {/* Top Machines Section */}
             <TopMachinesTable
@@ -1205,128 +988,133 @@ export default function LocationsTab() {
               licencee={selectedLicencee}
               limit={5}
             />
-
-
           </div>
         </TabsContent>
 
                 {/* Revenue Analysis Tab */}
-        <TabsContent value="location-revenue" className="space-y-4">
+        <TabsContent value="location-revenue" className="space-y-6">
+          {/* Enhanced Revenue Analysis Interface */}
+          <div className="space-y-6">
+            {/* Header with Export Buttons */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Revenue Analysis Dashboard</h3>
+                <p className="text-sm text-gray-600">Comprehensive revenue analysis with location name, machine numbers, drop, cancelled credits, and gross revenue</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportRevenueAnalysis}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </Button>
+              </div>
+            </div>
+
+            {/* Location Selection Controls */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Location Revenue Report - Non-SAS Analysis
+                  Location Selection & Controls
               </CardTitle>
               <CardDescription>
-                Track non-SAS machine performance with drop, cancelled credits, and gross revenue analysis
+                  Select specific locations to filter data or view all locations
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Revenue Analysis Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {nonSasLocations.length > 0 ? (
-                    nonSasLocations.map((location) => (
-                    <Card key={location.locationId}>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center justify-between">
-                          {location.locationName}
-                          <Badge variant="secondary">Non-SAS</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Color-coded metrics */}
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-green-600">
-                              ${location.gross.toLocaleString()}
-                            </div>
-                            <div className="text-muted-foreground">Gross Revenue</div>
-                            <div className="text-xs text-green-600">Green</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-yellow-600">
-                              ${location.drop.toLocaleString()}
-                            </div>
-                            <div className="text-muted-foreground">Drop</div>
-                            <div className="text-xs text-yellow-600">Yellow</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-black">
-                              ${location.cancelledCredits.toLocaleString()}
-                            </div>
-                            <div className="text-muted-foreground">Cancelled</div>
-                            <div className="text-xs text-black">Black</div>
-                          </div>
-                        </div>
-
-                        {/* Hourly Revenue Graph */}
-                        <LocationRevenueChart locationId={location.locationId} timePeriod={activeMetricsFilter} />
-
-                        {/* Top 5 Machines */}
-                        <LocationTopMachines locationId={location.locationId} timePeriod={activeMetricsFilter} />
-                      </CardContent>
-                    </Card>
-                  ))
-                  ) : (
-                    <div className="col-span-2 text-center py-8">
-                      <div className="text-gray-500 mb-4">
-                        <BarChart3 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                        <h3 className="text-lg font-medium">No Non-SAS Locations Found</h3>
-                        <p className="text-sm">All locations appear to be SAS-enabled. Check the SAS Evaluation tab for detailed analysis.</p>
-                                </div>
-                      <div className="text-xs text-gray-400">
-                        Debug: Found {topLocations.length} total locations, {sasLocations.length} SAS locations, {nonSasLocations.length} non-SAS locations
-                                  </div>
-                                  </div>
-                  )}
-                </div>
-
-                {/* Summary Section */}
-                {nonSasLocations.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Non-SAS Location Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                            ${nonSasLocations.reduce((sum, loc) => sum + loc.gross, 0).toLocaleString()}
-                        </div>
-                          <p className="text-sm text-muted-foreground">Total Gross Revenue</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-yellow-600">
-                            ${nonSasLocations.reduce((sum, loc) => sum + loc.drop, 0).toLocaleString()}
-                        </div>
-                          <p className="text-sm text-muted-foreground">Total Drop</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-black">
-                            ${nonSasLocations.reduce((sum, loc) => sum + loc.cancelledCredits, 0).toLocaleString()}
-                        </div>
-                          <p className="text-sm text-muted-foreground">Total Cancelled Credits</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {(
-                            nonSasLocations.reduce(
-                                (sum, loc) => sum + (loc.drop > 0 ? (loc.gross / loc.drop) * 100 : 0),
-                              0
-                            ) / nonSasLocations.length
-                            ).toFixed(1)}%
-                        </div>
-                          <p className="text-sm text-muted-foreground">Average Hold</p>
-                      </div>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Locations
+                    </label>
+                    <LocationMultiSelect
+                      options={topLocations.map(loc => ({
+                        id: loc.locationId,
+                        name: loc.locationName,
+                        sasEnabled: loc.sasEnabled
+                      }))}
+                      selectedIds={selectedLocations}
+                      onSelectionChange={setSelectedLocations}
+                      placeholder="Choose locations to filter..."
+                    />
                     </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedLocations([])}
+                      className="w-full"
+                    >
+                      Clear Selection
+                    </Button>
+                    </div>
+                  <div className="flex items-end">
+                    <div className="text-sm text-gray-600">
+                      {selectedLocations.length > 0 
+                        ? `${selectedLocations.length} location${selectedLocations.length > 1 ? 's' : ''} selected`
+                        : 'Showing all locations'
+                      }
+                    </div>
+                  </div>
+                </div>
                   </CardContent>
                 </Card>
-                ) : null}
+
+            {/* Revenue Analysis Table */}
+            <RevenueAnalysisTable
+              locations={selectedLocations.length > 0 
+                              ? paginatedLocations.filter(loc => {
+                                  // Find the corresponding topLocation to get the correct locationId
+                                  const topLocation = topLocations.find(tl => tl.locationName === loc.locationName);
+                                  return topLocation ? selectedLocations.includes(topLocation.locationId) : false;
+                                })
+                              : paginatedLocations
+              }
+              loading={paginationLoading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              onPageChange={handlePageChange}
+              onLocationClick={(locationId: string) => {
+                // Handle location click if needed
+                console.log('Location clicked:', locationId);
+              }}
+            />
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <HandleChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <WinLossChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <JackpotChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
+              <PlaysChart
+                timePeriod={activeMetricsFilter}
+                locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+                licencee={selectedLicencee}
+              />
               </div>
-            </CardContent>
-          </Card>
+
+            {/* Top Machines Section */}
+            <TopMachinesTable
+              timePeriod={activeMetricsFilter}
+              locationIds={selectedLocations.length > 0 ? selectedLocations : undefined}
+              licencee={selectedLicencee}
+              limit={5}
+            />
+          </div>
         </TabsContent>
       </Tabs>
       </div>

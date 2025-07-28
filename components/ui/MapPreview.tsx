@@ -49,9 +49,9 @@ const getValidLongitude = (geo: {
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (location: locations, locationAggregates: any[]) => {
   // Try to find matching data in locationAggregates
-  const stats = locationAggregates.find(
-    (d) => d.location === location._id
-  );
+  const stats = Array.isArray(locationAggregates) 
+    ? locationAggregates.find((d) => d.location === location._id)
+    : undefined;
 
   return {
     moneyIn: stats?.moneyIn ?? 0,
@@ -146,8 +146,9 @@ export default function MapPreview(props: MapPreviewProps) {
         }
 
         const res = await fetch(`/api/locationAggregation?${params.toString()}`);
-        const data = await res.json();
-        setLocationAggregates(data);
+        const response = await res.json();
+        // Extract the data array from the response
+        setLocationAggregates(response.data || []);
       } catch (err) {
         console.error("Error fetching location aggregation:", err);
         setLocationAggregates([]);
@@ -264,8 +265,8 @@ export default function MapPreview(props: MapPreviewProps) {
     
     // Log location aggregation data structure
     console.log("MapPreview - locationAggregates:", {
-      count: locationAggregates.length,
-      sampleData: locationAggregates.slice(0, 2)
+      count: Array.isArray(locationAggregates) ? locationAggregates.length : 0,
+      sampleData: Array.isArray(locationAggregates) ? locationAggregates.slice(0, 2) : []
     });
   }
 

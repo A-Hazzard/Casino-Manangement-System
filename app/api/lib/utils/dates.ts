@@ -1,11 +1,5 @@
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import { CustomDate, TimePeriod } from "@/app/api/lib/types";
 
-// Extend dayjs with the required plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { CustomDate, TimePeriod } from "@/app/api/lib/types";
 
 const DEFAULT_TIMEZONE = "America/Port_of_Spain";
 
@@ -18,53 +12,49 @@ const DEFAULT_TIMEZONE = "America/Port_of_Spain";
  */
 export const getDatesForTimePeriod = (
   timePeriod: TimePeriod,
-  locationTimeZone: string = DEFAULT_TIMEZONE
+  _locationTimeZone: string = DEFAULT_TIMEZONE
 ): CustomDate => {
   let startDate: Date;
   let endDate: Date;
 
+  const now = new Date();
+
   switch (timePeriod) {
     case "Today":
-      startDate = dayjs().tz(locationTimeZone).startOf("day").toDate();
-      endDate = dayjs().tz(locationTimeZone).endOf("day").toDate();
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       break;
 
     case "Yesterday":
-      startDate = dayjs()
-        .tz(locationTimeZone)
-        .subtract(1, "day")
-        .startOf("day")
-        .toDate();
-      endDate = dayjs()
-        .tz(locationTimeZone)
-        .subtract(1, "day")
-        .endOf("day")
-        .toDate();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
       break;
 
     case "7d":
-      startDate = dayjs()
-        .tz(locationTimeZone)
-        .subtract(6, "day")
-        .startOf("day")
-        .toDate();
-      endDate = dayjs().tz(locationTimeZone).endOf("day").toDate();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      startDate = new Date(sevenDaysAgo.getFullYear(), sevenDaysAgo.getMonth(), sevenDaysAgo.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       break;
 
     case "30d":
-      startDate = dayjs()
-        .tz(locationTimeZone)
-        .subtract(29, "day")
-        .startOf("day")
-        .toDate();
-      endDate = dayjs().tz(locationTimeZone).endOf("day").toDate();
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+      startDate = new Date(thirtyDaysAgo.getFullYear(), thirtyDaysAgo.getMonth(), thirtyDaysAgo.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       break;
 
     default:
-      startDate = dayjs().tz(locationTimeZone).startOf("day").toDate();
-      endDate = dayjs().tz(locationTimeZone).endOf("day").toDate();
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       break;
   }
 
   return { startDate, endDate };
 };
+
+
+
+

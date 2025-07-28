@@ -1,4 +1,4 @@
-import { ExportUtils } from "@/lib/utils/exportUtils";
+import { exportData } from "@/lib/utils/exportUtils";
 import { toast } from "sonner";
 
 /**
@@ -146,7 +146,7 @@ export const handleAnalyticsExport = async (
   }>
 ) => {
   try {
-    const exportData = {
+    const analyticsExportData = {
       title: "Advanced Analytics Report",
       subtitle: "Predictive insights and performance forecasting",
       headers: ["Metric", "Current Value", "Target", "Benchmark", "Status"],
@@ -179,7 +179,7 @@ export const handleAnalyticsExport = async (
       },
     };
 
-    await ExportUtils.exportData(exportData, "pdf");
+    await exportData(analyticsExportData, "pdf");
     toast.success("Analytics report exported successfully");
   } catch (error) {
     const errorMessage =

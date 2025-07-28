@@ -605,18 +605,18 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+    <div className="w-full xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex flex-col">
       <Sidebar pathname={pathname} />
-      <main className="flex-1 lg:ml-4">
+      <main className="flex-1 xl:ml-4">
         <Header
           pageTitle=""
           hideOptions={true}
           hideLicenceeFilter={true}
-          containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
+          containerPaddingMobile="px-4 py-8 xl:px-0 xl:py-0"
           disabled={loading || refreshing}
         />
 
-        <div className="px-2 lg:px-6 pt-6 hidden lg:block">
+        <div className="px-2 xl:px-6 pt-6 hidden xl:block">
           <div className="flex items-center justify-between">
             <Link href="/collection-report" legacyBehavior>
               <a className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors">
@@ -653,23 +653,23 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
-          <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
-            <div className="text-center py-2 lg:py-4 px-4">
-              <div className="lg:hidden text-xs text-gray-500 mb-2">
+        <div className="px-2 xl:px-6 pt-2 xl:pt-4 pb-6">
+          <div className="bg-white xl:bg-container rounded-lg shadow xl:border-t-4 xl:border-lighterBlueHighlight py-4 xl:py-8">
+            <div className="text-center py-2 xl:py-4 px-4">
+              <div className="xl:hidden text-xs text-gray-500 mb-2">
                 COLLECTION REPORT
               </div>
-              <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
+              <h1 className="text-2xl xl:text-4xl font-bold text-gray-800 mb-2">
                 {reportData.locationName}
               </h1>
-              <p className="text-sm lg:text-base text-gray-600 mb-4">
+              <p className="text-sm xl:text-base text-gray-600 mb-4">
                 Report ID: {reportData.reportId}
               </p>
               <p className="text-lg font-semibold text-gray-700">
                 Location Total: $
                 {formatCurrency(calculateLocationTotal(collections))}
               </p>
-              <div className="lg:hidden mt-4">
+              <div className="xl:hidden mt-4">
                 <Button
                   onClick={handleRefresh}
                   disabled={loading || refreshing}
@@ -701,21 +701,25 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
-          <div className="lg:w-1/4 mb-6 lg:mb-0">
+        <div className="px-2 xl:px-6 pb-6 hidden xl:flex xl:flex-row xl:space-x-6">
+          <div className="xl:w-1/4 mb-6 xl:mb-0">
             <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-              <TabButton label="Machine Metrics" />
-              <TabButton label="Location Metrics" />
-              <TabButton label="SAS Metrics Compare" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">
+                  Machine Metrics
+                </span>
+                <div className="w-4 h-4 bg-buttonActive rounded-full"></div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Detailed machine performance data
+              </p>
             </div>
           </div>
-
-          <div className="lg:w-3/4" ref={tabContentRef}>
+          <div className="xl:w-3/4" ref={tabContentRef}>
             {renderDesktopTabContent()}
           </div>
         </div>
-
-        <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
+        <div className="px-2 xl:px-6 pb-6 xl:hidden space-y-6">
           <MachineMetricsContent loading={false} />
           <LocationMetricsContent loading={false} />
           <SASMetricsCompareContent loading={false} />

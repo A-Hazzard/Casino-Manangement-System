@@ -1,12 +1,7 @@
 import { dashboardData, Metrics } from "@/lib/types";
 import { TimePeriod } from "@shared/types";
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-
-dayjs.extend(utc);
-dayjs.extend(isSameOrBefore);
+import { formatISODate } from "@/shared/utils/dateFormat";
 
 /**
  * Fetches and aggregates metric data from the API endpoint.
@@ -139,7 +134,7 @@ function fillMissingIntervals(
 
   if (isHourly) {
     // Fill hourly intervals (0:00 to 23:00)
-    const baseDay = data[0]?.day || dayjs().format("YYYY-MM-DD");
+    const baseDay = data[0]?.day || formatISODate(new Date());
 
     for (let hour = 0; hour < 24; hour++) {
       const timeKey = `${hour.toString().padStart(2, "0")}:00`;
@@ -162,27 +157,30 @@ function fillMissingIntervals(
     }
   } else {
     // Fill daily intervals
-    let start: dayjs.Dayjs;
-    let end: dayjs.Dayjs;
+    let start: Date;
+    let end: Date;
 
     if (timePeriod === "Custom" && startDate && endDate) {
-      start = dayjs(startDate);
-      end = dayjs(endDate);
+      start = new Date(startDate);
+      end = new Date(endDate);
     } else if (timePeriod === "7d") {
-      end = dayjs();
-      start = end.subtract(6, "day");
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - 6);
     } else if (timePeriod === "30d") {
-      end = dayjs();
-      start = end.subtract(29, "day");
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - 29);
     } else {
       // Default to 7 days if unknown
-      end = dayjs();
-      start = end.subtract(6, "day");
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - 6);
     }
 
-    let current = start;
-    while (current.isSameOrBefore(end, "day")) {
-      const dayKey = current.format("YYYY-MM-DD");
+    let current = new Date(start);
+    while (current <= end) {
+      const dayKey = formatISODate(current);
       const existingData = data.find((item) => item.day === dayKey);
 
       if (existingData) {
@@ -198,7 +196,7 @@ function fillMissingIntervals(
         });
       }
 
-      current = current.add(1, "day");
+      current.setDate(current.getDate() + 1);
     }
   }
 

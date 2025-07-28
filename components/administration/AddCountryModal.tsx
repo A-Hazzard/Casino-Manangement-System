@@ -8,7 +8,7 @@ interface AddCountryModalProps {
   onSave: () => void;
   formState: Partial<Omit<Country, "_id" | "createdAt" | "updatedAt">>;
   setFormState: (
-    data: Partial<Omit<Country, "_id" | "createdAt" | "updatedAt">>
+    _data: Partial<Omit<Country, "_id" | "createdAt" | "updatedAt">>
   ) => void;
 }
 

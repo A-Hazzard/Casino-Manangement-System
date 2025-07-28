@@ -47,3 +47,29 @@ export function hasErrorMessage(error: unknown): error is { message: string } {
     typeof (error as { message: unknown }).message === "string"
   );
 }
+
+/**
+ * Get authentication token from cookies (client-side)
+ */
+export function getAuthToken(): string | null {
+  if (typeof document === "undefined") return null;
+
+  const cookies = document.cookie.split(";");
+  const tokenCookie = cookies.find((cookie) =>
+    cookie.trim().startsWith("token=")
+  );
+
+  if (tokenCookie) {
+    return tokenCookie.split("=")[1];
+  }
+
+  return null;
+}
+
+/**
+ * Create authenticated axios request config
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}

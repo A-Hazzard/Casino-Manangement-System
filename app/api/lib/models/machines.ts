@@ -193,4 +193,10 @@ export const machineSchema = new Schema(
   { timestamps: true }
 );
 
+// Critical indexes for aggregation performance
+machineSchema.index({ gamingLocation: 1, deletedAt: 1 }); // For location-based queries
+machineSchema.index({ deletedAt: 1 }); // For active machines
+machineSchema.index({ lastActivity: 1 }); // For online status queries
+machineSchema.index({ isSasMachine: 1 }); // For SAS machine filtering
+
 export const Machine = models["machines"] ?? model("machines", machineSchema);

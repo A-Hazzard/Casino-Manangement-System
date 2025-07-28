@@ -18,7 +18,7 @@ type AddUserRolesModalProps = {
     allowedLocations?: string[];
     notes?: string;
   };
-  setFormState: (data: Partial<AddUserRolesModalProps["formState"]>) => void;
+  setFormState: (_data: Partial<AddUserRolesModalProps["formState"]>) => void;
 };
 
 const ROLE_OPTIONS = [

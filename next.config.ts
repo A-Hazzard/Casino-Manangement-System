@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   images: {
     loader: "default",
   },
-  // Exclude backup folder from compilation
-  transpilePackages: [],
-  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   async redirects() {
     return [
       {

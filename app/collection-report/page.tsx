@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -98,15 +104,17 @@ const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
 export default function CollectionReportPage() {
   const pathname = usePathname();
   // Dashboard store state
-  const { 
-    selectedLicencee, 
+  const {
+    selectedLicencee,
     setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"collection" | "monthly" | "manager" | "collector">("collection");
+  const [activeTab, setActiveTab] = useState<
+    "collection" | "monthly" | "manager" | "collector"
+  >("collection");
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -145,9 +153,13 @@ export default function CollectionReportPage() {
   const [collectors, setCollectors] = useState<string[]>([]);
 
   // Collector Schedule state
-  const [collectorSchedules, setCollectorSchedules] = useState<CollectorSchedule[]>([]);
-  const [loadingCollectorSchedules, setLoadingCollectorSchedules] = useState(true);
-  const [selectedCollectorLocation, setSelectedCollectorLocation] = useState("all");
+  const [collectorSchedules, setCollectorSchedules] = useState<
+    CollectorSchedule[]
+  >([]);
+  const [loadingCollectorSchedules, setLoadingCollectorSchedules] =
+    useState(true);
+  const [selectedCollectorLocation, setSelectedCollectorLocation] =
+    useState("all");
   const [selectedCollectorFilter, setSelectedCollectorFilter] = useState("all");
   const [selectedCollectorStatus, setSelectedCollectorStatus] = useState("all");
   const [collectorsList, setCollectorsList] = useState<string[]>([]);
@@ -207,11 +219,11 @@ export default function CollectionReportPage() {
   useEffect(() => {
     if (activeTab === "collection") {
       setLoading(true);
-      
+
       // Determine parameters for fetch based on activeMetricsFilter
       let dateRangeForFetch = undefined;
       let timePeriodForFetch = undefined;
-      
+
       if (activeMetricsFilter === "Custom") {
         // For custom filter, check if both dates are set
         if (customDateRange?.startDate && customDateRange?.endDate) {
@@ -229,7 +241,7 @@ export default function CollectionReportPage() {
         // For predefined periods (Today, Yesterday, last7days, last30days), pass the time period
         timePeriodForFetch = mapTimePeriodForAPI(activeMetricsFilter);
       }
-      
+
       fetchCollectionReportsByLicencee(
         selectedLicencee === "" ? undefined : selectedLicencee,
         dateRangeForFetch,
@@ -240,7 +252,7 @@ export default function CollectionReportPage() {
             licensee: selectedLicencee,
             timePeriod: timePeriodForFetch,
             dataLength: data.length,
-            firstItem: data[0] || null
+            firstItem: data[0] || null,
           });
           setReports(data);
           setLoading(false);
@@ -278,34 +290,25 @@ export default function CollectionReportPage() {
     }
   }, [loading, isSearching, mobilePage, desktopPage, activeTab]);
 
-  const filteredReports = useMemo(
-    () => {
-      const filtered = filterCollectionReports(
-        reports,
-        selectedLocation,
-        search,
-        showUncollectedOnly,
-        locations
-      );
-      
-      if (reports.length > 0) {
-        console.log("🔍 Collection Reports Filtering:", {
-          originalCount: reports.length,
-          filteredCount: filtered.length,
-          filters: { selectedLocation, showUncollectedOnly, search }
-        });
-      }
-      
-      return filtered;
-    },
-    [
+  const filteredReports = useMemo(() => {
+    const filtered = filterCollectionReports(
       reports,
       selectedLocation,
-      showUncollectedOnly,
       search,
+      showUncollectedOnly,
       locations
-    ]
-  );
+    );
+
+    if (reports.length > 0) {
+      console.log("🔍 Collection Reports Filtering:", {
+        originalCount: reports.length,
+        filteredCount: filtered.length,
+        filters: { selectedLocation, showUncollectedOnly, search },
+      });
+    }
+
+    return filtered;
+  }, [reports, selectedLocation, showUncollectedOnly, search, locations]);
 
   const fetchMonthlyData = useCallback(() => {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
@@ -532,13 +535,13 @@ export default function CollectionReportPage() {
   // console.log("DEBUG: filters", { selectedLocation, showUncollectedOnly, collectionDateRange });
 
   return (
-    <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col overflow-hidden transition-all duration-300">
+    <div className="w-full max-w-full min-h-screen bg-background flex flex-col overflow-hidden transition-all duration-300 xl:w-full xl:mx-auto xl:pl-36">
       {/* Sidebar */}
-      <div className="hidden md:block w-26">
+      <div className="hidden xl:block w-26">
         <Sidebar pathname={pathname} />
       </div>
       {/* Main content wrapper with responsive left margin */}
-      <div className="flex-1 md:ml-36 flex flex-col overflow-hidden">
+      <div className="flex-1 xl:ml-36 flex flex-col overflow-hidden">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
@@ -550,22 +553,30 @@ export default function CollectionReportPage() {
             <DashboardDateFilters disabled={loading} />
           </div>
           {/* Mobile Tab Selector */}
-          <div className="w-fit mx-auto lg:hidden mb-4">
-            <Select value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
+          <div className="w-fit mx-auto xl:hidden mb-4">
+            <Select
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+            >
               <SelectTrigger className="bg-buttonActive text-white text-lg font-semibold py-3 px-4 rounded-md h-auto">
                 <SelectValue placeholder="Select a report" />
               </SelectTrigger>
               <SelectContent>
                 {TAB_OPTIONS.map((tab) => (
-                  <SelectItem key={tab.value} value={tab.value} disabled={tab.disabled}>
-                    {tab.label}{tab.disabled && tab.tooltip ? ` (${tab.tooltip})` : ''}
+                  <SelectItem
+                    key={tab.value}
+                    value={tab.value}
+                    disabled={tab.disabled}
+                  >
+                    {tab.label}
+                    {tab.disabled && tab.tooltip ? ` (${tab.tooltip})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           {/* Desktop Tab Buttons */}
-          <div className="hidden lg:flex flex-col lg:flex-row flex-wrap gap-2 mb-6 w-full min-w-0">
+          <div className="hidden xl:flex flex-col xl:flex-row flex-wrap gap-2 mb-6 w-full min-w-0">
             {TAB_OPTIONS.map((tab) => (
               <div key={tab.value} className="relative group">
                 <button
@@ -576,7 +587,9 @@ export default function CollectionReportPage() {
                       : "bg-button text-white") +
                     (tab.disabled ? " opacity-50 cursor-not-allowed" : "")
                   }
-                  onClick={() => !tab.disabled && setActiveTab(tab.value as typeof activeTab)}
+                  onClick={() =>
+                    !tab.disabled && setActiveTab(tab.value as typeof activeTab)
+                  }
                   disabled={!!tab.disabled}
                 >
                   {tab.label}
@@ -660,7 +673,9 @@ export default function CollectionReportPage() {
                   monthlyPage={monthlyPage}
                   onPaginateMonthly={paginateMonthly}
                   monthlyPaginationRef={monthlyPaginationRef}
-                  monthlyFirstItemIndex={(monthlyPage - 1) * monthlyItemsPerPage}
+                  monthlyFirstItemIndex={
+                    (monthlyPage - 1) * monthlyItemsPerPage
+                  }
                   monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
                 />
                 {/* Mobile */}
@@ -743,7 +758,13 @@ export default function CollectionReportPage() {
             )}
           </div>
           {/* Modal */}
-          {showModal && <NewCollectionModal show={showModal} onClose={() => setShowModal(false)} locations={locationsWithMachines} />}
+          {showModal && (
+            <NewCollectionModal
+              show={showModal}
+              onClose={() => setShowModal(false)}
+              locations={locationsWithMachines}
+            />
+          )}
         </main>
       </div>
     </div>

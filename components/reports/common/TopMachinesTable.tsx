@@ -144,6 +144,63 @@ export default function TopMachinesTable({
     );
   }
 
+  // Machine Card component for mobile view
+  const MachineCard = ({ machine, index }: { machine: TopMachine; index: number }) => (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
+      {/* Header with rank */}
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+            index === 0 ? 'bg-yellow-500' : 
+            index === 1 ? 'bg-gray-400' : 
+            index === 2 ? 'bg-amber-600' : 'bg-gray-300'
+          }`}>
+            {index + 1}
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-900">{machine.game}</h3>
+            <p className="text-xs text-gray-500">{machine.locationName}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-gray-500">Machine ID</div>
+          <div className="text-sm font-medium text-gray-900">{machine.machineId}</div>
+        </div>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Handle</p>
+          <p className="text-sm font-medium text-gray-900">{formatCurrency(machine.handle)}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Win/Loss</p>
+          <p className={`text-sm font-medium ${machine.winLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(machine.winLoss)}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Jackpot</p>
+          <p className="text-sm font-medium text-gray-900">{formatCurrency(machine.jackpot)}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">Hold %</p>
+          <p className="text-sm font-medium text-gray-900">{formatPercentage(machine.actualHold)}</p>
+        </div>
+      </div>
+
+      {/* Additional Info */}
+      <div className="pt-2 border-t border-gray-100">
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>Manufacturer: {machine.manufacturer}</span>
+          <span>Avg Wag: {formatCurrency(machine.avgWagerPerGame)}</span>
+          <span>Games: {formatNumber(machine.gamesPlayed)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -153,7 +210,8 @@ export default function TopMachinesTable({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -236,6 +294,13 @@ export default function TopMachinesTable({
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-4">
+          {machines.map((machine, index) => (
+            <MachineCard key={`${machine.locationId}-${machine.machineId}`} machine={machine} index={index} />
+          ))}
         </div>
       </CardContent>
     </Card>

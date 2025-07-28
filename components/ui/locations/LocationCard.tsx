@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { useRef } from "react";
 import Image from "next/image";
-import { Database, Server } from "lucide-react";
-import { gsap } from "gsap";
+import { Button } from "@/components/ui/button";
+import { Database, MapPin } from "lucide-react";
 import { LocationCardData } from "@/lib/types/location";
-import { formatCurrency } from "@/lib/utils/number";
+import formatCurrency from "@/lib/utils/currency";
 import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
 
 export default function LocationCard({
   location,
@@ -20,22 +18,6 @@ export default function LocationCard({
   onEdit: LocationCardData["onEdit"];
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-      if (cardRef.current) {
-        gsap.fromTo(
-          cardRef.current,
-          { opacity: 0, scale: 0.95, y: 15 },
-          {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            duration: 0.4,
-            ease: "back.out(1.5)",
-          }
-        );
-      }
-  }, [location]);
 
   const handleCardClick = () => {
     onLocationClick(location.location);
@@ -55,9 +37,9 @@ export default function LocationCard({
         <span
           className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white z-10 ${
             location.onlineMachines > 0
-                ? "bg-green-500 animate-pulse-slow"
-                : "bg-red-500"
-            }`}
+              ? "bg-green-500 animate-pulse-slow"
+              : "bg-red-500"
+          }`}
           title={location.onlineMachines > 0 ? "Online" : "Offline"}
         />
       )}
@@ -71,12 +53,7 @@ export default function LocationCard({
             }}
             className="text-button"
           >
-            <Image
-              src={editIcon}
-              alt="Edit"
-              width={20}
-              height={20}
-            />
+            <Image src={editIcon} alt="Edit" width={20} height={20} />
           </button>
         </div>
       </div>
@@ -119,7 +96,7 @@ export default function LocationCard({
           className="bg-button text-primary-foreground flex items-center space-x-1 rounded-md px-2 py-1 h-auto text-xs"
           onClick={(e) => e.stopPropagation()}
         >
-          <Server className="w-3 h-3 mr-1" />
+          <MapPin className="w-3 h-3 mr-1" />
           {location.onlineMachines} ONLINE
         </Button>
       </div>

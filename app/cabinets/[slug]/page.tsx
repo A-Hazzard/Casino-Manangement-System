@@ -339,7 +339,7 @@ export default function CabinetDetailPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
           <div className="flex justify-end mb-2">
             <RefreshButton

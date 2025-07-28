@@ -26,7 +26,6 @@ import {
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import gsap from "gsap";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
@@ -276,41 +275,8 @@ export default function CabinetsPage() {
 
   // Add animation for table and cards when data changes
   useEffect(() => {
-    // Animate table rows and cards when filtered data changes
-    if (!loading && filteredCabinets.length > 0) {
-      if (tableRef.current) {
-        // Table view animation
-        const tableRows = tableRef.current.querySelectorAll("tbody tr");
-        gsap.fromTo(
-          tableRows,
-          { opacity: 0, y: 15 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.4,
-            stagger: 0.05,
-            ease: "power2.out",
-          }
-        );
-      }
-
-      if (cardsRef.current) {
-        // Card view animation
-        const cards = Array.from(cardsRef.current.children);
-        gsap.fromTo(
-          cards,
-          { opacity: 0, scale: 0.95, y: 15 },
-          {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            duration: 0.4,
-            stagger: 0.08,
-            ease: "back.out(1.5)",
-          }
-        );
-      }
-    }
+    // Remove GSAP animations that cause flickering
+    // The animations were causing conflicts with React's rendering cycle
   }, [filteredCabinets, sortOption, sortOrder, currentPage, loading]);
 
   // Handle location change
@@ -350,7 +316,7 @@ export default function CabinetsPage() {
         onClose={closeUploadSmibDataModal}
       />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden xl:w-full xl:mx-auto xl:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -398,6 +364,27 @@ export default function CabinetsPage() {
               </Button>
             )}
           </div>
+
+          {/* Mobile: Add New Cabinet button below title */}
+          {(activeSection === "cabinets" || activeSection === "movement") && (
+            <div className="md:hidden mt-4 w-full">
+              <Button
+                onClick={() => {
+                  if (activeSection === "cabinets") {
+                    openCabinetModal();
+                  } else if (activeSection === "movement") {
+                    openNewMovementRequestModal();
+                  }
+                }}
+                className="w-full bg-button hover:bg-button/90 text-white py-3 rounded-lg flex items-center justify-center gap-2"
+              >
+                <Plus size={20} />
+                {activeSection === "cabinets"
+                  ? "Add New Cabinet"
+                  : "Create Movement Request"}
+              </Button>
+            </div>
+          )}
 
           {/* Section Navigation: Dropdown on mobile, button bar on desktop */}
           <div className="w-full max-w-full mt-6 mb-4">
@@ -474,15 +461,25 @@ export default function CabinetsPage() {
           </div>
 
           {/* Desktop Time Period Filters */}
-          <div className="mt-4">
+          <div className="hidden xl:block mt-4">
             <DashboardDateFilters disabled={loading || refreshing} />
+          </div>
+
+          {/* Mobile: Date Filters with better responsive layout */}
+          <div className="xl:hidden mt-4">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                Date Filters
+              </h3>
+              <DashboardDateFilters disabled={loading || refreshing} />
+            </div>
           </div>
 
           {/* Section Content */}
           {activeSection === "cabinets" ? (
             <>
               {/* Mobile Search */}
-              <div className="lg:hidden w-full relative">
+              <div className="xl:hidden w-full relative">
                 <Input
                   type="text"
                   placeholder="Search machines..."
@@ -494,7 +491,7 @@ export default function CabinetsPage() {
               </div>
 
               {/* Mobile Sort and Location Select Below Search */}
-              <div className="flex flex-wrap gap-2 w-full mb-4 lg:hidden mt-4 items-center sm:flex-row flex-col overflow-x-hidden">
+              <div className="flex flex-wrap gap-2 w-full mb-4 xl:hidden mt-4 items-center sm:flex-row flex-col overflow-x-hidden">
                 {/* Sort Button */}
                 <div className="flex-1 min-w-0 w-full sm:w-auto">
                   <button
@@ -584,27 +581,27 @@ export default function CabinetsPage() {
 
               {/* Desktop Search and Location Filter Row with purple background */}
               <div
-                className={`hidden mt-4 lg:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none ${
+                className={`hidden mt-4 xl:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none ${
                   loading || initialLoading ? "search-flash" : ""
                 }`}
               >
-                <div className="relative w-2/3">
-                  <Input
-                    type="text"
-                    placeholder="Search machines..."
-                    className="w-full pr-10 bg-white border border-gray-300 rounded-md h-10 px-4 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                </div>
-                <div className="w-1/3">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="relative flex-1 max-w-md min-w-0">
+                    <Input
+                      type="text"
+                      placeholder="Search machines..."
+                      className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  </div>
                   <select
-                    className="w-full h-10 bg-white border border-gray-300 rounded-md px-3 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive"
                     value={selectedLocation}
-                    onChange={(e) => handleLocationChange(e.target.value)}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="w-full xl:w-auto h-11 rounded-md border-none px-3 bg-white text-gray-700"
                   >
-                    <option value="all">All Locations</option>
+                    <option value="">All Locations</option>
                     {locations.map((location) => (
                       <option key={location._id} value={location._id}>
                         {location.name}
@@ -664,7 +661,7 @@ export default function CabinetsPage() {
 
                   {/* Mobile and Tablet Card View */}
                   <div
-                    className="block lg:hidden mt-4 px-1 sm:px-2 md:px-4 space-y-3 sm:space-y-4 w-full max-w-full"
+                    className="block xl:hidden mt-4 px-1 sm:px-2 md:px-4 space-y-3 sm:space-y-4 w-full max-w-full"
                     ref={cardsRef}
                   >
                     {paginatedCabinets.map((cabinet) => (

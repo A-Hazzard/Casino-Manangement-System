@@ -127,7 +127,7 @@ export default function EnhancedLocationTable({
     return sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
   };
 
-  // Skeleton loading component
+  // Skeleton loading component for table view
   const TableSkeleton = () => (
     <div className="animate-pulse">
       <div className="p-4">
@@ -154,6 +154,116 @@ export default function EnhancedLocationTable({
     </div>
   );
 
+  // Skeleton loading component for card view
+  const CardSkeleton = () => (
+    <div className="animate-pulse space-y-4">
+      <div className="p-4">
+        <div className="text-sm text-gray-500 mb-4">Loading location data...</div>
+      </div>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex justify-between items-start">
+            <div className="space-y-2 flex-1">
+              <div className="h-5 bg-gray-300 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+            </div>
+            <div className="h-6 bg-gray-300 rounded w-20"></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-16"></div>
+              <div className="h-4 bg-gray-300 rounded w-20"></div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-16"></div>
+              <div className="h-4 bg-gray-300 rounded w-20"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Card component for mobile view
+  const LocationCard = ({ location }: { location: AggregatedLocation }) => {
+    const holdPercentage = location.moneyIn > 0 ? (location.gross / location.moneyIn) * 100 : 0;
+    
+    return (
+      <div 
+        className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow ${
+          onLocationClick ? 'cursor-pointer' : ''
+        }`}
+        onClick={() => onLocationClick?.(location.location)}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-gray-900 truncate">
+              {location.locationName}
+            </h3>
+            <p className="text-xs text-gray-500 truncate">
+              {location.location}
+            </p>
+          </div>
+          <Badge 
+            variant={location.hasSasMachines ? "default" : "secondary"}
+            className={`text-xs ${
+              location.hasSasMachines 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
+          </Badge>
+        </div>
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Machines</p>
+            <p className="text-sm font-medium text-gray-900">
+              {formatNumber(location.totalMachines)}
+              <span className="text-xs text-gray-500 ml-1">
+                ({location.onlineMachines} online)
+              </span>
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Handle</p>
+            <p className="text-sm font-medium text-gray-900">
+              {formatCurrency(location.moneyIn)}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Win/Loss</p>
+            <p className={`text-sm font-medium ${
+              location.gross >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatCurrency(location.gross)}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Hold %</p>
+            <p className={`text-sm font-medium ${
+              holdPercentage >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {holdPercentage.toFixed(1)}%
+            </p>
+          </div>
+        </div>
+
+        {/* Additional Info */}
+        <div className="pt-2 border-t border-gray-100">
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Jackpot: $0</span>
+            <span>Avg Wager: $0</span>
+            <span>Games: 0</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       {/* Search Bar */}
@@ -170,8 +280,8 @@ export default function EnhancedLocationTable({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop Table View */}
+      <div className="hidden lg:block overflow-x-auto">
         {loading ? (
           <TableSkeleton />
         ) : error ? (
@@ -323,6 +433,27 @@ export default function EnhancedLocationTable({
                 })}
               </tbody>
             </table>
+          </>
+        )}
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="lg:hidden p-4 space-y-4">
+        {loading ? (
+          <CardSkeleton />
+        ) : error ? (
+          <div className="text-center py-8">
+            <div className="text-red-500 text-sm mb-2">Error loading locations</div>
+            <div className="text-gray-500 text-sm">{error}</div>
+          </div>
+        ) : (
+          <>
+            {sortedLocations.map((location) => (
+              <LocationCard key={location.location} location={location} />
+            ))}
+          </>
+        )}
+      </div>
 
             {/* Pagination */}
             {onPageChange && totalCount > 0 && (
@@ -389,9 +520,6 @@ export default function EnhancedLocationTable({
               </div>
             </div>
             )}
-          </>
-        )}
-      </div>
 
       {/* Empty State - Only show when not loading and no error */}
       {!loading && !error && sortedLocations.length === 0 && (

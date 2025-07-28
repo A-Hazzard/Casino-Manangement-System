@@ -32,7 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useReportsStore } from "@/lib/store/reportsStore";
 
 // Utils
-import { ExportUtils } from "@/lib/utils/exportUtils";
+import { exportData } from "@/lib/utils/exportUtils";
 
 // Types
 import type { CustomerMetrics } from "@/lib/types/reports";
@@ -91,7 +91,7 @@ export default function CustomersTab() {
 
   const handleExportData = async () => {
     try {
-      const exportData = {
+      const exportDataObj = {
         title: "Customer Analytics Report",
         subtitle: "Customer activity, demographics, and behavior analysis",
         headers: [
@@ -143,7 +143,7 @@ export default function CustomersTab() {
         },
       };
 
-      await ExportUtils.exportData(exportData, "pdf");
+      await exportData(exportDataObj, "pdf");
       toast.success("Customer analytics data exported successfully");
     } catch (error) {
       const errorMessage =

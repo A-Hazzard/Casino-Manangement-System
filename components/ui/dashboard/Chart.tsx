@@ -8,16 +8,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import localizedFormat from "dayjs/plugin/localizedFormat";
+import { formatTime, formatDisplayDate } from "@/shared/utils/dateFormat";
 import { ChartProps } from "@/lib/types/componentProps";
 import { ChartSkeleton } from "@/components/ui/SkeletonLoader";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(localizedFormat);
 
 export default function Chart({
   loadingChartData,
@@ -44,13 +37,21 @@ export default function Chart({
   // --- Robust sorting for both string and date types ---
   const parseTime = (val?: string, day?: string) => {
     if (!val || !day) return 0;
-    const localDate = dayjs.utc(`${day}T${val}:00Z`).local();
-    return localDate.hour() * 60 + localDate.minute();
+    try {
+      const date = new Date(`${day}T${val}:00Z`);
+      return date.getHours() * 60 + date.getMinutes();
+    } catch {
+      return 0;
+    }
   };
 
   const parseDay = (val?: string) => {
     if (!val) return 0;
-    return dayjs.utc(val).local().valueOf();
+    try {
+      return new Date(val).getTime();
+    } catch {
+      return 0;
+    }
   };
 
   // For hourly charts, filter to only the most common day
@@ -100,9 +101,9 @@ export default function Chart({
               ) {
                 const day = sortedChartData[index]?.day;
                 const fullUTCDate = `${day}T${val}:00Z`;
-                return dayjs.utc(fullUTCDate).local().format("hh:mm A");
+                return formatTime(fullUTCDate);
               } else {
-                return dayjs.utc(val).local().format("MMM D");
+                return formatDisplayDate(val);
               }
             }}
           />

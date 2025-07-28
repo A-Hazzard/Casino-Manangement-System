@@ -65,6 +65,34 @@ export type AggregatedLocation = {
   hasSmib: boolean;
 };
 
+// Location metrics for reports and analytics
+export type LocationMetrics = {
+  totalGross: number;
+  totalDrop: number;
+  totalCancelledCredits: number;
+  onlineMachines: number;
+  totalMachines: number;
+};
+
+// Top location for dashboard and reports
+export type TopLocation = {
+  locationId: string;
+  locationName: string;
+  gross: number;
+  drop: number;
+  cancelledCredits: number;
+  onlineMachines: number;
+  totalMachines: number;
+  performance: "excellent" | "good" | "average" | "poor";
+  sasEnabled: boolean;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  // Additional fields for the new card design
+  holdPercentage: number;
+};
+
 // Machine types
 export type Machine = {
   _id: string;

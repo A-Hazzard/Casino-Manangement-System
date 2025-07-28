@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../lib/middleware/db";
 import { Collections } from "../../lib/models/collections";
-import { Meter } from "../../lib/models/meters";
+import { Meters } from "../../lib/models/meters";
 
 /**
  * POST /api/collection-report/sync-meters
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
 
       // Get meter data within the SAS time period
-      const metersInPeriod = await Meter.find({
+      const metersInPeriod = await Meters.find({
         machine: machineId,
         readAt: { $gte: sasStartTime, $lte: sasEndTime },
       }).sort({ readAt: 1 }); // Sort ascending to get chronological order

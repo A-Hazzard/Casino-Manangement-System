@@ -26,11 +26,6 @@ export async function GET(request: Request) {
 
     console.log(`🔍 Found ${locations.length} total locations`);
     
-    // Debug: Log first few locations to see their structure
-    if (locations.length > 0) {
-      console.log("📊 Sample location data:", JSON.stringify(locations.slice(0, 3), null, 2));
-    }
-
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];
     const validLocations: any[] = [];

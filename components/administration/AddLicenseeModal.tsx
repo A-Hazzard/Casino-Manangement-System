@@ -15,7 +15,7 @@ type AddLicenseeModalProps = {
     startDate?: Date | string;
     expiryDate?: Date | string;
   };
-  setFormState: (data: {
+  setFormState: (_data: {
     name?: string;
     description?: string;
     country?: string;

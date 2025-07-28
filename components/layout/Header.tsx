@@ -72,7 +72,7 @@ export default function Header({
         <div className="flex items-center justify-start">
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden cursor-pointer text-grayHighlight p-0"
+            className="xl:hidden cursor-pointer text-grayHighlight p-0"
             aria-label="Toggle mobile menu"
           >
             {mobileMenuOpen ? (
@@ -82,12 +82,12 @@ export default function Header({
             )}
           </button>
 
-          <h1 className="text-base lg:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
+          <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
           </h1>
 
           {!hideOptions && !hideLicenceeFilter && (
-            <div className="lg:ml-2 flex-grow lg:flex-grow-0 flex justify-end lg:justify-start">
+            <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start">
               <LicenceeSelect
                 selected={selectedLicencee || ""}
                 onChange={setSelectedLicencee || (() => {})}
@@ -106,7 +106,7 @@ export default function Header({
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-30 md:hidden"
+              className="fixed inset-0 bg-black z-30 xl:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.div
@@ -114,7 +114,7 @@ export default function Header({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-0 max-w-[300px] bg-container z-40 md:hidden shadow-lg"
+              className="fixed inset-0 max-w-[300px] bg-container z-40 xl:hidden shadow-lg"
             >
               <button
                 className="absolute top-4 right-4 p-2 bg-muted rounded-full"
@@ -257,21 +257,21 @@ export default function Header({
       </AnimatePresence>
 
       {pageTitle && (
-        <div className="flex flex-col space-y-6 lg:flex-row items-center justify-between">
-          <div className="flex flex-col lg:flex-row items-center gap-2 mx-auto lg:mx-0 w-fit">
+        <div className="flex flex-col space-y-6 xl:flex-row items-center justify-between">
+          <div className="flex flex-col xl:flex-row items-center gap-2 mx-auto xl:mx-0 w-fit">
             {isSpecificLocationPath && (
               <>
                 {/* Icon above title on mobile */}
-                <DrawingPinFilledIcon className="w-6 h-6 text-grayHighlight lg:hidden" />
+                <DrawingPinFilledIcon className="w-6 h-6 text-grayHighlight xl:hidden" />
                 {/* Icon beside title on large screens */}
-                <DrawingPinFilledIcon className="w-7 h-7 text-grayHighlight hidden lg:block" />
+                <DrawingPinFilledIcon className="w-7 h-7 text-grayHighlight hidden xl:block" />
               </>
             )}
-            <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left">
+            <h1 className="text-3xl xl:text-4xl font-semibold text-center xl:text-left">
               {pageTitle}
             </h1>
             {(pathname === "/locations" || pathname === "/cabinets") && (
-              <div className="hidden lg:flex space-between gap-3 ml-4">
+              <div className="hidden xl:flex space-between gap-3 ml-4">
                 {Object.entries(activeFilters).map(([filter, value]) => (
                   <Button
                     key={filter}

@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { Machine } from "@/app/api/lib/models/machines";
-import { Meter } from "@/app/api/lib/models/meters";
+import { Meters } from "@/app/api/lib/models/meters";
 import { connectDB } from "../../../../lib/middleware/db";
 import {
   MeterData,
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch the most recent meter data if available - silently
-    const meterData = (await Meter.findOne({ machine: cabinetId })
+    const meterData = (await Meters.findOne({ machine: cabinetId })
       .sort({ readAt: -1 })
       .lean()) as MeterData | null;
 

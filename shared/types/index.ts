@@ -40,6 +40,8 @@ export type {
   RelationshipInfo,
   GeoCoordinates,
   AggregatedLocation,
+  LocationMetrics,
+  TopLocation,
   Machine,
   MachineDocument,
   Cabinet,

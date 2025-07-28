@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { Machine } from "@/app/api/lib/models/machines";
-import { Meter } from "@/app/api/lib/models/meters";
+import { Meters } from "@/app/api/lib/models/meters";
 import { connectDB } from "../../lib/middleware/db";
 import { ObjectId } from "mongodb";
 import mongoose from "mongoose";
@@ -46,7 +46,7 @@ async function fetchAllMetersForMachine(
     const idVariations = [machineId, machineIdStr, safeObjectId(machineIdStr)];
 
     // First try to find meters by machine ID with all variations
-    let allMeters = await Meter.find({
+    let allMeters = await Meters.find({
       machine: { $in: idVariations },
     })
       .sort({ readAt: -1 })
@@ -74,7 +74,7 @@ async function fetchAllMetersForMachine(
         ),
       };
 
-      allMeters = await Meter.find(objectIdQuery)
+      allMeters = await Meters.find(objectIdQuery)
         .sort({ readAt: -1 })
         .limit(10)
         .lean();
@@ -464,7 +464,7 @@ export async function POST(request: NextRequest) {
             );
 
             // Try multiple approaches to find meters
-            const meterResult = await Meter.findOne({
+            const meterResult = await Meters.findOne({
               $or: [
                 { machine: machine._id },
                 { machine: machineId },

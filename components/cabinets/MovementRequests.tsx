@@ -13,6 +13,7 @@ import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { useMovementRequestActionsStore } from "@/lib/store/movementRequestActionsStore";
 import EditMovementRequestModal from "@/components/ui/movements/EditMovementRequestModal";
 import DeleteMovementRequestModal from "@/components/ui/movements/DeleteMovementRequestModal";
+import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -93,29 +94,55 @@ export default function MovementRequests({
     <div className="w-full max-w-full flex flex-col p-1">
       <EditMovementRequestModal onSaved={loadRequests} />
       <DeleteMovementRequestModal onDeleted={loadRequests} />
-      <div className="flex flex-col md:flex-row gap-4 items-center p-4 bg-buttonActive rounded-t-lg shadow-sm">
+
+      {/* Mobile: Search and filters stacked */}
+      <div className="lg:hidden flex flex-col gap-4 p-4 bg-buttonActive rounded-lg shadow-sm mb-4">
+        <div className="relative w-full">
+          <Input
+            placeholder="Search requests..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
+          />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        </div>
+        <select
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className="w-full h-11 rounded-md border-none px-3 bg-white text-gray-700"
+        >
+          <option value="all">All Locations</option>
+          {locations.map((location) => (
+            <option key={location._id} value={location._id}>
+              {location.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Desktop: Search and filters in row */}
+      <div className="hidden lg:flex flex-col md:flex-row gap-4 items-center p-4 bg-buttonActive rounded-t-lg shadow-sm">
         <div className="relative w-full md:w-2/3">
           <Input
             placeholder="Search requests... (e.g., Creator, Location, Cabinet, Status)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400 focus:ring-1 focus:ring-offset-2 focus:ring-offset-buttonActive focus:ring-white"
+            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
           />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
-        <div className="relative w-full md:w-1/3">
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="w-full h-11 rounded-md border-none px-3 bg-white text-gray-700 appearance-none pr-8 focus:ring-1 focus:ring-offset-2 focus:ring-offset-buttonActive focus:ring-white"
-          >
-            <option value="all">All Locations</option>
-            {locations.map((loc) => (
-              <option key={loc._id} value={loc._id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className="w-full md:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
+        >
+          <option value="all">All Locations</option>
+          {locations.map((location) => (
+            <option key={location._id} value={location._id}>
+              {location.name}
+            </option>
+          ))}
+        </select>
       </div>
       {/* Table Area (Desktop) */}
       <div className="hidden lg:block">

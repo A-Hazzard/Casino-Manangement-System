@@ -155,8 +155,8 @@ export const handleColumnSort = (
   column: CabinetSortOption,
   currentSortOption: CabinetSortOption,
   currentSortOrder: "asc" | "desc",
-  setSortOption: (option: CabinetSortOption) => void,
-  setSortOrder: (order: "asc" | "desc") => void
+  setSortOption: (_option: CabinetSortOption) => void,
+  setSortOrder: (_order: "asc" | "desc") => void
 ) => {
   if (currentSortOption === column) {
     // Toggle sort order if clicking the same column

@@ -3,6 +3,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
 import { LocationFilter } from "@/lib/types/location";
+import { createDatabaseIndexes } from "@/app/api/lib/utils/createIndexes";
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "7d";
     const licencee = searchParams.get("licencee") || undefined;
-    const machineTypeFilter =
+    const _machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
     
     // Pagination parameters
@@ -20,8 +21,6 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
     
     console.log("🔍 API - Requested limit:", requestedLimit, "Actual limit:", limit, "Page:", page, "Skip:", skip);
-    
-    console.log("🔍 API - Requested limit:", requestedLimit, "Actual limit:", limit);
 
     let startDate: Date, endDate: Date;
 
@@ -56,166 +55,203 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Build location filter
-    const locationFilter: any = {
+    // Ensure indexes are created for optimal performance
+    await createDatabaseIndexes();
+
+    // Build location filter for the aggregation
+    const locationMatchStage: any = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
     
     if (licencee && licencee !== "all") {
-      locationFilter["rel.licencee"] = licencee;
+      locationMatchStage["rel.licencee"] = licencee;
     }
 
-    // Get all locations for the licencee
-    console.log("🔍 API - Location filter:", locationFilter);
-    const allLocations = await db
-      .collection("gaminglocations")
-      .find(locationFilter)
-      .toArray();
-    
-    console.log("🔍 API - Found locations:", allLocations.length);
-    if (allLocations.length === 0) {
-      console.log("🔍 API - No locations found, returning empty response");
-      return NextResponse.json({
-        data: [],
-        pagination: {
-          page,
-          limit,
-          totalCount: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
-      });
-    }
+    console.log("🔍 API - Using optimized aggregation pipeline");
 
-    // Get location IDs for machine lookup
-    const locationIds = allLocations.map(loc => loc._id);
-
-    // Get ALL machines for the locations (not filtered by date)
-    console.log("🔍 API - Fetching ALL machines for locations:", locationIds.length);
-    const machines = await db
-      .collection("machines")
-      .find({
-        gamingLocation: { $in: locationIds },
-        deletedAt: { $in: [null, new Date(-1)] },
-      })
-      .toArray();
-    
-    console.log("🔍 API - Found machines:", machines.length);
-
-    // Get meters data for the time period ONLY (this is what gets filtered)
-    console.log("🔍 API - Fetching meters for date range:", { startDate, endDate });
-    const meters = await db
-      .collection("meters")
-      .find({
-        createdAt: { $gte: startDate, $lte: endDate },
-        location: { $in: locationIds.map(id => id.toString()) },
-      })
-      .toArray();
-    
-    console.log("🔍 API - Found meters in date range:", meters.length);
-
-    // Aggregate data by location
-    const locationMetrics = new Map();
-
-    // Initialize location metrics for ALL locations
-    allLocations.forEach(location => {
-      const locationId = location._id.toString();
-      locationMetrics.set(locationId, {
-        location: locationId,
-        locationName: location.name || "Unknown Location",
-        moneyIn: 0,
-        moneyOut: 0,
-        gross: 0,
-        totalMachines: 0,
-        onlineMachines: 0,
-        sasMachines: 0,
-        nonSasMachines: 0,
-        hasSasMachines: false,
-        hasNonSasMachines: false,
-        isLocalServer: !!location.isLocalServer,
-        machines: [],
-        meters: [],
-      });
-    });
-
-    console.log("🔍 API - Initialized metrics for", locationMetrics.size, "locations");
-
-    // Add ALL machines to locations (not filtered by date)
-    machines.forEach(machine => {
-      const locationId = machine.gamingLocation?.toString();
-      if (locationId && locationMetrics.has(locationId)) {
-        const location = locationMetrics.get(locationId);
-        location.totalMachines++;
-        
-        // Check if machine is online (active in last 3 minutes)
-        const onlineThreshold = new Date();
-        onlineThreshold.setMinutes(onlineThreshold.getMinutes() - 3);
-        if (machine.lastActivity && new Date(machine.lastActivity) > onlineThreshold) {
-          location.onlineMachines++;
+    // Use MongoDB aggregation pipeline for much better performance
+    const aggregationPipeline = [
+      // Stage 1: Start with locations
+      {
+        $match: locationMatchStage
+      },
+      // Stage 2: Lookup machines for each location
+      {
+        $lookup: {
+          from: "machines",
+          let: { locationId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$gamingLocation", "$$locationId"] },
+                deletedAt: { $in: [null, new Date(-1)] }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                serialNumber: 1,
+                game: 1,
+                isSasMachine: 1,
+                lastActivity: 1
+              }
+            }
+          ],
+          as: "machines"
         }
-
-        // Count SAS vs non-SAS machines
-        if (machine.isSasMachine === true) {
-          location.sasMachines++;
-          location.hasSasMachines = true;
-        } else {
-          location.nonSasMachines++;
-          location.hasNonSasMachines = true;
+      },
+      // Stage 3: Lookup meters for each location (filtered by date)
+      {
+        $lookup: {
+          from: "meters",
+          let: { locationId: { $toString: "$_id" } },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$location", "$$locationId"] },
+                createdAt: { $gte: startDate, $lte: endDate }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                totalMoneyIn: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                totalMoneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+                meterCount: { $sum: 1 }
+              }
+            }
+          ],
+          as: "meterAggregation"
         }
-
-        location.machines.push({
-          id: machine._id,
-          serialNumber: machine.serialNumber,
-          game: machine.game,
-          isSasMachine: machine.isSasMachine,
-          lastActivity: machine.lastActivity,
-        });
+      },
+      // Stage 4: Calculate metrics
+      {
+        $addFields: {
+          location: { $toString: "$_id" },
+          locationName: { $ifNull: ["$name", "Unknown Location"] },
+          isLocalServer: { $ifNull: ["$isLocalServer", false] },
+          totalMachines: { $size: "$machines" },
+          onlineMachines: {
+            $size: {
+              $filter: {
+                input: "$machines",
+                cond: {
+                  $and: [
+                    { $ne: ["$$this.lastActivity", null] },
+                    {
+                      $gt: [
+                        "$$this.lastActivity",
+                        {
+                          $dateSubtract: {
+                            startDate: "$$NOW",
+                            unit: "minute",
+                            amount: 3
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          sasMachines: {
+            $size: {
+              $filter: {
+                input: "$machines",
+                cond: { $eq: ["$$this.isSasMachine", true] }
+              }
+            }
+          },
+          nonSasMachines: {
+            $size: {
+              $filter: {
+                input: "$machines",
+                cond: { $ne: ["$$this.isSasMachine", true] }
+              }
+            }
+          },
+          hasSasMachines: {
+            $gt: [
+              {
+                $size: {
+                  $filter: {
+                    input: "$machines",
+                    cond: { $eq: ["$$this.isSasMachine", true] }
+                  }
+                }
+              },
+              0
+            ]
+          },
+          hasNonSasMachines: {
+            $gt: [
+              {
+                $size: {
+                  $filter: {
+                    input: "$machines",
+                    cond: { $ne: ["$$this.isSasMachine", true] }
+                  }
       }
-    });
-
-    console.log("🔍 API - Processed machines for all locations");
-
-    // Add meters data to locations (ONLY meters are filtered by date)
-    meters.forEach(meter => {
-      const locationId = meter.location;
-      if (locationMetrics.has(locationId)) {
-        const location = locationMetrics.get(locationId);
-        location.moneyIn += meter.movement?.drop || 0;
-        location.moneyOut += meter.movement?.totalCancelledCredits || 0;
-        location.gross = location.moneyIn - location.moneyOut;
-        
-        location.meters.push({
-          id: meter._id,
-          machineId: meter.machineId,
-          drop: meter.movement?.drop || 0,
-          cancelledCredits: meter.movement?.totalCancelledCredits || 0,
-          createdAt: meter.createdAt,
-        });
+              },
+              0
+            ]
+          },
+          moneyIn: {
+            $ifNull: [
+              { $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] },
+              0
+            ]
+          },
+          moneyOut: {
+            $ifNull: [
+              { $arrayElemAt: ["$meterAggregation.totalMoneyOut", 0] },
+              0
+            ]
+          }
+        }
+      },
+      // Stage 5: Calculate gross revenue
+      {
+        $addFields: {
+          gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+        }
+      },
+      // Stage 6: Sort by gross revenue (highest first)
+      {
+        $sort: { gross: -1 }
+      },
+      // Stage 7: Apply pagination
+      {
+        $facet: {
+          metadata: [
+            { $count: "totalCount" }
+          ],
+          data: [
+            { $skip: skip },
+            { $limit: limit }
+          ]
       }
-    });
+      }
+    ];
 
-    console.log("🔍 API - Processed meters data (filtered by date range)");
+    console.log("🔍 API - Executing aggregation pipeline...");
+    const result = await db.collection("gaminglocations").aggregate(aggregationPipeline, {
+      allowDiskUse: true // Allow disk usage for large datasets
+    }).toArray();
 
-    // Convert to array and sort by gross revenue
-    // Note: This includes ALL locations with their machines, but only meters data is filtered by date
-    // Locations with no meters in the date range will have moneyIn=0, moneyOut=0, gross=0
-    const allLocationData = Array.from(locationMetrics.values())
-      .sort((a, b) => b.gross - a.gross);
+    console.log("🔍 API - Aggregation completed");
 
-    console.log("🔍 API - Total locations processed:", allLocationData.length);
-    console.log("🔍 API - Sample location data:", allLocationData.slice(0, 2));
-
-    // Apply pagination
-    const totalCount = allLocationData.length;
+    // Extract results
+    const metadata = result[0]?.metadata[0] || { totalCount: 0 };
+    const paginatedData = result[0]?.data || [];
+    const totalCount = metadata.totalCount;
     const totalPages = Math.ceil(totalCount / limit);
-    const paginatedData = allLocationData.slice(skip, skip + limit);
 
     const endTime = Date.now();
     const duration = endTime - startTime;
     
     console.log("🔍 API - Pagination:", { page, limit, totalCount, totalPages, dataLength: paginatedData.length });
-    console.log("🔍 API - Slice details:", { skip, skipPlusLimit: skip + limit, sliceStart: skip, sliceEnd: skip + limit });
     console.log("🔍 API - Request completed in", duration, "ms");
 
     return NextResponse.json({

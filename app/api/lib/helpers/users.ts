@@ -49,7 +49,7 @@ type UserDocumentWithPassword = UserDocument & {
       resources: string[];
     };
   };
-  toObject: (options?: Record<string, unknown>) => {
+  toObject: (_options?: Record<string, unknown>) => {
     _id: string;
     emailAddress: string;
     isEnabled: boolean;
