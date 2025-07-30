@@ -3,6 +3,7 @@ import type { ExtendedCabinetDetail } from "./pages";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { ButtonProps } from "./componentProps";
 import type { MovementRequest } from "@/lib/types/movementRequests";
+import type { MachineMovementRecord } from "@/lib/types/reports";
 import type { Licensee } from "@/lib/types/licensee";
 import type {
   Location,
@@ -11,6 +12,7 @@ import type {
   dateRange as DateRange,
 } from "@/lib/types";
 import type { ICollectionReport as CollectionReport } from "@/lib/types/api";
+import type { AggregatedLocation } from "@/lib/types/location";
 
 // Define missing types locally until they are properly exported
 export type ActivityLog = {
@@ -38,66 +40,45 @@ export type ActivityLog = {
 
 export type SmibConfig = {
   firmwareVersion: string;
-  communicationMode: "ethernet" | "wifi" | "cellular";
-  networkSettings: NetworkConfig;
-  advancedSettings: AdvancedSettings;
-};
-
-export type NetworkConfig = {
-  ipAddress: string;
-  subnetMask: string;
-  gateway: string;
-  dns: string;
-};
-
-export type AdvancedSettings = {
-  debugMode: boolean;
-  logLevel: string;
-  maxRetries: number;
-  timeout: number;
-};
-
-export type BillValidatorData = {
-  _id: string;
-  denomination: number;
-  count: number;
-  timestamp: Date;
-  machine: string;
+  // Add other SMIB config properties as needed
 };
 
 export type CollectorSchedule = {
-  _id: string;
-  collector: string;
-  location: string;
-  startTime: Date;
-  endTime: Date;
-  status: string;
+  id: string;
+  _id?: string;
+  collectorName: string;
+  collector?: string;
+  locationName: string;
+  location?: string;
+  startTime: string;
+  endTime: string;
+  status:
+    | "pending"
+    | "completed"
+    | "canceled"
+    | "scheduled"
+    | "in-progress"
+    | "cancelled";
+  notes?: string;
 };
 
-export type ManagerSchedule = {
-  _id: string;
-  manager: string;
-  location: string;
-  startTime: Date;
-  endTime: Date;
-  status: string;
+export type CustomizedLabelProps = {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+  index: number;
 };
 
-export type PaymentStatus = "paid" | "pending" | "overdue" | "failed";
-
-// OnlineOfflineIndicator types
-export type LocationMetrics = {
-  onlineMachines?: number;
-  totalMachines?: number;
+export type RGBAColor = {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
 };
 
-export type OnlineOfflineIndicatorProps = {
-  className?: string;
-  showTitle?: boolean;
-  size?: "sm" | "md" | "lg";
-};
-
-// LiquidGradient types
 export type Blob = {
   x: number;
   y: number;
@@ -107,11 +88,26 @@ export type Blob = {
   color: RGBAColor;
 };
 
-export type RGBAColor = {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
+export type ChipProps = {
+  label: string;
+  onRemove?: () => void;
+  className?: string;
+};
+
+export type NoDataMessageProps = {
+  message?: string;
+  className?: string;
+};
+
+export type EmptyStateProps = {
+  icon: React.ReactNode;
+  title: string;
+  message: string;
+};
+
+export type UploadSmibDataModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
 };
 
 // Reports component types
@@ -135,489 +131,270 @@ export type TemplateData = {
 
 export type Option = Record<"value" | "label", string>;
 
-// LocationMap types
-export type LocationData = {
-  locationId: string;
-  locationName: string;
-  coordinates?: { lat: number; lng: number };
-  metrics: {
-    grossRevenue: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    actualHoldPercentage: number;
-  };
-  onlineMachines: number;
-  totalMachines: number;
-  performance: "excellent" | "good" | "average" | "poor";
-  sasEnabled: boolean;
-};
-
-export type LocationMapProps = {
-  locations: LocationData[];
-  selectedLocations?: string[];
-  onLocationSelect: (locationId: string) => void;
-  compact?: boolean;
-};
-
-// Cabinet Details types
-export type MachineDoc = {
-  _id: string;
-  assetNumber: string;
-  serialNumber: string;
-  manufacturer: string;
-  gameTitle: string;
-  denomination: number;
-  location: {
-    _id: string;
-    name: string;
-  };
-  isActive: boolean;
-  installDate: Date | string;
-  lastMaintenanceDate?: Date | string;
-  warrantyExpiry?: Date | string;
-  notes?: string;
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    [key: string]: unknown;
-  };
-  billValidator?: {
-    enabled: boolean;
-    acceptedDenominations: number[];
-  };
-  [key: string]: unknown;
-};
-
-// Common UI Component Props
-export type ButtonVariant = "sync" | "refresh";
-
-export type SyncButtonProps = {
-  onClick: () => void;
-  isSyncing?: boolean;
-  label?: string;
-  iconOnly?: boolean;
-  variant?: ButtonVariant;
-};
-
-export type PaginationControlsProps = {
-  currentPage: number;
-  totalPages: number;
-  setCurrentPage: (page: number) => void;
-  itemsPerPage?: number;
-  totalItems?: number;
-};
-
-export type PaginationLinkProps = {
-  isActive?: boolean;
-  size?: Pick<ButtonProps, "size">;
-} & React.ComponentProps<"a">;
-
-export type MachineStatusWidgetProps = {
-  onlineCount: number;
-  offlineCount: number;
-};
-
-export type EmptyStateProps = {
-  icon: string;
-  title: string;
-  message: string;
-};
-
-export type NoDataMessageProps = {
-  message?: string;
-  className?: string;
-};
-
-export type ChipProps = {
-  label: string;
-  onRemove?: () => void;
-  className?: string;
-};
-
-// Movement/Modal Props
-export type NewMovementRequestModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  locations: { _id: string; name: string }[];
-};
-
-export type NewMovementModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: MovementRequest) => void;
-};
-
-// Firmware Component Props
-export type UploadSmibDataModalProps = {
+// Modal Props Types
+export type NewLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-export type SMIBFirmwareTableProps = {
-  firmwares: Firmware[];
-  loading?: boolean;
+export type EditLocationModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  location: Location | null;
+  onLocationUpdated?: () => void;
+};
+
+export type DeleteLocationModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  location: Location | null;
+  onDelete: () => void;
 };
 
 export type SMIBFirmwareModalProps = {
   isOpen: boolean;
   onClose: () => void;
   cabinetId?: string;
+  currentFirmware?: string;
+  onUploadComplete?: () => void;
 };
 
-// Chart Component Props
-export type SimpleBarChartProps = {
-  data: { name: string; value: number }[];
-};
-
-export type PerformanceChartProps = {
-  data: unknown[];
-  height?: number;
-};
-
-export type KpiCardProps = {
-  title: string;
-  value: string | number;
-  change?: number;
-  icon?: React.ReactNode;
-  color?: string;
-};
-
-export type ComparisonChartProps = {
-  data: Array<{
-    name: string;
-    current: number;
-    previous: number;
-  }>;
-  height?: number;
-  showLegend?: boolean;
-};
-
-// Location Component Props
-export type LocationInfoProps = {
-  location: Location;
-  metrics: LocationMetrics;
-  loading?: boolean;
-};
-
-export type CabinetCardProps = {
-  cabinet: Cabinet;
-  onClick?: () => void;
-  showMetrics?: boolean;
-};
-
-export type TimeFilterButtonsProps = {
-  selectedPeriod: string;
-  onPeriodChange: (period: string) => void;
-  periods: Array<{
-    value: string;
-    label: string;
-  }>;
-};
-
-// Cabinet Details Component Props
-export type TimePeriodDropdownProps = {
-  selectedPeriod: string;
-  onPeriodChange: (period: string) => void;
-  periods: Array<{
-    value: string;
-    label: string;
-  }>;
-};
-
-export type StatusIndicatorProps = {
-  status: "online" | "offline" | "maintenance";
-  size?: "sm" | "md" | "lg";
-};
-
-export type SmibConfigurationProps = {
-  cabinetId: string;
-  config: SmibConfig;
-  onConfigUpdate: (config: SmibConfig) => void;
-  loading?: boolean;
-};
-
-export type FirmwareUpdateSectionProps = {
-  currentVersion: string;
-  availableVersions: string[];
-  onUpdateFirmware: (version: string) => void;
-  updating?: boolean;
-};
-
-export type CommunicationModeSectionProps = {
-  currentMode: "ethernet" | "wifi" | "cellular";
-  onModeChange: (mode: "ethernet" | "wifi" | "cellular") => void;
-  networkConfig: NetworkConfig;
-  onNetworkConfigChange: (config: NetworkConfig) => void;
-};
-
-export type AdvancedSettingsProps = {
-  settings: AdvancedSettings;
-  onSettingsChange: (settings: AdvancedSettings) => void;
-};
-
-export type NetConfig = {
-  ipAddress: string;
-  subnetMask: string;
-  gateway: string;
-  dns: string;
-};
-
-export type MetricsTabsProps = {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  tabs: Array<{
+export type LocationMultiSelectProps = {
+  locations: Array<{
     id: string;
-    label: string;
-    count?: number;
+    name: string;
+    sasEnabled?: boolean;
   }>;
+  selectedLocations: string[];
+  onSelectionChange: (selectedIds: string[]) => void;
+  placeholder?: string;
+  maxSelections?: number;
+  className?: string;
 };
 
-export type CabinetInfoHeaderProps = {
-  cabinet: Cabinet;
-  location: Location;
-  showEditButton?: boolean;
-  onEdit?: () => void;
-};
-
-export type BillValidatorTableProps = {
-  bills: BillValidatorData[];
-  loading?: boolean;
-  timeRange: string;
-  onTimeRangeChange: (range: string) => void;
-};
-
-export type BackButtonHomeProps = Record<string, never>;
-
-export type BackButtonProps = {
-  href?: string;
-  onClick?: () => void;
-  label?: string;
-};
-
-export type ActivityLogTableProps = {
-  activities: ActivityLog[];
-  loading?: boolean;
-  onActivityClick?: (activity: ActivityLog) => void;
-};
-
-// Administration Component Props
-export type UserTableProps = {
-  users: unknown[];
-  loading?: boolean;
-  onUserClick?: (user: unknown) => void;
-  onUserEdit?: (user: unknown) => void;
-  onUserDelete?: (userId: string) => void;
-};
-
-export type UserCardProps = {
-  user: unknown;
-  onClick?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  showActions?: boolean;
-};
-
-export type UserActivityLogModalProps = {
+export type NewMovementModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  userId: string;
-  userName: string;
+  onSubmit: (data: MachineMovementRecord) => void;
+  locations?: { _id: string; name: string }[];
 };
 
-export type ActivityGroup = {
-  date: string;
-  activities: ProcessedActivityEntry[];
-};
-
-export type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  action: string;
-  details: string;
-  status: "success" | "warning" | "error";
-};
-
-export type SearchFilterBarProps = {
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  roleFilter: string;
-  onRoleChange: (role: string) => void;
-  statusFilter: string;
-  onStatusChange: (status: string) => void;
-  availableRoles: string[];
-};
-
-export type PaymentStatusConfirmModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  licensee: Licensee;
-  newStatus: PaymentStatus;
-  onConfirm: (licenseeId: string, status: PaymentStatus) => void;
-};
-
-export type PaymentHistoryModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  licenseeId: string;
-  licenseeName: string;
-};
-
-export type Payment = {
-  id: string;
-  amount: number;
-  date: string;
-  status: PaymentStatus;
-  method: string;
-  reference: string;
-};
-
-export type LicenseeTableProps = {
-  licensees: Licensee[];
-  loading?: boolean;
-  onLicenseeClick?: (licensee: Licensee) => void;
-  onLicenseeEdit?: (licensee: Licensee) => void;
-  onLicenseeDelete?: (licenseeId: string) => void;
-  onPaymentHistoryView?: (licenseeId: string) => void;
-};
-
-export type LicenseeSuccessModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  message: string;
-  type: "success" | "error" | "warning";
-};
-
-export type LicenseeSearchBarProps = {
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
+export type LocationSelectorProps = {
+  onLocationSelect: (locationIds: string[]) => void;
+  selectedLocations: string[];
+  maxSelections?: number;
   placeholder?: string;
 };
 
-export type LicenseeCardProps = {
-  licensee: Licensee;
-  onClick?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onPaymentHistoryView?: () => void;
-  showActions?: boolean;
-};
-
-export type EditLicenseeModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  licensee: Licensee;
-  onSave: (licensee: Licensee) => void;
-};
-
-export type DeleteLicenseeModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  licensee: Licensee;
-  onConfirm: (licenseeId: string) => void;
-};
-
-export type AddUserRolesModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  userId: string;
-  currentRoles: string[];
-  availableRoles: string[];
-  onSave: (userId: string, roles: string[]) => void;
-};
-
-export type AddUserDetailsModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (user: Partial<unknown>) => void;
-  initialData?: Partial<unknown>;
-};
-
-export type AddLicenseeModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (licensee: Partial<Licensee>) => void;
-};
-
-export type ActivityLogModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  activityId: string;
-  activityType: string;
-};
-
-export type ActivityDetailsModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  activity: ActivityLog;
-  showFullDetails?: boolean;
-};
-
-// Collection Report Component Props
-export type MonthlyReportDetailsRow = {
+export type TopMachine = {
   id: string;
+  _id?: string;
+  machineId?: string;
+  name: string;
+  game?: string;
   location: string;
+  locationName?: string;
+  locationId?: string;
+  performance: number;
   revenue: number;
-  machines: number;
-  date: string;
+  gamesPlayed: number;
+  handle?: number;
+  winLoss?: number;
+  jackpot?: number;
+  actualHold?: number;
+  manufacturer?: string;
+  avgWagerPerGame?: number;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+  holdPercentage?: number;
+  lastActivity?: Date;
+  isOnline?: boolean;
 };
 
-export type CollectionReportProps = {
-  reports: CollectionReport[];
+export type TopMachinesTableProps = {
+  machines: TopMachine[];
   loading?: boolean;
-  onReportClick?: (reportId: string) => void;
+  onMachineClick?: (machineId: string) => void;
+  className?: string;
+  timePeriod: string;
+  locationIds?: string[];
+  licencee?: string;
+  limit?: number;
 };
 
+export type RevenueAnalysisTableProps = {
+  locations: AggregatedLocation[];
+  loading?: boolean;
+  error?: string | null;
+  currentPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  onLocationClick?: (location: AggregatedLocation) => void;
+  timePeriod?: string;
+  locationIds?: string[];
+  licencee?: string;
+  className?: string;
+};
+
+export type LocationPaginationSkeletonProps = {
+  count?: number;
+  className?: string;
+};
+
+export type LocationData = {
+  id: string;
+  name: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  performance: number;
+  revenue: number;
+};
+
+export type LocationMapProps = {
+  locations: LocationData[];
+  selectedLocations?: string[];
+  onLocationSelect?: (locationIds: string[]) => void;
+  onLocationClick?: (location: LocationData) => void;
+  center?: {
+    lat: number;
+    lng: number;
+  };
+  zoom?: number;
+  compact?: boolean;
+  className?: string;
+  height?: string;
+  showMetrics?: boolean;
+  selectedLocationId?: string;
+};
+
+// Chart Props Types
+export type WinLossChartData = {
+  time: string;
+  winLoss: number;
+};
+
+export type WinLossChartProps = {
+  timePeriod: string;
+  locationIds?: string[];
+  licencee?: string;
+  className?: string;
+};
+
+export type PlaysChartData = {
+  time: string;
+  gamesPlayed: number;
+};
+
+export type PlaysChartProps = {
+  timePeriod: string;
+  locationIds?: string[];
+  licencee?: string;
+  className?: string;
+};
+
+export type JackpotChartData = {
+  time: string;
+  jackpot: number;
+};
+
+export type JackpotChartProps = {
+  timePeriod: string;
+  locationIds?: string[];
+  licencee?: string;
+  className?: string;
+};
+
+export type HandleChartData = {
+  time: string;
+  handle: number;
+};
+
+export type HandleChartProps = {
+  timePeriod: string;
+  locationIds?: string[];
+  licencee?: string;
+  className?: string;
+};
+
+// Collection Report Types
 export type CollectionReportFiltersProps = {
-  dateRange: DateRange;
-  onDateRangeChange: (range: DateRange) => void;
-  locationFilter: string;
-  onLocationChange: (location: string) => void;
-  statusFilter: string;
-  onStatusChange: (status: string) => void;
-  locations: Location[];
+  locations: Array<{ _id: string; name: string }>;
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearchSubmit: () => void;
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (checked: boolean) => void;
+  isSearching: boolean;
 };
 
-export type CollectionReportCardsProps = {
-  reports: CollectionReport[];
-  loading?: boolean;
-  onCardClick?: (reportId: string) => void;
+// Administration Types
+export type CountryDetailsModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  country: {
+    _id: string;
+    name: string;
+    alpha2: string;
+    alpha3: string;
+    isoNumeric: string;
+  } | null;
 };
 
-export type CollectionReportTableProps = {
-  reports: CollectionReport[];
-  loading?: boolean;
-  onRowClick?: (reportId: string) => void;
+export type DeleteCountryModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  country: {
+    _id: string;
+    name: string;
+  } | null;
+  onDelete: () => void;
 };
 
-export type CollectorScheduleProps = {
-  schedules: CollectorSchedule[];
-  isLoading?: boolean;
+export type EditCountryModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  country: {
+    _id: string;
+    name: string;
+    alpha2: string;
+    alpha3: string;
+    isoNumeric: string;
+  } | null;
 };
 
-export type ManagerScheduleProps = {
-  schedules: ManagerSchedule[];
-  isLoading?: boolean;
+export type AddCountryModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
 };
 
-// Location Details Component Props
+export type PaginationLinkProps = React.ComponentProps<"a"> & {
+  isActive?: boolean;
+};
+
+export type SyncButtonProps = {
+  onClick: () => void;
+  isSyncing?: boolean;
+  className?: string;
+  label?: string;
+  iconOnly?: boolean;
+  variant?: "sync" | "refresh";
+};
+
+export type PaginationControlsProps = {
+  currentPage: number;
+  totalPages: number;
+  setCurrentPage: (page: number) => void;
+};
+
 export type CabinetGridProps = {
   filteredCabinets: ExtendedCabinetDetail[];
   currentPage: number;
   itemsPerPage: number;
   router: AppRouterInstance;
-};
-
-export type MetricsSummaryProps = {
-  metrics: LocationMetrics;
-  loading?: boolean;
-};
-
-export type CabinetFilterBarProps = {
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  statusFilter: string;
-  onStatusChange: (status: string) => void;
-  gameFilter: string;
-  onGameChange: (game: string) => void;
-  availableGames: string[];
 };

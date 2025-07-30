@@ -18,9 +18,9 @@ import { createMovementRequest } from "@/lib/helpers/movementRequests";
 import { validateEmail } from "@/lib/utils/validation";
 import type { MovementRequest } from "@/lib/types/movementRequests";
 import type { Cabinet } from "@/lib/types/cabinets";
-import type { NewMovementRequestModalProps } from "@/lib/types/components";
+import type { NewMovementModalProps } from "@/lib/types/components";
 
-const NewMovementRequestModal: React.FC<NewMovementRequestModalProps> = ({
+const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   isOpen,
   onClose,
   locations: propLocations,
@@ -67,14 +67,14 @@ const NewMovementRequestModal: React.FC<NewMovementRequestModalProps> = ({
           setSelectedCabinets([]);
         })
         .catch((error) => {
-          console.error('Failed to fetch cabinets for location:', error);
+          console.error("Failed to fetch cabinets for location:", error);
           setCabinets([]);
           setAvailableCabinets([]);
           setSelectedCabinets([]);
           // Show user-friendly error if needed
-          setErrors(prev => ({
+          setErrors((prev) => ({
             ...prev,
-            fromLocation: 'Failed to load machines for this location'
+            fromLocation: "Failed to load machines for this location",
           }));
         })
         .finally(() => {

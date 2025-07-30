@@ -1,40 +1,33 @@
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import type { Country } from "@/lib/types/country";
+"use client";
 
-interface AddCountryModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  formState: Partial<Omit<Country, "_id" | "createdAt" | "updatedAt">>;
-  setFormState: (
-    _data: Partial<Omit<Country, "_id" | "createdAt" | "updatedAt">>
-  ) => void;
-}
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { AddCountryModalProps } from "@/lib/types/components";
 
 export default function AddCountryModal({
-  open,
+  isOpen,
   onClose,
-  onSave,
-  formState,
-  setFormState,
 }: AddCountryModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    alpha2: "",
+    alpha3: "",
+    isoNumeric: "",
+  });
 
-  useEffect(() => {
-    if (open && modalRef.current) {
-      gsap.fromTo(
-        modalRef.current,
-        { y: 80, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.35, ease: "power2.out" }
-      );
-    }
-  }, [open]);
-
-  if (!open) return null;
+  if (!isOpen) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormState({ [e.target.name]: e.target.value });
+    setFormState({ ...formState, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -48,15 +41,13 @@ export default function AddCountryModal({
       alert("All fields are required");
       return;
     }
-    onSave();
+    // Handle save logic here
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-      >
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
         <button
           className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
           onClick={onClose}

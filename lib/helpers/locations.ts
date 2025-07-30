@@ -114,10 +114,16 @@ export async function fetchLocationDetails(locationId: string) {
  * @param timePeriod - (Optional) Time period filter for cabinets.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
-export async function fetchCabinets(locationId: string, timePeriod?: string) {
+export async function fetchCabinets(
+  locationId: string,
+  timePeriod?: string,
+  licensee?: string
+) {
   try {
     const params: Record<string, string> = {};
     if (timePeriod) params.timePeriod = timePeriod;
+    if (licensee && licensee !== "all") params.licencee = licensee;
+
     const response = await axios.get(`/api/locations/${locationId}/cabinets`, {
       params,
       headers: getAuthHeaders(),
@@ -135,11 +141,12 @@ export async function fetchCabinets(locationId: string, timePeriod?: string) {
 /**
  * Fetches all gaming locations and formats them for dropdowns or selection lists.
  *
+ * @param licensee - (Optional) Licensee filter for locations.
  * @returns Promise resolving to an array of objects with id and name properties.
  */
-export async function fetchAllGamingLocations() {
+export async function fetchAllGamingLocations(licensee?: string) {
   try {
-    const locationsList = await getAllGamingLocations();
+    const locationsList = await getAllGamingLocations(licensee);
     if (locationsList && Array.isArray(locationsList)) {
       const formattedLocations = locationsList.map((loc) => ({
         id: loc._id,

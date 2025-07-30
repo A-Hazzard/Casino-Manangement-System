@@ -2,11 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { MovementRequest } from "@/app/api/lib/models/movementrequests";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const requests = await MovementRequest.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const { searchParams } = new URL(req.url);
+    const licensee = searchParams.get("licensee");
+
+    let requests = await MovementRequest.find().sort({ createdAt: -1 }).lean();
+
+    // Filter by licensee if provided
+    if (licensee && licensee !== "all") {
+      // Get locations that match the licensee
+      const licenseeLocations = await GamingLocations.find(
+        { "rel.licencee": licensee },
+        { _id: 1 }
+      ).lean();
+
+      const licenseeLocationIds = licenseeLocations.map((loc) =>
+        (loc as any)._id.toString()
+      );
+
+      // Filter requests to only include those from/to licensee locations
+      requests = requests.filter(
+        (request) =>
+          licenseeLocationIds.includes(request.locationFrom) ||
+          licenseeLocationIds.includes(request.locationTo)
+      );
+    }
+
     // Fetch all locations for lookup, sorted alphabetically by name
     const locations = await GamingLocations.find({}, { _id: 1, name: 1 })
       .sort({ name: 1 })

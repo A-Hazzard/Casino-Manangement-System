@@ -2,9 +2,8 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
-import type { BackButtonHomeProps } from "@/lib/types/components";
 
-const BackButtonHome: React.FC<BackButtonHomeProps> = () => {
+const BackButtonHome: React.FC = () => {
   const router = useRouter();
 
   const buttonContent = (

@@ -13,14 +13,23 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const _machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
-    
+
     // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
     const requestedLimit = parseInt(searchParams.get("limit") || "10");
     const limit = Math.min(requestedLimit, 10); // Cap at 10 for faster loading
     const skip = (page - 1) * limit;
-    
-    console.log("🔍 API - Requested limit:", requestedLimit, "Actual limit:", limit, "Page:", page, "Skip:", skip);
+
+    console.log(
+      "🔍 API - Requested limit:",
+      requestedLimit,
+      "Actual limit:",
+      limit,
+      "Page:",
+      page,
+      "Skip:",
+      skip
+    );
 
     let startDate: Date, endDate: Date;
 
@@ -62,7 +71,7 @@ export async function GET(req: NextRequest) {
     const locationMatchStage: any = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
-    
+
     if (licencee && licencee !== "all") {
       locationMatchStage["rel.licencee"] = licencee;
     }
@@ -73,7 +82,7 @@ export async function GET(req: NextRequest) {
     const aggregationPipeline = [
       // Stage 1: Start with locations
       {
-        $match: locationMatchStage
+        $match: locationMatchStage,
       },
       // Stage 2: Lookup machines for each location
       {
@@ -84,8 +93,8 @@ export async function GET(req: NextRequest) {
             {
               $match: {
                 $expr: { $eq: ["$gamingLocation", "$$locationId"] },
-                deletedAt: { $in: [null, new Date(-1)] }
-              }
+                deletedAt: { $in: [null, new Date(-1)] },
+              },
             },
             {
               $project: {
@@ -93,12 +102,12 @@ export async function GET(req: NextRequest) {
                 serialNumber: 1,
                 game: 1,
                 isSasMachine: 1,
-                lastActivity: 1
-              }
-            }
+                lastActivity: 1,
+              },
+            },
           ],
-          as: "machines"
-        }
+          as: "machines",
+        },
       },
       // Stage 3: Lookup meters for each location (filtered by date)
       {
@@ -109,20 +118,22 @@ export async function GET(req: NextRequest) {
             {
               $match: {
                 $expr: { $eq: ["$location", "$$locationId"] },
-                createdAt: { $gte: startDate, $lte: endDate }
-              }
+                createdAt: { $gte: startDate, $lte: endDate },
+              },
             },
             {
               $group: {
                 _id: null,
                 totalMoneyIn: { $sum: { $ifNull: ["$movement.drop", 0] } },
-                totalMoneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
-                meterCount: { $sum: 1 }
-              }
-            }
+                totalMoneyOut: {
+                  $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+                },
+                meterCount: { $sum: 1 },
+              },
+            },
           ],
-          as: "meterAggregation"
-        }
+          as: "meterAggregation",
+        },
       },
       // Stage 4: Calculate metrics
       {
@@ -145,31 +156,31 @@ export async function GET(req: NextRequest) {
                           $dateSubtract: {
                             startDate: "$$NOW",
                             unit: "minute",
-                            amount: 3
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
+                            amount: 3,
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
           },
           sasMachines: {
             $size: {
               $filter: {
                 input: "$machines",
-                cond: { $eq: ["$$this.isSasMachine", true] }
-              }
-            }
+                cond: { $eq: ["$$this.isSasMachine", true] },
+              },
+            },
           },
           nonSasMachines: {
             $size: {
               $filter: {
                 input: "$machines",
-                cond: { $ne: ["$$this.isSasMachine", true] }
-              }
-            }
+                cond: { $ne: ["$$this.isSasMachine", true] },
+              },
+            },
           },
           hasSasMachines: {
             $gt: [
@@ -177,12 +188,12 @@ export async function GET(req: NextRequest) {
                 $size: {
                   $filter: {
                     input: "$machines",
-                    cond: { $eq: ["$$this.isSasMachine", true] }
-                  }
-                }
+                    cond: { $eq: ["$$this.isSasMachine", true] },
+                  },
+                },
               },
-              0
-            ]
+              0,
+            ],
           },
           hasNonSasMachines: {
             $gt: [
@@ -190,55 +201,53 @@ export async function GET(req: NextRequest) {
                 $size: {
                   $filter: {
                     input: "$machines",
-                    cond: { $ne: ["$$this.isSasMachine", true] }
-                  }
-      }
+                    cond: { $ne: ["$$this.isSasMachine", true] },
+                  },
+                },
               },
-              0
-            ]
+              0,
+            ],
           },
           moneyIn: {
             $ifNull: [
               { $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] },
-              0
-            ]
+              0,
+            ],
           },
           moneyOut: {
             $ifNull: [
               { $arrayElemAt: ["$meterAggregation.totalMoneyOut", 0] },
-              0
-            ]
-          }
-        }
+              0,
+            ],
+          },
+        },
       },
       // Stage 5: Calculate gross revenue
       {
         $addFields: {
-          gross: { $subtract: ["$moneyIn", "$moneyOut"] }
-        }
+          gross: { $subtract: ["$moneyIn", "$moneyOut"] },
+        },
       },
       // Stage 6: Sort by gross revenue (highest first)
       {
-        $sort: { gross: -1 }
+        $sort: { gross: -1 },
       },
       // Stage 7: Apply pagination
       {
         $facet: {
-          metadata: [
-            { $count: "totalCount" }
-          ],
-          data: [
-            { $skip: skip },
-            { $limit: limit }
-          ]
-      }
-      }
+          metadata: [{ $count: "totalCount" }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
     ];
 
     console.log("🔍 API - Executing aggregation pipeline...");
-    const result = await db.collection("gaminglocations").aggregate(aggregationPipeline, {
-      allowDiskUse: true // Allow disk usage for large datasets
-    }).toArray();
+    const result = await db
+      .collection("gaminglocations")
+      .aggregate(aggregationPipeline, {
+        allowDiskUse: true, // Allow disk usage for large datasets
+      })
+      .toArray();
 
     console.log("🔍 API - Aggregation completed");
 
@@ -250,8 +259,14 @@ export async function GET(req: NextRequest) {
 
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
-    console.log("🔍 API - Pagination:", { page, limit, totalCount, totalPages, dataLength: paginatedData.length });
+
+    console.log("🔍 API - Pagination:", {
+      page,
+      limit,
+      totalCount,
+      totalPages,
+      dataLength: paginatedData.length,
+    });
     console.log("🔍 API - Request completed in", duration, "ms");
 
     return NextResponse.json({
@@ -272,4 +287,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

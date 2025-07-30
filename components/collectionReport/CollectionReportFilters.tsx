@@ -5,18 +5,7 @@ import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { gsap } from "gsap";
 import type { LocationSelectItem } from "@/lib/types/location";
-
-interface CollectionReportFiltersProps {
-  locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSearchSubmit: () => void;
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (checked: boolean) => void;
-  isSearching: boolean;
-}
+import type { CollectionReportFiltersProps } from "@/lib/types/components";
 
 export default function CollectionReportFilters({
   locations,
@@ -128,7 +117,9 @@ export default function CollectionReportFilters({
           <Checkbox
             id="uncollected-only"
             checked={showUncollectedOnly}
-            onCheckedChange={(checked) => onShowUncollectedOnlyChange(!!checked)}
+            onCheckedChange={(checked) =>
+              onShowUncollectedOnlyChange(!!checked)
+            }
             className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
           />
           <span className="text-sm font-medium whitespace-nowrap">
@@ -138,4 +129,4 @@ export default function CollectionReportFilters({
       </div>
     </div>
   );
-} 
+}

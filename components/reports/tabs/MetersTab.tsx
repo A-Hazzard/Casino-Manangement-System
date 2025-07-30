@@ -21,6 +21,7 @@ import {
   Search,
 } from "lucide-react";
 import { useReportsStore } from "@/lib/store/reportsStore";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ export default function MetersTab() {
   const [paginationLoading, setPaginationLoading] = useState(false);
 
   const { selectedDateRange } = useReportsStore();
+  const { selectedLicencee } = useDashBoardStore();
   const locationsInitialized = useRef(false);
 
   // Handle page change
@@ -80,6 +82,11 @@ export default function MetersTab() {
           search: search,
         });
 
+        // Add licensee filter if selected
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.append("licencee", selectedLicencee);
+        }
+
         const response = await axios.get<MetersReportResponse>(
           `/api/reports/meters?${params}`
         );
@@ -94,14 +101,21 @@ export default function MetersTab() {
         return [];
       }
     },
-    [selectedLocations, selectedDateRange]
+    [selectedLocations, selectedDateRange, selectedLicencee]
   );
 
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
     try {
       console.log("Fetching locations...");
-      const response = await axios.get("/api/locations");
+
+      // Build API parameters
+      const params: Record<string, string> = {};
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      const response = await axios.get("/api/locations", { params });
       console.log("Locations API response:", response.data);
 
       const locationsData = response.data.locations || [];
@@ -119,7 +133,7 @@ export default function MetersTab() {
         err.response?.data?.error || err.message || "Failed to load locations";
       toast.error(errorMessage);
     }
-  }, []);
+  }, [selectedLicencee]);
 
   // Fetch meters data
   const fetchMetersData = useCallback(
@@ -145,6 +159,11 @@ export default function MetersTab() {
           search: search,
         });
 
+        // Add licensee filter if selected
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.append("licencee", selectedLicencee);
+        }
+
         console.log("Fetching meters data with params:", {
           locations: selectedLocations.join(","),
           startDate: selectedDateRange.start.toISOString(),
@@ -152,6 +171,7 @@ export default function MetersTab() {
           page,
           limit: 10,
           search,
+          licencee: selectedLicencee,
         });
 
         const response = await axios.get<MetersReportResponse>(
@@ -176,7 +196,7 @@ export default function MetersTab() {
         setLoading(false);
       }
     },
-    [selectedLocations, selectedDateRange]
+    [selectedLocations, selectedDateRange, selectedLicencee]
   );
 
   // Handle export
@@ -401,12 +421,11 @@ export default function MetersTab() {
                 Select Locations
               </label>
               <LocationMultiSelect
-                options={locations.map((loc) => ({
+                locations={locations.map((loc) => ({
                   id: loc.id,
                   name: loc.name,
-                  sasEnabled: loc.sasEnabled,
                 }))}
-                selectedIds={selectedLocations}
+                selectedLocations={selectedLocations}
                 onSelectionChange={setSelectedLocations}
                 placeholder="Choose locations to filter..."
               />

@@ -541,7 +541,7 @@ export default function CollectionReportPage() {
         <Sidebar pathname={pathname} />
       </div>
       {/* Main content wrapper with responsive left margin */}
-      <div className="flex-1 xl:ml-36 flex flex-col overflow-hidden">
+      <div className="flex-1 xl:ml-20 flex flex-col overflow-hidden">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}

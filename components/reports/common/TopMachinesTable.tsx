@@ -3,28 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
-
-interface TopMachine {
-  locationId: string;
-  locationName: string;
-  machineId: string;
-  game: string;
-  manufacturer: string;
-  handle: number;
-  winLoss: number;
-  jackpot: number;
-  avgWagerPerGame: number;
-  actualHold: number;
-  gamesPlayed: number;
-}
-
-interface TopMachinesTableProps {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  limit?: number;
-  className?: string;
-}
+import type { TopMachinesTableProps, TopMachine } from "@/lib/types/components";
 
 export default function TopMachinesTable({
   timePeriod,
@@ -41,26 +20,27 @@ export default function TopMachinesTable({
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const params = new URLSearchParams({
           timePeriod,
           limit: limit.toString(),
           ...(licencee && { licencee }),
-          ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") }),
+          ...(locationIds &&
+            locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
         const response = await fetch(`/api/metrics/top-machines?${params}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch top machines data');
+          throw new Error("Failed to fetch top machines data");
         }
 
         const result = await response.json();
         setMachines(result.data || []);
       } catch (err) {
-        console.error('Error fetching top machines data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        console.error("Error fetching top machines data:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -70,16 +50,16 @@ export default function TopMachinesTable({
   }, [timePeriod, locationIds, licencee, limit]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
+    return new Intl.NumberFormat("en-US").format(num);
   };
 
   const formatPercentage = (value: number) => {
@@ -137,7 +117,9 @@ export default function TopMachinesTable({
         <CardContent>
           <div className="text-center text-gray-500 py-8">
             <div className="text-sm font-medium">No data available</div>
-            <div className="text-xs">No machine data for the selected time period</div>
+            <div className="text-xs">
+              No machine data for the selected time period
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -145,26 +127,42 @@ export default function TopMachinesTable({
   }
 
   // Machine Card component for mobile view
-  const MachineCard = ({ machine, index }: { machine: TopMachine; index: number }) => (
+  const MachineCard = ({
+    machine,
+    index,
+  }: {
+    machine: TopMachine;
+    index: number;
+  }) => (
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
       {/* Header with rank */}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-            index === 0 ? 'bg-yellow-500' : 
-            index === 1 ? 'bg-gray-400' : 
-            index === 2 ? 'bg-amber-600' : 'bg-gray-300'
-          }`}>
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+              index === 0
+                ? "bg-yellow-500"
+                : index === 1
+                ? "bg-gray-400"
+                : index === 2
+                ? "bg-amber-600"
+                : "bg-gray-300"
+            }`}
+          >
             {index + 1}
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-900">{machine.game}</h3>
+            <h3 className="text-sm font-medium text-gray-900">
+              {machine.game}
+            </h3>
             <p className="text-xs text-gray-500">{machine.locationName}</p>
           </div>
         </div>
         <div className="text-right">
           <div className="text-xs text-gray-500">Machine ID</div>
-          <div className="text-sm font-medium text-gray-900">{machine.machineId}</div>
+          <div className="text-sm font-medium text-gray-900">
+            {machine.machineId}
+          </div>
         </div>
       </div>
 
@@ -172,29 +170,39 @@ export default function TopMachinesTable({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Handle</p>
-          <p className="text-sm font-medium text-gray-900">{formatCurrency(machine.handle)}</p>
+          <p className="text-sm font-medium text-gray-900">
+            {formatCurrency(machine.handle ?? 0)}
+          </p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Win/Loss</p>
-          <p className={`text-sm font-medium ${machine.winLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(machine.winLoss)}
+          <p
+            className={`text-sm font-medium ${
+              (machine.winLoss ?? 0) >= 0 ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {formatCurrency(machine.winLoss ?? 0)}
           </p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Jackpot</p>
-          <p className="text-sm font-medium text-gray-900">{formatCurrency(machine.jackpot)}</p>
+          <p className="text-sm font-medium text-gray-900">
+            {formatCurrency(machine.jackpot ?? 0)}
+          </p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-gray-500">Hold %</p>
-          <p className="text-sm font-medium text-gray-900">{formatPercentage(machine.actualHold)}</p>
+          <p className="text-sm font-medium text-gray-900">
+            {formatPercentage(machine.actualHold ?? 0)}
+          </p>
         </div>
       </div>
 
       {/* Additional Info */}
       <div className="pt-2 border-t border-gray-100">
         <div className="flex justify-between text-xs text-gray-500">
-          <span>Manufacturer: {machine.manufacturer}</span>
-          <span>Avg Wag: {formatCurrency(machine.avgWagerPerGame)}</span>
+          <span>Manufacturer: {machine.manufacturer ?? "N/A"}</span>
+          <span>Avg Wag: {formatCurrency(machine.avgWagerPerGame ?? 0)}</span>
           <span>Games: {formatNumber(machine.gamesPlayed)}</span>
         </div>
       </div>
@@ -249,42 +257,55 @@ export default function TopMachinesTable({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {machines.map((machine, index) => (
-                <tr key={`${machine.locationId}-${machine.machineId}`} className="hover:bg-gray-50">
+                <tr
+                  key={`${machine.locationId ?? machine.location}-${
+                    machine.machineId ?? machine.id
+                  }`}
+                  className="hover:bg-gray-50"
+                >
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {machine.locationName}
                     </div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {machine.machineId}
+                    {machine.machineId ?? "N/A"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {machine.game}
+                    {machine.game ?? "N/A"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {machine.manufacturer}
+                    {machine.manufacturer ?? "N/A"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(machine.handle)}
+                    {formatCurrency(machine.handle ?? 0)}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`text-sm font-medium ${
-                      machine.winLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(machine.winLoss)}
+                    <span
+                      className={`text-sm font-medium ${
+                        (machine.winLoss ?? 0) >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {formatCurrency(machine.winLoss ?? 0)}
                     </span>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(machine.jackpot)}
+                    {formatCurrency(machine.jackpot ?? 0)}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(machine.avgWagerPerGame)}
+                    {formatCurrency(machine.avgWagerPerGame ?? 0)}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`text-sm font-medium ${
-                      machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatPercentage(machine.actualHold)}
+                    <span
+                      className={`text-sm font-medium ${
+                        (machine.actualHold ?? 0) >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {formatPercentage(machine.actualHold ?? 0)}
                     </span>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
@@ -299,10 +320,16 @@ export default function TopMachinesTable({
         {/* Mobile Card View */}
         <div className="lg:hidden space-y-4">
           {machines.map((machine, index) => (
-            <MachineCard key={`${machine.locationId}-${machine.machineId}`} machine={machine} index={index} />
+            <MachineCard
+              key={`${machine.locationId ?? machine.location}-${
+                machine.machineId ?? machine.id
+              }`}
+              machine={machine}
+              index={index}
+            />
           ))}
         </div>
       </CardContent>
     </Card>
   );
-} 
+}

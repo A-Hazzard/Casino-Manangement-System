@@ -422,12 +422,7 @@ export type RealTimeMetrics = {
 };
 
 // Report view types
-export type ReportView =
-  | "dashboard"
-  | "locations"
-  | "machines"
-  | "meters"
-  | "comparison";
+export type ReportView = "dashboard" | "locations" | "machines" | "meters";
 
 export type ReportTab = {
   id: ReportView;
@@ -696,82 +691,3 @@ export type TerminalCountsReport = {
 };
 
 // Comparison Reports Types
-export type ComparisonOverviewCard = {
-  title: string;
-  type: "chart" | "table" | "metric";
-  data: {
-    // For Net Win/Revenue chart
-    chartData?: {
-      labels: string[];
-      datasets: {
-        label: string;
-        data: number[];
-        backgroundColor: string;
-      }[];
-    };
-    // For comparison tables
-    tableData?: {
-      headers: string[];
-      rows: {
-        label: string;
-        reported: string;
-        collected: string;
-        variance: string;
-      }[];
-    };
-    // For metric cards
-    metricValue?: string;
-    metricSubtitle?: string;
-  };
-};
-
-export type ComparisonOverviewSection = {
-  title: string;
-  cards: ComparisonOverviewCard[];
-};
-
-export type MachinePerformance = {
-  machineId: string;
-  holdComparison: {
-    theoretical: string;
-    actual: string;
-    variance: string;
-  };
-  jackpot: {
-    metered: string;
-    actual: string;
-    variance: string;
-  };
-  netWinRevenue: {
-    value: string;
-    range: string;
-  };
-};
-
-export type MachineDropData = {
-  machineId: string;
-  bills: {
-    denomination: string;
-    count: number;
-    total: string;
-  }[];
-};
-
-export type TopPerformerData = {
-  machineId: string;
-  machineName: string;
-  locationName: string;
-  performance: {
-    today: number;
-    yesterday: number;
-    lastWeek: number;
-  };
-  trend: "up" | "down" | "stable";
-};
-
-export type ComparisonData = {
-  overview: ComparisonOverviewSection;
-  machinePerformance: MachinePerformance[];
-  machineDrop: MachineDropData[];
-  topPerformers: TopPerformerData[];
-};

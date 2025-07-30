@@ -12,8 +12,14 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
+    const licencee = searchParams.get("licencee");
 
-    console.log("Meters API Debug:", { locations, startDate, endDate });
+    console.log("Meters API Debug:", {
+      locations,
+      startDate,
+      endDate,
+      licencee,
+    });
 
     if (!locations) {
       return NextResponse.json(
@@ -34,11 +40,11 @@ export async function GET(req: NextRequest) {
     await createDatabaseIndexes();
 
     // Parse locations (comma-separated)
-    const locationList = locations.split(",").map(loc => loc.trim());
-    
+    const locationList = locations.split(",").map((loc) => loc.trim());
+
     // Parse date range - be more flexible with date handling
     let start: Date, end: Date;
-    
+
     if (startDate && endDate) {
       start = new Date(startDate);
       end = new Date(endDate);
@@ -52,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     // Build query filter for machines
     const machineMatchStage: any = {
-      deletedAt: { $in: [null, new Date(-1)] }
+      deletedAt: { $in: [null, new Date(-1)] },
     };
 
     // Add location filter if specific locations are selected
@@ -62,10 +68,14 @@ export async function GET(req: NextRequest) {
     }
 
     console.log("Location list:", locationList);
-    console.log("Machine match stage:", JSON.stringify(machineMatchStage, null, 2));
+    console.log(
+      "Machine match stage:",
+      JSON.stringify(machineMatchStage, null, 2)
+    );
 
     // Get machines data for the selected locations
-    const machinesData = await db.collection("machines")
+    let machinesData = await db
+      .collection("machines")
       .find(machineMatchStage)
       .project({
         _id: 1,
@@ -73,34 +83,61 @@ export async function GET(req: NextRequest) {
         "Custom.name": 1,
         gamingLocation: 1,
         sasMeters: 1,
-        lastActivity: 1
+        lastActivity: 1,
       })
       .sort({ lastActivity: -1 })
       .toArray();
 
+    // Filter by licensee if provided
+    if (licencee && licencee !== "all") {
+      // Get locations that match the licensee
+      const licenseeLocations = await db
+        .collection("gaminglocations")
+        .find({ "rel.licencee": licencee })
+        .project({ _id: 1 })
+        .toArray();
+
+      const licenseeLocationIds = licenseeLocations.map((loc) =>
+        loc._id.toString()
+      );
+
+      // Filter machines to only include those from licensee locations
+      machinesData = machinesData.filter((machine) =>
+        licenseeLocationIds.includes(machine.gamingLocation)
+      );
+    }
+
     console.log("Found machines:", machinesData.length);
-    
+
     // Debug: Show some sample machines to see their gamingLocation values
     if (machinesData.length === 0) {
-      const sampleMachines = await db.collection("machines")
+      const sampleMachines = await db
+        .collection("machines")
         .find({ deletedAt: { $in: [null, new Date(-1)] } })
         .project({ _id: 1, serialNumber: 1, gamingLocation: 1 })
         .limit(5)
         .toArray();
       console.log("Sample machines in database:", sampleMachines);
     }
-    
-    console.log("Sample machine data:", machinesData.slice(0, 2).map(m => ({
-      _id: m._id,
-      serialNumber: m.serialNumber,
-      gamingLocation: m.gamingLocation,
-      hasSasMeters: !!m.sasMeters
-    })));
+
+    console.log(
+      "Sample machine data:",
+      machinesData.slice(0, 2).map((m) => ({
+        _id: m._id,
+        serialNumber: m.serialNumber,
+        gamingLocation: m.gamingLocation,
+        hasSasMeters: !!m.sasMeters,
+      }))
+    );
 
     // Get all gaming locations for name resolution
-    const locationsData = await db.collection("gaminglocations").find({
-      deletedAt: { $in: [null, new Date(-1)] }
-    }).project({ _id: 1, name: 1 }).toArray();
+    const locationsData = await db
+      .collection("gaminglocations")
+      .find({
+        deletedAt: { $in: [null, new Date(-1)] },
+      })
+      .project({ _id: 1, name: 1 })
+      .toArray();
 
     console.log("Found locations:", locationsData.length);
 
@@ -111,18 +148,20 @@ export async function GET(req: NextRequest) {
     });
 
     // Get additional meter data from the meters collection for missing fields
-    const machineIds = machinesData.map((machine: any) => 
-      machine.serialNumber || machine.Custom?.name || machine._id.toString()
+    const machineIds = machinesData.map(
+      (machine: any) =>
+        machine.serialNumber || machine.Custom?.name || machine._id.toString()
     );
 
-    const metersData = await db.collection("meters")
+    const metersData = await db
+      .collection("meters")
       .find({
-        machine: { $in: machineIds }
+        machine: { $in: machineIds },
       })
       .project({
         machine: 1,
         movement: 1,
-        createdAt: 1
+        createdAt: 1,
       })
       .sort({ createdAt: -1 })
       .toArray();
@@ -140,11 +179,13 @@ export async function GET(req: NextRequest) {
 
     // Transform data for the table
     let transformedData = machinesData.map((machine: any) => {
-      const locationName = machine.gamingLocation ? 
-        locationMap.get(machine.gamingLocation.toString()) || "Unknown Location" : 
-        "Unknown Location";
+      const locationName = machine.gamingLocation
+        ? locationMap.get(machine.gamingLocation.toString()) ||
+          "Unknown Location"
+        : "Unknown Location";
 
-      const machineId = machine.serialNumber || machine.Custom?.name || machine._id.toString();
+      const machineId =
+        machine.serialNumber || machine.Custom?.name || machine._id.toString();
       const meterData = metersMap.get(machineId);
 
       return {
@@ -157,16 +198,17 @@ export async function GET(req: NextRequest) {
         attPaidCredits: meterData?.movement?.attPaidCredits || 0,
         gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
         location: locationName,
-        createdAt: machine.lastActivity
+        createdAt: machine.lastActivity,
       };
     });
 
     // Apply search filter if provided
     if (search) {
       const searchLower = search.toLowerCase();
-      transformedData = transformedData.filter(item =>
-        item.machineId.toLowerCase().includes(searchLower) ||
-        item.location.toLowerCase().includes(searchLower)
+      transformedData = transformedData.filter(
+        (item) =>
+          item.machineId.toLowerCase().includes(searchLower) ||
+          item.location.toLowerCase().includes(searchLower)
       );
     }
 
@@ -174,12 +216,19 @@ export async function GET(req: NextRequest) {
     const totalCount = transformedData.length;
     const totalPages = Math.ceil(totalCount / limit);
     const skip = (page - 1) * limit;
-    
+
     // Apply pagination
     const paginatedData = transformedData.slice(skip, skip + limit);
 
     console.log("Transformed data count:", transformedData.length);
-    console.log("Pagination:", { page, limit, totalCount, totalPages, skip, paginatedDataLength: paginatedData.length });
+    console.log("Pagination:", {
+      page,
+      limit,
+      totalCount,
+      totalPages,
+      skip,
+      paginatedDataLength: paginatedData.length,
+    });
 
     return NextResponse.json({
       data: paginatedData,
@@ -195,10 +244,9 @@ export async function GET(req: NextRequest) {
         totalCount,
         totalPages,
         hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+        hasPrevPage: page > 1,
+      },
     });
-
   } catch (err) {
     console.error("Error in meters report route:", err);
     return NextResponse.json(
@@ -206,4 +254,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

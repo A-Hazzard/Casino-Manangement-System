@@ -1,12 +1,11 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import type { LocationPaginationSkeletonProps } from "@/lib/types/components";
 
-interface LocationPaginationSkeletonProps {
-  count?: number;
-}
-
-export default function LocationPaginationSkeleton({ count = 10 }: LocationPaginationSkeletonProps) {
+export default function LocationPaginationSkeleton({
+  count = 10,
+}: LocationPaginationSkeletonProps) {
   return (
     <div className="space-y-4">
       {Array.from({ length: count }).map((_, index) => (
@@ -18,7 +17,7 @@ export default function LocationPaginationSkeleton({ count = 10 }: LocationPagin
                 <div className="h-4 bg-gray-200 rounded w-32"></div>
                 <div className="h-6 bg-gray-200 rounded w-16"></div>
               </div>
-              
+
               {/* Metrics */}
               <div className="flex items-center space-x-6">
                 <div className="text-center">
@@ -39,7 +38,7 @@ export default function LocationPaginationSkeleton({ count = 10 }: LocationPagin
                 </div>
               </div>
             </div>
-            
+
             {/* Progress bar */}
             <div className="mt-4">
               <div className="h-2 bg-gray-200 rounded-full"></div>
@@ -49,4 +48,4 @@ export default function LocationPaginationSkeleton({ count = 10 }: LocationPagin
       ))}
     </div>
   );
-} 
+}

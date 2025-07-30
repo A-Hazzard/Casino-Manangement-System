@@ -31,6 +31,8 @@ import {
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import type { NewMovementModalProps } from "@/lib/types/components";
+import type { MachineMovementRecord } from "@/lib/types/reports";
 
 // Sample data
 const sampleMachines = [
@@ -38,19 +40,32 @@ const sampleMachines = [
     id: "MAC001",
     name: "Lucky Stars Deluxe",
     currentLocation: "Main Casino Floor",
+    currentLocationId: "LOC001",
   },
   {
     id: "MAC002",
     name: "Diamond Rush Pro",
     currentLocation: "VIP Gaming Area",
+    currentLocationId: "LOC002",
   },
   {
     id: "MAC003",
     name: "Golden Jackpot",
     currentLocation: "Sports Bar Gaming",
+    currentLocationId: "LOC003",
   },
-  { id: "MAC004", name: "Mega Fortune", currentLocation: "Main Casino Floor" },
-  { id: "MAC005", name: "Royal Flush", currentLocation: "Hotel Gaming Lounge" },
+  {
+    id: "MAC004",
+    name: "Mega Fortune",
+    currentLocation: "Main Casino Floor",
+    currentLocationId: "LOC001",
+  },
+  {
+    id: "MAC005",
+    name: "Royal Flush",
+    currentLocation: "Hotel Gaming Lounge",
+    currentLocationId: "LOC004",
+  },
 ];
 
 const sampleLocations = [
@@ -72,30 +87,10 @@ const movementReasons = [
   "Other",
 ];
 
-interface NewMovementModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onMovementCreated?: (movement: {
-    id: string;
-    machineId: string;
-    machineName: string;
-    fromLocationName: string | null;
-    toLocationName: string;
-    moveDate: string;
-    reason: string;
-    status: "pending";
-    notes: string;
-    cost?: number;
-    priority: string;
-    createdAt: string;
-    updatedAt: string;
-  }) => void;
-}
-
 export default function NewMovementModal({
-  open,
-  onOpenChange,
-  onMovementCreated,
+  isOpen,
+  onClose,
+  onSubmit,
 }: NewMovementModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -139,31 +134,33 @@ export default function NewMovementModal({
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const newMovement = {
+      const newMovement: MachineMovementRecord = {
         id: `MOV${Date.now()}`,
         machineId: formData.machineId,
         machineName: selectedMachine?.name || "",
+        fromLocationId: selectedMachine?.currentLocationId || null,
         fromLocationName: selectedMachine?.currentLocation || null,
+        toLocationId: formData.toLocationId,
         toLocationName: selectedToLocation?.name || "",
         moveDate: format(formData.moveDate, "yyyy-MM-dd"),
         reason: formData.reason,
-        status: "pending" as const,
+        status: "pending",
         notes: formData.notes,
+        movedBy: "current-user", // This should come from auth context
         cost: formData.estimatedCost
           ? parseFloat(formData.estimatedCost)
           : undefined,
-        priority: formData.priority,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       // Call the callback to update parent component
-      if (onMovementCreated) {
-        onMovementCreated(newMovement);
+      if (onSubmit) {
+        onSubmit(newMovement);
       }
 
       toast.success("Movement request created successfully!");
-      onOpenChange(false);
+      onClose();
 
       // Reset form
       setFormData({
@@ -187,12 +184,12 @@ export default function NewMovementModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      onOpenChange(false);
+      onClose();
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Movement Request</DialogTitle>

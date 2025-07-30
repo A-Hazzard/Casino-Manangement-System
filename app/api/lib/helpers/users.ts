@@ -5,12 +5,12 @@ import type { ResourcePermissions } from "@/lib/types/administration";
 import { logActivity } from "./activityLogger";
 import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
-
-type CurrentUser = {
-  _id: string;
-  emailAddress: string;
-  roles: string[];
-}
+import type {
+  CurrentUser,
+  UserDocument,
+  UserDocumentWithPassword,
+  OriginalUserType,
+} from "../types/users";
 
 /**
  * Finds a user by email address (case-insensitive).
@@ -25,71 +25,6 @@ export async function getUserByEmail(
     emailAddress: { $regex: new RegExp(`^${emailAddress}$`, "i") },
   });
 }
-
-type UserDocument = {
-  _id: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    gender?: string;
-  };
-  username: string;
-  emailAddress: string;
-  isEnabled: boolean;
-  roles: string[];
-  profilePicture?: string | null;
-};
-
-type UserDocumentWithPassword = UserDocument & {
-  password?: string;
-  permissions?: string[];
-  resourcePermissions?: {
-    [key: string]: {
-      entity: string;
-      resources: string[];
-    };
-  };
-  toObject: (_options?: Record<string, unknown>) => {
-    _id: string;
-    emailAddress: string;
-    isEnabled: boolean;
-    roles: string[];
-    permissions?: string[];
-    resourcePermissions?: {
-      [key: string]: {
-        entity: string;
-        resources: string[];
-      };
-    };
-    [key: string]: unknown;
-  };
-};
-
-type OriginalUserType = {
-  _id: string;
-  username: string;
-  emailAddress: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    middleName?: string;
-    otherName?: string;
-    gender?: string;
-    address?: {
-      street?: string;
-      town?: string;
-      region?: string;
-      country?: string;
-      postalCode?: string;
-    };
-    identification?: {
-      dateOfBirth?: string;
-      idType?: string;
-      idNumber?: string;
-      notes?: string;
-    };
-  };
-};
 
 /**
  * Formats user data for frontend consumption
@@ -234,13 +169,17 @@ export async function updateUser(
   const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
     await logActivity(
-      { id: currentUser._id, email: currentUser.emailAddress, role: currentUser.roles[0] || 'user' },
+      {
+        id: currentUser._id,
+        email: currentUser.emailAddress,
+        role: currentUser.roles[0] || "user",
+      },
       "update",
       "user",
       { id: _id, name: updatedUser.username || "" },
       changes,
-      `Updated user profile for "${updatedUser.username || 'user'}"`,
-      clientIP || undefined,
+      `Updated user profile for "${updatedUser.username || "user"}"`,
+      clientIP || undefined
     );
   }
 

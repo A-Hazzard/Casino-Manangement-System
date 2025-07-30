@@ -14,16 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UploadIcon, CameraIcon } from "@radix-ui/react-icons";
-
-export interface SMIBFirmwareModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onUploadComplete: () => void;
-}
+import type { SMIBFirmwareModalProps } from "@/lib/types/components";
 
 export default function SMIBFirmwareModal({
   isOpen,
   onClose,
+  cabinetId,
+  currentFirmware,
   onUploadComplete,
 }: SMIBFirmwareModalProps) {
   const [product, setProduct] = useState("");
@@ -100,7 +97,7 @@ export default function SMIBFirmwareModal({
       }
 
       // Success
-      onUploadComplete();
+      onUploadComplete?.();
       handleModalClose();
     } catch (error) {
       // Log error for debugging in development

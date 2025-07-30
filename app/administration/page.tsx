@@ -50,9 +50,18 @@ import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 export default function AdministrationPage() {
   const pathname = usePathname();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+  // Initialize selectedLicencee if not set
+  useEffect(() => {
+    if (!selectedLicencee) {
+      setSelectedLicencee("");
+    }
+  }, [selectedLicencee, setSelectedLicencee]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
@@ -120,7 +129,7 @@ export default function AdministrationPage() {
     const loadUsers = async () => {
       setIsLoading(true);
       try {
-        const usersData = await fetchUsers();
+        const usersData = await fetchUsers(selectedLicencee);
         setAllUsers(usersData);
       } catch (error) {
         console.error("Failed to fetch users:", error);
@@ -128,13 +137,13 @@ export default function AdministrationPage() {
       setIsLoading(false);
     };
     loadUsers();
-  }, []);
+  }, [selectedLicencee]);
 
   useEffect(() => {
     const loadLicensees = async () => {
       setIsLicenseesLoading(true);
       try {
-        const licenseesData = await fetchLicensees();
+        const licenseesData = await fetchLicensees(selectedLicencee);
         setAllLicensees(licenseesData);
       } catch (error) {
         console.error("Failed to fetch licensees:", error);
@@ -143,7 +152,7 @@ export default function AdministrationPage() {
       setIsLicenseesLoading(false);
     };
     loadLicensees();
-  }, []);
+  }, [selectedLicencee]);
 
   const processedUsers = useMemo(() => {
     return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
@@ -194,8 +203,8 @@ export default function AdministrationPage() {
       await updateUser({ ...updated, _id: selectedUser._id });
       setIsRolesModalOpen(false);
       setSelectedUser(null);
-      // Refresh users
-      const usersData = await fetchUsers();
+      // Refresh users with licensee filter
+      const usersData = await fetchUsers(selectedLicencee);
       setAllUsers(usersData);
       toast.success("User updated successfully");
     } catch {

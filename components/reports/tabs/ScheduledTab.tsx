@@ -440,10 +440,25 @@ export default function ScheduledTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="scheduled" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
-          <TabsTrigger value="history">Execution History</TabsTrigger>
-          <TabsTrigger value="gaming-day">Gaming Day Config</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+          <TabsTrigger
+            value="scheduled"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Scheduled Reports
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Execution History
+          </TabsTrigger>
+          <TabsTrigger
+            value="gaming-day"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Gaming Day Config
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scheduled" className="space-y-4">

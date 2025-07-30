@@ -59,14 +59,16 @@ export default function LocationDetailsPage() {
     setMetricsLoading(true);
     fetchLocationDetails(slug).then((location) => {
       if (location) setLocationInfo(location);
-      fetchCabinets(slug, activeMetricsFilter).then((cabinets) => {
-        setCabinets(cabinets);
-        setFilteredCabinets(cabinets);
-        setSelectedCabinet(cabinets[0] || null);
-        setMetricsLoading(false);
-      });
+      fetchCabinets(slug, activeMetricsFilter, selectedLicencee).then(
+        (cabinets) => {
+          setCabinets(cabinets);
+          setFilteredCabinets(cabinets);
+          setSelectedCabinet(cabinets[0] || null);
+          setMetricsLoading(false);
+        }
+      );
     });
-  }, [slug, activeMetricsFilter]);
+  }, [slug, activeMetricsFilter, selectedLicencee]);
 
   // Add refresh function
   const handleRefresh = async () => {
@@ -75,7 +77,11 @@ export default function LocationDetailsPage() {
     try {
       const location = await fetchLocationDetails(slug);
       if (location) setLocationInfo(location);
-      const cabinets = await fetchCabinets(slug, activeMetricsFilter);
+      const cabinets = await fetchCabinets(
+        slug,
+        activeMetricsFilter,
+        selectedLicencee
+      );
       setCabinets(cabinets);
       setFilteredCabinets(cabinets);
       setSelectedCabinet(cabinets[0] || null);

@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     // Get licencee from query params
     const { searchParams } = new URL(request.url);
     const licencee = searchParams.get("licencee");
+    const licensee = searchParams.get("licensee"); // Also check for "licensee" parameter
 
     // Define the type for matchStage
     type MatchStage = Record<string, unknown>;
@@ -19,9 +20,10 @@ export async function GET(request: NextRequest) {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
-    // Add licencee filter if provided
-    if (licencee) {
-      matchStage["rel.licencee"] = licencee; // Use bracket notation for nested field
+    // Add licencee filter if provided (check both parameter names)
+    const finalLicencee = licencee || licensee;
+    if (finalLicencee) {
+      matchStage["rel.licencee"] = finalLicencee; // Use bracket notation for nested field
     }
 
     // Aggregate locations with their country names

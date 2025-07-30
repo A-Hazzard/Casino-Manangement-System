@@ -286,11 +286,31 @@ export default function CustomersTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="demographics">Demographics</TabsTrigger>
-          <TabsTrigger value="loyalty">Loyalty Tiers</TabsTrigger>
-          <TabsTrigger value="behavior">Behavior</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+          <TabsTrigger
+            value="overview"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="demographics"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Demographics
+          </TabsTrigger>
+          <TabsTrigger
+            value="loyalty"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Loyalty Tiers
+          </TabsTrigger>
+          <TabsTrigger
+            value="behavior"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Behavior
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

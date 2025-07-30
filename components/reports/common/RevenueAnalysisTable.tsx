@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,17 +22,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { AggregatedLocation } from "@/lib/types/location";
-
-interface RevenueAnalysisTableProps {
-  locations: AggregatedLocation[];
-  loading?: boolean;
-  error?: string | null;
-  currentPage?: number;
-  totalPages?: number;
-  totalCount?: number;
-  onPageChange?: (page: number) => void;
-  onLocationClick?: (_locationId: string) => void;
-}
+import type { RevenueAnalysisTableProps } from "@/lib/types/components";
 
 export default function RevenueAnalysisTable({
   locations,
@@ -54,7 +41,7 @@ export default function RevenueAnalysisTable({
   // Filter locations based on search term
   const filteredLocations = useMemo(() => {
     if (!searchTerm.trim()) return locations;
-    
+
     return locations.filter((location) =>
       location.locationName.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -65,17 +52,17 @@ export default function RevenueAnalysisTable({
     return [...filteredLocations].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
-      
+
       if (typeof aValue === "number" && typeof bValue === "number") {
         return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
-      
+
       if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc" 
+        return sortDirection === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       return 0;
     });
   }, [filteredLocations, sortField, sortDirection]);
@@ -96,7 +83,13 @@ export default function RevenueAnalysisTable({
     }
   };
 
-  const SortButton = ({ field, children }: { field: keyof AggregatedLocation; children: React.ReactNode }) => (
+  const SortButton = ({
+    field,
+    children,
+  }: {
+    field: keyof AggregatedLocation;
+    children: React.ReactNode;
+  }) => (
     <Button
       variant="ghost"
       onClick={() => handleSort(field)}
@@ -111,11 +104,16 @@ export default function RevenueAnalysisTable({
   const TableSkeleton = () => (
     <div className="animate-pulse">
       <div className="p-4">
-        <div className="text-sm text-gray-500 mb-4">Loading location data...</div>
+        <div className="text-sm text-gray-500 mb-4">
+          Loading location data...
+        </div>
       </div>
       <div className="space-y-3">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg bg-gray-50">
+          <div
+            key={i}
+            className="flex items-center space-x-4 p-4 border rounded-lg bg-gray-50"
+          >
             <div className="flex-1 space-y-2">
               <div className="h-4 bg-gray-300 rounded w-1/4"></div>
               <div className="h-3 bg-gray-300 rounded w-1/6"></div>
@@ -135,10 +133,15 @@ export default function RevenueAnalysisTable({
   const CardSkeleton = () => (
     <div className="animate-pulse space-y-4">
       <div className="p-4">
-        <div className="text-sm text-gray-500 mb-4">Loading location data...</div>
+        <div className="text-sm text-gray-500 mb-4">
+          Loading location data...
+        </div>
       </div>
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+        <div
+          key={i}
+          className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+        >
           <div className="flex justify-between items-start">
             <div className="space-y-2 flex-1">
               <div className="h-5 bg-gray-300 rounded w-3/4"></div>
@@ -164,11 +167,11 @@ export default function RevenueAnalysisTable({
   // Card component for mobile view
   const LocationCard = ({ location }: { location: AggregatedLocation }) => {
     return (
-      <div 
+      <div
         className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow ${
-          onLocationClick ? 'cursor-pointer' : ''
+          onLocationClick ? "cursor-pointer" : ""
         }`}
-        onClick={() => onLocationClick?.(location.location)}
+        onClick={() => onLocationClick?.(location)}
       >
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -211,7 +214,13 @@ export default function RevenueAnalysisTable({
         <div className="pt-2 border-t border-gray-100">
           <div className="flex justify-between text-xs text-gray-500">
             <span>Online: {location.onlineMachines}</span>
-            <span>Hold: {location.moneyIn > 0 ? ((location.gross / location.moneyIn) * 100).toFixed(1) : 0}%</span>
+            <span>
+              Hold:{" "}
+              {location.moneyIn > 0
+                ? ((location.gross / location.moneyIn) * 100).toFixed(1)
+                : 0}
+              %
+            </span>
           </div>
         </div>
       </div>
@@ -272,9 +281,7 @@ export default function RevenueAnalysisTable({
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-semibold">
-                    <SortButton field="locationName">
-                      Location Name
-                    </SortButton>
+                    <SortButton field="locationName">Location Name</SortButton>
                   </TableHead>
                   <TableHead className="font-semibold text-center">
                     <SortButton field="totalMachines">
@@ -282,27 +289,26 @@ export default function RevenueAnalysisTable({
                     </SortButton>
                   </TableHead>
                   <TableHead className="font-semibold text-right">
-                    <SortButton field="moneyIn">
-                      Drop
-                    </SortButton>
+                    <SortButton field="moneyIn">Drop</SortButton>
                   </TableHead>
                   <TableHead className="font-semibold text-right">
-                    <SortButton field="moneyOut">
-                      Cancelled Credits
-                    </SortButton>
+                    <SortButton field="moneyOut">Cancelled Credits</SortButton>
                   </TableHead>
                   <TableHead className="font-semibold text-right">
-                    <SortButton field="gross">
-                      Gross Revenue
-                    </SortButton>
+                    <SortButton field="gross">Gross Revenue</SortButton>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedLocations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      {searchTerm ? "No locations found matching your search" : "No locations available"}
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      {searchTerm
+                        ? "No locations found matching your search"
+                        : "No locations available"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -310,7 +316,7 @@ export default function RevenueAnalysisTable({
                     <TableRow
                       key={location.locationName}
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => onLocationClick?.(location.location)}
+                      onClick={() => onLocationClick?.(location)}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -344,7 +350,9 @@ export default function RevenueAnalysisTable({
         <div className="lg:hidden space-y-4">
           {paginatedLocations.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              {searchTerm ? "No locations found matching your search" : "No locations available"}
+              {searchTerm
+                ? "No locations found matching your search"
+                : "No locations available"}
             </div>
           ) : (
             paginatedLocations.map((location) => (
@@ -358,8 +366,9 @@ export default function RevenueAnalysisTable({
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600 text-center sm:text-left">
-                Showing {((currentPage - 1) * 10) + 1} to{" "}
-                {Math.min(currentPage * 10, totalCount)} of {totalCount} locations
+                Showing {(currentPage - 1) * 10 + 1} to{" "}
+                {Math.min(currentPage * 10, totalCount)} of {totalCount}{" "}
+                locations
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -398,7 +407,9 @@ export default function RevenueAnalysisTable({
                           {currentPage}
                         </Button>
                       )}
-                      {currentPage < totalPages - 2 && <span className="px-2">...</span>}
+                      {currentPage < totalPages - 2 && (
+                        <span className="px-2">...</span>
+                      )}
                       {currentPage < totalPages - 2 && (
                         <Button
                           variant="outline"
@@ -438,25 +449,37 @@ export default function RevenueAnalysisTable({
               <div>
                 <div className="text-gray-600">Total Machines</div>
                 <div className="font-semibold">
-                  {filteredLocations.reduce((sum, loc) => sum + loc.totalMachines, 0)}
+                  {filteredLocations.reduce(
+                    (sum, loc) => sum + loc.totalMachines,
+                    0
+                  )}
                 </div>
               </div>
               <div>
                 <div className="text-gray-600">Total Drop</div>
                 <div className="font-semibold">
-                  ${filteredLocations.reduce((sum, loc) => sum + loc.moneyIn, 0).toLocaleString()}
+                  $
+                  {filteredLocations
+                    .reduce((sum, loc) => sum + loc.moneyIn, 0)
+                    .toLocaleString()}
                 </div>
               </div>
               <div>
                 <div className="text-gray-600">Total Cancelled Credits</div>
                 <div className="font-semibold">
-                  ${filteredLocations.reduce((sum, loc) => sum + loc.moneyOut, 0).toLocaleString()}
+                  $
+                  {filteredLocations
+                    .reduce((sum, loc) => sum + loc.moneyOut, 0)
+                    .toLocaleString()}
                 </div>
               </div>
               <div>
                 <div className="text-gray-600">Total Gross Revenue</div>
                 <div className="font-semibold text-green-600">
-                  ${filteredLocations.reduce((sum, loc) => sum + loc.gross, 0).toLocaleString()}
+                  $
+                  {filteredLocations
+                    .reduce((sum, loc) => sum + loc.gross, 0)
+                    .toLocaleString()}
                 </div>
               </div>
             </div>
@@ -465,4 +488,4 @@ export default function RevenueAnalysisTable({
       </CardContent>
     </Card>
   );
-} 
+}

@@ -16,8 +16,11 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get("locationId");
-    const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "Today";
+    const timePeriod =
+      (searchParams.get("timePeriod") as TimePeriod) || "Today";
     const licencee = searchParams.get("licencee");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
     if (!locationId) {
       return NextResponse.json(
@@ -26,8 +29,19 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get date range
-    const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
+    // Get date range - handle both timePeriod and startDate/endDate parameters
+    let startDate: Date, endDate: Date;
+
+    if (startDateParam && endDateParam) {
+      // Use provided startDate and endDate
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+    } else {
+      // Use timePeriod to calculate date range
+      const dateRange = getDatesForTimePeriod(timePeriod);
+      startDate = dateRange.startDate;
+      endDate = dateRange.endDate;
+    }
 
     // Build aggregation pipeline for top performing machines
     const pipeline = [
@@ -35,8 +49,8 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           location: locationId,
-          readAt: { $gte: startDate, $lte: endDate }
-        }
+          readAt: { $gte: startDate, $lte: endDate },
+        },
       },
       // Lookup machine details
       {
@@ -44,11 +58,11 @@ export async function GET(req: NextRequest) {
           from: "machines",
           localField: "machine",
           foreignField: "_id",
-          as: "machineDetails"
-        }
+          as: "machineDetails",
+        },
       },
       {
-        $unwind: "$machineDetails"
+        $unwind: "$machineDetails",
       },
       // Lookup location details
       {
@@ -56,18 +70,22 @@ export async function GET(req: NextRequest) {
           from: "gaminglocations",
           localField: "location",
           foreignField: "_id",
-          as: "locationDetails"
-        }
+          as: "locationDetails",
+        },
       },
       {
-        $unwind: "$locationDetails"
+        $unwind: "$locationDetails",
       },
       // Filter by licencee if provided
-      ...(licencee ? [{
-        $match: {
-          "locationDetails.rel.licencee": licencee
-        }
-      }] : []),
+      ...(licencee
+        ? [
+            {
+              $match: {
+                "locationDetails.rel.licencee": licencee,
+              },
+            },
+          ]
+        : []),
       // Group by machine
       {
         $group: {
@@ -78,14 +96,16 @@ export async function GET(req: NextRequest) {
             $sum: {
               $subtract: [
                 { $ifNull: ["$movement.drop", 0] },
-                { $ifNull: ["$movement.totalCancelledCredits", 0] }
-              ]
-            }
+                { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              ],
+            },
           },
           drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
-          cancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
-          gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } }
-        }
+          cancelledCredits: {
+            $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+          },
+          gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+        },
       },
       // Calculate hold percentage
       {
@@ -94,18 +114,18 @@ export async function GET(req: NextRequest) {
             $cond: [
               { $gt: ["$drop", 0] },
               { $multiply: [{ $divide: ["$revenue", "$drop"] }, 100] },
-              0
-            ]
-          }
-        }
+              0,
+            ],
+          },
+        },
       },
       // Sort by revenue (descending)
       {
-        $sort: { revenue: -1 }
+        $sort: { revenue: -1 },
       },
       // Limit to top 1
       {
-        $limit: 1
+        $limit: 1,
       },
       // Project final format
       {
@@ -116,26 +136,28 @@ export async function GET(req: NextRequest) {
             $cond: [
               { $ne: ["$machineName", null] },
               "$machineName",
-              { $concat: ["Machine ", "$serialNumber"] }
-            ]
+              { $concat: ["Machine ", "$serialNumber"] },
+            ],
           },
           revenue: "$revenue",
           holdPercentage: { $round: ["$holdPercentage", 1] },
           drop: "$drop",
           cancelledCredits: "$cancelledCredits",
-          gamesPlayed: "$gamesPlayed"
-        }
-      }
+          gamesPlayed: "$gamesPlayed",
+        },
+      },
     ];
 
-    const topPerformers = await db.collection("meters").aggregate(pipeline).toArray();
+    const topPerformers = await db
+      .collection("meters")
+      .aggregate(pipeline)
+      .toArray();
 
     return NextResponse.json({
       locationId,
       timePeriod,
-      topPerformer: topPerformers[0] || null
+      topPerformer: topPerformers[0] || null,
     });
-
   } catch (error) {
     console.error("Error fetching top performers:", error);
     return NextResponse.json(
@@ -143,4 +165,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

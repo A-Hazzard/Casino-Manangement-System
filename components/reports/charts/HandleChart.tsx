@@ -12,18 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
-
-interface HandleChartData {
-  time: string;
-  handle: number;
-}
-
-interface HandleChartProps {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-}
+import type { HandleChartProps, HandleChartData } from "@/lib/types/components";
 
 export default function HandleChart({
   timePeriod,
@@ -39,25 +28,26 @@ export default function HandleChart({
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const params = new URLSearchParams({
           timePeriod,
           ...(licencee && { licencee }),
-          ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") }),
+          ...(locationIds &&
+            locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
         const response = await fetch(`/api/analytics/handle-trends?${params}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch handle data');
+          throw new Error("Failed to fetch handle data");
         }
 
         const result = await response.json();
         setData(result.data || []);
       } catch (err) {
-        console.error('Error fetching handle data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        console.error("Error fetching handle data:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -67,9 +57,9 @@ export default function HandleChart({
   }, [timePeriod, locationIds, licencee]);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
@@ -78,12 +68,17 @@ export default function HandleChart({
   const formatTime = (time: string) => {
     if (timePeriod === "Today" || timePeriod === "Yesterday") {
       // Format as hour (e.g., "14:00" -> "2 PM")
-      const hour = parseInt(time.split(':')[0]);
-      return `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}`;
+      const hour = parseInt(time.split(":")[0]);
+      return `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour} ${
+        hour >= 12 ? "PM" : "AM"
+      }`;
     } else {
       // Format as date (e.g., "2024-01-15" -> "Jan 15")
       const date = new Date(time);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
     }
   };
 
@@ -137,7 +132,9 @@ export default function HandleChart({
           <div className="h-64 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-sm font-medium">No data available</div>
-              <div className="text-xs">No handle data for the selected time period</div>
+              <div className="text-xs">
+                No handle data for the selected time period
+              </div>
             </div>
           </div>
         </CardContent>
@@ -146,7 +143,7 @@ export default function HandleChart({
   }
 
   const totalHandle = data.reduce((sum, item) => sum + item.handle, 0);
-  const maxHandle = Math.max(...data.map(item => item.handle));
+  const maxHandle = Math.max(...data.map((item) => item.handle));
 
   return (
     <Card className={className}>
@@ -156,7 +153,8 @@ export default function HandleChart({
           Handle Trends
         </CardTitle>
         <div className="text-sm text-gray-600">
-          Total: {formatCurrency(totalHandle)} | Peak: {formatCurrency(maxHandle)}
+          Total: {formatCurrency(totalHandle)} | Peak:{" "}
+          {formatCurrency(maxHandle)}
         </div>
       </CardHeader>
       <CardContent>
@@ -167,24 +165,24 @@ export default function HandleChart({
               <XAxis
                 dataKey="time"
                 tickFormatter={formatTime}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: "#6b7280" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={formatCurrency}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: "#6b7280" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                formatter={(value: number) => [formatCurrency(value), 'Handle']}
+                formatter={(value: number) => [formatCurrency(value), "Handle"]}
                 labelFormatter={formatTime}
                 contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
               <Line
@@ -192,8 +190,8 @@ export default function HandleChart({
                 dataKey="handle"
                 stroke="#3b82f6"
                 strokeWidth={3}
-                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -201,4 +199,4 @@ export default function HandleChart({
       </CardContent>
     </Card>
   );
-} 
+}

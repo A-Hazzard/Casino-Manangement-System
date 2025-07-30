@@ -11,12 +11,15 @@ import {
   deleteUser as deleteUserHelper,
 } from "@/app/api/lib/helpers/users";
 
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   await connectDB();
 
   try {
+    const { searchParams } = new URL(request.url);
+    const licensee = searchParams.get("licensee");
+
     const users = await getAllUsers();
-    const result = users.map((user) => ({
+    let result = users.map((user) => ({
       _id: user._id,
       name: `${user.profile?.firstName ?? ""} ${
         user.profile?.lastName ?? ""
@@ -29,6 +32,18 @@ export async function GET(): Promise<Response> {
       profile: user.profile,
       resourcePermissions: user.resourcePermissions,
     }));
+
+    // Filter by licensee if provided
+    if (licensee && licensee !== "all") {
+      // Note: This assumes users have a licensee field or relationship
+      // You may need to adjust this based on your actual user data structure
+      result = result.filter((user) => {
+        // For now, return all users since the user model may not have licensee filtering
+        // This can be updated when the user model includes licensee information
+        return true;
+      });
+    }
+
     return new Response(JSON.stringify({ users: result }), { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);

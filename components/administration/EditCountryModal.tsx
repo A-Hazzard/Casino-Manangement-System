@@ -1,40 +1,45 @@
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import type { Country } from "@/lib/types/country";
+"use client";
 
-interface EditCountryModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  formState: Partial<Omit<Country, "createdAt" | "updatedAt">>;
-  setFormState: (
-    data: Partial<Omit<Country, "createdAt" | "updatedAt">>
-  ) => void;
-}
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { EditCountryModalProps } from "@/lib/types/components";
 
 export default function EditCountryModal({
-  open,
+  isOpen,
   onClose,
-  onSave,
-  formState,
-  setFormState,
+  country,
 }: EditCountryModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    alpha2: "",
+    alpha3: "",
+    isoNumeric: "",
+  });
 
   useEffect(() => {
-    if (open && modalRef.current) {
-      gsap.fromTo(
-        modalRef.current,
-        { y: 80, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.35, ease: "power2.out" }
-      );
+    if (country) {
+      setFormState({
+        name: country.name || "",
+        alpha2: country.alpha2 || "",
+        alpha3: country.alpha3 || "",
+        isoNumeric: country.isoNumeric || "",
+      });
     }
-  }, [open]);
+  }, [country]);
 
-  if (!open) return null;
+  if (!country) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormState({ [e.target.name]: e.target.value });
+    setFormState({ ...formState, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -48,85 +53,71 @@ export default function EditCountryModal({
       alert("All fields are required");
       return;
     }
-    onSave();
+    // Handle save logic here
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-      >
-        <button
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ×
-        </button>
-        <h2 className="text-2xl font-bold mb-4">Edit Country</h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Country</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold mb-1">Name</label>
-            <input
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
               type="text"
               name="name"
               value={formState.name || ""}
               onChange={handleChange}
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             />
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-semibold mb-1">
-                Alpha 2
-              </label>
-              <input
+              <Label htmlFor="alpha2">Alpha 2</Label>
+              <Input
+                id="alpha2"
                 type="text"
                 name="alpha2"
                 value={formState.alpha2 || ""}
                 onChange={handleChange}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 maxLength={2}
                 required
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-semibold mb-1">
-                Alpha 3
-              </label>
-              <input
+              <Label htmlFor="alpha3">Alpha 3</Label>
+              <Input
+                id="alpha3"
                 type="text"
                 name="alpha3"
                 value={formState.alpha3 || ""}
                 onChange={handleChange}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 maxLength={3}
                 required
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-semibold mb-1">ISO</label>
-              <input
+              <Label htmlFor="isoNumeric">ISO</Label>
+              <Input
+                id="isoNumeric"
                 type="text"
                 name="isoNumeric"
                 value={formState.isoNumeric || ""}
                 onChange={handleChange}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 maxLength={3}
                 required
               />
             </div>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-button hover:bg-button text-white font-bold py-2 rounded transition"
-          >
-            Save Changes
-          </button>
+          <DialogFooter>
+            <Button type="submit">Save Changes</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

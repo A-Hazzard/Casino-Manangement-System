@@ -200,11 +200,26 @@ export default function VouchersTab() {
           `${((location.redeemed / location.issued) * 100).toFixed(1)}%`,
         ]),
         summary: [
-          { label: "Total Vouchers Issued", value: metrics.totalVouchersIssued.toLocaleString() },
-          { label: "Total Vouchers Redeemed", value: metrics.totalVouchersRedeemed.toLocaleString() },
-          { label: "Total Value", value: `$${metrics.totalVoucherValue.toLocaleString()}` },
-          { label: "Redemption Rate", value: `${metrics.redemptionRate.toFixed(1)}%` },
-          { label: "Avg. Voucher Value", value: `$${metrics.averageVoucherValue.toFixed(2)}` },
+          {
+            label: "Total Vouchers Issued",
+            value: metrics.totalVouchersIssued.toLocaleString(),
+          },
+          {
+            label: "Total Vouchers Redeemed",
+            value: metrics.totalVouchersRedeemed.toLocaleString(),
+          },
+          {
+            label: "Total Value",
+            value: `$${metrics.totalVoucherValue.toLocaleString()}`,
+          },
+          {
+            label: "Redemption Rate",
+            value: `${metrics.redemptionRate.toFixed(1)}%`,
+          },
+          {
+            label: "Avg. Voucher Value",
+            value: `$${metrics.averageVoucherValue.toFixed(2)}`,
+          },
         ],
         metadata: {
           generatedBy: "Evolution1 CMS - Vouchers Export",
@@ -436,11 +451,31 @@ export default function VouchersTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="locations">By Location</TabsTrigger>
-          <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-          <TabsTrigger value="fraud">Fraud Detection</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+          <TabsTrigger
+            value="overview"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="locations"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            By Location
+          </TabsTrigger>
+          <TabsTrigger
+            value="activity"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Recent Activity
+          </TabsTrigger>
+          <TabsTrigger
+            value="fraud"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Fraud Detection
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

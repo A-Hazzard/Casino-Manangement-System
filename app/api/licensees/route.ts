@@ -8,12 +8,24 @@ import {
   deleteLicensee as deleteLicenseeHelper,
 } from "@/app/api/lib/helpers/licensees";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await connectDB();
 
   try {
+    const { searchParams } = new URL(request.url);
+    const licenseeFilter = searchParams.get("licensee");
+
     const licensees = await getAllLicensees();
-    const formattedLicensees = formatLicenseesForResponse(licensees);
+    let formattedLicensees = formatLicenseesForResponse(licensees);
+
+    // Filter by licensee if provided
+    if (licenseeFilter && licenseeFilter !== "all") {
+      formattedLicensees = formattedLicensees.filter((licensee) => {
+        const licenseeId = (licensee as any)._id;
+        const licenseeName = (licensee as any).name;
+        return licenseeId === licenseeFilter || licenseeName === licenseeFilter;
+      });
+    }
 
     return new Response(JSON.stringify({ licensees: formattedLicensees }), {
       status: 200,

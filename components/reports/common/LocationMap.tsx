@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import getAllGamingLocations from "@/lib/helpers/locations";
+import type { LocationMapProps } from "@/lib/types/components";
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -26,28 +27,30 @@ const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
 
-interface LocationData {
-  locationId: string;
-  locationName: string;
-  coordinates?: { lat: number; lng: number };
-  metrics: {
-    grossRevenue: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    actualHoldPercentage: number;
+type LocationData = {
+  _id: string;
+  name: string;
+  address: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
-  onlineMachines: number;
-  totalMachines: number;
-  performance: "excellent" | "good" | "average" | "poor";
-  sasEnabled: boolean;
-}
-
-interface LocationMapProps {
-  locations?: LocationData[];
-  selectedLocations?: string[];
-  onLocationSelect: (locationId: string) => void;
-  compact?: boolean;
-}
+  geoCoords?: {
+    lat: number;
+    lng: number;
+  };
+  metrics?: {
+    totalMachines: number;
+    onlineMachines: number;
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  };
+  sasEnabled?: boolean;
+  isLocalServer?: boolean;
+  hasSmib?: boolean;
+};
 
 // Helper function to get the valid longitude (checks both "longitude" and "longtitude")
 const getValidLongitude = (geo: {
@@ -67,9 +70,7 @@ const getValidLongitude = (geo: {
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (location: any, locationAggregates: any[]) => {
   // Try to find matching data in locationAggregates
-  const stats = locationAggregates.find(
-    (d) => d.location === location._id
-  );
+  const stats = locationAggregates.find((d) => d.location === location._id);
 
   return {
     moneyIn: stats?.moneyIn ?? 0,
@@ -105,7 +106,8 @@ export default function LocationMap({
   const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
   const [gamingLocations, setGamingLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { selectedLicencee, activeMetricsFilter, customDateRange } = useDashBoardStore();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -132,38 +134,48 @@ export default function LocationMap({
       try {
         // Build query parameters based on current filters
         const params = new URLSearchParams();
-        
+
         // Add time period based on activeMetricsFilter
-        if (activeMetricsFilter === 'Today') {
-          params.append('timePeriod', 'Today');
-        } else if (activeMetricsFilter === 'Yesterday') {
-          params.append('timePeriod', 'Yesterday');
-        } else if (activeMetricsFilter === 'last7days' || activeMetricsFilter === '7d') {
-          params.append('timePeriod', '7d');
-        } else if (activeMetricsFilter === 'last30days' || activeMetricsFilter === '30d') {
-          params.append('timePeriod', '30d');
-        } else if (activeMetricsFilter === 'Custom' && customDateRange) {
+        if (activeMetricsFilter === "Today") {
+          params.append("timePeriod", "Today");
+        } else if (activeMetricsFilter === "Yesterday") {
+          params.append("timePeriod", "Yesterday");
+        } else if (
+          activeMetricsFilter === "last7days" ||
+          activeMetricsFilter === "7d"
+        ) {
+          params.append("timePeriod", "7d");
+        } else if (
+          activeMetricsFilter === "last30days" ||
+          activeMetricsFilter === "30d"
+        ) {
+          params.append("timePeriod", "30d");
+        } else if (activeMetricsFilter === "Custom" && customDateRange) {
           // For custom range, use the date range directly
           if (customDateRange.startDate && customDateRange.endDate) {
-            params.append('startDate', customDateRange.startDate.toISOString());
-            params.append('endDate', customDateRange.endDate.toISOString());
+            params.append("startDate", customDateRange.startDate.toISOString());
+            params.append("endDate", customDateRange.endDate.toISOString());
           } else {
-            params.append('timePeriod', 'Today');
+            params.append("timePeriod", "Today");
           }
         } else {
-          params.append('timePeriod', 'Today');
+          params.append("timePeriod", "Today");
         }
 
         // Add licensee filter if selected
         if (selectedLicencee) {
-          params.append('licencee', selectedLicencee);
+          params.append("licencee", selectedLicencee);
         }
 
         // Fetch location aggregation data
-        const aggRes = await fetch(`/api/locationAggregation?${params.toString()}`);
+        const aggRes = await fetch(
+          `/api/locationAggregation?${params.toString()}`
+        );
         const aggData = await aggRes.json();
         // Handle both old array format and new paginated format
-        const locationData = Array.isArray(aggData) ? aggData : (aggData.data || []);
+        const locationData = Array.isArray(aggData)
+          ? aggData
+          : aggData.data || [];
         setLocationAggregates(locationData);
 
         // Fetch gaming locations
@@ -181,30 +193,31 @@ export default function LocationMap({
   }, [selectedLicencee, activeMetricsFilter, customDateRange]);
 
   // Filter valid locations with coordinates
-  const validLocations = gamingLocations.filter(location => {
+  const validLocations = gamingLocations.filter((location) => {
     if (!location.geoCoords) {
       return false;
     }
-    
+
     const validLongitude = getValidLongitude(location.geoCoords);
-    const hasValidCoords = location.geoCoords.latitude !== 0 && 
-                          validLongitude !== undefined && 
-                          validLongitude !== 0;
-    
+    const hasValidCoords =
+      location.geoCoords.latitude !== 0 &&
+      validLongitude !== undefined &&
+      validLongitude !== 0;
+
     return hasValidCoords;
   });
 
   // Search functionality
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
 
-    const filtered = validLocations.filter(location => {
+    const filtered = validLocations.filter((location) => {
       const locationName = location.name || location.locationName || "";
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -219,7 +232,7 @@ export default function LocationMap({
 
     const lat = location.geoCoords.latitude;
     const lon = getValidLongitude(location.geoCoords);
-    
+
     if (lat && lon) {
       mapRef.current.setView([lat, lon], 15);
       setSearchQuery(location.name || location.locationName || "");
@@ -276,15 +289,13 @@ export default function LocationMap({
     const stats = getLocationStats(locationObj, locationAggregates);
     const performance = getPerformanceLabel(stats.gross);
     const performanceColor = getPerformanceColor(stats.gross);
-    
+
     return (
       <Marker key={key} position={[lat, lon]}>
         <Popup>
           <div className="min-w-[280px] p-2">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-lg">
-                {label}
-              </h3>
+              <h3 className="font-bold text-lg">{label}</h3>
               <Badge
                 variant={
                   performance === "excellent"
@@ -316,7 +327,10 @@ export default function LocationMap({
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-blue-600" />
                   <span className="font-medium">
-                    {stats.moneyIn > 0 ? ((stats.gross / stats.moneyIn) * 100).toFixed(1) : "0.0"}%
+                    {stats.moneyIn > 0
+                      ? ((stats.gross / stats.moneyIn) * 100).toFixed(1)
+                      : "0.0"}
+                    %
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -328,9 +342,7 @@ export default function LocationMap({
                 <div className="font-medium text-yellow-600">
                   ${stats.moneyIn.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Money In
-                </div>
+                <div className="text-xs text-muted-foreground">Money In</div>
               </div>
 
               <div className="space-y-2">
@@ -349,7 +361,9 @@ export default function LocationMap({
                   {stats.totalMachines > 0 ? "Active Location" : "No Machines"}
                 </span>
                 <button
-                  onClick={() => window.location.assign(`/locations/${locationObj._id}`)}
+                  onClick={() =>
+                    window.location.assign(`/locations/${locationObj._id}`)
+                  }
                   className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
                 >
                   View Details
@@ -380,7 +394,8 @@ export default function LocationMap({
           />
 
           {validLocations.map((location) => {
-            const locationName = location.name || location.locationName || "Unknown Location";
+            const locationName =
+              location.name || location.locationName || "Unknown Location";
             return renderMarker(
               location.geoCoords.latitude,
               location.geoCoords,
@@ -426,7 +441,10 @@ export default function LocationMap({
               <div className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {searchResults.length > 0 ? (
                   searchResults.map((location) => {
-                    const locationName = location.name || location.locationName || "Unknown Location";
+                    const locationName =
+                      location.name ||
+                      location.locationName ||
+                      "Unknown Location";
                     return (
                       <button
                         key={location._id}
@@ -448,20 +466,21 @@ export default function LocationMap({
           </div>
           {/* Map */}
           <div className="flex-1">
-          <MapContainer
-            center={mapCenter}
-            zoom={6}
-            scrollWheelZoom={true}
+            <MapContainer
+              center={mapCenter}
+              zoom={6}
+              scrollWheelZoom={true}
               style={{ height: "24rem", width: "100%" }}
               ref={handleMapCreated}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              className="grayscale"
-            />
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                className="grayscale"
+              />
               {validLocations.map((location) => {
-                const locationName = location.name || location.locationName || "Unknown Location";
+                const locationName =
+                  location.name || location.locationName || "Unknown Location";
                 return renderMarker(
                   location.geoCoords.latitude,
                   location.geoCoords,
@@ -470,24 +489,24 @@ export default function LocationMap({
                   location
                 );
               })}
-          </MapContainer>
-        {/* Map Legend */}
-        <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span>Excellent Performance</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span>Good Performance</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span>Average Performance</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span>Poor Performance</span>
+            </MapContainer>
+            {/* Map Legend */}
+            <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span>Excellent Performance</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Good Performance</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span>Average Performance</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>Poor Performance</span>
               </div>
             </div>
           </div>

@@ -313,10 +313,25 @@ export default function ComplianceTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="audits">Recent Audits</TabsTrigger>
-          <TabsTrigger value="deadlines">Deadlines</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+          <TabsTrigger
+            value="overview"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="audits"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Recent Audits
+          </TabsTrigger>
+          <TabsTrigger
+            value="deadlines"
+            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+          >
+            Deadlines
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

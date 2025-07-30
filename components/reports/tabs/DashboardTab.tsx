@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useReportsStore } from "@/lib/store/reportsStore";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,13 +177,19 @@ export default function DashboardTab() {
     selectedDateRange,
   } = useReportsStore();
 
+  const { selectedLicencee } = useDashBoardStore();
+
   const [timePeriod, setTimePeriod] = useState("last7days");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle location selection from map
-  const handleLocationSelect = (locationId: string) => {
-    console.log("Selected location:", locationId);
+  const handleLocationSelect = (locationIds: string[]) => {
+    console.log("Selected locations:", locationIds);
     // Here you could navigate to location details or show more info
+    // For now, just handle the first selected location if any
+    if (locationIds.length > 0) {
+      console.log("Primary selected location:", locationIds[0]);
+    }
   };
 
   useEffect(() => {
@@ -369,7 +376,20 @@ export default function DashboardTab() {
           <CardContent>
             <div className="h-64 rounded-lg overflow-hidden border">
               <LocationMap
-                locations={dashboardLocations}
+                locations={dashboardLocations.map((location) => ({
+                  id: location.locationId,
+                  name: location.locationName,
+                  coordinates: location.coordinates,
+                  performance:
+                    location.performance === "excellent"
+                      ? 95
+                      : location.performance === "good"
+                      ? 80
+                      : location.performance === "average"
+                      ? 65
+                      : 50,
+                  revenue: location.metrics.grossRevenue,
+                }))}
                 onLocationSelect={handleLocationSelect}
                 compact={true}
               />

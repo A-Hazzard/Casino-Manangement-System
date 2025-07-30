@@ -210,15 +210,23 @@ function DashboardContent() {
             disabled={loadingChartData || refreshing}
           />
 
-          <div className="flex flex-col xl:hidden items-center justify-center w-full max-w-full">
-            <Image src={dashboardIcon} alt="Dashboard" width={24} height={24} />
-            <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left w-full max-w-full">
-              Dashboard
-            </h1>
-          </div>
-          {/* Date Filter Controls */}
-          <div className="mt-2">
-            <DashboardDateFilters disabled={loadingChartData || refreshing} />
+          {/* Mobile-only dashboard title and date filters */}
+          <div className="xl:hidden">
+            <div className="flex flex-col items-center justify-center w-full max-w-full mb-4">
+              <Image
+                src={dashboardIcon}
+                alt="Dashboard"
+                width={24}
+                height={24}
+              />
+              <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left w-full max-w-full">
+                Dashboard
+              </h1>
+            </div>
+            {/* Date Filter Controls for mobile */}
+            <div className="mt-2">
+              <DashboardDateFilters disabled={loadingChartData || refreshing} />
+            </div>
           </div>
 
           {/* Main dashboard layouts */}

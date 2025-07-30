@@ -37,17 +37,20 @@ export async function fetchCollectorSchedules(
 /**
  * Fetches collector schedules with filtering options
  */
-export async function fetchCollectorSchedulesWithFilters(options: {
-  licencee?: string;
-  location?: string;
-  collector?: string;
-  status?: string;
-  startDate?: string;
-  endDate?: string;
-} = {}): Promise<CollectorSchedule[]> {
+export async function fetchCollectorSchedulesWithFilters(
+  options: {
+    licencee?: string;
+    location?: string;
+    collector?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}
+): Promise<CollectorSchedule[]> {
   try {
-    const { licencee, location, collector, status, startDate, endDate } = options;
-    
+    const { licencee, location, collector, status, startDate, endDate } =
+      options;
+
     const baseUrl = "/api/schedulers";
     const params = new URLSearchParams();
 
@@ -93,9 +96,13 @@ export async function fetchAndFormatCollectorSchedules(
       status,
     });
 
-    // Extract unique collectors from the data
+    // Extract unique collectors from the data, filtering out undefined values
     const uniqueCollectors = Array.from(
-      new Set(data.map((schedule) => schedule.collector))
+      new Set(
+        data
+          .map((schedule) => schedule.collector)
+          .filter((collector): collector is string => collector !== undefined)
+      )
     ).sort();
 
     return {
@@ -109,4 +116,4 @@ export async function fetchAndFormatCollectorSchedules(
       collectors: [],
     };
   }
-} 
+}

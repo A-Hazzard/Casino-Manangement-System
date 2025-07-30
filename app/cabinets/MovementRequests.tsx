@@ -13,6 +13,7 @@ import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { useMovementRequestActionsStore } from "@/lib/store/movementRequestActionsStore";
 import EditMovementRequestModal from "@/components/ui/movements/EditMovementRequestModal";
 import DeleteMovementRequestModal from "@/components/ui/movements/DeleteMovementRequestModal";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -21,6 +22,8 @@ export default function MovementRequests({
 }: {
   locations: { _id: string; name: string }[];
 }) {
+  const { selectedLicencee } = useDashBoardStore();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
@@ -34,7 +37,7 @@ export default function MovementRequests({
   // Fetch all locations and build a map for lookups
   useEffect(() => {
     async function loadLocationsMap() {
-      const allLocations = await fetchAllGamingLocations();
+      const allLocations = await fetchAllGamingLocations(selectedLicencee);
       const map: { [id: string]: string } = {};
       allLocations.forEach((loc) => {
         map[loc.id] = loc.name;
@@ -42,19 +45,19 @@ export default function MovementRequests({
       setLocationsMap(map);
     }
     loadLocationsMap();
-  }, []);
+  }, [selectedLicencee]);
 
   const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchMovementRequests();
+      const data = await fetchMovementRequests(selectedLicencee);
       setRequests(data);
     } catch {
       setRequests([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedLicencee]);
 
   useEffect(() => {
     loadRequests();

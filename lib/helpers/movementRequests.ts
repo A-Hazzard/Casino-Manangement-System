@@ -3,10 +3,18 @@ import { MovementRequest } from "@/lib/types/movementRequests";
 
 /**
  * Fetch all movement requests from the API.
+ * @param licensee - (Optional) Licensee filter for movement requests.
  * @returns Promise<MovementRequest[]>
  */
-export async function fetchMovementRequests(): Promise<MovementRequest[]> {
-  const res = await axios.get("/api/movement-requests");
+export async function fetchMovementRequests(
+  licensee?: string
+): Promise<MovementRequest[]> {
+  const params: Record<string, string> = {};
+  if (licensee && licensee !== "all") {
+    params.licensee = licensee;
+  }
+
+  const res = await axios.get("/api/movement-requests", { params });
   return res.data;
 }
 

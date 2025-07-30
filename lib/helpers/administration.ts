@@ -7,10 +7,16 @@ import type {
 
 /**
  * Fetches a list of users with full profile data.
+ * @param licensee - (Optional) Licensee filter for users.
  * @returns A promise that resolves to an array of User objects with complete profile information.
  */
-export const fetchUsers = async (): Promise<User[]> => {
-  const response = await axios.get("/api/users");
+export const fetchUsers = async (licensee?: string): Promise<User[]> => {
+  const params: Record<string, string> = {};
+  if (licensee && licensee !== "all") {
+    params.licensee = licensee;
+  }
+
+  const response = await axios.get("/api/users", { params });
   return response.data.users;
 };
 

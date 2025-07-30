@@ -5,7 +5,9 @@ import { TimePeriod } from "@/app/api/lib/types";
 
 function getPreviousPeriod(startDate: Date, endDate: Date, days: number) {
   const prevEnd = new Date(startDate.getTime() - 1);
-  const prevStart = new Date(prevEnd.getTime() - (days * 24 * 60 * 60 * 1000) + 1);
+  const prevStart = new Date(
+    prevEnd.getTime() - days * 24 * 60 * 60 * 1000 + 1
+  );
   return { prevStart, prevEnd };
 }
 
@@ -22,8 +24,11 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get("locationId");
-    const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "Today";
+    const timePeriod =
+      (searchParams.get("timePeriod") as TimePeriod) || "Today";
     const licencee = searchParams.get("licencee");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
     if (!locationId) {
       return NextResponse.json(
@@ -32,16 +37,27 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get date range
-    const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
+    // Get date range - handle both timePeriod and startDate/endDate parameters
+    let startDate: Date, endDate: Date;
+
+    if (startDateParam && endDateParam) {
+      // Use provided startDate and endDate
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+    } else {
+      // Use timePeriod to calculate date range
+      const dateRange = getDatesForTimePeriod(timePeriod);
+      startDate = dateRange.startDate;
+      endDate = dateRange.endDate;
+    }
 
     // 1. Fetch current period revenue (actual total for this period)
     const currentPipeline = [
       {
         $match: {
           location: locationId,
-          readAt: { $gte: startDate, $lte: endDate }
-        }
+          readAt: { $gte: startDate, $lte: endDate },
+        },
       },
       {
         $group: {
@@ -50,14 +66,17 @@ export async function GET(req: NextRequest) {
             $sum: {
               $subtract: [
                 { $ifNull: ["$movement.drop", 0] },
-                { $ifNull: ["$movement.totalCancelledCredits", 0] }
-              ]
-            }
-          }
-        }
-      }
+                { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              ],
+            },
+          },
+        },
+      },
     ];
-    const currentResult = await db.collection("meters").aggregate(currentPipeline).toArray();
+    const currentResult = await db
+      .collection("meters")
+      .aggregate(currentPipeline)
+      .toArray();
     const currentPeriodRevenue = currentResult[0]?.totalRevenue || 0;
 
     // 2. Fetch previous period average daily revenue (previous 7 days, not including current)
@@ -67,28 +86,34 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           location: locationId,
-          readAt: { $gte: prevStart, $lte: prevEnd }
-        }
+          readAt: { $gte: prevStart, $lte: prevEnd },
+        },
       },
       {
         $group: {
           _id: {
-            day: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } }
+            day: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } },
           },
           dailyRevenue: {
             $sum: {
               $subtract: [
                 { $ifNull: ["$movement.drop", 0] },
-                { $ifNull: ["$movement.totalCancelledCredits", 0] }
-              ]
-            }
-          }
-        }
-      }
+                { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              ],
+            },
+          },
+        },
+      },
     ];
-    const prevResult = await db.collection("meters").aggregate(prevPipeline).toArray();
+    const prevResult = await db
+      .collection("meters")
+      .aggregate(prevPipeline)
+      .toArray();
     const prevDays = prevResult.length;
-    const prevTotal = prevResult.reduce((sum, d) => sum + (d.dailyRevenue || 0), 0);
+    const prevTotal = prevResult.reduce(
+      (sum, d) => sum + (d.dailyRevenue || 0),
+      0
+    );
     const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;
 
     // 3. Build hourly trend for chart (as before)
@@ -96,16 +121,16 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           location: locationId,
-          readAt: { $gte: startDate, $lte: endDate }
-        }
+          readAt: { $gte: startDate, $lte: endDate },
+        },
       },
       {
         $lookup: {
           from: "machines",
           localField: "machine",
           foreignField: "_id",
-          as: "machineDetails"
-        }
+          as: "machineDetails",
+        },
       },
       { $unwind: "$machineDetails" },
       {
@@ -113,28 +138,32 @@ export async function GET(req: NextRequest) {
           from: "gaminglocations",
           localField: "location",
           foreignField: "_id",
-          as: "locationDetails"
-        }
+          as: "locationDetails",
+        },
       },
       { $unwind: "$locationDetails" },
-      ...(licencee ? [{ $match: { "locationDetails.rel.licencee": licencee } }] : []),
+      ...(licencee
+        ? [{ $match: { "locationDetails.rel.licencee": licencee } }]
+        : []),
       {
         $group: {
           _id: {
             hour: { $hour: "$readAt" },
-            day: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } }
+            day: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } },
           },
           revenue: {
             $sum: {
               $subtract: [
                 { $ifNull: ["$movement.drop", 0] },
-                { $ifNull: ["$movement.totalCancelledCredits", 0] }
-              ]
-            }
+                { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              ],
+            },
           },
           drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
-          cancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
-        }
+          cancelledCredits: {
+            $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+          },
+        },
       },
       { $sort: { "_id.day": 1, "_id.hour": 1 } },
       {
@@ -144,17 +173,21 @@ export async function GET(req: NextRequest) {
           day: "$_id.day",
           revenue: "$revenue",
           drop: "$drop",
-          cancelledCredits: "$cancelledCredits"
-        }
-      }
+          cancelledCredits: "$cancelledCredits",
+        },
+      },
     ];
-    const hourlyData = await db.collection("meters").aggregate(pipeline).toArray();
+    const hourlyData = await db
+      .collection("meters")
+      .aggregate(pipeline)
+      .toArray();
     const hourSums: Record<number, { total: number; count: number }> = {};
     for (let i = 0; i < 24; i++) {
       hourSums[i] = { total: 0, count: 0 };
     }
     for (const item of hourlyData) {
-      const hour = typeof item.hour === 'number' ? item.hour : parseInt(item.hour, 10);
+      const hour =
+        typeof item.hour === "number" ? item.hour : parseInt(item.hour, 10);
       if (hour >= 0 && hour < 24) {
         hourSums[hour].total += item.revenue;
         hourSums[hour].count += 1;
@@ -165,8 +198,8 @@ export async function GET(req: NextRequest) {
       const count = hourSums[hour].count;
       const avgRevenue = count > 0 ? sum / count : 0;
       return {
-        hour: `${hour.toString().padStart(2, '0')}:00`,
-        revenue: Math.round(avgRevenue)
+        hour: `${hour.toString().padStart(2, "0")}:00`,
+        revenue: Math.round(avgRevenue),
       };
     });
 
@@ -177,10 +210,11 @@ export async function GET(req: NextRequest) {
       currentPeriodRevenue,
       previousPeriodAverage,
       totalRevenue: hourlyTrends.reduce((sum, item) => sum + item.revenue, 0),
-      peakRevenue: Math.max(...hourlyTrends.map(item => item.revenue)),
-      avgRevenue: Math.round(hourlyTrends.reduce((sum, item) => sum + item.revenue, 0) / 24)
+      peakRevenue: Math.max(...hourlyTrends.map((item) => item.revenue)),
+      avgRevenue: Math.round(
+        hourlyTrends.reduce((sum, item) => sum + item.revenue, 0) / 24
+      ),
     });
-
   } catch (error) {
     console.error("Error fetching hourly trends:", error);
     return NextResponse.json(
@@ -188,4 +222,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

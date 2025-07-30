@@ -1,8 +1,15 @@
 import axios from "axios";
 import type { Licensee } from "@/lib/types/licensee";
 
-export const fetchLicensees = async (): Promise<Licensee[]> => {
-  const response = await axios.get("/api/licensees");
+export const fetchLicensees = async (
+  licensee?: string
+): Promise<Licensee[]> => {
+  const params: Record<string, string> = {};
+  if (licensee && licensee !== "all") {
+    params.licensee = licensee;
+  }
+
+  const response = await axios.get("/api/licensees", { params });
   return response.data.licensees;
 };
 

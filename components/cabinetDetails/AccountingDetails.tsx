@@ -14,7 +14,7 @@ import { ActivityLogTable } from "./ActivityLogTable";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
 import type { MachineEvent } from "@/lib/types/api";
 import type { BillValidatorData } from "@/lib/types/machines";
-import type { MachineDoc } from "@/lib/types/components";
+import type { MachineDocument } from "@/shared/types";
 
 // Export the component as both default and named export
 export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
@@ -28,7 +28,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   >([]);
   const [activityLog, setActivityLog] = useState<MachineEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [machine, setMachine] = useState<MachineDoc | null>(null);
+  const [machine, setMachine] = useState<MachineDocument | null>(null);
 
   useEffect(() => {
     async function loadData() {

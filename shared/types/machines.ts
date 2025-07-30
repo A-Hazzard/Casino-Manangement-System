@@ -120,6 +120,68 @@ export type MachineExportData = {
   };
 };
 
+// Machine evaluation types
+export type MachineEvaluation = {
+  machineId: string;
+  machineName: string;
+  locationName: string;
+  manufacturer: string;
+  gameTitle: string;
+  evaluationMetrics: {
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+  };
+  performanceRating: "excellent" | "good" | "average" | "poor";
+  contributionPercentage: number;
+  theoreticalRtp: number;
+  actualRtp: number;
+  rtpVariance: number;
+  lastEvaluationDate: string;
+};
+
+export type MachineEvaluationSummary = {
+  totalMachines: number;
+  contributingMachines: number;
+  contributionPercentage: number;
+  summary: string;
+  topContributors: MachineEvaluation[];
+  manufacturers: {
+    name: string;
+    machines: number;
+    contribution: number;
+    performance: number;
+  }[];
+  games: {
+    name: string;
+    machines: number;
+    contribution: number;
+    performance: number;
+  }[];
+};
+
+export type MachineEvaluationChartData = {
+  category: string;
+  primary: number;
+  secondary: number;
+  primaryLabel: string;
+  secondaryLabel: string;
+};
+
+export type MachineEvaluationFilters = {
+  manufacturer?: string;
+  gameType?: string;
+  performanceRating?: string;
+  contributionThreshold?: number;
+  dateRange?: {
+    startDate: Date;
+    endDate: Date;
+  };
+};
+
 // Machine performance metrics
 export type MachinePerformanceMetrics = {
   totalRevenue: number;
@@ -151,23 +213,33 @@ export type MachineAnalyticsQuery = {
 export type MachineStatus = "online" | "offline" | "maintenance" | "error";
 
 // Machine type categories
-export type MachineType = "slot" | "roulette" | "blackjack" | "poker" | "bingo" | "other";
+export type MachineType =
+  | "slot"
+  | "roulette"
+  | "blackjack"
+  | "poker"
+  | "bingo"
+  | "other";
 
 // Machine manufacturer types
-export type MachineManufacturer = 
-  | "IGT" 
-  | "Scientific Games" 
-  | "NetEnt" 
-  | "Microgaming" 
-  | "Playtech" 
-  | "Aristocrat" 
-  | "Bally" 
-  | "WMS" 
-  | "Konami" 
+export type MachineManufacturer =
+  | "IGT"
+  | "Scientific Games"
+  | "NetEnt"
+  | "Microgaming"
+  | "Playtech"
+  | "Aristocrat"
+  | "Bally"
+  | "WMS"
+  | "Konami"
   | "Other";
 
 // Machine performance rating
-export type MachinePerformanceRating = "excellent" | "good" | "average" | "poor";
+export type MachinePerformanceRating =
+  | "excellent"
+  | "good"
+  | "average"
+  | "poor";
 
 // Machine hold analysis
 export type MachineHoldAnalysis = {
@@ -179,4 +251,4 @@ export type MachineHoldAnalysis = {
   performanceRating: MachinePerformanceRating;
   revenueImpact: number;
   recommendations: string[];
-}; 
+};

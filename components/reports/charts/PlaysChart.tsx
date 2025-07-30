@@ -12,18 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Play } from "lucide-react";
-
-interface PlaysChartData {
-  time: string;
-  gamesPlayed: number;
-}
-
-interface PlaysChartProps {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-}
+import type { PlaysChartProps, PlaysChartData } from "@/lib/types/components";
 
 export default function PlaysChart({
   timePeriod,
@@ -39,25 +28,26 @@ export default function PlaysChart({
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const params = new URLSearchParams({
           timePeriod,
           ...(licencee && { licencee }),
-          ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") }),
+          ...(locationIds &&
+            locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
         const response = await fetch(`/api/analytics/plays-trends?${params}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch plays data');
+          throw new Error("Failed to fetch plays data");
         }
 
         const result = await response.json();
         setData(result.data || []);
       } catch (err) {
-        console.error('Error fetching plays data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        console.error("Error fetching plays data:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -67,18 +57,23 @@ export default function PlaysChart({
   }, [timePeriod, locationIds, licencee]);
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat("en-US").format(value);
   };
 
   const formatTime = (time: string) => {
     if (timePeriod === "Today" || timePeriod === "Yesterday") {
       // Format as hour (e.g., "14:00" -> "2 PM")
-      const hour = parseInt(time.split(':')[0]);
-      return `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}`;
+      const hour = parseInt(time.split(":")[0]);
+      return `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour} ${
+        hour >= 12 ? "PM" : "AM"
+      }`;
     } else {
       // Format as date (e.g., "2024-01-15" -> "Jan 15")
       const date = new Date(time);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
     }
   };
 
@@ -132,7 +127,9 @@ export default function PlaysChart({
           <div className="h-64 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-sm font-medium">No data available</div>
-              <div className="text-xs">No games played data for the selected time period</div>
+              <div className="text-xs">
+                No games played data for the selected time period
+              </div>
             </div>
           </div>
         </CardContent>
@@ -141,7 +138,7 @@ export default function PlaysChart({
   }
 
   const totalGames = data.reduce((sum, item) => sum + item.gamesPlayed, 0);
-  const maxGames = Math.max(...data.map(item => item.gamesPlayed));
+  const maxGames = Math.max(...data.map((item) => item.gamesPlayed));
 
   return (
     <Card className={className}>
@@ -162,24 +159,27 @@ export default function PlaysChart({
               <XAxis
                 dataKey="time"
                 tickFormatter={formatTime}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: "#6b7280" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={formatNumber}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: "#6b7280" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                formatter={(value: number) => [formatNumber(value), 'Games Played']}
+                formatter={(value: number) => [
+                  formatNumber(value),
+                  "Games Played",
+                ]}
                 labelFormatter={formatTime}
                 contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
               <Line
@@ -187,8 +187,8 @@ export default function PlaysChart({
                 dataKey="gamesPlayed"
                 stroke="#8b5cf6"
                 strokeWidth={3}
-                dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2 }}
+                dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "#8b5cf6", strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -196,4 +196,4 @@ export default function PlaysChart({
       </CardContent>
     </Card>
   );
-} 
+}

@@ -8,17 +8,32 @@ export async function GET(req: NextRequest) {
   const startTime = Date.now();
   try {
     const { searchParams } = new URL(req.url);
-    const type = searchParams.get('type'); // 'overview', 'stats', 'all', 'offline'
-    const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "Today";
+    const type = searchParams.get("type"); // 'overview', 'stats', 'all', 'offline'
+    const timePeriod =
+      (searchParams.get("timePeriod") as TimePeriod) || "Today";
     const licencee = searchParams.get("licencee") || undefined;
-    
+    const onlineStatus = searchParams.get("onlineStatus") || "all"; // New parameter for online/offline filtering
+
     // Pagination parameters for overview
     const page = parseInt(searchParams.get("page") || "1");
     const requestedLimit = parseInt(searchParams.get("limit") || "10");
     const limit = Math.min(requestedLimit, 10);
     const skip = (page - 1) * limit;
-    
-    console.log("🔍 Machines API - Type:", type, "Requested limit:", requestedLimit, "Actual limit:", limit, "Page:", page, "Skip:", skip);
+
+    console.log(
+      "🔍 Machines API - Type:",
+      type,
+      "Online Status:",
+      onlineStatus,
+      "Requested limit:",
+      requestedLimit,
+      "Actual limit:",
+      limit,
+      "Page:",
+      page,
+      "Skip:",
+      skip
+    );
 
     let startDate: Date, endDate: Date;
 
@@ -43,6 +58,7 @@ export async function GET(req: NextRequest) {
     console.log("🔍 Machines API - startDate:", startDate.toISOString());
     console.log("🔍 Machines API - endDate:", endDate.toISOString());
     console.log("🔍 Machines API - licencee:", licencee);
+    console.log("🔍 Machines API - onlineStatus:", onlineStatus);
 
     const db = await connectDB();
     if (!db) {
@@ -68,8 +84,24 @@ export async function GET(req: NextRequest) {
     // Add date filter
     machineMatchStage.lastActivity = {
       $gte: startDate,
-      $lte: endDate
+      $lte: endDate,
     };
+
+    // Add online status filter
+    if (onlineStatus !== "all") {
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+      if (onlineStatus === "online") {
+        machineMatchStage.lastActivity = {
+          ...machineMatchStage.lastActivity,
+          $gte: threeMinutesAgo,
+        };
+      } else if (onlineStatus === "offline") {
+        machineMatchStage.$or = [
+          { lastActivity: { $lt: threeMinutesAgo } },
+          { lastActivity: { $exists: false } },
+        ];
+      }
+    }
 
     // Add search filter if specified
     const searchTerm = searchParams.get("search");
@@ -78,24 +110,35 @@ export async function GET(req: NextRequest) {
         { serialNumber: { $regex: searchTerm, $options: "i" } },
         { game: { $regex: searchTerm, $options: "i" } },
         { manuf: { $regex: searchTerm, $options: "i" } },
-        { "Custom.name": { $regex: searchTerm, $options: "i" } }
+        { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
     }
 
     // Route to appropriate handler based on type
     switch (type) {
-      case 'stats':
+      case "stats":
         return await getMachineStats(db, machineMatchStage);
-      case 'overview':
-        return await getOverviewMachines(db, machineMatchStage, page, limit, skip);
-      case 'all':
+      case "overview":
+        return await getOverviewMachines(
+          db,
+          machineMatchStage,
+          page,
+          limit,
+          skip
+        );
+      case "all":
         return await getAllMachines(db, searchParams, startDate, endDate);
-      case 'offline':
+      case "offline":
         return await getOfflineMachines(db, searchParams, startDate, endDate);
       default:
-        return await getOverviewMachines(db, machineMatchStage, page, limit, skip);
+        return await getOverviewMachines(
+          db,
+          machineMatchStage,
+          page,
+          limit,
+          skip
+        );
     }
-
   } catch (err) {
     console.error("Error in reports machines route:", err);
     return NextResponse.json(
@@ -108,63 +151,82 @@ export async function GET(req: NextRequest) {
 // Separate function for online machines count
 const getOnlineMachinesCount = async (db: any, machineMatchStage: any) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-  
+
   const onlineCount = await db.collection("machines").countDocuments({
     ...machineMatchStage,
-    lastActivity: { $gte: threeMinutesAgo }
+    lastActivity: { $gte: threeMinutesAgo },
   });
-  
+
   return onlineCount;
 };
 
 // Stats endpoint - returns total counts and financial totals
 const getMachineStats = async (db: any, machineMatchStage: any) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-  
+
   // Count ALL machines in the system (regardless of date filter)
   const totalCount = await db.collection("machines").countDocuments({
-    deletedAt: { $in: [null, new Date(-1)] }
+    deletedAt: { $in: [null, new Date(-1)] },
   });
-  
+
   // Count online machines (regardless of date filter)
   const onlineCount = await db.collection("machines").countDocuments({
     deletedAt: { $in: [null, new Date(-1)] },
-    lastActivity: { $gte: threeMinutesAgo }
+    lastActivity: { $gte: threeMinutesAgo },
   });
 
   // Calculate financial totals from machines within the date filter
-  const financialTotals = await db.collection("machines")
+  const financialTotals = await db
+    .collection("machines")
     .aggregate([
       { $match: machineMatchStage },
       {
         $group: {
           _id: null,
-          totalGross: { $sum: { $subtract: ["$sasMeters.drop", "$sasMeters.totalCancelledCredits"] } },
+          totalGross: {
+            $sum: {
+              $subtract: [
+                "$sasMeters.drop",
+                "$sasMeters.totalCancelledCredits",
+              ],
+            },
+          },
           totalDrop: { $sum: "$sasMeters.drop" },
-          totalCancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" }
-        }
-      }
+          totalCancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" },
+        },
+      },
     ])
     .toArray();
 
-  const totals = financialTotals[0] || { totalGross: 0, totalDrop: 0, totalCancelledCredits: 0 };
-  
+  const totals = financialTotals[0] || {
+    totalGross: 0,
+    totalDrop: 0,
+    totalCancelledCredits: 0,
+  };
+
   return NextResponse.json({
     onlineCount,
     offlineCount: totalCount - onlineCount,
     totalCount,
     totalGross: totals.totalGross || 0,
     totalDrop: totals.totalDrop || 0,
-    totalCancelledCredits: totals.totalCancelledCredits || 0
+    totalCancelledCredits: totals.totalCancelledCredits || 0,
   });
 };
 
 // Overview endpoint - paginated machines for overview tab
-const getOverviewMachines = async (db: any, machineMatchStage: any, page: number, limit: number, skip: number) => {
+const getOverviewMachines = async (
+  db: any,
+  machineMatchStage: any,
+  page: number,
+  limit: number,
+  skip: number
+) => {
   console.log("🚀 Getting overview machines with pagination...");
-  
+
   // Step 1: Get machines with minimal data (paginated)
-  const machines = await db.collection("machines")
+  const machines = await db
+    .collection("machines")
     .find(machineMatchStage)
     .project({
       _id: 1,
@@ -177,7 +239,7 @@ const getOverviewMachines = async (db: any, machineMatchStage: any, page: number
       lastActivity: 1,
       isSasMachine: 1,
       sasMeters: 1,
-      gameConfig: 1
+      gameConfig: 1,
     })
     .sort({ "sasMeters.coinIn": -1 })
     .skip(skip)
@@ -187,9 +249,13 @@ const getOverviewMachines = async (db: any, machineMatchStage: any, page: number
   console.log(`🔍 Found ${machines.length} machines for overview`);
 
   // Get all gaming locations for name resolution
-  const locations = await db.collection("gaminglocations").find({
-    deletedAt: { $in: [null, new Date(-1)] }
-  }).project({ _id: 1, name: 1 }).toArray();
+  const locations = await db
+    .collection("gaminglocations")
+    .find({
+      deletedAt: { $in: [null, new Date(-1)] },
+    })
+    .project({ _id: 1, name: 1 })
+    .toArray();
 
   // Create a map for quick location name lookup
   const locationMap = new Map();
@@ -200,23 +266,28 @@ const getOverviewMachines = async (db: any, machineMatchStage: any, page: number
   // Transform machines data and resolve location names
   const transformedMachines = machines.map((machine: any) => {
     // Resolve location name using gamingLocation field
-    const locationName = machine.gamingLocation ? 
-      locationMap.get(machine.gamingLocation.toString()) || "Unknown Location" : 
-      "Unknown Location";
+    const locationName = machine.gamingLocation
+      ? locationMap.get(machine.gamingLocation.toString()) || "Unknown Location"
+      : "Unknown Location";
 
     return {
       machineId: machine._id.toString(),
-      machineName: machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+      machineName:
+        machine.Custom?.name || machine.serialNumber || "Unknown Machine",
       locationId: machine.gamingLocation?.toString() || "",
       locationName: locationName,
       gameTitle: machine.game || "Unknown Game",
       manufacturer: machine.manuf || "Unknown Manufacturer",
-      isOnline: machine.lastActivity && new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000),
+      isOnline:
+        machine.lastActivity &&
+        new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000),
       lastActivity: machine.lastActivity,
       isSasEnabled: machine.isSasMachine || false,
       coinIn: machine.sasMeters?.coinIn || 0,
       coinOut: machine.sasMeters?.coinOut || 0,
-      netWin: (machine.sasMeters?.drop || 0) - (machine.sasMeters?.totalCancelledCredits || 0),
+      netWin:
+        (machine.sasMeters?.drop || 0) -
+        (machine.sasMeters?.totalCancelledCredits || 0),
       theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
       gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
       avgBet: machine.sasMeters?.avgBet || 0,
@@ -226,10 +297,18 @@ const getOverviewMachines = async (db: any, machineMatchStage: any, page: number
   });
 
   // Step 4: Get total count for pagination
-  const totalCount = await db.collection("machines").countDocuments(machineMatchStage);
+  const totalCount = await db
+    .collection("machines")
+    .countDocuments(machineMatchStage);
   const totalPages = Math.ceil(totalCount / limit);
 
-  console.log("🔍 Overview machines completed:", { page, limit, totalCount, totalPages, dataLength: transformedMachines.length });
+  console.log("🔍 Overview machines completed:", {
+    page,
+    limit,
+    totalCount,
+    totalPages,
+    dataLength: transformedMachines.length,
+  });
 
   return NextResponse.json({
     data: transformedMachines,
@@ -245,7 +324,12 @@ const getOverviewMachines = async (db: any, machineMatchStage: any, page: number
 };
 
 // All machines endpoint - for Performance Analysis tab
-const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate: Date, endDate: Date) => {
+const getAllMachines = async (
+  db: any,
+  searchParams: URLSearchParams,
+  startDate: Date,
+  endDate: Date
+) => {
   try {
     const licencee = searchParams.get("licencee");
     const timePeriod = searchParams.get("timePeriod");
@@ -266,7 +350,7 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
     // Add date filter
     machineMatchStage.lastActivity = {
       $gte: startDate,
-      $lte: endDate
+      $lte: endDate,
     };
 
     // Add search filter if specified
@@ -275,12 +359,13 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
         { serialNumber: { $regex: searchTerm, $options: "i" } },
         { game: { $regex: searchTerm, $options: "i" } },
         { manuf: { $regex: searchTerm, $options: "i" } },
-        { "Custom.name": { $regex: searchTerm, $options: "i" } }
+        { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
     }
 
     // Get all machines for analysis
-    const machines = await db.collection("machines")
+    const machines = await db
+      .collection("machines")
       .find(machineMatchStage)
       .project({
         _id: 1,
@@ -299,9 +384,13 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
     console.log(`🔍 Found ${machines.length} machines for analysis`);
 
     // Get all gaming locations for name resolution
-    const locations = await db.collection("gaminglocations").find({
-      deletedAt: { $in: [null, new Date(-1)] }
-    }).project({ _id: 1, name: 1 }).toArray();
+    const locations = await db
+      .collection("gaminglocations")
+      .find({
+        deletedAt: { $in: [null, new Date(-1)] },
+      })
+      .project({ _id: 1, name: 1 })
+      .toArray();
 
     // Create a map for quick location name lookup
     const locationMap = new Map();
@@ -312,23 +401,30 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
     // Transform machines data and resolve location names
     const transformedMachines = machines.map((machine: any) => {
       // Resolve location name using gamingLocation field
-      const locationName = machine.gamingLocation ? 
-        locationMap.get(machine.gamingLocation.toString()) || "Unknown Location" : 
-        "Unknown Location";
+      const locationName = machine.gamingLocation
+        ? locationMap.get(machine.gamingLocation.toString()) ||
+          "Unknown Location"
+        : "Unknown Location";
 
       return {
         machineId: machine._id.toString(),
-        machineName: machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+        machineName:
+          machine.Custom?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
         locationName: locationName,
         gameTitle: machine.game || "Unknown Game",
         manufacturer: machine.manuf || "Unknown Manufacturer",
-        isOnline: machine.lastActivity && new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000),
+        isOnline:
+          machine.lastActivity &&
+          new Date(machine.lastActivity) >=
+            new Date(Date.now() - 3 * 60 * 1000),
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
         coinIn: machine.sasMeters?.coinIn || 0,
         coinOut: machine.sasMeters?.coinOut || 0,
-        netWin: (machine.sasMeters?.drop || 0) - (machine.sasMeters?.totalCancelledCredits || 0),
+        netWin:
+          (machine.sasMeters?.drop || 0) -
+          (machine.sasMeters?.totalCancelledCredits || 0),
         theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
         gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
         avgBet: machine.sasMeters?.avgBet || 0,
@@ -337,7 +433,10 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
       };
     });
 
-    console.log("🔍 All machines for analysis completed:", transformedMachines.length);
+    console.log(
+      "🔍 All machines for analysis completed:",
+      transformedMachines.length
+    );
 
     return NextResponse.json({
       data: transformedMachines,
@@ -346,16 +445,24 @@ const getAllMachines = async (db: any, searchParams: URLSearchParams, startDate:
         totalPages: 1,
         hasNextPage: false,
         hasPrevPage: false,
-      }
+      },
     });
   } catch (error) {
     console.error("Error in getAllMachines:", error);
-    return NextResponse.json({ error: "Failed to fetch all machines" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch all machines" },
+      { status: 500 }
+    );
   }
 };
 
 // Offline machines endpoint - for Offline Machines tab
-const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startDate: Date, endDate: Date) => {
+const getOfflineMachines = async (
+  db: any,
+  searchParams: URLSearchParams,
+  startDate: Date,
+  endDate: Date
+) => {
   try {
     const licencee = searchParams.get("licencee");
     const timePeriod = searchParams.get("timePeriod");
@@ -367,11 +474,11 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
     const machineMatchStage: any = {
       deletedAt: { $in: [null, new Date(-1)] },
-      lastActivity: { 
+      lastActivity: {
         $lt: threeMinutesAgo,
         $gte: startDate,
-        $lte: endDate
-      }
+        $lte: endDate,
+      },
     };
 
     // Add licencee filter if specified
@@ -385,12 +492,13 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
         { serialNumber: { $regex: searchTerm, $options: "i" } },
         { game: { $regex: searchTerm, $options: "i" } },
         { manuf: { $regex: searchTerm, $options: "i" } },
-        { "Custom.name": { $regex: searchTerm, $options: "i" } }
+        { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
     }
 
     // Get offline machines
-    const machines = await db.collection("machines")
+    const machines = await db
+      .collection("machines")
       .find(machineMatchStage)
       .project({
         _id: 1,
@@ -409,9 +517,13 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
     console.log(`🔍 Found ${machines.length} offline machines`);
 
     // Get all gaming locations for name resolution
-    const locations = await db.collection("gaminglocations").find({
-      deletedAt: { $in: [null, new Date(-1)] }
-    }).project({ _id: 1, name: 1 }).toArray();
+    const locations = await db
+      .collection("gaminglocations")
+      .find({
+        deletedAt: { $in: [null, new Date(-1)] },
+      })
+      .project({ _id: 1, name: 1 })
+      .toArray();
 
     // Create a map for quick location name lookup
     const locationMap = new Map();
@@ -422,13 +534,15 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
     // Transform machines data and resolve location names
     const transformedMachines = machines.map((machine: any) => {
       // Resolve location name using gamingLocation field
-      const locationName = machine.gamingLocation ? 
-        locationMap.get(machine.gamingLocation.toString()) || "Unknown Location" : 
-        "Unknown Location";
+      const locationName = machine.gamingLocation
+        ? locationMap.get(machine.gamingLocation.toString()) ||
+          "Unknown Location"
+        : "Unknown Location";
 
       return {
         machineId: machine._id.toString(),
-        machineName: machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+        machineName:
+          machine.Custom?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
         locationName: locationName,
         gameTitle: machine.game || "Unknown Game",
@@ -438,7 +552,9 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
         isSasEnabled: machine.isSasMachine || false,
         coinIn: machine.sasMeters?.coinIn || 0,
         coinOut: machine.sasMeters?.coinOut || 0,
-        netWin: (machine.sasMeters?.drop || 0) - (machine.sasMeters?.totalCancelledCredits || 0),
+        netWin:
+          (machine.sasMeters?.drop || 0) -
+          (machine.sasMeters?.totalCancelledCredits || 0),
         theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
         gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
         avgBet: machine.sasMeters?.avgBet || 0,
@@ -456,10 +572,13 @@ const getOfflineMachines = async (db: any, searchParams: URLSearchParams, startD
         totalPages: 1,
         hasNextPage: false,
         hasPrevPage: false,
-      }
+      },
     });
   } catch (error) {
     console.error("Error in getOfflineMachines:", error);
-    return NextResponse.json({ error: "Failed to fetch offline machines" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch offline machines" },
+      { status: 500 }
+    );
   }
-}; 
+};

@@ -25,13 +25,10 @@ import DashboardTab from "@/components/reports/tabs/DashboardTab";
 import LocationsTab from "@/components/reports/tabs/LocationsTab";
 import MachinesTab from "@/components/reports/tabs/MachinesTab";
 import MetersTab from "@/components/reports/tabs/MetersTab";
-import ComparisonTab from "@/components/reports/tabs/ComparisonTab";
-
 // UI Components
 import { Button } from "@/components/ui/button";
 
 import { Badge } from "@/components/ui/badge";
-import MachineComparisonModal from "@/components/reports/common/MachineComparisonModal";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import { getTimeFilterButtons } from "@/lib/helpers/dashboard";
@@ -64,12 +61,6 @@ const reportsTabsConfig: ReportTab[] = [
     label: "Meters",
     icon: "📈",
     description: "Meter readings and financial data by location",
-  },
-  {
-    id: "comparison",
-    label: "Comparison",
-    icon: "📊",
-    description: "Comprehensive performance metrics and comparisons",
   },
 ];
 
@@ -239,8 +230,6 @@ function ReportsContent() {
       setActiveView("meters");
     } else if (section === "dashboard") {
       setActiveView("dashboard");
-    } else if (section === "comparison") {
-      setActiveView("comparison");
     } else {
       // Default to locations if no section specified
       setActiveView("locations");
@@ -280,8 +269,6 @@ function ReportsContent() {
       router.push("/reports?section=locations");
     } else if (tabId === "meters") {
       router.push("/reports?section=meters");
-    } else if (tabId === "comparison") {
-      router.push("/reports?section=comparison");
     } else {
       router.push("/reports?section=dashboard");
     }
@@ -299,7 +286,6 @@ function ReportsContent() {
       locations: <LocationsTab />,
       machines: <MachinesTab />,
       meters: <MetersTab />,
-      comparison: <ComparisonTab />,
     };
 
     return (
@@ -523,9 +509,6 @@ function ReportsContent() {
           },
         }}
       />
-
-      {/* Machine Comparison Modal */}
-      <MachineComparisonModal />
     </>
   );
 }

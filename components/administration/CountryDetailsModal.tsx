@@ -1,17 +1,17 @@
-import type { Country } from "@/lib/types/country";
-
-interface CountryDetailsModalProps {
-  open: boolean;
-  country: Country | null;
-  onClose: () => void;
-}
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { CountryDetailsModalProps } from "@/lib/types/components";
 
 export default function CountryDetailsModal({
-  open,
-  country,
+  isOpen,
   onClose,
+  country,
 }: CountryDetailsModalProps) {
-  if (!open || !country) return null;
+  if (!isOpen || !country) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">

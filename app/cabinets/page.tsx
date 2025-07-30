@@ -18,6 +18,7 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
+import { MachineMovementRecord } from "@/lib/types/reports";
 import {
   ArrowDownIcon,
   ChevronLeftIcon,
@@ -27,7 +28,7 @@ import {
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -59,7 +60,10 @@ export default function CabinetsPage() {
   const closeNewMovementRequestModal = () =>
     setIsNewMovementRequestModalOpen(false);
 
-  // State for Upload SMIB Data Modal
+  const handleMovementRequestSubmit = (data: MachineMovementRecord) => {
+    closeNewMovementRequestModal();
+  };
+
   const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
     useState(false);
   const openUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(true);
@@ -67,7 +71,6 @@ export default function CabinetsPage() {
 
   const pathname = usePathname();
 
-  // Add initialLoading state to control first load
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,7 +82,6 @@ export default function CabinetsPage() {
   const [sortOption, setSortOption] = useState<CabinetSortOption>("moneyIn");
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Add states for locations and selectedLocation
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>(
     []
   );
@@ -90,7 +92,6 @@ export default function CabinetsPage() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // Section navigation state
   const [activeSection, setActiveSection] = useState<
     "cabinets" | "smib" | "movement" | "firmware"
   >("cabinets");
@@ -230,41 +231,42 @@ export default function CabinetsPage() {
 
   const handleDelete = (cabinet: Cabinet) => openDeleteModal(cabinet);
 
-  // Helper function to convert Cabinet to CabinetProps
-  const mapToCabinetProps = (cabinet: Cabinet): CabinetProps => {
-    return {
-      _id: cabinet._id,
-      locationId: cabinet.locationId || "",
-      locationName: cabinet.locationName || "",
-      assetNumber: cabinet.assetNumber || "",
-      smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
-      moneyIn: cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0,
-      moneyOut: cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0,
-      gross:
-        cabinet.gross ||
-        (cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0) -
-          (cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0) -
-          (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
-      jackpot: cabinet.jackpot || cabinet.sasMeters?.jackpot || 0,
-      lastOnline: cabinet.lastOnline
-        ? cabinet.lastOnline.toString()
-        : cabinet.lastActivity
-        ? cabinet.lastActivity.toString()
-        : "",
-      installedGame: cabinet.installedGame || cabinet.game || "",
-      accountingDenomination:
-        cabinet.accountingDenomination ||
-        cabinet.gameConfig?.accountingDenomination?.toString() ||
-        "",
-      collectionMultiplier: cabinet.collectionMultiplier || "",
-      status: cabinet.status || cabinet.assetStatus || "",
-      gameType: cabinet.gameType,
-      isCronosMachine: cabinet.isCronosMachine,
-      cabinetType: cabinet.cabinetType,
-      onEdit: () => handleEdit(cabinet),
-      onDelete: () => handleDelete(cabinet),
+  const mapToCabinetProps = useMemo(() => {
+    return (cabinet: Cabinet): CabinetProps => {
+      return {
+        _id: cabinet._id,
+        locationId: cabinet.locationId || "",
+        locationName: cabinet.locationName || "",
+        assetNumber: cabinet.assetNumber || "",
+        smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
+        moneyIn: cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0,
+        moneyOut: cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0,
+        gross:
+          cabinet.gross ||
+          (cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0) -
+            (cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0) -
+            (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
+        jackpot: cabinet.jackpot || cabinet.sasMeters?.jackpot || 0,
+        lastOnline: cabinet.lastOnline
+          ? cabinet.lastOnline.toString()
+          : cabinet.lastActivity
+          ? cabinet.lastActivity.toString()
+          : "",
+        installedGame: cabinet.installedGame || cabinet.game || "",
+        accountingDenomination:
+          cabinet.accountingDenomination ||
+          cabinet.gameConfig?.accountingDenomination?.toString() ||
+          "",
+        collectionMultiplier: cabinet.collectionMultiplier || "",
+        status: cabinet.status || cabinet.assetStatus || "",
+        gameType: cabinet.gameType,
+        isCronosMachine: cabinet.isCronosMachine,
+        cabinetType: cabinet.cabinetType,
+        onEdit: () => handleEdit(cabinet),
+        onDelete: () => handleDelete(cabinet),
+      };
     };
-  };
+  }, [handleEdit, handleDelete]);
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-md">
@@ -284,6 +286,8 @@ export default function CabinetsPage() {
     setSelectedLocation(locationId);
     // Filter cabinets based on selected location
     if (locationId === "all") {
+      // When switching to "all", reload locations to get all available locations
+      loadLocations();
       filterCabinets(allCabinets, searchTerm);
     } else {
       const filtered = allCabinets.filter(
@@ -310,6 +314,7 @@ export default function CabinetsPage() {
         isOpen={isNewMovementRequestModalOpen}
         onClose={closeNewMovementRequestModal}
         locations={locations}
+        onSubmit={handleMovementRequestSubmit}
       />
       <UploadSmibDataModal
         isOpen={isUploadSmibDataModalOpen}
@@ -479,7 +484,7 @@ export default function CabinetsPage() {
           {activeSection === "cabinets" ? (
             <>
               {/* Mobile Search */}
-              <div className="xl:hidden w-full relative">
+              <div className="xl:hidden w-full relative mt-6">
                 <Input
                   type="text"
                   placeholder="Search machines..."

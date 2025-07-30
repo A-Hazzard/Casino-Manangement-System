@@ -25,8 +25,8 @@ import { formatCurrency } from "@/lib/utils/number";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
-import { EditLocationModal } from "@/components/ui/locations/EditLocationModal";
-import { DeleteLocationModal } from "@/components/ui/locations/DeleteLocationModal";
+import EditLocationModal from "@/components/ui/locations/EditLocationModal";
+import DeleteLocationModal from "@/components/ui/locations/DeleteLocationModal";
 import LocationCard from "@/components/ui/locations/LocationCard";
 import LocationSkeleton from "@/components/ui/locations/LocationSkeleton";
 import LocationTable from "@/components/ui/locations/LocationTable";
@@ -40,6 +40,17 @@ export default function LocationsPage() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+
+  const {
+    selectedLocation,
+    isEditModalOpen,
+    isDeleteModalOpen,
+    openEditModal,
+    openDeleteModal,
+    closeEditModal,
+    closeDeleteModal,
+  } = useLocationActionsStore();
+
   const [currentPage, setCurrentPage] = useState(0);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [sortOption, setSortOption] = useState<LocationSortOption>("moneyIn");
@@ -202,14 +213,6 @@ export default function LocationsPage() {
 
   const handleLocationClick = (locationId: string): void => {
     router.push(`/locations/${locationId}`);
-  };
-
-  const openEditModal = (location: AggregatedLocation): void => {
-    useLocationActionsStore.getState().openEditModal(location);
-  };
-
-  const openDeleteModal = (location: AggregatedLocation): void => {
-    useLocationActionsStore.getState().openDeleteModal(location);
   };
 
   const handleTableAction = (
@@ -418,8 +421,18 @@ export default function LocationsPage() {
           <Toaster richColors />
         </main>
       </div>
-      <EditLocationModal onLocationUpdated={fetchData} />
-      <DeleteLocationModal onLocationDeleted={fetchData} />
+      <EditLocationModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        location={selectedLocation._id ? (selectedLocation as any) : null}
+        onLocationUpdated={fetchData}
+      />
+      <DeleteLocationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        location={selectedLocation._id ? (selectedLocation as any) : null}
+        onDelete={fetchData}
+      />
       <NewLocationModal
         isOpen={isNewLocationModalOpen}
         onClose={closeLocationModal}

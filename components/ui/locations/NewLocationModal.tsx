@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,17 +14,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation, LocationCoordinates } from "@/lib/types/maps";
+import type { NewLocationModalProps } from "@/lib/types/components";
 
-interface NewLocationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function NewLocationModal({ isOpen, onClose }: NewLocationModalProps) {
+export default function NewLocationModal({
+  isOpen,
+  onClose,
+}: NewLocationModalProps) {
   const router = useRouter();
   const { createLocation } = useLocationStore();
+  const { selectedLicencee } = useDashBoardStore();
 
   // Form state - all fields blank by default
   const [formData, setFormData] = useState({
@@ -36,7 +42,9 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
   const [useMap, setUseMap] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-  const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(null);
+  const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(
+    null
+  );
 
   // Detect user location on modal open
   useEffect(() => {
@@ -66,25 +74,27 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
 
   const detectUserLocation = async () => {
     setIsDetectingLocation(true);
-    
+
     try {
       // First try to get user's browser location
       if (navigator.geolocation) {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
-          });
-        });
+        const position = await new Promise<GeolocationPosition>(
+          (resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 60000,
+            });
+          }
+        );
 
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
-        
+
         // Get address from coordinates using reverse geocoding
         const address = await getAddressFromCoordinates(latitude, longitude);
-        
-        setFormData(prev => ({
+
+        setFormData((prev) => ({
           ...prev,
           latitude: latitude.toFixed(6),
           longitude: longitude.toFixed(6),
@@ -96,15 +106,17 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
         return;
       }
     } catch {
-      console.log("Browser location access denied or failed, trying IP-based location");
+      console.log(
+        "Browser location access denied or failed, trying IP-based location"
+      );
     }
 
     try {
       // Fallback to IP-based location detection
       const ipLocation = await getLocationFromIP();
       setUserLocation({ lat: ipLocation.latitude, lng: ipLocation.longitude });
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
         latitude: ipLocation.latitude.toFixed(6),
         longitude: ipLocation.longitude.toFixed(6),
@@ -115,13 +127,13 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
       // Don't show toast for IP location detection
     } catch {
       console.log("IP location detection failed, using default");
-      
+
       // Final fallback to Trinidad and Tobago POS
       const defaultLat = 10.6599;
       const defaultLng = -61.5199;
       setUserLocation({ lat: defaultLat, lng: defaultLng });
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
         latitude: defaultLat.toFixed(6),
         longitude: defaultLng.toFixed(6),
@@ -135,47 +147,55 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
     }
   };
 
-  const getAddressFromCoordinates = async (lat: number, lng: number): Promise<{ country: string; city: string }> => {
+  const getAddressFromCoordinates = async (
+    lat: number,
+    lng: number
+  ): Promise<{ country: string; city: string }> => {
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
       );
       const data = await response.json();
-      
+
       if (data.results && data.results[0]) {
         const result = data.results[0];
         let country = "";
         let city = "";
-        
+
         for (const component of result.address_components) {
           const types = component.types;
-          
+
           if (types.includes("locality")) {
             city = component.long_name;
           } else if (types.includes("administrative_area_level_1") && !city) {
             // Fallback to state/province if no city found
             city = component.long_name;
           }
-          
+
           if (types.includes("country")) {
             country = component.long_name;
           }
         }
-        
+
         return { country, city };
       }
     } catch {
       console.error("Error getting address from coordinates:");
     }
-    
+
     return { country: "Trinidad and Tobago", city: "" };
   };
 
-  const getLocationFromIP = async (): Promise<{ latitude: number; longitude: number; country: string; city: string }> => {
+  const getLocationFromIP = async (): Promise<{
+    latitude: number;
+    longitude: number;
+    country: string;
+    city: string;
+  }> => {
     try {
       const response = await fetch("https://ipapi.co/json/");
       const data = await response.json();
-      
+
       return {
         latitude: data.latitude,
         longitude: data.longitude,
@@ -228,6 +248,9 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
         address: formData.street, // Just pass the street as address string
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
+        rel: {
+          licencee: selectedLicencee || "", // Use current selected licencee
+        },
       };
 
       // Add location
@@ -241,7 +264,9 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
       router.refresh();
     } catch (error) {
       console.error("Error adding location:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to add location");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add location"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -255,7 +280,10 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
             Add New Location
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-6 max-h-[70vh] overflow-y-auto"
+        >
           {/* Location Detection Status */}
           {isDetectingLocation && !formData.latitude && !formData.longitude && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -366,10 +394,7 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
                 }
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
               />
-              <Label
-                htmlFor="isLocalServer"
-                className="text-sm font-medium"
-              >
+              <Label htmlFor="isLocalServer" className="text-sm font-medium">
                 No SMIB Location
               </Label>
             </div>
@@ -429,8 +454,12 @@ export default function NewLocationModal({ isOpen, onClose }: NewLocationModalPr
           {useMap && (
             <div className="mt-4">
               <LocationPickerMap
-                initialLat={formData.latitude ? parseFloat(formData.latitude) : 10.6599}
-                initialLng={formData.longitude ? parseFloat(formData.longitude) : -61.5199}
+                initialLat={
+                  formData.latitude ? parseFloat(formData.latitude) : 10.6599
+                }
+                initialLng={
+                  formData.longitude ? parseFloat(formData.longitude) : -61.5199
+                }
                 mapType="street"
                 onLocationSelect={handleLocationSelect}
                 userLocation={userLocation}

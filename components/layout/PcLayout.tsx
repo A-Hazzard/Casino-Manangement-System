@@ -10,9 +10,10 @@ import StatCardSkeleton, {
   ChartSkeleton,
 } from "@/components/ui/SkeletonLoader";
 import Chart from "@/components/ui/dashboard/Chart";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, BarChart3 } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { useEffect, useState } from "react";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function PcLayout(props: PcLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -56,116 +57,156 @@ export default function PcLayout(props: PcLayoutProps) {
   const offlineCount = totalMachines - onlineCount;
 
   return (
-    <div className="hidden xl:block space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <h2 className="text-lg">Total for all Locations and Machines</h2>
-        <div
-          className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
-            props.loadingChartData || props.refreshing
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-buttonActive/90"
-          }`}
-          onClick={() => {
-            if (!(props.loadingChartData || props.refreshing))
-              props.onRefresh();
-          }}
-          aria-disabled={props.loadingChartData || props.refreshing}
-          tabIndex={0}
-          role="button"
-        >
-          <RefreshCw
-            className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
-            aria-hidden="true"
-          />
-          <span className="font-semibold">Refresh</span>
-        </div>
-      </div>
-      {/* Metrics Cards */}
-      <div className="flex justify-between lg:flex-wrap lg:justify-around lg:gap-4">
-        {props.loadingChartData ? (
-          <StatCardSkeleton count={3} />
-        ) : (
-          <>
-            {/* Metrics Cards */}
-            <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                Money In
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-              {/* Check if props.totals is not null before rendering */}
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-              </p>
-            </div>
-            <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                Money Out
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-              {/* Check if props.totals is not null before rendering */}
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-              </p>
-            </div>
-            <div className="flex-1 px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
-                Gross
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-              {/* Check if props.totals is not null before rendering */}
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.gross) : "--"}
-              </p>
-            </div>
-          </>
-        )}
-      </div>
+    <div className="hidden xl:block">
+      <div className="grid grid-cols-5 gap-6">
+        {/* Left Section (Dashboard Content) - 60% Width (3/5 columns) */}
+        <div className="col-span-3 space-y-6">
+          {/* Dashboard Title Section */}
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-buttonActive" />
+            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+          </div>
 
-      {props.loadingChartData ? (
-        <ChartSkeleton />
-      ) : (
-        <Chart
-          loadingChartData={props.loadingChartData}
-          chartData={props.chartData}
-          activeMetricsFilter={props.activeMetricsFilter}
-        />
-      )}
+          {/* Date Filter Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <DashboardDateFilters
+              disabled={props.loadingChartData || props.refreshing}
+            />
+          </div>
 
-      {/* Top Performing Section */}
-      <div className="flex justify-between border-10 flex-col">
-        {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
-          <NoDataMessage message="No top performing data available for the selected period" />
-        ) : (
-          <>
-            {/* Machine Status Widget */}
-            <div className="mb-4">
-              <MachineStatusWidget
-                isLoading={aggLoading}
-                onlineCount={onlineCount}
-                offlineCount={offlineCount}
+          {/* Metrics Description Text */}
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg text-gray-700">
+              Total for all Locations and Machines
+            </h2>
+            <div
+              className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
+                props.loadingChartData || props.refreshing
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-buttonActive/90"
+              }`}
+              onClick={() => {
+                if (!(props.loadingChartData || props.refreshing))
+                  props.onRefresh();
+              }}
+              aria-disabled={props.loadingChartData || props.refreshing}
+              tabIndex={0}
+              role="button"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              <span className="font-semibold">Refresh</span>
+            </div>
+          </div>
+
+          {/* Three Metric Cards (Horizontal Row) */}
+          <div className="grid grid-cols-3 gap-4">
+            {props.loadingChartData ? (
+              <StatCardSkeleton count={3} />
+            ) : (
+              <>
+                {/* Wager Card */}
+                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                    Money In
+                  </p>
+                  <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
+                  <p className="font-bold text-lg">
+                    {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
+                  </p>
+                </div>
+                {/* Games Won Card */}
+                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                    Money Out
+                  </p>
+                  <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
+                  <p className="font-bold text-lg">
+                    {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
+                  </p>
+                </div>
+                {/* Gross Card */}
+                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
+                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                    Gross
+                  </p>
+                  <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
+                  <p className="font-bold text-lg">
+                    {props.totals ? formatNumber(props.totals.gross) : "--"}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Trend Chart Section */}
+          {props.loadingChartData ? (
+            <ChartSkeleton />
+          ) : (
+            <div className="bg-container rounded-lg shadow-md p-6">
+              <Chart
+                loadingChartData={props.loadingChartData}
+                chartData={props.chartData}
+                activeMetricsFilter={props.activeMetricsFilter}
               />
             </div>
+          )}
+        </div>
 
+        {/* Right Section (Map & Status) - 40% Width (2/5 columns) */}
+        <div className="col-span-2 space-y-6">
+          {/* Online/Offline Status Widget */}
+          <div className="bg-container rounded-lg shadow-md p-6">
+            <MachineStatusWidget
+              isLoading={aggLoading}
+              onlineCount={onlineCount}
+              offlineCount={offlineCount}
+            />
+          </div>
+
+          {/* Map Preview Section */}
+          <div className="bg-container rounded-lg shadow-md p-6">
             <MapPreview gamingLocations={props.gamingLocations} />
-            <div className="space-y-2">
-              <h2 className="text-lg">Top Performing</h2>
-              <div
-                className={`relative flex flex-col ${
-                  props.activeTab === "locations"
-                    ? "bg-container"
-                    : "bg-buttonActive"
-                } w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md`}
-              >
-                <div className="flex">
+          </div>
+
+          {/* Top Performing Section */}
+          <div className="bg-container rounded-lg shadow-md p-6">
+            {props.topPerformingData.length === 0 &&
+            !props.loadingTopPerforming ? (
+              <NoDataMessage message="No top performing data available for the selected period" />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Top Performing</h2>
+                  <CustomSelect
+                    timeFrames={timeFrames}
+                    selectedFilter={props.activePieChartFilter}
+                    activePieChartFilter={props.activePieChartFilter}
+                    activeFilters={props.activeFilters}
+                    onSelect={(value) => {
+                      if (!props.loadingTopPerforming) {
+                        props.setActivePieChartFilter(value);
+                      }
+                    }}
+                    isActive={true}
+                    placeholder="Select Time Frame"
+                    disabled={props.loadingTopPerforming}
+                  />
+                </div>
+
+                {/* Tabs */}
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
                   <button
-                    className={`w-full px-4 py-2 rounded-tr-3xl rounded-tl-xl ${
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                       props.activeTab === "locations"
                         ? "bg-buttonActive text-white"
-                        : "bg-container"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     } ${
                       props.activeTab !== "locations" &&
                       props.loadingTopPerforming
-                        ? "cursor-not-allowed"
+                        ? "cursor-not-allowed opacity-50"
                         : ""
                     }`}
                     onClick={() => {
@@ -180,14 +221,14 @@ export default function PcLayout(props: PcLayoutProps) {
                     Locations
                   </button>
                   <button
-                    className={`w-full px-4 py-2 rounded-tr-3xl ${
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                       props.activeTab === "Cabinets"
                         ? "bg-buttonActive text-white"
-                        : "bg-container"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     } ${
                       props.activeTab !== "Cabinets" &&
                       props.loadingTopPerforming
-                        ? "cursor-not-allowed"
+                        ? "cursor-not-allowed opacity-50"
                         : ""
                     }`}
                     onClick={() => {
@@ -203,72 +244,53 @@ export default function PcLayout(props: PcLayoutProps) {
                   </button>
                 </div>
 
-                <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="mb-4">
-                      <CustomSelect
-                        timeFrames={timeFrames}
-                        selectedFilter={props.activePieChartFilter}
-                        activePieChartFilter={props.activePieChartFilter}
-                        activeFilters={props.activeFilters}
-                        onSelect={(value) => {
-                          if (!props.loadingTopPerforming) {
-                            props.setActivePieChartFilter(value);
-                          }
-                        }}
-                        isActive={true}
-                        placeholder="Select Time Frame"
-                        disabled={props.loadingTopPerforming}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <ul className="space-y-2">
-                      {props.topPerformingData.map((item, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center space-x-2 text-sm"
-                        >
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: item.color }}
-                          ></div>
-                          <span>
-                            {props.activeTab === "Cabinets"
-                              ? item.machine
-                              : item.location}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <ResponsiveContainer width={160} height={160}>
-                      <PieChart>
-                        <Pie
-                          data={props.topPerformingData}
-                          dataKey="totalDrop"
-                          nameKey={
-                            props.activeTab === "Cabinets"
-                              ? "machine"
-                              : "location"
-                          }
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={70}
-                          labelLine={false}
-                          label={props.renderCustomizedLabel}
-                        >
-                          {props.topPerformingData.map((entry, index) => (
-                            <Cell key={index} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                {/* Chart and Legend */}
+                <div className="flex items-center justify-between">
+                  <ul className="space-y-2 flex-1">
+                    {props.topPerformingData.map((item, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center space-x-2 text-sm"
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        ></div>
+                        <span className="text-gray-700">
+                          {props.activeTab === "Cabinets"
+                            ? item.machine
+                            : item.location}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <ResponsiveContainer width={160} height={160}>
+                    <PieChart>
+                      <Pie
+                        data={props.topPerformingData}
+                        dataKey="totalDrop"
+                        nameKey={
+                          props.activeTab === "Cabinets"
+                            ? "machine"
+                            : "location"
+                        }
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={70}
+                        labelLine={false}
+                        label={props.renderCustomizedLabel}
+                      >
+                        {props.topPerformingData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-            </div>
-          </>
-        )}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

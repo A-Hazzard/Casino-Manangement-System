@@ -15,14 +15,14 @@ import axios from "axios";
 import { toast } from "sonner";
 import Image from "next/image";
 import deleteIcon from "@/public/deleteIcon.svg";
+import type { DeleteLocationModalProps } from "@/lib/types/components";
 
-interface DeleteLocationModalProps {
-  onLocationDeleted: () => void;
-}
-
-export const DeleteLocationModal: React.FC<DeleteLocationModalProps> = ({
-  onLocationDeleted,
-}) => {
+export default function DeleteLocationModal({
+  isOpen,
+  onClose,
+  location,
+  onDelete,
+}: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
 
@@ -34,12 +34,12 @@ export const DeleteLocationModal: React.FC<DeleteLocationModalProps> = ({
     if (!selectedLocation?._id) return;
 
     try {
-      await axios.delete(`/api/locations/${selectedLocation._id}`);
+      await axios.delete(`/api/locations?id=${selectedLocation._id}`);
       toast.success("Location deleted successfully");
-      onLocationDeleted();
+      onDelete();
       closeDeleteModal();
     } catch (error) {
-        console.error("Error deleting location:", error);
+      console.error("Error deleting location:", error);
       toast.error("Failed to delete location");
     }
   };
@@ -50,14 +50,15 @@ export const DeleteLocationModal: React.FC<DeleteLocationModalProps> = ({
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete the
-            location &quot;{selectedLocation?.name}&quot;.
+            This will mark the location &quot;{selectedLocation?.name}&quot; as
+            deleted. The location will be hidden from the system but can be
+            restored if needed.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
+            Cancel
+          </Button>
           <Button variant="destructive" onClick={handleDelete}>
             Delete
           </Button>
@@ -65,4 +66,4 @@ export const DeleteLocationModal: React.FC<DeleteLocationModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+}
