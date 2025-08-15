@@ -4,20 +4,10 @@ import { TimePeriod } from "../types/api";
 import { fetchCabinetDetails, updateCabinetMetrics } from "../helpers/cabinets";
 import { debounce } from "../utils/cabinetDetails";
 
-/**
- * Return type for the useCabinetDetails hook
- */
-export type UseCabinetDetailsReturn = {
-  cabinet: CabinetDetail | null;
-  setCabinet: React.Dispatch<React.SetStateAction<CabinetDetail | null>>;
-  loading: boolean;
-  error: string | null;
-  metricsLoading: boolean;
-  activeMetricsFilter: TimePeriod;
-  isFilterChangeInProgress: boolean;
-  changeMetricsFilter: (newFilter: TimePeriod) => void;
-  updateMetricsData: () => Promise<void>;
-};
+import type { UseCabinetDetailsReturn } from "@/lib/types/hooks";
+
+// Re-export frontend-specific types for convenience
+export type { UseCabinetDetailsReturn };
 
 /**
  * Custom React hook for managing cabinet details state and fetching.

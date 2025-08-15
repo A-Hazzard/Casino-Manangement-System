@@ -19,6 +19,7 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { Input } from "@/components/ui/input";
 import gsap from "gsap";
@@ -40,6 +41,7 @@ import type { ExtendedCabinetDetail } from "@/lib/types/pages";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function LocationPage() {
   const params = useParams();
@@ -82,8 +84,35 @@ export default function LocationPage() {
   // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
 
-  // To prevent double fetch on initial load
-  const hasFetchedOnce = useRef(false);
+  // Calculate financial totals from cabinet data
+  const calculateFinancialTotals = () => {
+    if (!allCabinets || allCabinets.length === 0) {
+      return null;
+    }
+
+    const totals = allCabinets.reduce(
+      (acc, cabinet) => {
+        // Use calculatedMetrics if available, otherwise fall back to direct properties
+        const moneyIn =
+          cabinet.calculatedMetrics?.moneyIn || cabinet.moneyIn || 0;
+        const moneyOut =
+          cabinet.calculatedMetrics?.moneyOut || cabinet.moneyOut || 0;
+        // Calculate gross as moneyIn - moneyOut, or use direct gross property if available
+        const gross = cabinet.gross || moneyIn - moneyOut;
+
+        return {
+          moneyIn: acc.moneyIn + moneyIn,
+          moneyOut: acc.moneyOut + moneyOut,
+          gross: acc.gross + gross,
+        };
+      },
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
+
+    return totals;
+  };
+
+  const financialTotals = calculateFinancialTotals();
 
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
@@ -97,73 +126,87 @@ export default function LocationPage() {
     setCurrentPage(0); // Reset to first page when filters change
   }, [allCabinets, searchTerm, sortOption, sortOrder]);
 
-  // Use useEffect to update selectedLocation when locationName changes
-  useEffect(() => {
-    if (locationName && !selectedLocation) {
-      setSelectedLocation(locationName);
-    }
-  }, [locationName, selectedLocation]);
-
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setCabinetsLoading(true);
       try {
-        // On initial load, fetch locations only ONCE
-        if (!hasFetchedOnce.current) {
-          try {
-            const formattedLocations = await fetchAllGamingLocations();
-            setLocations(formattedLocations);
-
-            // Set initial selected location based on URL slug
-            const currentLocation = formattedLocations.find(
-              (loc) => loc.id === locationId
-            );
-            if (currentLocation) {
-              setSelectedLocation(currentLocation.name);
-              setLocationName(currentLocation.name);
-              // Ensure selectedLocationId is set to the URL slug initially
-              setSelectedLocationId(locationId);
-            } else {
-              // If URL location not found in list, still set it for API calls
-              setSelectedLocationId(locationId);
-            }
-          } catch {
-            setError("Failed to load locations. Please try again later.");
-          }
-          hasFetchedOnce.current = true;
+        // Check if store is properly hydrated
+        if (!activeMetricsFilter) {
+          // Wait a bit for store hydration
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        // Fetch location details for the page title (always from URL slug)
-        if (!locationName) {
-          try {
-            const locationData = await fetchLocationDetailsById(locationId);
-            setLocationName(locationData.name);
-            // If this is the first load and no location selected yet, set it
-            if (!selectedLocation) {
-              setSelectedLocation(locationData.name);
-            }
-          } catch {
-            setLocationName("Location"); // Default name on error
-            setError(
-              "Failed to load location details. Please try again later."
-            );
-          }
+        // Always set the selectedLocationId to the URL slug immediately
+        setSelectedLocationId(locationId);
+
+        // Fetch locations for the selected licensee
+        const formattedLocations = await fetchAllGamingLocations(
+          selectedLicencee
+        );
+        setLocations(formattedLocations);
+
+        // Find the current location in the licensee's locations
+        const currentLocation = formattedLocations.find(
+          (loc) => loc.id === locationId
+        );
+
+        // Also check with toString() in case of ObjectId issues
+        const currentLocationAlt = formattedLocations.find(
+          (loc) => loc.id.toString() === locationId
+        );
+
+        // Use the first match found
+        const foundLocation = currentLocation || currentLocationAlt;
+
+        // Check if current location exists in new licensee's locations
+        if (!foundLocation && formattedLocations.length > 0) {
+          // Current location doesn't belong to new licensee, redirect to first available
+          const firstLocation = formattedLocations[0];
+          router.replace(`/locations/${firstLocation.id}`);
+          return; // Exit early as we're redirecting
+        } else if (formattedLocations.length === 0) {
+          // No locations for this licensee, clear selection
+          setSelectedLocation("");
+          setSelectedLocationId("");
+          setLocationName("");
+          setAllCabinets([]);
+          setError("No locations found for the selected licensee.");
+          return;
         }
 
-        // Fetch cabinets data for the SELECTED location
+        // Use the found location data instead of making another API call
+        if (foundLocation) {
+          setLocationName(foundLocation.name);
+          setSelectedLocation(foundLocation.name);
+        } else {
+          // Fallback if location not found
+          setLocationName(locationId);
+          setSelectedLocation(locationId);
+        }
+
+        // Fetch cabinets data for the location
         try {
+          // Ensure we have a valid activeMetricsFilter
+          const timePeriod = activeMetricsFilter
+            ? activeMetricsFilter
+            : "today";
+          console.log(`🔍 Using timePeriod:`, timePeriod);
+
           const cabinetsData = await fetchCabinetsForLocation(
-            selectedLocationId,
+            locationId, // Always use the URL slug for cabinet fetching
             selectedLicencee,
-            activeMetricsFilter
+            timePeriod, // Pass as timePeriod (3rd parameter)
+            undefined // Don't pass searchTerm (4th parameter)
           );
+          console.log(`✅ Cabinets data received:`, cabinetsData);
           setAllCabinets(cabinetsData);
           setError(null); // Clear any previous errors on successful fetch
-        } catch {
+        } catch (error) {
+          console.error("Error fetching cabinets:", error);
           setAllCabinets([]);
-          setError("Failed to load cabinets. Please try again later.");
+          setError("Failed to fetch cabinets data.");
         }
       } finally {
         setLoading(false);
@@ -172,19 +215,12 @@ export default function LocationPage() {
     };
 
     fetchData();
-  }, [
-    locationId,
-    selectedLicencee,
-    activeMetricsFilter,
-    selectedLocationId,
-    locationName,
-    selectedLocation,
-  ]);
+  }, [locationId, selectedLicencee, activeMetricsFilter, router]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
     applyFiltersAndSort();
-  }, [allCabinets, searchTerm, sortOption, sortOrder, applyFiltersAndSort]);
+  }, [applyFiltersAndSort]);
 
   // ====== Sorting / Pagination Logic ======
   const handleSortToggle = () => {
@@ -257,7 +293,7 @@ export default function LocationPage() {
       // Fetch cabinets data for the SELECTED location
       try {
         const cabinetsData = await fetchCabinetsForLocation(
-          selectedLocationId,
+          locationId, // Always use the URL slug for cabinet fetching
           selectedLicencee,
           activeMetricsFilter
         );
@@ -272,22 +308,22 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
-  }, [selectedLicencee, activeMetricsFilter, selectedLocationId]);
+  }, [selectedLicencee, activeMetricsFilter, locationId]);
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (
     newLocationId: string,
     locationName: string
   ) => {
-    setSelectedLocationId(newLocationId);
-    setSelectedLocation(locationName);
+    // Navigate to the new location URL
+    router.push(`/locations/${newLocationId}`);
     setIsLocationDropdownOpen(false);
   };
 
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-6 w-full max-w-full overflow-x-hidden">
           <Header
             selectedLicencee={selectedLicencee}
@@ -316,6 +352,33 @@ export default function LocationPage() {
                 isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
                 label="Refresh"
+              />
+            </div>
+          </div>
+
+          {/* Financial Metrics Cards */}
+          <FinancialMetricsCards
+            totals={financialTotals}
+            loading={loading || cabinetsLoading}
+            title={`Financial Metrics for ${locationName || "Location"}`}
+            className="mb-6"
+          />
+
+          {/* Date Filters Row - Desktop only */}
+          <div className="hidden lg:flex items-center justify-between mt-4 mb-4 gap-4">
+            <div className="flex-1 min-w-0">
+              <DashboardDateFilters
+                disabled={loading || cabinetsLoading || refreshing}
+                hideAllTime={true}
+              />
+            </div>
+          </div>
+          {/* Mobile/Tablet: Date Filters above Search */}
+          <div className="lg:hidden flex flex-col gap-4 mt-4">
+            <div className="w-full">
+              <DashboardDateFilters
+                disabled={loading || cabinetsLoading || refreshing}
+                hideAllTime={true}
               />
             </div>
           </div>
@@ -377,7 +440,9 @@ export default function LocationPage() {
                   setIsLocationDropdownOpen(!isLocationDropdownOpen)
                 }
               >
-                <span className="truncate">{selectedLocation}</span>
+                <span className="truncate">
+                  {selectedLocation || locationName || "Select Location"}
+                </span>
                 <ChevronDown
                   size={16}
                   className={`transition-transform ${
@@ -392,9 +457,7 @@ export default function LocationPage() {
                       <button
                         key={loc.id}
                         className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                          selectedLocationId === loc.id
-                            ? "bg-gray-100 font-medium"
-                            : ""
+                          locationId === loc.id ? "bg-gray-100 font-medium" : ""
                         }`}
                         onClick={() =>
                           handleLocationChangeInPlace(loc.id, loc.name)

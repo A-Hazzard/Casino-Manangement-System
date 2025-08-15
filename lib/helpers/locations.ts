@@ -75,7 +75,7 @@ export default async function getAllGamingLocations(
       }
     );
     const fetchedLocations = response.data.locations;
-    console.log("\ud83d\udccd Gaming Locations Status 200");
+
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch (error) {
     console.error("Error fetching gaming locations:", error);
@@ -87,13 +87,23 @@ export default async function getAllGamingLocations(
  * Fetches details for a specific location by its ID.
  *
  * @param locationId - The unique identifier for the location.
+ * @param licensee - (Optional) Licensee filter for security verification.
  * @returns Promise resolving to the location details object, or null on error.
  */
-export async function fetchLocationDetails(locationId: string) {
+export async function fetchLocationDetails(
+  locationId: string,
+  licensee?: string
+) {
   try {
+    const params: Record<string, string> = {};
+    if (licensee) {
+      params.licencee = licensee;
+    }
+
     const response = await axios.get(
       `/api/locations/${locationId}?basicInfo=true`,
       {
+        params,
         headers: getAuthHeaders(),
       }
     );
@@ -112,6 +122,7 @@ export async function fetchLocationDetails(locationId: string) {
  *
  * @param locationId - The unique identifier for the location.
  * @param timePeriod - (Optional) Time period filter for cabinets.
+ * @param licensee - (Optional) Licensee filter for security verification.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
 export async function fetchCabinets(
@@ -166,13 +177,23 @@ export async function fetchAllGamingLocations(licensee?: string) {
  * Fetches detailed information for a location by its ID, including its name and data.
  *
  * @param locationId - The unique identifier for the location.
+ * @param licensee - (Optional) Licensee filter for security verification.
  * @returns Promise resolving to an object with name and data properties, or fallback on error.
  */
-export async function fetchLocationDetailsById(locationId: string) {
+export async function fetchLocationDetailsById(
+  locationId: string,
+  licensee?: string
+) {
   try {
-    console.log(`Fetching location details for ID: ${locationId}`);
-    const url = `/api/locations/${locationId}?basicInfo=true`; // Fetch only basic info initially
+    const params: Record<string, string> = {};
+    if (licensee) {
+      params.licencee = licensee;
+    }
+
+    // Use the main locations API route to get location details
+    const url = `/api/locations`;
     const response = await axios.get(url, {
+      params,
       timeout: 15000,
       headers: getAuthHeaders(),
     });
@@ -181,17 +202,45 @@ export async function fetchLocationDetailsById(locationId: string) {
       throw new Error("No location data returned from API");
     }
 
-    const locationData = Array.isArray(response.data)
-      ? response.data[0]
-      : response.data;
+    // Check for security violations
+    if (response.status === 403) {
+      throw new Error("Location does not belong to selected licensee");
+    }
 
+    if (response.status !== 200) {
+      throw new Error(`Failed to fetch location details: ${response.status}`);
+    }
+
+    // Find the specific location in the returned list
+    const locations = response.data.locations || [];
+
+    // Try multiple ways to find the location (ObjectId vs string)
+    let locationData = locations.find((loc: any) => loc._id === locationId);
+    if (!locationData) {
+      locationData = locations.find(
+        (loc: any) => loc._id.toString() === locationId
+      );
+    }
+    if (!locationData) {
+      locationData = locations.find(
+        (loc: any) => loc._id === locationId.toString()
+      );
+    }
+
+    if (!locationData) {
+      throw new Error("Location not found in licensee's locations");
+    }
     return {
       name: locationData.name || locationData.locationName || "Location",
       data: locationData,
     };
   } catch (err) {
     console.error("Error fetching location details:", err);
-    return { name: "Location", data: null };
+    // Return fallback data instead of throwing
+    return {
+      name: locationId, // Use ID as fallback name
+      data: null,
+    };
   }
 }
 
@@ -223,12 +272,15 @@ export const fetchLocationsData = async (
     }
 
     const response = await axios.get("/api/locationAggregation", { params });
+
     // Handle both old array format and new paginated format
-    return Array.isArray(response.data)
+    const result = Array.isArray(response.data)
       ? response.data
       : response.data?.data || [];
+
+    return result;
   } catch (error) {
-    console.error("Failed to fetch locations data:", error);
+    console.error("❌ fetchLocationsData Error:", error);
     return [];
   }
 };
@@ -267,6 +319,27 @@ export const searchLocations = async (
     return response.data.data || [];
   } catch (error) {
     console.error("Failed to search locations:", error);
+    return [];
+  }
+};
+
+/**
+ * Searches ALL locations for a licensee, regardless of meter data.
+ * This is specifically for search functionality to show all locations.
+ */
+export const searchAllLocations = async (
+  searchTerm: string,
+  licensee?: string
+): Promise<AggregatedLocation[]> => {
+  try {
+    const params: Record<string, string> = {};
+    if (searchTerm) params.search = searchTerm;
+    if (licensee) params.licencee = licensee;
+
+    const response = await axios.get("/api/locations/search-all", { params });
+    return response.data || [];
+  } catch (error) {
+    console.error("Failed to search all locations:", error);
     return [];
   }
 };

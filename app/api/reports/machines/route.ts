@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
-import { createDatabaseIndexes } from "@/app/api/lib/utils/createIndexes";
+// Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -20,22 +20,9 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(requestedLimit, 10);
     const skip = (page - 1) * limit;
 
-    console.log(
-      "🔍 Machines API - Type:",
-      type,
-      "Online Status:",
-      onlineStatus,
-      "Requested limit:",
-      requestedLimit,
-      "Actual limit:",
-      limit,
-      "Page:",
-      page,
-      "Skip:",
-      skip
-    );
 
-    let startDate: Date, endDate: Date;
+
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (timePeriod === "Custom") {
       const customStart = searchParams.get("startDate");
@@ -54,12 +41,7 @@ export async function GET(req: NextRequest) {
       endDate = e;
     }
 
-    console.log("🔍 Machines API - timePeriod:", timePeriod);
-    console.log("🔍 Machines API - startDate:", startDate.toISOString());
-    console.log("🔍 Machines API - endDate:", endDate.toISOString());
-    console.log("🔍 Machines API - licencee:", licencee);
-    console.log("🔍 Machines API - onlineStatus:", onlineStatus);
-
+   
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -69,22 +51,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Ensure indexes are created for optimal performance
-    await createDatabaseIndexes();
+    // Do not auto-create indexes on every request
 
     // Build machine filter for all queries
     const machineMatchStage: any = {
       deletedAt: { $in: [null, new Date(-1)] },
-    };
-
-    // Add licencee filter if specified
-    if (licencee && licencee !== "all") {
-      machineMatchStage["locationDetails.rel.licencee"] = licencee;
-    }
-
-    // Add date filter
-    machineMatchStage.lastActivity = {
-      $gte: startDate,
-      $lte: endDate,
     };
 
     // Add online status filter
@@ -92,7 +63,6 @@ export async function GET(req: NextRequest) {
       const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
       if (onlineStatus === "online") {
         machineMatchStage.lastActivity = {
-          ...machineMatchStage.lastActivity,
           $gte: threeMinutesAgo,
         };
       } else if (onlineStatus === "offline") {
@@ -101,6 +71,9 @@ export async function GET(req: NextRequest) {
           { lastActivity: { $exists: false } },
         ];
       }
+    } else {
+      // For "all" status, include machines with or without lastActivity
+      // This ensures we get all machines regardless of lastActivity field
     }
 
     // Add search filter if specified
@@ -108,35 +81,70 @@ export async function GET(req: NextRequest) {
     if (searchTerm && searchTerm.trim()) {
       machineMatchStage.$or = [
         { serialNumber: { $regex: searchTerm, $options: "i" } },
+        { origSerialNumber: { $regex: searchTerm, $options: "i" } },
         { game: { $regex: searchTerm, $options: "i" } },
         { manuf: { $regex: searchTerm, $options: "i" } },
         { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
     }
 
+    // Build location filter for licensee
+    const locationMatchStage: any = {
+      deletedAt: { $in: [null, new Date(-1)] },
+    };
+
+    // Add licencee filter if specified
+    if (licencee && licencee !== "all") {
+      locationMatchStage["rel.licencee"] = licencee;
+    }
+
     // Route to appropriate handler based on type
     switch (type) {
       case "stats":
-        return await getMachineStats(db, machineMatchStage);
+        return await getMachineStats(
+          db,
+          machineMatchStage,
+          locationMatchStage,
+          startDate,
+          endDate
+        );
       case "overview":
         return await getOverviewMachines(
           db,
           machineMatchStage,
+          locationMatchStage,
           page,
           limit,
-          skip
+          skip,
+          startDate,
+          endDate
         );
       case "all":
-        return await getAllMachines(db, searchParams, startDate, endDate);
+        return await getAllMachines(
+          db,
+          searchParams,
+          startDate,
+          endDate,
+          locationMatchStage
+        );
       case "offline":
-        return await getOfflineMachines(db, searchParams, startDate, endDate);
+        return await getOfflineMachines(
+          db,
+          searchParams,
+          startDate,
+          endDate,
+          locationMatchStage
+        );
       default:
         return await getOverviewMachines(
           db,
           machineMatchStage,
+          locationMatchStage,
           page,
           limit,
-          skip
+          skip,
+          startDate,
+          endDate
         );
     }
   } catch (err) {
@@ -161,19 +169,61 @@ const getOnlineMachinesCount = async (db: any, machineMatchStage: any) => {
 };
 
 // Stats endpoint - returns total counts and financial totals
-const getMachineStats = async (db: any, machineMatchStage: any) => {
+const getMachineStats = async (
+  db: any,
+  machineMatchStage: any,
+  locationMatchStage: any,
+  startDate: Date | undefined,
+  endDate: Date | undefined
+) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
-  // Count ALL machines in the system (regardless of date filter)
-  const totalCount = await db.collection("machines").countDocuments({
-    deletedAt: { $in: [null, new Date(-1)] },
-  });
+  // Use aggregation to join machines with gaminglocations for licensee filtering
+  const aggregationPipeline = [
+    { $match: { deletedAt: { $in: [null, new Date(-1)] } } },
+    {
+      $lookup: {
+        from: "gaminglocations",
+        localField: "gamingLocation",
+        foreignField: "_id",
+        as: "locationDetails",
+      },
+    },
+    { $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true } },
+  ];
 
-  // Count online machines (regardless of date filter)
-  const onlineCount = await db.collection("machines").countDocuments({
-    deletedAt: { $in: [null, new Date(-1)] },
-    lastActivity: { $gte: threeMinutesAgo },
-  });
+  // Add location filter if licensee is specified
+  if (
+    locationMatchStage &&
+    typeof locationMatchStage === "object" &&
+    "rel.licencee" in locationMatchStage
+  ) {
+    aggregationPipeline.push({
+      $match: {
+        "locationDetails.rel.licencee": (locationMatchStage as any)[
+          "rel.licencee"
+        ],
+      },
+    } as any);
+  }
+
+  // Get total machines count
+  const totalCountResult = await db
+    .collection("machines")
+    .aggregate([...aggregationPipeline, { $count: "total" } as any])
+    .toArray();
+  const totalCount = totalCountResult[0]?.total || 0;
+
+  // Get online machines count
+  const onlineCountResult = await db
+    .collection("machines")
+    .aggregate([
+      ...aggregationPipeline,
+      { $match: { lastActivity: { $gte: threeMinutesAgo } } } as any,
+      { $count: "total" } as any,
+    ])
+    .toArray();
+  const onlineCount = onlineCountResult[0]?.total || 0;
 
   // Calculate financial totals from machines within the date filter
   const financialTotals = await db
@@ -181,18 +231,46 @@ const getMachineStats = async (db: any, machineMatchStage: any) => {
     .aggregate([
       { $match: machineMatchStage },
       {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "gamingLocation",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
+      },
+      {
+        $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true },
+      },
+      // Add location filter if licensee is specified
+      ...(locationMatchStage &&
+      typeof locationMatchStage === "object" &&
+      "rel.licencee" in locationMatchStage
+        ? [
+            {
+              $match: {
+                "locationDetails.rel.licencee":
+                  locationMatchStage["rel.licencee"],
+              },
+            },
+          ]
+        : []),
+      // Add date filter for financial data (only include machines with activity in the date range)
+      { $match: { lastActivity: { $gte: startDate, $lte: endDate } } },
+      {
         $group: {
           _id: null,
           totalGross: {
             $sum: {
               $subtract: [
-                "$sasMeters.drop",
-                "$sasMeters.totalCancelledCredits",
+                { $ifNull: ["$sasMeters.drop", 0] },
+                { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
               ],
             },
           },
-          totalDrop: { $sum: "$sasMeters.drop" },
-          totalCancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" },
+          totalDrop: { $sum: { $ifNull: ["$sasMeters.drop", 0] } },
+          totalCancelledCredits: {
+            $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+          },
         },
       },
     ])
@@ -203,6 +281,8 @@ const getMachineStats = async (db: any, machineMatchStage: any) => {
     totalDrop: 0,
     totalCancelledCredits: 0,
   };
+
+
 
   return NextResponse.json({
     onlineCount,
@@ -218,97 +298,142 @@ const getMachineStats = async (db: any, machineMatchStage: any) => {
 const getOverviewMachines = async (
   db: any,
   machineMatchStage: any,
+  locationMatchStage: any,
   page: number,
   limit: number,
-  skip: number
+  skip: number,
+  startDate: Date | undefined,
+  endDate: Date | undefined
 ) => {
-  console.log("🚀 Getting overview machines with pagination...");
+  // console.log("🚀 Getting overview machines with pagination...");
 
-  // Step 1: Get machines with minimal data (paginated)
+  // Step 1: Get machines with minimal data (paginated) using aggregation
+  const aggregationPipeline = [
+    { $match: machineMatchStage },
+    {
+      $lookup: {
+        from: "gaminglocations",
+        localField: "gamingLocation",
+        foreignField: "_id",
+        as: "locationDetails",
+      },
+    },
+    { $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true } },
+  ];
+
+  // Add location filter if licensee is specified
+  if (locationMatchStage && locationMatchStage["rel.licencee"]) {
+    aggregationPipeline.push({
+      $match: {
+        "locationDetails.rel.licencee": locationMatchStage["rel.licencee"],
+      },
+    });
+  }
+
+  // Add projection, sort, skip, and limit
+  aggregationPipeline.push(
+    {
+      $project: {
+        _id: 1,
+        serialNumber: 1,
+        "Custom.name": 1,
+        game: 1,
+        manuf: 1,
+        gameType: 1,
+        gamingLocation: 1,
+        lastActivity: 1,
+        isSasMachine: 1,
+        sasMeters: 1,
+        gameConfig: 1,
+        locationName: "$locationDetails.name",
+      },
+    } as any,
+    { $sort: { "sasMeters.coinIn": -1 } } as any,
+    { $skip: skip } as any,
+    { $limit: limit } as any
+  );
+
   const machines = await db
     .collection("machines")
-    .find(machineMatchStage)
-    .project({
-      _id: 1,
-      serialNumber: 1,
-      "Custom.name": 1,
-      game: 1,
-      manuf: 1,
-      gameType: 1,
-      gamingLocation: 1,
-      lastActivity: 1,
-      isSasMachine: 1,
-      sasMeters: 1,
-      gameConfig: 1,
-    })
-    .sort({ "sasMeters.coinIn": -1 })
-    .skip(skip)
-    .limit(limit)
+    .aggregate(aggregationPipeline)
     .toArray();
 
-  console.log(`🔍 Found ${machines.length} machines for overview`);
+  // console.log(`🔍 Found ${machines.length} machines for overview`);
 
-  // Get all gaming locations for name resolution
-  const locations = await db
-    .collection("gaminglocations")
-    .find({
-      deletedAt: { $in: [null, new Date(-1)] },
-    })
-    .project({ _id: 1, name: 1 })
-    .toArray();
-
-  // Create a map for quick location name lookup
-  const locationMap = new Map();
-  locations.forEach((loc: any) => {
-    locationMap.set(loc._id.toString(), loc.name);
-  });
-
-  // Transform machines data and resolve location names
+  // Transform machines data using locationName from aggregation
   const transformedMachines = machines.map((machine: any) => {
-    // Resolve location name using gamingLocation field
-    const locationName = machine.gamingLocation
-      ? locationMap.get(machine.gamingLocation.toString()) || "Unknown Location"
-      : "Unknown Location";
+    // Check if machine has activity in the date range for financial data
+    const hasActivityInRange =
+      machine.lastActivity &&
+      startDate &&
+      endDate &&
+      new Date(machine.lastActivity) >= startDate &&
+      new Date(machine.lastActivity) <= endDate;
 
     return {
       machineId: machine._id.toString(),
       machineName:
         machine.Custom?.name || machine.serialNumber || "Unknown Machine",
       locationId: machine.gamingLocation?.toString() || "",
-      locationName: locationName,
+      locationName: machine.locationName || "Unknown Location",
       gameTitle: machine.game || "Unknown Game",
       manufacturer: machine.manuf || "Unknown Manufacturer",
-      isOnline:
+      isOnline: !!(
         machine.lastActivity &&
-        new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000),
+        new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000)
+      ),
       lastActivity: machine.lastActivity,
       isSasEnabled: machine.isSasMachine || false,
-      coinIn: machine.sasMeters?.coinIn || 0,
-      coinOut: machine.sasMeters?.coinOut || 0,
-      netWin:
-        (machine.sasMeters?.drop || 0) -
-        (machine.sasMeters?.totalCancelledCredits || 0),
+      coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
+      coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+      netWin: hasActivityInRange
+        ? (machine.sasMeters?.drop || 0) -
+          (machine.sasMeters?.totalCancelledCredits || 0)
+        : 0,
       theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
-      gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
-      avgBet: machine.sasMeters?.avgBet || 0,
-      drop: machine.sasMeters?.drop || 0,
-      cancelledCredits: machine.sasMeters?.totalCancelledCredits || 0,
+      gamesPlayed: hasActivityInRange ? machine.sasMeters?.gamesPlayed || 0 : 0,
+      avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
+      drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+      cancelledCredits: hasActivityInRange
+        ? machine.sasMeters?.totalCancelledCredits || 0
+        : 0,
     };
   });
 
-  // Step 4: Get total count for pagination
-  const totalCount = await db
+  // Step 4: Get total count for pagination using aggregation with licensee filtering
+  const countPipeline = [
+    { $match: machineMatchStage },
+    {
+      $lookup: {
+        from: "gaminglocations",
+        localField: "gamingLocation",
+        foreignField: "_id",
+        as: "locationDetails",
+      },
+    },
+    { $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true } },
+  ];
+
+  // Add location filter if licensee is specified
+  if (locationMatchStage && locationMatchStage["rel.licencee"]) {
+    countPipeline.push({
+      $match: {
+        "locationDetails.rel.licencee": locationMatchStage["rel.licencee"],
+      },
+    });
+  }
+
+  countPipeline.push({ $count: "total" } as any);
+
+  const totalCountResult = await db
     .collection("machines")
-    .countDocuments(machineMatchStage);
+    .aggregate(countPipeline)
+    .toArray();
+
+  const totalCount = totalCountResult[0]?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
-  console.log("🔍 Overview machines completed:", {
-    page,
-    limit,
-    totalCount,
-    totalPages,
-    dataLength: transformedMachines.length,
-  });
+  
 
   return NextResponse.json({
     data: transformedMachines,
@@ -327,8 +452,9 @@ const getOverviewMachines = async (
 const getAllMachines = async (
   db: any,
   searchParams: URLSearchParams,
-  startDate: Date,
-  endDate: Date
+  startDate: Date | undefined,
+  endDate: Date | undefined,
+  locationMatchStage: any
 ) => {
   try {
     const licencee = searchParams.get("licencee");
@@ -342,16 +468,8 @@ const getAllMachines = async (
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
-    // Add licencee filter if specified
-    if (licencee && licencee !== "all") {
-      machineMatchStage["locationDetails.rel.licencee"] = licencee;
-    }
-
-    // Add date filter
-    machineMatchStage.lastActivity = {
-      $gte: startDate,
-      $lte: endDate,
-    };
+    // Note: We don't filter by lastActivity date here to include all machines
+    // Date filtering will be applied to financial data in the transformation
 
     // Add search filter if specified
     if (searchTerm && searchTerm.trim()) {
@@ -363,13 +481,37 @@ const getAllMachines = async (
       ];
     }
 
-    // Get all machines for analysis
-    const machines = await db
-      .collection("machines")
-      .find(machineMatchStage)
-      .project({
+    // Use aggregation to join machines with gaminglocations for licensee filtering
+    const aggregationPipeline = [
+      { $match: machineMatchStage },
+      {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "gamingLocation",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
+      },
+      {
+        $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true },
+      },
+    ];
+
+    // Add location filter if licensee is specified
+    if (locationMatchStage["rel.licencee"]) {
+      aggregationPipeline.push({
+        $match: {
+          "locationDetails.rel.licencee": locationMatchStage["rel.licencee"],
+        },
+      });
+    }
+
+    // Add projection
+    aggregationPipeline.push({
+      $project: {
         _id: 1,
         serialNumber: 1,
+        origSerialNumber: 1,
         "Custom.name": 1,
         gamingLocation: 1,
         game: 1,
@@ -378,65 +520,65 @@ const getAllMachines = async (
         isSasMachine: 1,
         sasMeters: 1,
         gameConfig: 1,
-      })
+        locationName: "$locationDetails.name",
+      },
+    } as any);
+
+    // Get all machines for analysis
+    const machines = await db
+      .collection("machines")
+      .aggregate(aggregationPipeline)
       .toArray();
 
-    console.log(`🔍 Found ${machines.length} machines for analysis`);
+    // console.log(`🔍 Found ${machines.length} machines for analysis`);
 
-    // Get all gaming locations for name resolution
-    const locations = await db
-      .collection("gaminglocations")
-      .find({
-        deletedAt: { $in: [null, new Date(-1)] },
-      })
-      .project({ _id: 1, name: 1 })
-      .toArray();
-
-    // Create a map for quick location name lookup
-    const locationMap = new Map();
-    locations.forEach((loc: any) => {
-      locationMap.set(loc._id.toString(), loc.name);
-    });
-
-    // Transform machines data and resolve location names
+    // Transform machines data using locationName from aggregation
     const transformedMachines = machines.map((machine: any) => {
-      // Resolve location name using gamingLocation field
-      const locationName = machine.gamingLocation
-        ? locationMap.get(machine.gamingLocation.toString()) ||
-          "Unknown Location"
-        : "Unknown Location";
+      // Check if machine has activity in the date range for financial data
+      const hasActivityInRange =
+        machine.lastActivity &&
+        startDate &&
+        endDate &&
+        new Date(machine.lastActivity) >= startDate &&
+        new Date(machine.lastActivity) <= endDate;
 
       return {
         machineId: machine._id.toString(),
+        serialNumber:
+          machine.serialNumber ||
+          machine.origSerialNumber ||
+          machine._id.toString(),
         machineName:
           machine.Custom?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
-        locationName: locationName,
+        locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
         manufacturer: machine.manuf || "Unknown Manufacturer",
-        isOnline:
+        isOnline: !!(
           machine.lastActivity &&
-          new Date(machine.lastActivity) >=
-            new Date(Date.now() - 3 * 60 * 1000),
+          new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000)
+        ),
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: machine.sasMeters?.coinIn || 0,
-        coinOut: machine.sasMeters?.coinOut || 0,
-        netWin:
-          (machine.sasMeters?.drop || 0) -
-          (machine.sasMeters?.totalCancelledCredits || 0),
+        coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
+        coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+        netWin: hasActivityInRange
+          ? (machine.sasMeters?.drop || 0) -
+            (machine.sasMeters?.totalCancelledCredits || 0)
+          : 0,
         theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
-        gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
-        avgBet: machine.sasMeters?.avgBet || 0,
-        drop: machine.sasMeters?.drop || 0,
-        cancelledCredits: machine.sasMeters?.totalCancelledCredits || 0,
+        gamesPlayed: hasActivityInRange
+          ? machine.sasMeters?.gamesPlayed || 0
+          : 0,
+        avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
+        drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+        cancelledCredits: hasActivityInRange
+          ? machine.sasMeters?.totalCancelledCredits || 0
+          : 0,
       };
     });
 
-    console.log(
-      "🔍 All machines for analysis completed:",
-      transformedMachines.length
-    );
+
 
     return NextResponse.json({
       data: transformedMachines,
@@ -460,8 +602,9 @@ const getAllMachines = async (
 const getOfflineMachines = async (
   db: any,
   searchParams: URLSearchParams,
-  startDate: Date,
-  endDate: Date
+  startDate: Date | undefined,
+  endDate: Date | undefined,
+  locationMatchStage: any
 ) => {
   try {
     const licencee = searchParams.get("licencee");
@@ -474,17 +617,11 @@ const getOfflineMachines = async (
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
     const machineMatchStage: any = {
       deletedAt: { $in: [null, new Date(-1)] },
-      lastActivity: {
-        $lt: threeMinutesAgo,
-        $gte: startDate,
-        $lte: endDate,
-      },
+      $or: [
+        { lastActivity: { $lt: threeMinutesAgo } },
+        { lastActivity: { $exists: false } },
+      ],
     };
-
-    // Add licencee filter if specified
-    if (licencee && licencee !== "all") {
-      machineMatchStage["locationDetails.rel.licencee"] = licencee;
-    }
 
     // Add search filter if specified
     if (searchTerm && searchTerm.trim()) {
@@ -496,11 +633,40 @@ const getOfflineMachines = async (
       ];
     }
 
-    // Get offline machines
-    const machines = await db
-      .collection("machines")
-      .find(machineMatchStage)
-      .project({
+    // Use aggregation to join machines with gaminglocations for licensee filtering
+    const aggregationPipeline = [
+      { $match: machineMatchStage },
+      {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "gamingLocation",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
+      },
+      {
+        $unwind: { path: "$locationDetails", preserveNullAndEmptyArrays: true },
+      },
+    ];
+
+    // Add location filter if licensee is specified
+    if (
+      locationMatchStage &&
+      typeof locationMatchStage === "object" &&
+      "rel.licencee" in locationMatchStage
+    ) {
+      aggregationPipeline.push({
+        $match: {
+          "locationDetails.rel.licencee": (locationMatchStage as any)[
+            "rel.licencee"
+          ],
+        },
+      } as any);
+    }
+
+    // Add projection
+    aggregationPipeline.push({
+      $project: {
         _id: 1,
         serialNumber: 1,
         "Custom.name": 1,
@@ -511,59 +677,58 @@ const getOfflineMachines = async (
         isSasMachine: 1,
         sasMeters: 1,
         gameConfig: 1,
-      })
+        locationName: "$locationDetails.name",
+      },
+    } as any);
+
+    // Get offline machines
+    const machines = await db
+      .collection("machines")
+      .aggregate(aggregationPipeline)
       .toArray();
 
-    console.log(`🔍 Found ${machines.length} offline machines`);
+    // console.log(`🔍 Found ${machines.length} offline machines`);
 
-    // Get all gaming locations for name resolution
-    const locations = await db
-      .collection("gaminglocations")
-      .find({
-        deletedAt: { $in: [null, new Date(-1)] },
-      })
-      .project({ _id: 1, name: 1 })
-      .toArray();
-
-    // Create a map for quick location name lookup
-    const locationMap = new Map();
-    locations.forEach((loc: any) => {
-      locationMap.set(loc._id.toString(), loc.name);
-    });
-
-    // Transform machines data and resolve location names
+    // Transform machines data using locationName from aggregation
     const transformedMachines = machines.map((machine: any) => {
-      // Resolve location name using gamingLocation field
-      const locationName = machine.gamingLocation
-        ? locationMap.get(machine.gamingLocation.toString()) ||
-          "Unknown Location"
-        : "Unknown Location";
+      // Check if machine has activity in the date range for financial data
+      const hasActivityInRange =
+        machine.lastActivity &&
+        startDate &&
+        endDate &&
+        new Date(machine.lastActivity) >= startDate &&
+        new Date(machine.lastActivity) <= endDate;
 
       return {
         machineId: machine._id.toString(),
         machineName:
           machine.Custom?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
-        locationName: locationName,
+        locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
         manufacturer: machine.manuf || "Unknown Manufacturer",
         isOnline: false, // All machines in this query are offline
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: machine.sasMeters?.coinIn || 0,
-        coinOut: machine.sasMeters?.coinOut || 0,
-        netWin:
-          (machine.sasMeters?.drop || 0) -
-          (machine.sasMeters?.totalCancelledCredits || 0),
+        coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
+        coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+        netWin: hasActivityInRange
+          ? (machine.sasMeters?.drop || 0) -
+            (machine.sasMeters?.totalCancelledCredits || 0)
+          : 0,
         theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
-        gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
-        avgBet: machine.sasMeters?.avgBet || 0,
-        drop: machine.sasMeters?.drop || 0,
-        cancelledCredits: machine.sasMeters?.totalCancelledCredits || 0,
+        gamesPlayed: hasActivityInRange
+          ? machine.sasMeters?.gamesPlayed || 0
+          : 0,
+        avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
+        drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+        cancelledCredits: hasActivityInRange
+          ? machine.sasMeters?.totalCancelledCredits || 0
+          : 0,
       };
     });
 
-    console.log("🔍 Offline machines completed:", transformedMachines.length);
+    // console.log("🔍 Offline machines completed:", transformedMachines.length);
 
     return NextResponse.json({
       data: transformedMachines,

@@ -12,53 +12,93 @@ import StatCardSkeleton, {
 import Chart from "@/components/ui/dashboard/Chart";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { RefreshCw } from "lucide-react";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 export default function MobileLayout(props: MobileLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
-    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
+    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md" suppressHydrationWarning>
       <div className="text-gray-500 text-lg mb-2">No Data Available</div>
       <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
   );
 
-  // State for aggregated location data
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
-  const [aggLoading, setAggLoading] = useState(true);
+  // Use online/offline counts from props if provided, otherwise fetch from API
+  const [machineStats, setMachineStats] = useState<{
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null>(null);
+  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
 
+  // Fetch machine stats for online/offline counts (similar to reports tab)
   useEffect(() => {
-    const fetchLocationAggregation = async () => {
-      setAggLoading(true);
+    let aborted = false;
+    const fetchMachineStats = async () => {
+      setMachineStatsLoading(true);
       try {
-        const res = await fetch("/api/locationAggregation?timePeriod=Today");
-        const response = await res.json();
-        // Extract the data array from the response
-        setLocationAggregates(response.data || []);
+        const params = new URLSearchParams();
+        params.append("licensee", "all"); // Get all machines
+
+        const res = await axios.get(
+          `/api/analytics/machines/stats?${params.toString()}`
+        );
+        const data = res.data;
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: data.totalMachines || 0,
+            onlineMachines: data.onlineMachines || 0,
+            offlineMachines: data.offlineMachines || 0,
+          });
+        }
       } catch {
-        setLocationAggregates([]);
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
       } finally {
-        setAggLoading(false);
+        if (!aborted) setMachineStatsLoading(false);
       }
     };
-    fetchLocationAggregation();
+    fetchMachineStats();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
-  // Calculate total online/offline from aggregation
-  const onlineCount = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce(
-        (sum, loc) => sum + (loc.onlineMachines || 0),
-        0
-      )
-    : 0;
-  const totalMachines = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
-    : 0;
-  const offlineCount = totalMachines - onlineCount;
+  // Use machine stats for online/offline counts
+  const onlineCount = machineStats?.onlineMachines || 0;
+  const offlineCount = machineStats?.offlineMachines || 0;
 
   return (
     <div className="xl:hidden space-y-6">
-      <div className="flex items-center gap-2 mb-2">
+      {/* Date Filter Controls (mobile) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <DashboardDateFilters
+          disabled={props.loadingChartData || props.refreshing}
+        />
+      </div>
+
+      {/* Title */}
+      <div className="flex items-center justify-between">
         <h2 className="text-lg">Total for all Locations and Machines</h2>
+      </div>
+
+      {/* Machine Status Widget */}
+      <div className="mb-4">
+        <MachineStatusWidget
+          isLoading={machineStatsLoading}
+          onlineCount={onlineCount}
+          offlineCount={offlineCount}
+        />
+      </div>
+
+      {/* Refresh button below Machine Status on mobile */}
+      <div className="flex justify-end">
         <div
           className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
             props.loadingChartData || props.refreshing
@@ -66,8 +106,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
               : "hover:bg-buttonActive/90"
           }`}
           onClick={() => {
-            if (!(props.loadingChartData || props.refreshing))
-              props.onRefresh();
+            if (!(props.loadingChartData || props.refreshing)) props.onRefresh();
           }}
           aria-disabled={props.loadingChartData || props.refreshing}
           tabIndex={0}
@@ -79,15 +118,6 @@ export default function MobileLayout(props: MobileLayoutProps) {
           />
           <span className="font-semibold">Refresh</span>
         </div>
-      </div>
-
-      {/* Machine Status Widget */}
-      <div className="mb-4">
-        <MachineStatusWidget
-          isLoading={aggLoading}
-          onlineCount={onlineCount}
-          offlineCount={offlineCount}
-        />
       </div>
 
       {/* Metrics Cards */}
@@ -199,22 +229,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
 
             <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
               <div className="flex justify-between items-center mb-4">
-                <div className="mb-4">
-                  <CustomSelect
-                    timeFrames={timeFrames}
-                    selectedFilter={props.activePieChartFilter}
-                    activePieChartFilter={props.activePieChartFilter}
-                    activeFilters={props.activeFilters}
-                    onSelect={(value) => {
-                      if (!props.loadingTopPerforming) {
-                        props.setActivePieChartFilter(value);
-                      }
-                    }}
-                    isActive={true}
-                    placeholder="Select Time Frame"
-                    disabled={props.loadingTopPerforming}
-                  />
-                </div>
+                {/* Removed sort by select input on mobile */}
               </div>
               <div className="flex items-center justify-between">
                 <ul className="space-y-2">

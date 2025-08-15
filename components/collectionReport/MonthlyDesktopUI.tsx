@@ -69,6 +69,10 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
         value={pendingRange}
         onChange={onPendingRangeChange}
         onGo={onApplyDateRange}
+        onCancel={() => {
+          // Reset the pending range when canceling
+          onPendingRangeChange(undefined);
+        }}
         onSetLastMonth={onSetLastMonth}
       />
 

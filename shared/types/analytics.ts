@@ -93,6 +93,8 @@ export type KpiMetric = {
   change?: number;
   trend?: "up" | "down" | "stable";
   format?: "currency" | "number" | "percentage" | "text";
+  previousValue?: number;
+  title?: string; // For backward compatibility
 };
 
 // Report data types
@@ -189,4 +191,4 @@ export type ActivityLog = {
   userAgent?: string;
   success: boolean;
   errorMessage?: string;
-}; 
+};

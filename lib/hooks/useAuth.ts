@@ -4,18 +4,10 @@ import { fetchUserId } from "@/lib/helpers/user";
 import axios from "axios";
 import type { UserAuthPayload } from "@/lib/types";
 
-export type AuthState = {
-  user: UserAuthPayload | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  hasRole: (role: string) => boolean;
-  hasPermission: (permission: string) => boolean;
-  hasAnyRole: (roles: string[]) => boolean;
-  hasAnyPermission: (permissions: string[]) => boolean;
-  hasLocationAccess: (locationId: string) => boolean;
-  getUserLocationIds: () => string[];
-  canAccessReport: (requiredRoles?: string[], requiredPermissions?: string[]) => boolean;
-};
+import type { AuthState } from "@/lib/types/hooks";
+
+// Re-export frontend-specific types for convenience
+export type { AuthState };
 
 /**
  * Custom hook for authentication and role-based access control.

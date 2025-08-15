@@ -45,7 +45,7 @@ function CabinetCardMobile({
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold truncate max-w-[80%]">
-          {cabinet.serialNumber || "Unknown"}
+          {(cabinet as any).serialNumber || (cabinet as any).origSerialNumber || (cabinet as any).machineId || "Unknown"}
         </h3>
         <span
           ref={statusRef}

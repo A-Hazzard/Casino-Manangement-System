@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import gsap from "gsap";
+import axios from "axios";
 import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import "leaflet/dist/leaflet.css";
 import { MapPreviewProps } from "@/lib/types/componentProps";
@@ -13,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import getAllGamingLocations from "@/lib/helpers/locations";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getMapCenterByLicensee } from "@/lib/utils/location";
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -49,7 +52,7 @@ const getValidLongitude = (geo: {
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (location: locations, locationAggregates: any[]) => {
   // Try to find matching data in locationAggregates
-  const stats = Array.isArray(locationAggregates) 
+  const stats = Array.isArray(locationAggregates)
     ? locationAggregates.find((d) => d.location === location._id)
     : undefined;
 
@@ -78,24 +81,146 @@ const getPerformanceLabel = (gross: number) => {
   return "poor";
 };
 
+// Component for location popup content with loading states
+const LocationPopupContent = ({
+  location,
+  locationAggregates,
+  isFinancialDataLoading,
+  onViewDetails,
+}: {
+  location: locations;
+  locationAggregates: any[];
+  isFinancialDataLoading: boolean;
+  onViewDetails: (locationId: string) => void;
+}) => {
+  const stats = getLocationStats(location, locationAggregates);
+  const performance = getPerformanceLabel(stats.gross);
+  const performanceColor = getPerformanceColor(stats.gross);
+
+  return (
+    <div className="min-w-[280px] p-2">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-lg">
+          {location.name || location.locationName}
+        </h3>
+        {isFinancialDataLoading ? (
+          <Skeleton className="h-5 w-16 rounded-full" />
+        ) : (
+          <Badge
+            variant={
+              performance === "excellent"
+                ? "default"
+                : performance === "good"
+                ? "secondary"
+                : "outline"
+            }
+            className={performanceColor}
+          >
+            {performance}
+          </Badge>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3 text-green-600" />
+            {isFinancialDataLoading ? (
+              <Skeleton className="h-4 w-16" />
+            ) : (
+              <span className="font-medium text-green-600">
+                {stats.gross.toLocaleString()}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">Gross Revenue</div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3 text-blue-600" />
+            {isFinancialDataLoading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : (
+              <span className="font-medium">
+                {stats.moneyIn > 0
+                  ? ((stats.gross / stats.moneyIn) * 100).toFixed(1)
+                  : "0.0"}
+                %
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Revenue Performance (%)
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {isFinancialDataLoading ? (
+            <Skeleton className="h-4 w-20" />
+          ) : (
+            <div className="font-medium text-yellow-600">
+              ${stats.moneyIn.toLocaleString()}
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">Money In</div>
+        </div>
+
+        <div className="space-y-2">
+          {isFinancialDataLoading ? (
+            <Skeleton className="h-4 w-12" />
+          ) : (
+            <div className="font-medium">
+              {stats.onlineMachines}/{stats.totalMachines}
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">Machines Online</div>
+        </div>
+      </div>
+
+      <div className="mt-3 pt-2 border-t">
+        <div className="flex items-center justify-between text-xs">
+          {isFinancialDataLoading ? (
+            <Skeleton className="h-3 w-24" />
+          ) : (
+            <span className="font-medium text-gray-500">
+              {stats.totalMachines > 0 ? "Active Location" : "No Machines"}
+            </span>
+          )}
+          <button
+            onClick={() => onViewDetails(location._id)}
+            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+          >
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function MapPreview(props: MapPreviewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
-  const [aggLoading, setAggLoading] = useState(true);
+  const [locationAggregates, setLocationAggregates] = useState<any[]>(
+    props.locationAggregates || []
+  );
+  const [aggLoading, setAggLoading] = useState<boolean>(
+    props.aggLoading ?? true
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<locations[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
+    10.6599, -61.5199,
+  ]); // Trinidad center as initial fallback
   const mapRef = useRef<any>(null);
   const router = useRouter();
 
   // Get Zustand state for reactivity
-  const { 
-    selectedLicencee, 
-    activeMetricsFilter, 
-    customDateRange 
-  } = useDashBoardStore();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
 
   // Initialize Leaflet on client side
   useEffect(() => {
@@ -111,53 +236,88 @@ export default function MapPreview(props: MapPreviewProps) {
     });
   }, []);
 
-  // Fetch location aggregation data - now reactive to filters
+  // Get default center based on selected licensee
   useEffect(() => {
+    const defaultCenter = getMapCenterByLicensee(selectedLicencee);
+    setUserDefaultCenter(defaultCenter);
+  }, [selectedLicencee]);
+
+  // Handle external props vs internal fetch
+  useEffect(() => {
+    if (props.locationAggregates) {
+      // External data provided; use it instead of fetching
+      setLocationAggregates(props.locationAggregates);
+      setAggLoading(!!props.aggLoading);
+    }
+  }, [props.locationAggregates, props.aggLoading]);
+
+  // Fetch location aggregation data only when no external props provided and filters change
+  useEffect(() => {
+    // Skip fetch if external data is provided
+    if (props.locationAggregates) {
+      return;
+    }
+
+    let aborted = false;
     const fetchLocationAggregation = async () => {
       setAggLoading(true);
       try {
-        // Build query parameters based on current filters
         const params = new URLSearchParams();
-        
-        // Add time period based on activeMetricsFilter
-        if (activeMetricsFilter === 'Today') {
-          params.append('timePeriod', 'Today');
-        } else if (activeMetricsFilter === 'Yesterday') {
-          params.append('timePeriod', 'Yesterday');
-        } else if (activeMetricsFilter === 'last7days' || activeMetricsFilter === '7d') {
-          params.append('timePeriod', '7d');
-        } else if (activeMetricsFilter === 'last30days' || activeMetricsFilter === '30d') {
-          params.append('timePeriod', '30d');
-        } else if (activeMetricsFilter === 'Custom' && customDateRange) {
-          // For custom range, use the date range directly
+        if (activeMetricsFilter === "Today") {
+          params.append("timePeriod", "Today");
+        } else if (activeMetricsFilter === "Yesterday") {
+          params.append("timePeriod", "Yesterday");
+        } else if (
+          activeMetricsFilter === "last7days" ||
+          activeMetricsFilter === "7d"
+        ) {
+          params.append("timePeriod", "7d");
+        } else if (
+          activeMetricsFilter === "last30days" ||
+          activeMetricsFilter === "30d"
+        ) {
+          params.append("timePeriod", "30d");
+        } else if (activeMetricsFilter === "Custom" && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
-            params.append('startDate', customDateRange.startDate.toISOString());
-            params.append('endDate', customDateRange.endDate.toISOString());
+            const sd =
+              customDateRange.startDate instanceof Date
+                ? customDateRange.startDate
+                : new Date(customDateRange.startDate as unknown as string);
+            const ed =
+              customDateRange.endDate instanceof Date
+                ? customDateRange.endDate
+                : new Date(customDateRange.endDate as unknown as string);
+            params.append("startDate", sd.toISOString());
+            params.append("endDate", ed.toISOString());
           } else {
-            params.append('timePeriod', 'Today');
+            params.append("timePeriod", "Today");
           }
         } else {
-          params.append('timePeriod', 'Today');
+          params.append("timePeriod", "Today");
         }
-
-        // Add licensee filter if selected
         if (selectedLicencee) {
-          params.append('licencee', selectedLicencee);
+          params.append("licencee", selectedLicencee);
         }
-
-        const res = await fetch(`/api/locationAggregation?${params.toString()}`);
-        const response = await res.json();
-        // Extract the data array from the response
-        setLocationAggregates(response.data || []);
+        const response = await axios.get(
+          `/api/locationAggregation?${params.toString()}`
+        );
+        if (!aborted) setLocationAggregates(response.data.data || []);
       } catch (err) {
-        console.error("Error fetching location aggregation:", err);
-        setLocationAggregates([]);
+        if (!aborted) setLocationAggregates([]);
       } finally {
-        setAggLoading(false);
+        if (!aborted) setAggLoading(false);
       }
     };
     fetchLocationAggregation();
-  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
+    return () => {
+      aborted = true;
+    };
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    props.locationAggregates,
+  ]); // Added props.locationAggregates to dependencies
 
   // Modal animation using GSAP
   useEffect(() => {
@@ -183,40 +343,46 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Filter valid locations with coordinates
-  const validLocations = props.gamingLocations?.filter(location => {
-    if (!location.geoCoords) {
-      console.log(`📍 Location "${location.name || location.locationName}" has no geoCoords`);
-      return false;
-    }
-    
-    const validLongitude = getValidLongitude(location.geoCoords);
-    const hasValidCoords = location.geoCoords.latitude !== 0 && 
-                          validLongitude !== undefined && 
-                          validLongitude !== 0;
-    
-    if (!hasValidCoords) {
-      console.log(`📍 Location "${location.name || location.locationName}" has invalid coordinates:`, {
-        latitude: location.geoCoords.latitude,
-        longitude: location.geoCoords.longitude,
-        longtitude: location.geoCoords.longtitude,
-        validLongitude
-      });
-    }
-    
-    return hasValidCoords;
-  }) || [];
+  const validLocations =
+    props.gamingLocations?.filter((location) => {
+      if (!location.geoCoords) {
+        return false;
+      }
+
+      const validLongitude = getValidLongitude(location.geoCoords);
+      const hasValidCoords =
+        location.geoCoords.latitude !== 0 &&
+        validLongitude !== undefined &&
+        validLongitude !== 0;
+
+      return hasValidCoords;
+    }) || [];
+
+  // Get locations without coordinates for user notification
+  const locationsWithoutCoords =
+    props.gamingLocations?.filter((location) => {
+      if (!location.geoCoords) return true;
+
+      const validLongitude = getValidLongitude(location.geoCoords);
+      return (
+        location.geoCoords.latitude === 0 ||
+        validLongitude === undefined ||
+        validLongitude === 0
+      );
+    }) || [];
 
   // Search functionality
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
 
-    const filtered = validLocations.filter(location => {
+    // Search through ALL locations, not just those with valid coordinates
+    const filtered = (props.gamingLocations || []).filter((location) => {
       const locationName = location.name || location.locationName || "";
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -227,13 +393,23 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Zoom to location
   const zoomToLocation = (location: locations) => {
-    if (!mapRef.current || !location.geoCoords) return;
+    if (!mapRef.current) return;
+
+    // Check if location has valid coordinates
+    if (!location.geoCoords) {
+      setSearchQuery(location.name || location.locationName || "");
+      setShowSearchResults(false);
+      return;
+    }
 
     const lat = location.geoCoords.latitude;
     const lon = getValidLongitude(location.geoCoords);
-    
-    if (lat && lon) {
+
+    if (lat && lon && lat !== 0 && lon !== 0) {
       mapRef.current.setView([lat, lon], 15);
+      setSearchQuery(location.name || location.locationName || "");
+      setShowSearchResults(false);
+    } else {
       setSearchQuery(location.name || location.locationName || "");
       setShowSearchResults(false);
     }
@@ -244,8 +420,8 @@ export default function MapPreview(props: MapPreviewProps) {
     mapRef.current = map;
   };
 
-  // Show skeleton while loading or initializing
-  if (!mapReady || aggLoading) {
+  // Show skeleton only while map is initializing, not while financial data loads
+  if (!mapReady) {
     return <MapSkeleton />;
   }
 
@@ -253,20 +429,15 @@ export default function MapPreview(props: MapPreviewProps) {
   if (process.env.NODE_ENV === "development") {
     console.log("MapPreview - gamingLocations:", {
       count: validLocations.length,
-      locations: validLocations.map(loc => ({
+      locations: validLocations.map((loc) => ({
         id: loc._id,
         name: loc.name || loc.locationName,
         geoCoords: loc.geoCoords,
-        hasValidCoords: loc.geoCoords && 
-          loc.geoCoords.latitude !== 0 && 
-          (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0)
-      }))
-    });
-    
-    // Log location aggregation data structure
-    console.log("MapPreview - locationAggregates:", {
-      count: Array.isArray(locationAggregates) ? locationAggregates.length : 0,
-      sampleData: Array.isArray(locationAggregates) ? locationAggregates.slice(0, 2) : []
+        hasValidCoords:
+          loc.geoCoords &&
+          loc.geoCoords.latitude !== 0 &&
+          (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0),
+      })),
     });
   }
 
@@ -285,96 +456,19 @@ export default function MapPreview(props: MapPreviewProps) {
     const lon = getValidLongitude(geo);
     if (!lon) return null;
 
-    const stats = getLocationStats(locationObj, locationAggregates);
-    const performance = getPerformanceLabel(stats.gross);
-    const performanceColor = getPerformanceColor(stats.gross);
-    
     return (
       <Marker key={key} position={[lat, lon]}>
         <Popup>
-          <div className="min-w-[280px] p-2">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-lg">
-                {label}
-              </h3>
-              <Badge
-                variant={
-                  performance === "excellent"
-                    ? "default"
-                    : performance === "good"
-                    ? "secondary"
-                    : "outline"
-                }
-                className={performanceColor}
-              >
-                {performance}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1">
-                  <DollarSign className="h-3 w-3 text-green-600" />
-                  <span className="font-medium text-green-600">
-                    {stats.gross.toLocaleString()}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Gross Revenue
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-blue-600" />
-                  <span className="font-medium">
-                    {stats.moneyIn > 0 ? ((stats.gross / stats.moneyIn) * 100).toFixed(1) : "0.0"}%
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Revenue Performance (%)
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="font-medium text-yellow-600">
-                  ${stats.moneyIn.toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Money In
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="font-medium">
-                  {stats.onlineMachines}/{stats.totalMachines}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Machines Online
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2 border-t">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-gray-500">
-                  {stats.totalMachines > 0 ? "Active Location" : "No Machines"}
-                </span>
-                <button
-                  onClick={() => handleLocationClick(locationObj._id)}
-                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          </div>
+          <LocationPopupContent
+            location={locationObj}
+            locationAggregates={locationAggregates}
+            isFinancialDataLoading={aggLoading}
+            onViewDetails={handleLocationClick}
+          />
         </Popup>
       </Marker>
     );
   };
-
-  console.log(`🗺️ MapPreview: ${validLocations.length} valid locations out of ${props.gamingLocations?.length || 0} total`);
 
   return (
     <>
@@ -382,14 +476,37 @@ export default function MapPreview(props: MapPreviewProps) {
       <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Map Preview</h3>
 
+        {/* Notification for locations without coordinates */}
+        {locationsWithoutCoords.length > 0 && (
+          <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-yellow-800">
+              <MapPin className="h-4 w-4" />
+              <span>
+                <strong>{locationsWithoutCoords.length}</strong> location
+                {locationsWithoutCoords.length !== 1 ? "s" : ""}
+                {locationsWithoutCoords.length === 1 ? " has" : " have"} no
+                coordinates and can&apos;t be displayed on the map
+              </span>
+            </div>
+            {locationsWithoutCoords.length <= 3 && (
+              <div className="mt-1 text-xs text-yellow-700">
+                Missing:{" "}
+                {locationsWithoutCoords
+                  .map((loc) => loc.name || loc.locationName)
+                  .join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
-          className="absolute top-8 right-5 z-[50] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
+          className="absolute top-8 right-5 z-[30] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
           onClick={() => setIsModalOpen(true)}
         >
           <EnterFullScreenIcon className="w-5 h-5" />
         </button>
         <MapContainer
-          center={[10.654, -61.501]}
+          center={userDefaultCenter} // Always use licensee-based center
           zoom={10}
           className="z-10 mt-2 h-48 w-full rounded-lg"
         >
@@ -423,18 +540,41 @@ export default function MapPreview(props: MapPreviewProps) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
-              Casino Locations Map
-            </h3>
-            <button
+                Casino Locations Map
+              </h3>
+              <button
                 className="p-2 bg-gray-200 rounded-full shadow-md hover:scale-110 transition-all duration-200 ease-in-out"
-              onClick={closeModal}
-            >
-              <ExitFullScreenIcon className="w-5 h-5" />
-            </button>
+                onClick={closeModal}
+              >
+                <ExitFullScreenIcon className="w-5 h-5" />
+              </button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
               Interactive map showing casino location performance metrics
             </p>
+
+            {/* Notification for locations without coordinates in modal */}
+            {locationsWithoutCoords.length > 0 && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="flex items-center gap-2 text-sm text-yellow-800">
+                  <MapPin className="h-4 w-4" />
+                  <span>
+                    <strong>{locationsWithoutCoords.length}</strong> location
+                    {locationsWithoutCoords.length !== 1 ? "s" : ""}
+                    {locationsWithoutCoords.length === 1 ? " has" : " have"} no
+                    coordinates and can&apos;t be displayed on the map
+                  </span>
+                </div>
+                {locationsWithoutCoords.length <= 5 && (
+                  <div className="mt-1 text-xs text-yellow-700">
+                    Missing:{" "}
+                    {locationsWithoutCoords
+                      .map((loc) => loc.name || loc.locationName)
+                      .join(", ")}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Flex row: sidebar + map */}
             <div className="flex gap-4">
               {/* Sidebar */}
@@ -456,15 +596,41 @@ export default function MapPreview(props: MapPreviewProps) {
                   <div className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {searchResults.length > 0 ? (
                       searchResults.map((location) => {
-                        const locationName = location.name || location.locationName || "Unknown Location";
+                        const locationName =
+                          location.name ||
+                          location.locationName ||
+                          "Unknown Location";
+                        const hasValidCoords =
+                          location.geoCoords &&
+                          location.geoCoords.latitude !== 0 &&
+                          getValidLongitude(location.geoCoords) !== undefined &&
+                          getValidLongitude(location.geoCoords) !== 0;
+
                         return (
                           <button
                             key={location._id}
                             onClick={() => zoomToLocation(location)}
                             className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-2"
                           >
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span>{locationName}</span>
+                            <MapPin
+                              className={`h-4 w-4 ${
+                                hasValidCoords
+                                  ? "text-gray-400"
+                                  : "text-yellow-500"
+                              }`}
+                            />
+                            <span
+                              className={
+                                hasValidCoords ? "" : "text-yellow-600"
+                              }
+                            >
+                              {locationName}
+                            </span>
+                            {!hasValidCoords && (
+                              <span className="ml-auto text-xs text-yellow-600 bg-yellow-100 px-1 rounded">
+                                No map
+                              </span>
+                            )}
                           </button>
                         );
                       })
@@ -478,28 +644,30 @@ export default function MapPreview(props: MapPreviewProps) {
               </div>
               {/* Map */}
               <div className="flex-1">
-            <MapContainer
-              center={[10.654, -61.501]}
-              zoom={10}
+                <MapContainer
+                  center={userDefaultCenter} // Always use licensee-based center
+                  zoom={10}
                   className="h-[70vh] w-full rounded-lg"
                   ref={handleMapCreated}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              />
-              {validLocations.map((location) => {
-                const locationName =
-                  location.name || location.locationName || "Unknown Location";
-                return renderMarker(
-                  location.geoCoords.latitude,
-                  location.geoCoords,
-                  locationName,
-                  `modal-${location._id}`,
-                  location
-                );
-              })}
-            </MapContainer>
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  {validLocations.map((location) => {
+                    const locationName =
+                      location.name ||
+                      location.locationName ||
+                      "Unknown Location";
+                    return renderMarker(
+                      location.geoCoords.latitude,
+                      location.geoCoords,
+                      locationName,
+                      `modal-${location._id}`,
+                      location
+                    );
+                  })}
+                </MapContainer>
                 {/* Map Legend */}
                 <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">

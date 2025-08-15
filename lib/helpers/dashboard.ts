@@ -11,6 +11,7 @@ import { switchFilter } from "@/lib/utils/metrics";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import { TimePeriod } from "@/app/api/lib/types";
+import axios from "axios";
 
 /**
  * Calculates pie chart label position data for rendering
@@ -42,14 +43,24 @@ export const loadGamingLocations = async (
   setGamingLocations: (locations: locations[]) => void,
   selectedLicencee?: string
 ) => {
-  const locationsData = await getAllGamingLocations(selectedLicencee);
-  const validLocations = locationsData.filter(
-    (loc) =>
-      loc.geoCoords &&
-      loc.geoCoords.latitude !== 0 &&
-      (loc.geoCoords.longitude !== undefined ? loc.geoCoords.longitude !== 0 : loc.geoCoords.longtitude !== 0)
-  );
-  setGamingLocations(validLocations);
+  try {
+    // Lightweight locations fetch (minimal projection, no heavy lookups)
+    const params = new URLSearchParams();
+    params.append("minimal", "1");
+    if (selectedLicencee && selectedLicencee !== "all") {
+      params.append("licencee", selectedLicencee);
+    }
+
+    const response = await axios.get(`/api/locations?${params.toString()}`);
+    const { locations: locationsData } = response.data;
+
+    setGamingLocations(locationsData);
+  } catch (error) {
+    console.error("Error loading gaming locations:", error);
+    // Fallback to original method
+    const locationsData = await getAllGamingLocations(selectedLicencee);
+    setGamingLocations(locationsData);
+  }
 };
 
 /**
@@ -132,20 +143,27 @@ export const handleDashboardRefresh = async (
   setLoadingTopPerforming(true);
 
   try {
-    await fetchMetricsData(
-      activeMetricsFilter,
-      customDateRange,
-      selectedLicencee,
-      setTotals,
-      setChartData,
-      setActiveFilters,
-      setShowDatePicker
-    );
+    // In refresh: also refetch gaming locations to ensure map data stays in sync
+    const locationsParams = new URLSearchParams();
+    locationsParams.append("minimal", "1");
+    if (selectedLicencee && selectedLicencee !== "all") {
+      locationsParams.append("licencee", selectedLicencee);
+    }
 
-    const topPerformingDataResult = await fetchTopPerformingData(
-      activeTab,
-      activePieChartFilter
-    );
+    // Parallelize metrics + top-performing + a lightweight locations ping to warm caches
+    const [__, topPerformingDataResult] = await Promise.all([
+      fetchMetricsData(
+        activeMetricsFilter,
+        customDateRange,
+        selectedLicencee,
+        setTotals,
+        setChartData,
+        setActiveFilters,
+        setShowDatePicker
+      ),
+      fetchTopPerformingData(activeTab, activePieChartFilter),
+      axios.get(`/api/locations?${locationsParams.toString()}`),
+    ]);
     setTopPerformingData(topPerformingDataResult);
   } catch (error) {
     console.error("Error refreshing data:", error);
@@ -164,5 +182,6 @@ export const getTimeFilterButtons = () => [
   { label: "Yesterday", value: "Yesterday" as TimePeriod },
   { label: "Last 7 days", value: "7d" as TimePeriod },
   { label: "30 days", value: "30d" as TimePeriod },
+  { label: "All Time", value: "All Time" as TimePeriod },
   { label: "Custom", value: "Custom" as TimePeriod },
 ];

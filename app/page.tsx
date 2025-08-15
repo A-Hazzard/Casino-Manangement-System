@@ -17,9 +17,7 @@ import {
   handleDashboardRefresh,
 } from "@/lib/helpers/dashboard";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-
-import dashboardIcon from "@/public/dashboardIcon.svg";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -73,20 +71,20 @@ function DashboardContent() {
     const fetchMetrics = async () => {
       setLoadingChartData(true);
       try {
-        // Always fetch gaming locations when licencee changes
-        await loadGamingLocations(setGamingLocations, selectedLicencee);
-
-        await fetchMetricsData(
-          activeMetricsFilter,
-          customDateRange,
-          selectedLicencee,
-          setTotals,
-          setChartData,
-          setActiveFilters,
-          setShowDatePicker
-        );
+        // Fetch locations and metrics in parallel
+        await Promise.all([
+          loadGamingLocations(setGamingLocations, selectedLicencee),
+          fetchMetricsData(
+            activeMetricsFilter,
+            customDateRange,
+            selectedLicencee,
+            setTotals,
+            setChartData,
+            setActiveFilters,
+            setShowDatePicker
+          ),
+        ]);
       } catch (error) {
-        // Log error for debugging in development
         if (process.env.NODE_ENV === "development") {
           console.error("Error fetching metrics:", error);
         }
@@ -202,7 +200,7 @@ function DashboardContent() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto xl:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
@@ -210,24 +208,7 @@ function DashboardContent() {
             disabled={loadingChartData || refreshing}
           />
 
-          {/* Mobile-only dashboard title and date filters */}
-          <div className="xl:hidden">
-            <div className="flex flex-col items-center justify-center w-full max-w-full mb-4">
-              <Image
-                src={dashboardIcon}
-                alt="Dashboard"
-                width={24}
-                height={24}
-              />
-              <h1 className="text-3xl lg:text-4xl font-semibold text-center lg:text-left w-full max-w-full">
-                Dashboard
-              </h1>
-            </div>
-            {/* Date Filter Controls for mobile */}
-            <div className="mt-2">
-              <DashboardDateFilters disabled={loadingChartData || refreshing} />
-            </div>
-          </div>
+          {/* Removed duplicate Financial Metrics Cards from top to avoid duplication */}
 
           {/* Main dashboard layouts */}
           <PcLayout

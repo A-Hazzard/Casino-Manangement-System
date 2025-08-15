@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { createDatabaseIndexes } from "@/app/api/lib/utils/createIndexes";
+// Removed auto-index creation to avoid conflicts and extra latency
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -14,12 +14,6 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") || "";
     const licencee = searchParams.get("licencee");
 
-    console.log("Meters API Debug:", {
-      locations,
-      startDate,
-      endDate,
-      licencee,
-    });
 
     if (!locations) {
       return NextResponse.json(
@@ -36,8 +30,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Ensure indexes are created for optimal performance
-    await createDatabaseIndexes();
+    // Do not auto-create indexes on every request
 
     // Parse locations (comma-separated)
     const locationList = locations.split(",").map((loc) => loc.trim());
@@ -54,7 +47,7 @@ export async function GET(req: NextRequest) {
       start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    console.log("Date range:", { start, end });
+    // console.log("Date range:", { start, end });
 
     // Build query filter for machines
     const machineMatchStage: any = {
@@ -67,11 +60,8 @@ export async function GET(req: NextRequest) {
       machineMatchStage.gamingLocation = { $in: locationList };
     }
 
-    console.log("Location list:", locationList);
-    console.log(
-      "Machine match stage:",
-      JSON.stringify(machineMatchStage, null, 2)
-    );
+    // console.log("Location list:", locationList);
+
 
     // Get machines data for the selected locations
     let machinesData = await db
@@ -107,7 +97,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log("Found machines:", machinesData.length);
+    // console.log("Found machines:", machinesData.length);
 
     // Debug: Show some sample machines to see their gamingLocation values
     if (machinesData.length === 0) {
@@ -117,18 +107,10 @@ export async function GET(req: NextRequest) {
         .project({ _id: 1, serialNumber: 1, gamingLocation: 1 })
         .limit(5)
         .toArray();
-      console.log("Sample machines in database:", sampleMachines);
+      // console.log("Sample machines in database:", sampleMachines);
     }
 
-    console.log(
-      "Sample machine data:",
-      machinesData.slice(0, 2).map((m) => ({
-        _id: m._id,
-        serialNumber: m.serialNumber,
-        gamingLocation: m.gamingLocation,
-        hasSasMeters: !!m.sasMeters,
-      }))
-    );
+
 
     // Get all gaming locations for name resolution
     const locationsData = await db
@@ -139,7 +121,7 @@ export async function GET(req: NextRequest) {
       .project({ _id: 1, name: 1 })
       .toArray();
 
-    console.log("Found locations:", locationsData.length);
+    // console.log("Found locations:", locationsData.length);
 
     // Create a map for quick location name lookup
     const locationMap = new Map();
@@ -166,7 +148,7 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    console.log("Found meters data:", metersData.length);
+    // console.log("Found meters data:", metersData.length);
 
     // Create a map for meter data lookup - get the latest meter data for each machine
     const metersMap = new Map();
@@ -177,7 +159,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Transform data for the table
+    // Transform data for the table with enhanced validation
     let transformedData = machinesData.map((machine: any) => {
       const locationName = machine.gamingLocation
         ? locationMap.get(machine.gamingLocation.toString()) ||
@@ -188,16 +170,23 @@ export async function GET(req: NextRequest) {
         machine.serialNumber || machine.Custom?.name || machine._id.toString();
       const meterData = metersMap.get(machineId);
 
+      // Validate meter values are reasonable (non-negative numbers)
+      const validateMeter = (value: any): number => {
+        const num = Number(value) || 0;
+        return num >= 0 ? num : 0;
+      };
+
       return {
         machineId: machineId,
-        metersIn: machine.sasMeters?.coinIn || 0,
-        metersOut: machine.sasMeters?.coinOut || 0,
-        jackpot: machine.sasMeters?.jackpot || 0,
-        billIn: meterData?.movement?.billIn || 0,
-        voucherOut: meterData?.movement?.voucherOut || 0,
-        attPaidCredits: meterData?.movement?.attPaidCredits || 0,
-        gamesPlayed: machine.sasMeters?.gamesPlayed || 0,
+        metersIn: validateMeter(machine.sasMeters?.coinIn),
+        metersOut: validateMeter(machine.sasMeters?.coinOut),
+        jackpot: validateMeter(machine.sasMeters?.jackpot),
+        billIn: validateMeter(meterData?.movement?.billIn),
+        voucherOut: validateMeter(meterData?.movement?.voucherOut),
+        attPaidCredits: validateMeter(meterData?.movement?.attPaidCredits),
+        gamesPlayed: validateMeter(machine.sasMeters?.gamesPlayed),
         location: locationName,
+        locationId: machine.gamingLocation?.toString() || "",
         createdAt: machine.lastActivity,
       };
     });
@@ -220,15 +209,8 @@ export async function GET(req: NextRequest) {
     // Apply pagination
     const paginatedData = transformedData.slice(skip, skip + limit);
 
-    console.log("Transformed data count:", transformedData.length);
-    console.log("Pagination:", {
-      page,
-      limit,
-      totalCount,
-      totalPages,
-      skip,
-      paginatedDataLength: paginatedData.length,
-    });
+    // console.log("Transformed data count:", transformedData.length);
+    
 
     return NextResponse.json({
       data: paginatedData,

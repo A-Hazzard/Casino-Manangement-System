@@ -247,10 +247,10 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                           cab.installedGame ||
                           cab.game ||
                           cab.assetNumber ||
-                          cab.serialNumber ||
+                          (cab as any).serialNumber || (cab as any).origSerialNumber ||
                           "Unknown Machine";
                         const identifier =
-                          cab.serialNumber ||
+                          (cab as any).serialNumber || (cab as any).origSerialNumber ||
                           cab.assetNumber ||
                           cab.smibBoard ||
                           cab.relayId ||
@@ -314,7 +314,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                       cab.installedGame ||
                       cab.game ||
                       cab.assetNumber ||
-                      cab.serialNumber ||
+                      (cab as any).serialNumber || (cab as any).origSerialNumber ||
                       "Unknown Machine";
                     return (
                       <Chip

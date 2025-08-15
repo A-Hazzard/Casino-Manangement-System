@@ -2,11 +2,16 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import axios from "axios";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { fetchLocationsData } from "@/lib/helpers/locations";
+import {
+  fetchLocationsData,
+  searchAllLocations,
+} from "@/lib/helpers/locations";
 import { AggregatedLocation } from "@/lib/types/location";
 import { LocationFilter, LocationSortOption } from "@/lib/types/location";
+import { TimePeriod } from "@/lib/types/api";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -32,6 +37,25 @@ import LocationSkeleton from "@/components/ui/locations/LocationSkeleton";
 import LocationTable from "@/components/ui/locations/LocationTable";
 import NewLocationModal from "@/components/ui/locations/NewLocationModal";
 import Image from "next/image";
+import ClientOnly from "@/components/ui/common/ClientOnly";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+
+// Debounce hook for search optimization
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function LocationsPage() {
   const {
@@ -58,11 +82,49 @@ export default function LocationsPage() {
   const [loading, setLoading] = useState(true);
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Machine stats state for online/offline counts (like dashboard)
+  const [machineStats, setMachineStats] = useState<{
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null>(null);
+  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
+
   // Add isOpen state for NewLocationModal
   const [isNewLocationModalOpen, setIsNewLocationModalOpen] = useState(false);
+
+  // Calculate financial totals from location data
+  const calculateFinancialTotals = () => {
+    if (!locationData || locationData.length === 0) {
+      return null;
+    }
+
+    const totals = locationData.reduce(
+      (acc, location) => {
+        const moneyIn = location.moneyIn || 0;
+        const moneyOut = location.moneyOut || 0;
+        const gross = location.gross || moneyIn - moneyOut;
+
+        return {
+          moneyIn: acc.moneyIn + moneyIn,
+          moneyOut: acc.moneyOut + moneyOut,
+          gross: acc.gross + gross,
+        };
+      },
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
+
+    return totals;
+  };
+
+  const financialTotals = calculateFinancialTotals();
 
   // Replace openLocationModal with our local state handler
   const openLocationModalLocal = () => setIsNewLocationModalOpen(true);
@@ -75,9 +137,62 @@ export default function LocationsPage() {
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
+  // Fetch machine stats (like dashboard) for online/offline counts
+  useEffect(() => {
+    let aborted = false;
+    const fetchMachineStats = async () => {
+      setMachineStatsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append("licensee", "all"); // Get all machines
+
+        const res = await axios.get(
+          `/api/analytics/machines/stats?${params.toString()}`
+        );
+        const data = res.data;
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: data.totalMachines || 0,
+            onlineMachines: data.onlineMachines || 0,
+            offlineMachines: data.offlineMachines || 0,
+          });
+        }
+      } catch {
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
+      } finally {
+        if (!aborted) setMachineStatsLoading(false);
+      }
+    };
+    fetchMachineStats();
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  // Optimized data fetching with better error handling
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // If there's a search term, use the search function to get ALL locations
+      if (debouncedSearchTerm.trim()) {
+        setSearchLoading(true);
+        const effectiveLicencee = selectedLicencee || "";
+        const searchData = await searchAllLocations(
+          debouncedSearchTerm,
+          effectiveLicencee
+        );
+        setLocationData(searchData);
+        setSearchLoading(false);
+        return;
+      }
+
+      // Otherwise, use the normal fetchLocationsData for metrics-based data
       const filterString = selectedFilters.length
         ? selectedFilters.join(",")
         : "";
@@ -92,34 +207,45 @@ export default function LocationsPage() {
           from: customDateRange.startDate,
           to: customDateRange.endDate,
         };
+      } else if (activeMetricsFilter === "All Time") {
+        // For All Time, don't pass any date range to get all data
+        dateRangeForFetch = undefined;
       }
 
       // Use empty string as fallback if selectedLicencee is empty
       const effectiveLicencee = selectedLicencee || "";
 
       const data = await fetchLocationsData(
-        activeMetricsFilter,
+        activeMetricsFilter as TimePeriod,
         effectiveLicencee,
         filterString,
         dateRangeForFetch
       );
+
       setLocationData(data);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Locations Page Error:", err);
       setLocationData([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  }, [selectedLicencee, activeMetricsFilter, selectedFilters, customDateRange]);
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    selectedFilters,
+    customDateRange,
+    debouncedSearchTerm, // Use debounced search term
+  ]);
 
+  // Fetch data when dependencies change
   useEffect(() => {
-    // Always fetch data on mount and when dependencies change
     fetchData();
   }, [fetchData]);
 
+  // Reset page when search changes
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchTerm, selectedFilters]);
+  }, [debouncedSearchTerm, selectedFilters]);
 
   const handleSortToggle = () => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
@@ -134,22 +260,10 @@ export default function LocationsPage() {
     }
   };
 
+  // Memoized filtered data to prevent unnecessary recalculations
   const filtered = useMemo(() => {
     const result = locationData.filter((loc) => {
-      // Filter by search term
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.toLowerCase();
-        const locationName = loc.locationName?.toLowerCase() || "";
-        const locationId = loc.location?.toLowerCase() || "";
-        if (
-          !locationName.includes(searchLower) &&
-          !locationId.includes(searchLower)
-        ) {
-          return false;
-        }
-      }
-
-      // Filter by selected filters
+      // Filter by selected filters only (search is now handled by backend)
       if (selectedFilters.length === 0) return true;
       return selectedFilters.some((filter) => {
         if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
@@ -160,18 +274,23 @@ export default function LocationsPage() {
       });
     });
     return result;
-  }, [locationData, selectedFilters, searchTerm]);
+  }, [locationData, selectedFilters]);
 
-  const totalOnline = filtered.reduce(
-    (sum, loc) => sum + (loc.onlineMachines || 0),
-    0
-  );
-  const totalMachines = filtered.reduce(
-    (sum, loc) => sum + (loc.totalMachines || 0),
-    0
-  );
-  const totalOffline = totalMachines - totalOnline;
+  // Memoized totals calculation
+  const { totalOnline, totalOffline } = useMemo(() => {
+    const totalOnline = filtered.reduce(
+      (sum, loc) => sum + (loc.onlineMachines || 0),
+      0
+    );
+    const totalMachines = filtered.reduce(
+      (sum, loc) => sum + (loc.totalMachines || 0),
+      0
+    );
+    const totalOffline = totalMachines - totalOnline;
+    return { totalOnline, totalOffline };
+  }, [filtered]);
 
+  // Memoized sorted data
   const sortedData = useMemo(() => {
     return [...filtered].sort((a, b) => {
       const valA = a[sortOption] ?? 0;
@@ -226,14 +345,25 @@ export default function LocationsPage() {
     }
   };
 
+  // Show loading state for search
+  const isLoading = loading || searchLoading;
+
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto lg:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
+          />
+
+          {/* Financial Metrics Cards */}
+          <FinancialMetricsCards
+            totals={financialTotals}
+            loading={loading}
+            title="Total for all Locations"
+            className="mt-6"
           />
 
           {/* Title Row */}
@@ -273,20 +403,32 @@ export default function LocationsPage() {
             </Button>
           </div>
 
-          {/* Date Filters Row - Desktop: filters left, machine status right */}
+          {/* Date Filters Row - Desktop only */}
           <div className="hidden lg:flex items-center justify-between mt-4 mb-0 gap-4">
             <div className="flex-1 min-w-0">
-              <DashboardDateFilters />
+              <DashboardDateFilters hideAllTime={true} />
             </div>
             <div className="flex-shrink-0 ml-4 w-auto">
               <MachineStatusWidget
-                onlineCount={totalOnline}
-                offlineCount={totalOffline}
+                isLoading={machineStatsLoading}
+                onlineCount={machineStats?.onlineMachines || 0}
+                offlineCount={machineStats?.offlineMachines || 0}
               />
             </div>
           </div>
-          {/* Mobile: Search and Status stacked */}
+
+          {/* Mobile/Tablet: Date Filters and Machine Status stacked */}
           <div className="lg:hidden flex flex-col gap-4 mt-4">
+            <div className="w-full">
+              <DashboardDateFilters hideAllTime={true} />
+            </div>
+            <div className="w-full">
+              <MachineStatusWidget
+                isLoading={machineStatsLoading}
+                onlineCount={machineStats?.onlineMachines || 0}
+                offlineCount={machineStats?.offlineMachines || 0}
+              />
+            </div>
             <div className="relative w-full">
               <Input
                 type="text"
@@ -296,12 +438,6 @@ export default function LocationsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            </div>
-            <div className="w-full">
-              <MachineStatusWidget
-                onlineCount={totalOnline}
-                offlineCount={totalOffline}
-              />
             </div>
           </div>
 
@@ -321,49 +457,73 @@ export default function LocationsPage() {
 
           {/* Content Section */}
           <div className="flex-1 w-full">
-            {loading ? (
+            {isLoading ? (
               <>
                 {/* Mobile: show 3 card skeletons */}
                 <div className="block lg:hidden">
-                  <div className="grid grid-cols-1 gap-4">
-                    {[...Array(3)].map((_, i) => (
-                      <LocationSkeleton key={i} />
-                    ))}
-                  </div>
+                  <ClientOnly
+                    fallback={
+                      <div className="grid grid-cols-1 gap-4">
+                        {[...Array(3)].map((_, i) => (
+                          <LocationSkeleton key={i} />
+                        ))}
+                      </div>
+                    }
+                  >
+                    <div className="grid grid-cols-1 gap-4">
+                      {[...Array(3)].map((_, i) => (
+                        <LocationSkeleton key={i} />
+                      ))}
+                    </div>
+                  </ClientOnly>
                 </div>
                 {/* Desktop: show 1 table skeleton */}
                 <div className="hidden lg:block">
-                  <CabinetTableSkeleton />
+                  <ClientOnly fallback={<CabinetTableSkeleton />}>
+                    <CabinetTableSkeleton />
+                  </ClientOnly>
                 </div>
               </>
             ) : currentItems.length === 0 ? (
               <div className="flex justify-center items-center py-12">
                 <span className="text-gray-500 text-lg">
-                  No locations found.
+                  {searchTerm
+                    ? "No locations found matching your search."
+                    : "No locations found."}
                 </span>
               </div>
             ) : (
               <>
                 {/* Mobile: show cards */}
                 <div className="block lg:hidden">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                    {!loading ? (
-                      currentItems.map((location) => (
-                        <LocationCard
-                          key={location.location}
-                          location={location}
-                          onLocationClick={handleLocationClick}
-                          onEdit={() => openEditModal(location)}
-                        />
-                      ))
-                    ) : (
-                      <>
+                  <ClientOnly
+                    fallback={
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         {[...Array(3)].map((_, i) => (
                           <LocationSkeleton key={i} />
                         ))}
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    }
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      {!isLoading ? (
+                        currentItems.map((location) => (
+                          <LocationCard
+                            key={location.location}
+                            location={location}
+                            onLocationClick={handleLocationClick}
+                            onEdit={() => openEditModal(location)}
+                          />
+                        ))
+                      ) : (
+                        <>
+                          {[...Array(3)].map((_, i) => (
+                            <LocationSkeleton key={i} />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </ClientOnly>
                 </div>
                 {/* Desktop: show table */}
                 <div className="hidden lg:block">

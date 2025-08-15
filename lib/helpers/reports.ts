@@ -381,6 +381,7 @@ export const generateMockAnalyticsData = () => {
 
   const kpiMetrics: KpiMetric[] = [
     {
+      label: "Total Handle",
       title: "Total Handle",
       value: 7500000,
       previousValue: 7200000,
@@ -389,6 +390,7 @@ export const generateMockAnalyticsData = () => {
       change: 4.2,
     },
     {
+      label: "Total Win",
       title: "Total Win",
       value: 596000,
       previousValue: 580000,
@@ -397,6 +399,7 @@ export const generateMockAnalyticsData = () => {
       change: 2.8,
     },
     {
+      label: "Actual Hold",
       title: "Actual Hold",
       value: 7.95,
       previousValue: 8.06,
@@ -405,6 +408,7 @@ export const generateMockAnalyticsData = () => {
       change: 0.11,
     },
     {
+      label: "Games Played",
       title: "Games Played",
       value: 375000,
       previousValue: 360000,
@@ -482,48 +486,14 @@ export const sortLocations = (
   });
 };
 
-export interface ReportsLocationData {
-  location: string;
-  locationName: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  totalMachines: number;
-  onlineMachines: number;
-  sasMachines: number;
-  nonSasMachines: number;
-  hasSasMachines: boolean;
-  hasNonSasMachines: boolean;
-  isLocalServer: boolean;
-  machines: Array<{
-    id: string;
-    serialNumber: string;
-    game: string;
-    isSasMachine: boolean;
-    lastActivity?: Date;
-  }>;
-  meters: Array<{
-    id: string;
-    machineId: string;
-    drop: number;
-    cancelledCredits: number;
-    createdAt: Date;
-  }>;
-}
+import type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+} from "@shared/types/reports";
 
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  totalCount: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
-
-export interface ReportsLocationsResponse {
-  data: ReportsLocationData[];
-  pagination: PaginationInfo;
-}
+// Re-export shared types for convenience
+export type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse };
 
 /**
  * Fetches locations data for reports with pagination and licencee filtering
@@ -574,13 +544,8 @@ export const fetchAllReportsLocations = async (
       limit: "50", // Reduced limit to prevent timeouts
     };
 
-    console.log("🔍 fetchAllReportsLocations - selectedLicencee:", selectedLicencee);
-
     if (selectedLicencee && selectedLicencee !== "all") {
       params.licencee = selectedLicencee;
-      console.log("🔍 Added licencee to params:", selectedLicencee);
-    } else {
-      console.log("🔍 No licencee filter applied (selectedLicencee:", selectedLicencee, ")");
     }
 
     if (customDateRange?.start && customDateRange?.end) {
@@ -589,10 +554,8 @@ export const fetchAllReportsLocations = async (
       delete params.timePeriod;
     }
 
-    console.log("🔍 Final params:", params);
     const response = await axios.get("/api/reports/locations", { params });
-    console.log("🔍 Response data:", response.data);
-    
+
     // Handle both paginated and non-paginated responses
     if (response.data.data) {
       return response.data.data;

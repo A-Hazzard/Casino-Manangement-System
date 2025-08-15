@@ -62,11 +62,13 @@ export type Cabinet = {
     movement?: {
       drop?: number;
       totalCancelledCredits?: number;
+      totalHandPaidCancelledCredits?: number;
+      currentCredits?: number;
       gamesPlayed?: number;
+      gamesWon?: number;
       jackpot?: number;
       coinIn?: number;
       coinOut?: number;
-      gamesWon?: number;
     };
     coinIn?: number;
     coinOut?: number;
@@ -230,6 +232,7 @@ export type TimePeriod =
   | "7d"
   | "last30days"
   | "30d"
+  | "All Time"
   | "Custom";
 
 /**
@@ -258,4 +261,53 @@ export type CabinetWithMeters = {
   } | null;
   sasMeters?: Record<string, unknown> | null;
   smbId?: string;
+};
+
+// Frontend-specific cabinet types
+export type CabinetDetails = Cabinet & {
+  // Any additional properties specific to cabinet details endpoint
+  gameConfig?: {
+    accountingDenomination?: number;
+    theoreticalRtp?: number;
+    maxBet?: string;
+    payTableId?: string;
+  };
+  smibVersion?: {
+    firmware?: string;
+    version?: string;
+  };
+  smibConfig?: {
+    net?: {
+      netMode?: number;
+      netStaSSID?: string;
+      netStaPwd?: string;
+      netStaChan?: number;
+    };
+    mqtt?: {
+      mqttSecure?: number;
+      mqttQOS?: number;
+      mqttURI?: string;
+      mqttSubTopic?: string;
+      mqttPubTopic?: string;
+      mqttCfgTopic?: string;
+      mqttIdleTimeS?: number;
+    };
+    coms?: {
+      comsAddr?: number;
+      comsMode?: number;
+      comsRateMs?: number;
+      comsRTE?: number;
+      comsGPC?: number;
+    };
+  };
+};
+
+export type CabinetMetrics = {
+  moneyIn: number;
+  moneyOut: number;
+  jackpot: number;
+  cancelledCredits: number;
+  gross: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
 };

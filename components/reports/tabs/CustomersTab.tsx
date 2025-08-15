@@ -143,7 +143,7 @@ export default function CustomersTab() {
         },
       };
 
-      await exportData(exportDataObj, "pdf");
+      await exportData(exportDataObj, "csv");
       toast.success("Customer analytics data exported successfully");
     } catch (error) {
       const errorMessage =

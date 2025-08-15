@@ -38,18 +38,13 @@ export async function GET(request: NextRequest) {
       {
         $group: {
           _id: "$gamingLocation",
-          totalDrop: { $sum: "$sasMeters.coinIn" },
+          totalDrop: { $sum: "$sasMeters.drop" },
           cancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" },
           gross: {
             $sum: {
               $subtract: [
-                { $ifNull: ["$sasMeters.coinIn", 0] },
-                {
-                  $add: [
-                    { $ifNull: ["$sasMeters.coinOut", 0] },
-                    { $ifNull: ["$sasMeters.jackpot", 0] },
-                  ],
-                },
+                { $ifNull: ["$sasMeters.drop", 0] },
+                { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
               ],
             },
           },
@@ -113,7 +108,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching location analytics:", error);
     return NextResponse.json(
-      { message: "Failed to fetch location analytics", error: (error as Error).message },
+      {
+        message: "Failed to fetch location analytics",
+        error: (error as Error).message,
+      },
       { status: 500 }
     );
   }

@@ -9,10 +9,7 @@ import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
 import { CabinetDetail, TimePeriod } from "@/lib/types/cabinets";
-import {
-  fetchCabinetById,
-  updateCabinetMetricsData,
-} from "@/lib/helpers/cabinets";
+import { fetchCabinetById } from "@/lib/helpers/cabinets";
 import { useRouter, usePathname } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -65,26 +62,20 @@ export default function CabinetDetailPage() {
   const [isClient, setIsClient] = useState(false);
   const hasMounted = useHasMounted();
 
-  const {
-    selectedLicencee,
-    activeMetricsFilter,
-    setActiveMetricsFilter,
-    setSelectedLicencee,
-  } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   const { openEditModal } = useCabinetActionsStore();
 
   const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [metricsLoading, setMetricsLoading] = useState(false);
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
-  const [isFilterChangeInProgress, setIsFilterChangeInProgress] =
-    useState(false);
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState<string>("Range Metrics");
-  const lastFilterChangeTimeRef = useRef<number>(0);
+  const [activeMetricsFilter, setActiveMetricsFilter] =
+    useState<TimePeriod>("Today");
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   // Communication mode and firmware selection states
   const [communicationMode, setCommunicationMode] = useState<string>("sas");
@@ -94,114 +85,55 @@ export default function CabinetDetailPage() {
   // Refs for animation
   const configSectionRef = useRef<HTMLDivElement>(null);
 
-  // Add a ref to track if this is the initial render
-  const initialRenderRef = useRef(true);
-
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchCabinetDetailsData = useCallback(async () => {
-    console.log("[DEBUG] fetchCabinetDetailsData called with slug:", slug);
-    setLoading(true);
-    setMetricsLoading(true);
-    setError(null);
-    try {
-      const cabinetData = await fetchCabinetById(slug);
-      console.log("[DEBUG] fetchCabinetById result:", cabinetData);
-      setCabinet(cabinetData);
-      if (cabinetData?.lastActivity) {
-        const lastActive = new Date(cabinetData.lastActivity);
-        setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
+  const fetchCabinetDetailsData = useCallback(
+    async (timePeriod?: TimePeriod) => {
+      const filterToUse = timePeriod || activeMetricsFilter;
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch cabinet data with date filtering
+        const cabinetData = await fetchCabinetById(slug, filterToUse);
+        setCabinet(cabinetData);
+        if (cabinetData?.lastActivity) {
+          const lastActive = new Date(cabinetData.lastActivity);
+          setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
+        }
+        setCommunicationModeFromData(cabinetData);
+        setFirmwareVersionFromData(cabinetData);
+      } catch (err: unknown) {
+        setCabinet(null);
+        setError((err as Error).message || "Failed to fetch cabinet details");
+        toast.error("Failed to fetch cabinet details");
+      } finally {
+        setLoading(false);
       }
-      setCommunicationModeFromData(cabinetData);
-      setFirmwareVersionFromData(cabinetData);
-    } catch (err: unknown) {
-      setCabinet(null);
-      setError((err as Error).message || "Failed to fetch cabinet details");
-      toast.error("Failed to fetch cabinet details");
-    } finally {
-      setLoading(false);
-      setMetricsLoading(false);
-    }
-  }, [slug]);
+    },
+    [slug, activeMetricsFilter]
+  );
 
-  const updateMetricsData = useCallback(async () => {
-    console.log(
-      "[DEBUG] updateMetricsData called with slug:",
-      slug,
-      "activeMetricsFilter:",
-      activeMetricsFilter
-    );
-    if (!cabinet) return;
-    setMetricsLoading(true);
-    try {
-      const updatedCabinet = await updateCabinetMetricsData(
-        slug,
-        activeMetricsFilter
-      );
-      console.log("[DEBUG] updateCabinetMetricsData result:", updatedCabinet);
-    } catch (err: unknown) {
-      setError((err as Error).message || "Failed to update metrics");
-      toast.error("Failed to update metrics");
-    } finally {
-      setMetricsLoading(false);
-    }
-  }, [slug, activeMetricsFilter, cabinet]);
+  // Handle filter changes with debouncing
+  const handleFilterChange = useCallback(
+    async (newFilter: TimePeriod) => {
+      if (newFilter === activeMetricsFilter) return;
 
-  // Create a reference to store the last metrics filter to prevent duplicate requests
-  const lastMetricsFilterRef = useRef(activeMetricsFilter);
-
-  // Store a reference to the current metrics request cleanup function
-  const currentMetricsRequestRef = useRef<(() => void) | null>(null);
-
-  // Make sure changing activeMetricsFilter doesn't trigger a full page reload
-  useEffect(() => {
-    // Skip if filter hasn't actually changed
-    if (lastMetricsFilterRef.current === activeMetricsFilter) {
-      return;
-    }
-
-    // Update the last filter reference
-    lastMetricsFilterRef.current = activeMetricsFilter;
-
-    // Skip the first render to avoid double-fetching
-    if (initialRenderRef.current) {
-      initialRenderRef.current = false;
-      return;
-    }
-
-    // Only update metrics when filter changes, not on initial load
-    if (!loading && cabinet) {
-      // Cancel any previous request
-      if (currentMetricsRequestRef.current) {
-        currentMetricsRequestRef.current();
-        currentMetricsRequestRef.current = null;
-      }
-
-      // Set the loading state
+      setActiveMetricsFilter(newFilter);
       setMetricsLoading(true);
 
-      // Create a timeout to debounce rapid changes
-      const timeoutId = setTimeout(async () => {
-        try {
-          // Execute the metrics update
-          await updateMetricsData();
-        } finally {
-          // Ensure loading state is reset
-          setMetricsLoading(false);
-          setIsFilterChangeInProgress(false);
-        }
-      }, 500); // Increased to 500ms debounce
-
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [activeMetricsFilter, updateMetricsData, loading, cabinet]);
+      try {
+        await fetchCabinetDetailsData(newFilter);
+      } finally {
+        setMetricsLoading(false);
+      }
+    },
+    [activeMetricsFilter, fetchCabinetDetailsData]
+  );
 
   useEffect(() => {
     console.log("[DEBUG] useEffect (initial fetch) running with slug:", slug);
     fetchCabinetDetailsData();
-  }, [fetchCabinetDetailsData, slug]);
+  }, [slug, fetchCabinetDetailsData]); // Add fetchCabinetDetailsData to dependencies
 
   const handleBackToCabinets = () => {
     router.push(`/cabinets`);
@@ -216,12 +148,12 @@ export default function CabinetDetailPage() {
     setIsClient(true);
   }, []);
 
-  // Add animation hook for filtering and sorting where appropriate
+  // Add animation hook for data changes
   useEffect(() => {
     // Only run in browser environment
-    if (typeof document === "undefined" || !cabinet || metricsLoading) return;
+    if (typeof document === "undefined" || !cabinet) return;
 
-    // Animate table rows or cards when data changes or filter/sort changes
+    // Animate table rows or cards when data changes
     // Table animation for any tables in the component
     const tables = document.querySelectorAll("table");
     tables.forEach((table) => {
@@ -256,7 +188,7 @@ export default function CabinetDetailPage() {
         }
       );
     });
-  }, [metricsLoading, cabinet]);
+  }, [cabinet]);
 
   // Update the refresh handler to refresh all data
   const handleRefresh = async () => {
@@ -339,15 +271,8 @@ export default function CabinetDetailPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
-          <div className="flex justify-end mb-2">
-            <RefreshButton
-              onClick={handleRefresh}
-              isSyncing={refreshing}
-              label="Refresh"
-            />
-          </div>
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
@@ -399,7 +324,11 @@ export default function CabinetDetailPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div className="mb-4 md:mb-0">
                   <h1 className="text-2xl font-bold flex items-center">
-                    Name: {cabinet?.serialNumber || "GMID1"}
+                    Name:{" "}
+                    {cabinet?.serialNumber ||
+                      (cabinet as any)?.origSerialNumber ||
+                      (cabinet as any)?.machineId ||
+                      "GMID1"}
                     <motion.button
                       className="ml-2 p-1"
                       whileHover={{ scale: 1.1 }}
@@ -442,7 +371,7 @@ export default function CabinetDetailPage() {
 
                 {/* Only render this on client side to avoid hydration mismatch */}
                 {isClient && (
-                  <div className="md:absolute md:top-0 md:right-0 mt-2 md:mt-0">
+                  <div className="md:absolute md:top-0 md:right-0 mt-2 md:mt-0 flex items-center gap-2">
                     <motion.div
                       className="flex items-center px-3 py-1.5 rounded-lg bg-container shadow-sm border"
                       initial={{ opacity: 0, x: 20 }}
@@ -472,6 +401,11 @@ export default function CabinetDetailPage() {
                         {isOnline ? "ONLINE" : "OFFLINE"}
                       </span>
                     </motion.div>
+                    <RefreshButton
+                      onClick={handleRefresh}
+                      isSyncing={refreshing}
+                      label="Refresh"
+                    />
                   </div>
                 )}
               </div>
@@ -481,7 +415,11 @@ export default function CabinetDetailPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div className="mb-4 md:mb-0">
                   <h1 className="text-2xl font-bold flex items-center">
-                    Name: {cabinet?.serialNumber || "GMID1"}
+                    Name:{" "}
+                    {cabinet?.serialNumber ||
+                      (cabinet as any)?.origSerialNumber ||
+                      (cabinet as any)?.machineId ||
+                      "GMID1"}
                   </h1>
                   <p className="text-grayHighlight mt-2">
                     Manufacturer:{" "}
@@ -882,16 +820,16 @@ export default function CabinetDetailPage() {
             </div>
           )}
 
-          {/* Horizontal metrics options slider - outside of white container but contained */}
+          {/* Date filtering UI */}
           <div className="mt-4 mb-2 max-w-full">
-            {/* Responsive time period filters - Hide on desktop (lg and up) */}
+            {/* Desktop time period filters */}
             <div className="hidden lg:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
               {[
                 { label: "Today", value: "Today" as TimePeriod },
                 { label: "Yesterday", value: "Yesterday" as TimePeriod },
                 { label: "Last 7 days", value: "7d" as TimePeriod },
                 { label: "30 days", value: "30d" as TimePeriod },
-                { label: "Custom", value: "Custom" as TimePeriod },
+                { label: "All Time", value: "All Time" as TimePeriod },
               ].map((filter, index) => (
                 <motion.div
                   key={filter.label}
@@ -903,8 +841,7 @@ export default function CabinetDetailPage() {
                 >
                   <Button
                     className={`px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm text-container rounded-full flex items-center gap-1 md:gap-2 ${
-                      (metricsLoading || isFilterChangeInProgress) &&
-                      activeMetricsFilter === filter.value
+                      metricsLoading && activeMetricsFilter === filter.value
                         ? "opacity-80"
                         : ""
                     } ${
@@ -912,33 +849,10 @@ export default function CabinetDetailPage() {
                         ? "bg-buttonActive"
                         : "bg-button"
                     }`}
-                    onClick={() => {
-                      // Prevent changing filter if already loading
-                      if (metricsLoading || isFilterChangeInProgress) {
-                        return;
-                      }
-                      if (activeMetricsFilter === filter.value) {
-                        return;
-                      }
-                      const now = Date.now();
-                      if (now - lastFilterChangeTimeRef.current < 1000) {
-                        return;
-                      }
-                      lastFilterChangeTimeRef.current = now;
-                      setIsFilterChangeInProgress(true);
-                      setTimeout(async () => {
-                        try {
-                          await updateMetricsData();
-                        } finally {
-                          setIsFilterChangeInProgress(false);
-                        }
-                      }, 300);
-                      setActiveMetricsFilter(filter.value);
-                    }}
-                    disabled={metricsLoading || isFilterChangeInProgress}
+                    onClick={() => handleFilterChange(filter.value)}
+                    disabled={metricsLoading}
                   >
-                    {(metricsLoading || isFilterChangeInProgress) &&
-                    activeMetricsFilter === filter.value ? (
+                    {metricsLoading && activeMetricsFilter === filter.value ? (
                       <span className="w-3 h-3 md:w-4 md:h-4 border-2 border-container border-t-transparent rounded-full animate-spin"></span>
                     ) : null}
                     {filter.label}
@@ -947,7 +861,7 @@ export default function CabinetDetailPage() {
               ))}
             </div>
 
-            {/* Mobile and Tablet Sort By dropdown - visible below lg */}
+            {/* Mobile dropdown filter */}
             <div className="lg:hidden flex justify-center mb-4">
               <div className="relative inline-block w-full max-w-[200px]">
                 <button
@@ -961,7 +875,7 @@ export default function CabinetDetailPage() {
                     }
                   }}
                 >
-                  <span>Sort by: {activeMetricsFilter}</span>
+                  <span>Filter: {activeMetricsFilter}</span>
                   <ChevronDownIcon className="h-4 w-4" />
                 </button>
                 <div
@@ -973,7 +887,7 @@ export default function CabinetDetailPage() {
                     { label: "Yesterday", value: "Yesterday" as TimePeriod },
                     { label: "Last 7 days", value: "7d" as TimePeriod },
                     { label: "30 days", value: "30d" as TimePeriod },
-                    { label: "Custom", value: "Custom" as TimePeriod },
+                    { label: "All Time", value: "All Time" as TimePeriod },
                   ].map((filter) => (
                     <button
                       key={filter.label}
@@ -983,34 +897,15 @@ export default function CabinetDetailPage() {
                           : "text-grayHighlight hover:bg-muted"
                       }`}
                       onClick={() => {
-                        // Don't update if already selected or loading
-                        if (
-                          activeMetricsFilter === filter.value ||
-                          metricsLoading ||
-                          isFilterChangeInProgress
-                        ) {
-                          document
-                            .getElementById("mobile-filter-dropdown")
-                            ?.classList.add("hidden");
-                          return;
-                        }
-                        setIsFilterChangeInProgress(true);
-                        setActiveMetricsFilter(filter.value);
                         document
                           .getElementById("mobile-filter-dropdown")
                           ?.classList.add("hidden");
-                        setTimeout(async () => {
-                          try {
-                            await updateMetricsData();
-                          } finally {
-                            setIsFilterChangeInProgress(false);
-                          }
-                        }, 300);
+                        handleFilterChange(filter.value);
                       }}
-                      disabled={metricsLoading || isFilterChangeInProgress}
+                      disabled={metricsLoading}
                     >
                       {filter.label}
-                      {(metricsLoading || isFilterChangeInProgress) &&
+                      {metricsLoading &&
                       activeMetricsFilter === filter.value ? (
                         <span className="ml-2 inline-block w-3 h-3 border-2 border-buttonActive border-t-transparent rounded-full animate-spin"></span>
                       ) : null}
@@ -1019,7 +914,6 @@ export default function CabinetDetailPage() {
                 </div>
               </div>
             </div>
-
             {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
             <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 custom-scrollbar w-full p-2 rounded-md">
               <div className="flex space-x-2 min-w-max px-1 pb-1">
@@ -1055,9 +949,10 @@ export default function CabinetDetailPage() {
           {cabinet ? (
             <AccountingDetails
               cabinet={cabinet}
-              metricsLoading={metricsLoading}
+              loading={metricsLoading}
               activeMetricsTabContent={activeMetricsTabContent}
               setActiveMetricsTabContent={setActiveMetricsTabContent}
+              activeMetricsFilter={activeMetricsFilter}
             />
           ) : null}
         </main>

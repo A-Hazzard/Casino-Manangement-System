@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -35,35 +36,29 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('comments', comments);
-      
-      const response = await fetch('/api/firmware/upload-smib-data', {
-        method: 'POST',
-        body: formData,
-      });
+      formData.append("file", selectedFile);
+      formData.append("comments", comments);
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+      const response = await axios.post(
+        "/api/firmware/upload-smib-data",
+        formData
+      );
+      const result = response.data;
 
-      const result = await response.json();
-      console.log('Upload successful:', result);
-      
       // Close modal and clear form on success
       onClose();
       setSelectedFile(null);
       setComments("");
-      
+
       // Optional: Show success message
-      if (typeof window !== 'undefined') {
-        alert('SMIB data uploaded successfully!');
+      if (typeof window !== "undefined") {
+        alert("SMIB data uploaded successfully!");
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error("Upload error:", error);
       // Optional: Show error message
-      if (typeof window !== 'undefined') {
-        alert('Upload failed. Please try again.');
+      if (typeof window !== "undefined") {
+        alert("Upload failed. Please try again.");
       }
     }
   };

@@ -82,7 +82,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     placesServiceRef.current = new window.google.maps.places.PlacesService(mapInstance);
     geocoderRef.current = new window.google.maps.Geocoder();
     
-    console.log('Map loaded successfully');
+
   }, [isLoaded]);
 
   // Handle marker load

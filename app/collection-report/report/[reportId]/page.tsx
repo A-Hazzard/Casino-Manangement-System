@@ -115,9 +115,9 @@ export default function CollectionReportPage() {
 
   if (error) {
     return (
-      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
         <Sidebar pathname={pathname} />
-        <main className="flex-1 lg:ml-4">
+        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             pageTitle=""
             hideOptions={true}
@@ -141,9 +141,9 @@ export default function CollectionReportPage() {
 
   if (!reportData) {
     return (
-      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
         <Sidebar pathname={pathname} />
-        <main className="flex-1 lg:ml-4">
+        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             pageTitle=""
             hideOptions={true}
@@ -398,101 +398,341 @@ export default function CollectionReportPage() {
 
     return (
       <>
+        {/* Mobile layout */}
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             Location Metrics
           </h2>
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-lighterBlueHighlight text-white p-3">
-              <h3 className="font-semibold">
-                Location: {reportData?.locationName || "Unknown"}
-              </h3>
+            <div className="bg-button text-white p-3">
+              <h3 className="font-semibold">Location Total</h3>
             </div>
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Dropped / Cancelled</span>
-                <span className="font-medium text-black">
+                <span className="font-medium text-gray-800">
                   {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Meters Gross</span>
-                <span className="font-medium text-green-600">
+                <span className="font-medium text-green-700">
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">SAS Gross</span>
-                <span className="font-medium text-green-600">
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
+                <span className="text-gray-600">Variation</span>
+                <span className="font-medium text-yellow-700">
+                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Variation</span>
-                <span className="font-medium text-yellow-600">
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
+                <span className="text-gray-600">SAS Gross</span>
+                <span className="font-medium text-green-700">
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Variance</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.variance ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Variance Reason</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.varianceReason || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount To Collect</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.amountToCollect ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Collected Amount</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.collectedAmount ||
+                      0}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Location Revenue</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.locationRevenue ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount Uncollected</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.amountUncollected ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Machines Number</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.machinesNumber || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Reason For Shortage</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.reasonForShortage || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Taxes</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.taxes ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Advance</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.advance ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Previous Balance Owed</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.previousBalanceOwed ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Balance Owed</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.currentBalanceOwed ||
+                      0}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Balance Correction</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.balanceCorrection ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Correction Reason</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.correctionReason || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
+
+        {/* Desktop layout */}
+        <div className="hidden lg:block bg-white rounded-lg shadow-md">
+          {/* Top summary table */}
+          <div className="bg-button text-white rounded-t-lg px-4 py-2 font-semibold">
+            Location Total
+          </div>
           <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  LOCATION
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  DROPPED / CANCELLED
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  METERS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  SAS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  VARIATION
-                </th>
-              </tr>
-            </thead>
             <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap">
-                  <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                    {reportData?.locationName || "Unknown"}
-                  </span>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">
+                  Dropped / Cancelled
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-black">
-                    {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
-                  </span>
+                <td className="p-3 text-right">
+                  {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-green-600">
-                    {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">Meters Gross</td>
+                <td className="p-3 text-right text-green-700">
+                  {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
+                    "0"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-green-600">
-                    {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">Variation</td>
+                <td className="p-3 text-right text-yellow-700">
+                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
+                    "0"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-yellow-600">
-                    {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr>
+                <td className="p-3 font-medium text-gray-700">SAS Gross</td>
+                <td className="p-3 text-right text-green-700">
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
+                    "0"}
                 </td>
               </tr>
             </tbody>
           </table>
+
+          {/* Detail grids */}
+          <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-4">
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Variance</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.variance ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Variance Reason</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.varianceReason || "-"}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Amount To Collect</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.amountToCollect ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Collected Amount</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.collectedAmount ||
+                        0}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Location Revenue</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.locationRevenue ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Amount Uncollected</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.amountUncollected ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Machines Number</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.machinesNumber || "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Reason For Shortage</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.reasonForShortage || "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Taxes</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.taxes ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Advance</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.advance ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Previous Balance Owed</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.previousBalanceOwed ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Current Balance Owed</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.currentBalanceOwed ||
+                        0}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Balance Correction</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.balanceCorrection ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Correction Reason</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.correctionReason || "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </>
     );
@@ -512,8 +752,20 @@ export default function CollectionReportPage() {
       );
     }
 
+    // Use the sasMetrics from reportData if available, otherwise calculate from collections
+    const sasMetrics = reportData?.sasMetrics || {
+      dropped: 0,
+      cancelled: 0,
+      gross: 0,
+    };
     const { totalSasDrop, totalSasCancelled, totalSasGross } =
-      calculateSasMetricsTotals(collections);
+      reportData?.sasMetrics
+        ? {
+            totalSasDrop: sasMetrics.dropped,
+            totalSasCancelled: sasMetrics.cancelled,
+            totalSasGross: sasMetrics.gross,
+          }
+        : calculateSasMetricsTotals(collections);
 
     return (
       <>
@@ -605,18 +857,18 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="w-full xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex flex-col">
+    <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
       <Sidebar pathname={pathname} />
-      <main className="flex-1 xl:ml-4">
+      <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
         <Header
           pageTitle=""
           hideOptions={true}
           hideLicenceeFilter={true}
-          containerPaddingMobile="px-4 py-8 xl:px-0 xl:py-0"
+          containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
           disabled={loading || refreshing}
         />
 
-        <div className="px-2 xl:px-6 pt-6 hidden xl:block">
+        <div className="px-2 lg:px-6 pt-6 hidden lg:block">
           <div className="flex items-center justify-between">
             <Link href="/collection-report" legacyBehavior>
               <a className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors">
@@ -653,23 +905,23 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        <div className="px-2 xl:px-6 pt-2 xl:pt-4 pb-6">
-          <div className="bg-white xl:bg-container rounded-lg shadow xl:border-t-4 xl:border-lighterBlueHighlight py-4 xl:py-8">
-            <div className="text-center py-2 xl:py-4 px-4">
-              <div className="xl:hidden text-xs text-gray-500 mb-2">
+        <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
+          <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
+            <div className="text-center py-2 lg:py-4 px-4">
+              <div className="lg:hidden text-xs text-gray-500 mb-2">
                 COLLECTION REPORT
               </div>
-              <h1 className="text-2xl xl:text-4xl font-bold text-gray-800 mb-2">
+              <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
                 {reportData.locationName}
               </h1>
-              <p className="text-sm xl:text-base text-gray-600 mb-4">
+              <p className="text-sm lg:text-base text-gray-600 mb-4">
                 Report ID: {reportData.reportId}
               </p>
               <p className="text-lg font-semibold text-gray-700">
                 Location Total: $
                 {formatCurrency(calculateLocationTotal(collections))}
               </p>
-              <div className="xl:hidden mt-4">
+              <div className="lg:hidden mt-4">
                 <Button
                   onClick={handleRefresh}
                   disabled={loading || refreshing}
@@ -701,25 +953,24 @@ export default function CollectionReportPage() {
           </div>
         </div>
 
-        <div className="px-2 xl:px-6 pb-6 hidden xl:flex xl:flex-row xl:space-x-6">
-          <div className="xl:w-1/4 mb-6 xl:mb-0">
+        <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
+          <div className="lg:w-1/4 mb-6 lg:mb-0">
             <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Machine Metrics
-                </span>
-                <div className="w-4 h-4 bg-buttonActive rounded-full"></div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Report Sections
+              </h3>
+              <div className="space-y-2">
+                <TabButton label="Machine Metrics" />
+                <TabButton label="Location Metrics" />
+                <TabButton label="SAS Metrics Compare" />
               </div>
-              <p className="text-xs text-gray-500">
-                Detailed machine performance data
-              </p>
             </div>
           </div>
-          <div className="xl:w-3/4" ref={tabContentRef}>
+          <div className="lg:w-3/4" ref={tabContentRef}>
             {renderDesktopTabContent()}
           </div>
         </div>
-        <div className="px-2 xl:px-6 pb-6 xl:hidden space-y-6">
+        <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
           <MachineMetricsContent loading={false} />
           <LocationMetricsContent loading={false} />
           <SASMetricsCompareContent loading={false} />

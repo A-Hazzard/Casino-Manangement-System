@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   LineChart,
   Line,
@@ -40,13 +41,10 @@ export default function JackpotChart({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/analytics/jackpot-trends?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch jackpot data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(
+          `/api/analytics/jackpot-trends?${params}`
+        );
+        const result = response.data;
         setData(result.data || []);
       } catch (err) {
         console.error("Error fetching jackpot data:", err);

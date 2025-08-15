@@ -4,6 +4,7 @@ import type { TimePeriod } from "./common";
 // Machine data structure from API (optimized)
 export type MachineData = {
   machineId: string;
+  serialNumber?: string;
   machineName: string;
   locationName: string;
   locationId: string;

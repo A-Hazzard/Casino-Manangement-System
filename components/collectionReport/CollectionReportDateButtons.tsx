@@ -81,6 +81,9 @@ export default function CollectionReportDateButtons({
           value={customDateRange}
           onChange={onCustomDateChange}
           onGo={onApplyCustomDateRange}
+          onCancel={() => {
+            setShowCustomPicker(false);
+          }}
           onSetLastMonth={handleSetLastMonth}
         />
       )}

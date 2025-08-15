@@ -5,6 +5,8 @@
         "godotenv",
         "joho",
         "sendgrid",
+        "Shadcn",
+        "SMIB",
         "TTGCR"
     ]
 }

@@ -1,6 +1,6 @@
 import type { Document } from "mongoose";
 import type { CollectionReportMachineEntry } from "./collections";
-import type { 
+import type {
   MongooseId,
   MongoMatchStage,
   WithTimestamps,

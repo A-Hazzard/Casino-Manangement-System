@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   BarChart,
   Bar,
@@ -41,13 +42,10 @@ export default function WinLossChart({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/analytics/winloss-trends?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch win/loss data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(
+          `/api/analytics/winloss-trends?${params}`
+        );
+        const result = response.data;
         setData(result.data || []);
       } catch (err) {
         console.error("Error fetching win/loss data:", err);

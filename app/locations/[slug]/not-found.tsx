@@ -15,7 +15,7 @@ export default function LocationDetailNotFound() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
           <Header
             selectedLicencee={selectedLicencee}

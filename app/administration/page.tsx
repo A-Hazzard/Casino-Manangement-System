@@ -10,6 +10,10 @@ import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import PaginationControls from "@/components/ui/PaginationControls";
+import AdministrationNavigation from "@/components/administration/AdministrationNavigation";
+import { ADMINISTRATION_TABS_CONFIG } from "@/lib/constants/administration";
+import type { AdministrationSection } from "@/lib/constants/administration";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import {
   fetchUsers,
   filterAndSortUsers,
@@ -22,8 +26,8 @@ import type {
   User,
 } from "@/lib/types/administration";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import UserDetailsModal from "@/components/administration/UserDetailsModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
 import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
@@ -51,10 +55,17 @@ import { toast } from "sonner";
 import { Toaster } from "sonner";
 import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import axios from "axios";
 
-export default function AdministrationPage() {
+function AdministrationPageContent() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+  // Create activity loggers
+  const userLogger = createActivityLogger("user");
+  const licenseeLogger = createActivityLogger("licensee");
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -65,8 +76,16 @@ export default function AdministrationPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [activeSection, setActiveSection] = useState<"users" | "licensees">(
-    "users"
+
+  // Get active section from URL search params, default to "users"
+  const getActiveSectionFromURL = useCallback((): AdministrationSection => {
+    const section = searchParams.get("section");
+    if (section === "licensees") return "licensees";
+    return "users";
+  }, [searchParams]);
+
+  const [activeSection, setActiveSection] = useState<AdministrationSection>(
+    getActiveSectionFromURL()
   );
   const [searchValue, setSearchValue] = useState("");
   const [searchMode, setSearchMode] = useState<"username" | "email">(
@@ -124,6 +143,60 @@ export default function AdministrationPage() {
   ] = useState<Licensee | null>(null);
 
   const itemsPerPage = 5;
+
+  // Handle section changes with URL updates
+  const handleSectionChange = (section: AdministrationSection) => {
+    // Add smooth transition class to the content area
+    const contentElement = document.querySelector("[data-section-content]");
+    if (contentElement) {
+      contentElement.classList.add(
+        "opacity-0",
+        "transform",
+        "translate-y-2",
+        "transition-all",
+        "duration-300",
+        "ease-in-out"
+      );
+    }
+
+    // Delay the section change to allow for smooth transition
+    setTimeout(() => {
+      setActiveSection(section);
+      setCurrentPage(0); // Reset pagination when switching sections
+
+      // Update URL based on section
+      const params = new URLSearchParams(searchParams.toString());
+      if (section === "users") {
+        params.delete("section"); // Default section, no param needed
+      } else if (section === "licensees") {
+        params.set("section", "licensees");
+      }
+
+      const newURL = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+      router.push(newURL, { scroll: false });
+
+      // Remove transition class after content updates
+      setTimeout(() => {
+        if (contentElement) {
+          contentElement.classList.remove(
+            "opacity-0",
+            "transform",
+            "translate-y-2"
+          );
+        }
+      }, 50);
+    }, 150);
+  };
+
+  // Sync state with URL changes
+  useEffect(() => {
+    const newSection = getActiveSectionFromURL();
+    if (newSection !== activeSection) {
+      setActiveSection(newSection);
+    }
+  }, [searchParams, activeSection, getActiveSectionFromURL]);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -199,15 +272,30 @@ export default function AdministrationPage() {
     }
   ) => {
     if (!selectedUser) return;
+
+    const previousData = { ...selectedUser };
+    const newData = { ...updated, _id: selectedUser._id };
+
     try {
-      await updateUser({ ...updated, _id: selectedUser._id });
+      await updateUser(newData);
+
+      // Log the update activity
+      await userLogger.logUpdate(
+        selectedUser._id,
+        selectedUser.username,
+        previousData,
+        newData,
+        `Updated user roles and permissions for ${selectedUser.username}`
+      );
+
       setIsRolesModalOpen(false);
       setSelectedUser(null);
       // Refresh users with licensee filter
       const usersData = await fetchUsers(selectedLicencee);
       setAllUsers(usersData);
       toast.success("User updated successfully");
-    } catch {
+    } catch (error) {
+      console.error("Failed to update user:", error);
       toast.error("Failed to update user");
     }
   };
@@ -273,7 +361,16 @@ export default function AdministrationPage() {
       resourcePermissions: resourcePermissions || {},
     };
     try {
-      await createUser(payload);
+      const createdUser = await createUser(payload);
+
+      // Log the creation activity
+      await userLogger.logCreate(
+        createdUser._id || username,
+        username,
+        payload,
+        `Created new user: ${username} with roles: ${roles.join(", ")}`
+      );
+
       setIsAddUserModalOpen(false);
       // Refresh users
       const usersData = await fetchUsers();
@@ -302,14 +399,27 @@ export default function AdministrationPage() {
       toast.error("Name and country are required");
       return;
     }
+
+    const licenseeData = {
+      name: licenseeForm.name,
+      description: licenseeForm.description,
+      country: licenseeForm.country,
+      startDate: licenseeForm.startDate,
+      expiryDate: licenseeForm.expiryDate,
+    };
+
     try {
-      const result = await createLicensee({
-        name: licenseeForm.name,
-        description: licenseeForm.description,
-        country: licenseeForm.country,
-        startDate: licenseeForm.startDate,
-        expiryDate: licenseeForm.expiryDate,
-      });
+      const result = await createLicensee(licenseeData);
+
+      // Log the creation activity
+      if (result.licensee) {
+        await licenseeLogger.logCreate(
+          result.licensee._id,
+          result.licensee.name,
+          licenseeData,
+          `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`
+        );
+      }
 
       // Show success modal with license key
       if (result.licensee && result.licensee.licenseKey) {
@@ -362,6 +472,8 @@ export default function AdministrationPage() {
     try {
       if (!selectedLicensee) return;
 
+      const previousData = { ...selectedLicensee };
+
       // Include the current isPaid value to preserve payment status
       const updateData = {
         ...licenseeForm,
@@ -370,6 +482,16 @@ export default function AdministrationPage() {
       };
 
       await updateLicensee(updateData);
+
+      // Log the update activity
+      await licenseeLogger.logUpdate(
+        selectedLicensee._id,
+        selectedLicensee.name,
+        previousData,
+        updateData,
+        `Updated licensee: ${selectedLicensee.name} - Modified details and settings`
+      );
+
       setIsEditLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setLicenseeForm({});
@@ -395,8 +517,20 @@ export default function AdministrationPage() {
   };
   const handleDeleteLicensee = async () => {
     if (!selectedLicensee) return;
+
+    const licenseeData = { ...selectedLicensee };
+
     try {
       await deleteLicensee(selectedLicensee._id);
+
+      // Log the deletion activity
+      await licenseeLogger.logDelete(
+        selectedLicensee._id,
+        selectedLicensee.name,
+        licenseeData,
+        `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`
+      );
+
       setIsDeleteLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setIsLicenseesLoading(true);
@@ -447,6 +581,8 @@ export default function AdministrationPage() {
   const handleConfirmPaymentStatusChange = async () => {
     if (!selectedLicenseeForPaymentChange) return;
 
+    const previousData = { ...selectedLicenseeForPaymentChange };
+
     try {
       // Determine current payment status
       const currentIsPaid =
@@ -477,17 +613,20 @@ export default function AdministrationPage() {
         updateData.expiryDate = getNext30Days();
       }
 
-      const response = await fetch("/api/licensees", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
+      await axios.put("/api/licensees", updateData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        toast.error(errorData.message || "Failed to update payment status");
-        return;
-      }
+      // Log the payment status change activity
+      await licenseeLogger.logUpdate(
+        selectedLicenseeForPaymentChange._id,
+        selectedLicenseeForPaymentChange.name,
+        previousData,
+        updateData,
+        `Changed payment status for ${
+          selectedLicenseeForPaymentChange.name
+        } from ${currentIsPaid ? "Paid" : "Unpaid"} to ${
+          newIsPaid ? "Paid" : "Unpaid"
+        }`
+      );
 
       // Refresh licensees list
       setIsLicenseesLoading(true);
@@ -700,22 +839,30 @@ export default function AdministrationPage() {
           }}
           onDelete={async () => {
             if (!selectedUserToDelete) return;
+
+            const userData = { ...selectedUserToDelete };
+
             try {
-              const res = await fetch("/api/users", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ _id: selectedUserToDelete._id }),
+              await axios.delete("/api/users", {
+                data: { _id: selectedUserToDelete._id },
               });
-              if (!res.ok) {
-                const data = await res.json();
-                toast.error(data.message || "Failed to delete user");
-              } else {
-                // Refresh users
-                const usersData = await fetchUsers();
-                setAllUsers(usersData);
-                toast.success("User deleted successfully");
-              }
-            } catch {
+
+              // Log the deletion activity
+              await userLogger.logDelete(
+                selectedUserToDelete._id,
+                selectedUserToDelete.username,
+                userData,
+                `Deleted user: ${selectedUserToDelete.username} with roles: ${
+                  userData.roles?.join(", ") || "N/A"
+                }`
+              );
+
+              // Refresh users
+              const usersData = await fetchUsers();
+              setAllUsers(usersData);
+              toast.success("User deleted successfully");
+            } catch (error) {
+              console.error("Failed to delete user:", error);
               toast.error("Failed to delete user");
             }
             setIsDeleteModalOpen(false);
@@ -731,24 +878,25 @@ export default function AdministrationPage() {
           }}
           onSave={async (profileData) => {
             if (!selectedUserForDetails) return;
+
+            const previousData = { ...selectedUserForDetails };
+            const updateData = {
+              _id: selectedUserForDetails._id,
+              ...profileData,
+            };
+
             try {
               // Call the API to update user profile
-              const response = await fetch("/api/users", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  _id: selectedUserForDetails._id,
-                  ...profileData,
-                }),
-              });
+              await axios.put("/api/users", updateData);
 
-              if (!response.ok) {
-                const errorData = await response.json();
-                toast.error(
-                  errorData.message || "Failed to update user profile"
-                );
-                return;
-              }
+              // Log the profile update activity
+              await userLogger.logUpdate(
+                selectedUserForDetails._id,
+                selectedUserForDetails.username,
+                previousData,
+                updateData,
+                `Updated profile for user: ${selectedUserForDetails.username}`
+              );
 
               // Close modal and refresh users
               setIsUserDetailsModalOpen(false);
@@ -790,7 +938,7 @@ export default function AdministrationPage() {
   return (
     <>
       <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto xl:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
           <Header />
           {/* Admin icon and title layout, matching original design */}
@@ -833,39 +981,34 @@ export default function AdministrationPage() {
             )}
           </div>
 
-          <div className={`mt-6 ${"flex gap-3 justify-start"}`}>
-            <Button
-              className={`px-6 py-2 text-sm font-medium ${
-                activeSection === "users"
-                  ? "bg-buttonActive text-white"
-                  : "bg-button text-white"
-              }`}
-              onClick={() => {
-                setActiveSection("users");
-                setCurrentPage(0);
-              }}
-            >
-              Users
-            </Button>
-            <Button
-              className={`px-6 py-2 text-sm font-medium ${
-                activeSection === "licensees"
-                  ? "bg-buttonActive text-white"
-                  : "bg-button text-white"
-              }`}
-              onClick={() => {
-                setActiveSection("licensees");
-                setCurrentPage(0);
-              }}
-            >
-              Licensees
-            </Button>
+          {/* Section Navigation */}
+          <div className="mt-8 mb-6">
+            <AdministrationNavigation
+              tabs={ADMINISTRATION_TABS_CONFIG}
+              activeSection={activeSection}
+              onChange={handleSectionChange}
+              isLoading={isLoading || isLicenseesLoading}
+            />
           </div>
 
-          {renderSectionContent()}
+          {/* Section Content with smooth transitions */}
+          <div
+            data-section-content
+            className="transition-all duration-300 ease-in-out"
+          >
+            {renderSectionContent()}
+          </div>
         </main>
       </div>
       <Toaster position="top-right" richColors />
     </>
+  );
+}
+
+export default function AdministrationPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AdministrationPageContent />
+    </Suspense>
   );
 }

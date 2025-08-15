@@ -25,18 +25,15 @@ export async function getTopLocations(licensee: string) {
     {
       $group: {
         _id: "$gamingLocation",
-        totalDrop: { $sum: { $ifNull: ["$sasMeters.coinIn", 0] } },
-        cancelledCredits: { $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] } },
+        totalDrop: { $sum: { $ifNull: ["$sasMeters.drop", 0] } },
+        cancelledCredits: {
+          $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+        },
         gross: {
           $sum: {
             $subtract: [
-              { $ifNull: ["$sasMeters.coinIn", 0] },
-              {
-                $add: [
-                  { $ifNull: ["$sasMeters.coinOut", 0] },
-                  { $ifNull: ["$sasMeters.jackpot", 0] },
-                ],
-              },
+              { $ifNull: ["$sasMeters.drop", 0] },
+              { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
             ],
           },
         },
@@ -120,20 +117,15 @@ export async function getMachineStats(licensee: string) {
     {
       $group: {
         _id: null,
-        totalDrop: { $sum: { $ifNull: ["$sasMeters.coinIn", 0] } },
+        totalDrop: { $sum: { $ifNull: ["$sasMeters.drop", 0] } },
         totalCancelledCredits: {
           $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
         },
         totalGross: {
           $sum: {
             $subtract: [
-              { $ifNull: ["$sasMeters.coinIn", 0] },
-              {
-                $add: [
-                  { $ifNull: ["$sasMeters.coinOut", 0] },
-                  { $ifNull: ["$sasMeters.jackpot", 0] },
-                ],
-              },
+              { $ifNull: ["$sasMeters.drop", 0] },
+              { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
             ],
           },
         },
@@ -158,12 +150,14 @@ export async function getMachineStats(licensee: string) {
   ];
 
   const statsResult = await Machine.aggregate(statsPipeline);
-  return statsResult[0] || {
-    totalDrop: 0,
-    totalCancelledCredits: 0,
-    totalGross: 0,
-    totalMachines: 0,
-    onlineMachines: 0,
-    sasMachines: 0,
-  };
-} 
+  return (
+    statsResult[0] || {
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+      totalGross: 0,
+      totalMachines: 0,
+      onlineMachines: 0,
+      sasMachines: 0,
+    }
+  );
+}

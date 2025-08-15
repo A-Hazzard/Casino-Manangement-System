@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get date range - handle both timePeriod and startDate/endDate parameters
-    let startDate: Date, endDate: Date;
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (startDateParam && endDateParam) {
       // Use provided startDate and endDate
@@ -49,6 +49,14 @@ export async function GET(req: NextRequest) {
       const dateRange = getDatesForTimePeriod(timePeriod);
       startDate = dateRange.startDate;
       endDate = dateRange.endDate;
+    }
+    
+    // For All Time, we need to set a reasonable default range or handle differently
+    if (!startDate || !endDate) {
+      // For All Time in hourly trends, default to last 7 days to avoid performance issues
+      const now = new Date();
+      endDate = now;
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     }
 
     // 1. Fetch current period revenue (actual total for this period)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -35,13 +36,10 @@ export default function OnlineOfflineIndicator({
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `/api/analytics/machines/stats?licensee=${selectedLicencee || "all"}`
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch machine stats");
-        }
-        const data = await response.json();
+        const data = response.data;
         setStats({
           totalMachines: data.totalMachines || 0,
           onlineMachines: data.onlineMachines || 0,
@@ -64,28 +62,32 @@ export default function OnlineOfflineIndicator({
   if (loading) {
     return (
       <div className={cn("flex items-center gap-2", className)}>
-        <Skeleton className={cn(
-          size === "sm" && "h-2 w-2",
-          size === "md" && "h-3 w-3",
-          size === "lg" && "h-4 w-4",
-          "rounded-full"
-        )} />
-        {showTitle && (
-          <Skeleton className="h-4 w-24" />
-        )}
+        <Skeleton
+          className={cn(
+            size === "sm" && "h-2 w-2",
+            size === "md" && "h-3 w-3",
+            size === "lg" && "h-4 w-4",
+            "rounded-full"
+          )}
+        />
+        {showTitle && <Skeleton className="h-4 w-24" />}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={cn("flex items-center gap-2 text-destructive", className)}>
-        <div className={cn(
-          size === "sm" && "h-2 w-2",
-          size === "md" && "h-3 w-3",
-          size === "lg" && "h-4 w-4",
-          "rounded-full bg-destructive"
-        )} />
+      <div
+        className={cn("flex items-center gap-2 text-destructive", className)}
+      >
+        <div
+          className={cn(
+            size === "sm" && "h-2 w-2",
+            size === "md" && "h-3 w-3",
+            size === "lg" && "h-4 w-4",
+            "rounded-full bg-destructive"
+          )}
+        />
         {showTitle && (
           <span className="text-sm font-medium">Error loading status</span>
         )}
@@ -99,15 +101,17 @@ export default function OnlineOfflineIndicator({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className={cn(
-        size === "sm" && "h-2 w-2",
-        size === "md" && "h-3 w-3",
-        size === "lg" && "h-4 w-4",
-        "rounded-full",
-        allOffline && "bg-destructive",
-        someOnline && "bg-success animate-pulse",
-        !allOffline && !someOnline && "bg-muted"
-      )} />
+      <div
+        className={cn(
+          size === "sm" && "h-2 w-2",
+          size === "md" && "h-3 w-3",
+          size === "lg" && "h-4 w-4",
+          "rounded-full",
+          allOffline && "bg-destructive",
+          someOnline && "bg-success animate-pulse",
+          !allOffline && !someOnline && "bg-muted"
+        )}
+      />
       {showTitle && (
         <span className="text-sm font-medium">
           {allOffline && "All Offline"}

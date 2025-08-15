@@ -58,6 +58,10 @@ export type ChartProps = {
 
 export type MapPreviewProps = {
   gamingLocations: locations[];
+  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
+  locationAggregates?: any[];
+  /** Optional loading flag when aggregation is being fetched externally */
+  aggLoading?: boolean;
 };
 
 export type DateRangeProps = {
@@ -100,6 +104,14 @@ export type licenceeSelectProps = {
   selected: string;
   onChange: (_value: string) => void;
   disabled?: boolean;
+};
+
+// Centralized props type for date filters to comply with Next.js rules on shared typing
+export type DashboardDateFiltersProps = {
+  disabled?: boolean;
+  onCustomRangeGo?: () => void;
+  hideAllTime?: boolean;
+  mode?: "auto" | "mobile" | "desktop";
 };
 
 export type HeaderProps = {

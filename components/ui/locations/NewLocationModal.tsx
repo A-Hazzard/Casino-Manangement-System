@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -106,9 +107,7 @@ export default function NewLocationModal({
         return;
       }
     } catch {
-      console.log(
-        "Browser location access denied or failed, trying IP-based location"
-      );
+      // Browser location access denied or failed, trying IP-based location
     }
 
     try {
@@ -126,7 +125,7 @@ export default function NewLocationModal({
 
       // Don't show toast for IP location detection
     } catch {
-      console.log("IP location detection failed, using default");
+      // IP location detection failed, using default
 
       // Final fallback to Trinidad and Tobago POS
       const defaultLat = 10.6599;
@@ -152,10 +151,10 @@ export default function NewLocationModal({
     lng: number
   ): Promise<{ country: string; city: string }> => {
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
       );
-      const data = await response.json();
+      const data = response.data;
 
       if (data.results && data.results[0]) {
         const result = data.results[0];
@@ -193,8 +192,8 @@ export default function NewLocationModal({
     city: string;
   }> => {
     try {
-      const response = await fetch("https://ipapi.co/json/");
-      const data = await response.json();
+      const response = await axios.get("https://ipapi.co/json/");
+      const data = response.data;
 
       return {
         latitude: data.latitude,

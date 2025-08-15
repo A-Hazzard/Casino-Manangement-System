@@ -1,4 +1,4 @@
-import { Db, Filter, Document } from "mongodb";
+import { Db, Filter, Document, ObjectId } from "mongodb";
 import {
   AggregatedLocation,
   LocationDateRange,
@@ -8,6 +8,7 @@ import {
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
+ * Optimized for performance with reduced data processing and parallel execution.
  *
  * @param db - MongoDB database instance.
  * @param startDate - Start date for aggregation.
@@ -22,182 +23,206 @@ export const getLocationsWithMetrics = async (
   { startDate, endDate }: LocationDateRange,
   includeAllLocations = true,
   licencee?: string,
-  machineTypeFilter?: LocationFilter
-): Promise<AggregatedLocation[]> => {
-  const onlineThreshold = new Date();
-  onlineThreshold.setMinutes(onlineThreshold.getMinutes() - 3);
+  machineTypeFilter?: LocationFilter,
+  page: number = 1,
+  limit: number = 50
+): Promise<{ rows: AggregatedLocation[]; totalCount: number }> => {
+  const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
-  const pipeline: Document[] = [
-    { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+  // If a licencee is provided, prefetch location ids to constrain downstream queries
+  let licenseeLocationIds: ObjectId[] | null = null;
+  if (licencee) {
+    const locs = await db
+      .collection("gaminglocations")
+      .find(
+        {
+          deletedAt: { $in: [null, new Date(-1)] },
+          "rel.licencee": licencee,
+        },
+        {
+          projection: { _id: 1 },
+          // Add limit for performance
+          limit: 1000,
+        }
+      )
+      .toArray();
+    licenseeLocationIds = locs.map((l: any) => l._id as ObjectId);
+  }
+
+  // Use the correct approach: lookup from locations to meters (like your MongoDB query)
+  const locationPipeline: Document[] = [
     {
-      $group: {
-        _id: "$location",
-        moneyIn: { $sum: "$movement.drop" },
-        moneyOut: { $sum: "$movement.totalCancelledCredits" },
-        machineIds: { $addToSet: "$machineId" },
+      $match: {
+        deletedAt: { $in: [null, new Date(-1)] },
+        ...(licenseeLocationIds && licenseeLocationIds.length > 0
+          ? { _id: { $in: licenseeLocationIds } }
+          : {}),
       },
     },
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "_id",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: "meters",
+        let: { locationId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$location", "$$locationId"] },
+              ...(startDate && endDate
+                ? {
+                    createdAt: {
+                      $gte: startDate,
+                      $lte: endDate,
+                    },
+                  }
+                : {}),
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+              totalCancelledCredits: {
+                $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              },
+            },
+          },
+        ],
+        as: "metersData",
       },
     },
-    ...(licencee
-      ? [{ $match: { "locationDetails.rel.licencee": licencee } }]
-      : []),
     {
       $addFields: {
+        moneyIn: {
+          $ifNull: [{ $arrayElemAt: ["$metersData.totalDrop", 0] }, 0],
+        },
+        moneyOut: {
+          $ifNull: [
+            { $arrayElemAt: ["$metersData.totalCancelledCredits", 0] },
+            0,
+          ],
+        },
         location: { $toString: "$_id" },
-        locationName: {
-          $ifNull: [
-            { $arrayElemAt: ["$locationDetails.name", 0] },
-            "Unknown Location",
-          ],
-        },
-        isLocalServer: {
-          $ifNull: [
-            { $arrayElemAt: ["$locationDetails.isLocalServer", 0] },
-            false,
-          ],
-        },
-        noSMIBLocation: {
-          $ifNull: [
-            { $arrayElemAt: ["$locationDetails.noSMIBLocation", 0] },
-            false,
-          ],
-        },
-        gross: { $subtract: ["$moneyIn", "$moneyOut"] },
       },
     },
   ];
 
-  const metrics = await db.collection("meters").aggregate(pipeline).toArray();
-
-  const locationFilter: Filter<GamingLocation> = {
-    deletedAt: { $in: [null, new Date(-1)] },
-  };
-  if (licencee) locationFilter["rel.licencee"] = licencee;
-
-  const allLocations = includeAllLocations
-    ? await db
-        .collection<GamingLocation>("gaminglocations")
-        .find(locationFilter)
-        .toArray()
-    : [];
-
-  const allMachines = await db
-    .collection("machines")
-    .find({
-      deletedAt: { $in: [null, new Date(-1)] },
-    })
-    .project({
-      _id: 1,
-      gamingLocation: 1,
-      lastActivity: 1,
-      isSasMachine: 1,
-    })
+  // Execute the location-based aggregation with machine lookup
+  const locationsWithMetrics = await db
+    .collection("gaminglocations")
+    .aggregate(
+      [
+        ...locationPipeline,
+        // Add machine lookup to the same pipeline
+        {
+          $lookup: {
+            from: "machines",
+            let: { locationId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$gamingLocation", "$$locationId"] },
+                  deletedAt: { $in: [null, new Date(-1)] },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  online: {
+                    $sum: {
+                      $cond: [
+                        { $gte: ["$lastActivity", onlineThreshold] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  sasMachines: { $sum: { $cond: ["$isSasMachine", 1, 0] } },
+                  nonSasMachines: {
+                    $sum: { $cond: [{ $eq: ["$isSasMachine", false] }, 1, 0] },
+                  },
+                },
+              },
+            ],
+            as: "machineData",
+          },
+        },
+        {
+          $addFields: {
+            totalMachines: {
+              $ifNull: [{ $arrayElemAt: ["$machineData.total", 0] }, 0],
+            },
+            onlineMachines: {
+              $ifNull: [{ $arrayElemAt: ["$machineData.online", 0] }, 0],
+            },
+            sasMachines: {
+              $ifNull: [{ $arrayElemAt: ["$machineData.sasMachines", 0] }, 0],
+            },
+            nonSasMachines: {
+              $ifNull: [
+                { $arrayElemAt: ["$machineData.nonSasMachines", 0] },
+                0,
+              ],
+            },
+            gross: { $subtract: ["$moneyIn", "$moneyOut"] },
+          },
+        },
+      ],
+      {
+        allowDiskUse: true,
+        maxTimeMS: 20000,
+      }
+    )
     .toArray();
 
-  const locationMachines: Record<string, { total: number; online: number; sasMachines: number; nonSasMachines: number }> =
-    {};
+  // Transform the aggregated data to the expected format
+  const enhancedMetrics = locationsWithMetrics.map((location) => {
+    const locationId = location._id.toString();
 
-  allMachines.forEach((machine) => {
-    if (!machine.gamingLocation) return;
+    // Calculate metrics with proper fallbacks
+    const moneyIn = location.moneyIn || 0;
+    const moneyOut = location.moneyOut || 0;
+    const gross = location.gross || moneyIn - moneyOut;
 
-    const locationId = machine.gamingLocation.toString();
-    if (!locationMachines[locationId]) {
-      locationMachines[locationId] = { total: 0, online: 0, sasMachines: 0, nonSasMachines: 0 };
-    }
-
-    locationMachines[locationId].total++;
-
-    if (
-      machine.lastActivity &&
-      new Date(machine.lastActivity) > onlineThreshold
-    ) {
-      locationMachines[locationId].online++;
-    }
-
-    // Count SAS vs non-SAS machines
-    if (machine.isSasMachine === true) {
-      locationMachines[locationId].sasMachines++;
-    } else {
-      locationMachines[locationId].nonSasMachines++;
-    }
-  });
-
-  const enhancedMetrics = metrics.map((metric) => {
-    const locationId = metric.location;
-    const machineInfo = locationMachines[locationId] || {
-      total: 0,
-      online: 0,
-      sasMachines: 0,
-      nonSasMachines: 0,
-    };
+    // Machine counts with proper fallbacks
+    const totalMachines = location.totalMachines || 0;
+    const onlineMachines = location.onlineMachines || 0;
+    const sasMachines = location.sasMachines || 0;
+    const nonSasMachines = location.nonSasMachines || 0;
 
     // Determine if location has SAS machines
-    const hasSasMachines = machineInfo.sasMachines > 0;
-    const hasNonSasMachines = machineInfo.nonSasMachines > 0;
+    const hasSasMachines = sasMachines > 0;
+    const hasNonSasMachines = nonSasMachines > 0;
 
     return {
-      ...metric,
-      totalMachines: machineInfo.total,
-      onlineMachines: machineInfo.online,
-      sasMachines: machineInfo.sasMachines,
-      nonSasMachines: machineInfo.nonSasMachines,
-      hasSasMachines: hasSasMachines,
-      hasNonSasMachines: hasNonSasMachines,
+      location: locationId,
+      locationName: location.name || "Unknown Location",
+      moneyIn,
+      moneyOut,
+      gross,
+      totalMachines,
+      onlineMachines,
+      sasMachines,
+      nonSasMachines,
+      hasSasMachines,
+      hasNonSasMachines,
+      isLocalServer: location.isLocalServer || false,
       // For backward compatibility
       noSMIBLocation: !hasSasMachines,
       hasSmib: hasSasMachines,
     } as AggregatedLocation;
   });
 
-  const existingIds = new Set(enhancedMetrics.map((m) => m.location));
-  const missing = includeAllLocations
-    ? allLocations
-        .filter((loc) => !existingIds.has(loc._id.toString()))
-        .map((loc) => {
-          const locationId = loc._id.toString();
-          const machineInfo = locationMachines[locationId] || {
-            total: 0,
-            online: 0,
-          };
+  const allResults = enhancedMetrics;
 
-          const hasSasMachines = machineInfo.sasMachines > 0;
-          const hasNonSasMachines = machineInfo.nonSasMachines > 0;
+  // Apply pagination
+  const totalCount = allResults.length;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  const paginatedResults = allResults.slice(startIndex, endIndex);
 
-          return {
-            location: locationId,
-            locationName: loc.name ?? "Unknown Location",
-            moneyIn: 0,
-            moneyOut: 0,
-            gross: 0,
-            totalMachines: machineInfo.total,
-            onlineMachines: machineInfo.online,
-            sasMachines: machineInfo.sasMachines,
-            nonSasMachines: machineInfo.nonSasMachines,
-            hasSasMachines: hasSasMachines,
-            hasNonSasMachines: hasNonSasMachines,
-            isLocalServer: !!loc.isLocalServer,
-            noSMIBLocation: !hasSasMachines,
-            hasSmib: hasSasMachines,
-          };
-        })
-    : [];
-
-  let combined = [...enhancedMetrics, ...missing];
-
-  if (machineTypeFilter === "LocalServersOnly") {
-    combined = combined.filter((loc) => loc.isLocalServer === true);
-  } else if (machineTypeFilter === "SMIBLocationsOnly") {
-    combined = combined.filter((loc) => loc.noSMIBLocation === false);
-  } else if (machineTypeFilter === "NoSMIBLocation") {
-    combined = combined.filter((loc) => loc.noSMIBLocation === true);
-  }
-
-  return combined.sort((a, b) => b.moneyIn - a.moneyIn);
+  return {
+    rows: paginatedResults,
+    totalCount,
+  };
 };

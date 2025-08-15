@@ -18,6 +18,8 @@ import cabinetsButton from "@/public/cabinetsButton.svg";
 import cabinetsButtonNoBg from "@/public/cabinetsButtonNoBg.svg";
 import collectionsButton from "@/public/collectionsButton.svg";
 import collectionsButtonNoBg from "@/public/collectionsButtonNoBg.svg";
+import membersButton from "@/public/membersButton.svg";
+import membersButtonNoBg from "@/public/membersButtonNoBg.svg";
 import adminButton from "@/public/adminButton.svg";
 import adminButtonNoBg from "@/public/adminButtonNoBg.svg";
 import reportsButton from "@/public/reportsButton.svg";
@@ -42,13 +44,19 @@ export default function Sidebar({ pathname }: { pathname: string }) {
   // Check if the current path is related to reports
   const isReportsPath =
     safePath === "/reports" || safePath.startsWith("/reports/");
+  // Check if the current path is related to members
+  const isMembersPath =
+    safePath === "/members" || safePath.startsWith("/members/");
+  // Check if the current path is related to sessions
+  const isSessionsPath =
+    safePath === "/sessions" || safePath.startsWith("/sessions/");
   // Check if the current path is related to administration
   const isAdminPath =
     safePath === "/administration" || safePath.startsWith("/administration/");
 
   return (
     <>
-      <aside className="hidden xl:flex fixed left-0 top-0 h-full bg-container shadow-md shadow-purple-500 z-50 flex-col items-end pt-6 pb-6 pl-4">
+      <aside className="hidden md:flex fixed left-0 top-0 h-full bg-container shadow-md shadow-purple-500 z-50 flex-col items-end pt-6 pb-6 pl-4">
         {/* Dashboard button */}
         <div className={isDashboardPath ? "" : "mb-6"}>
           <Link href="/">
@@ -95,11 +103,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
           </Link>
         </div>
         {/* Collections button */}
-        <div
-          className={`${isCollectionsPath ? "-mt-8" : "mb-6"} ${
-            isReportsPath ? "mb-0" : ""
-          }`}
-        >
+        <div className={`${isCollectionsPath ? "-mt-8" : "mb-6"}`}>
           <Link href="/collection-report">
             <Image
               src={
@@ -118,7 +122,7 @@ export default function Sidebar({ pathname }: { pathname: string }) {
         {/* Reports button */}
         <div
           className={`${isReportsPath ? "-mt-4" : ""} ${
-            isAdminPath ? "mb-0" : "mb-6"
+            isMembersPath ? "mb-0" : "mb-6"
           }`}
         >
           <Link href="/reports">
@@ -134,8 +138,31 @@ export default function Sidebar({ pathname }: { pathname: string }) {
             />
           </Link>
         </div>
+        {/* Members button */}
+        <div
+          className={`${isMembersPath ? "-mt-4" : ""} ${
+            isSessionsPath ? "mb-0" : "mb-6"
+          }`}
+        >
+          <Link href="/members">
+            <Image
+              src={isMembersPath ? membersButton : membersButtonNoBg}
+              width={50}
+              height={50}
+              className={`w-[7rem] cursor-pointer ${
+                !isMembersPath ? "-ml-2" : ""
+              }`}
+              alt="Members Button"
+              priority
+            />
+          </Link>
+        </div>
         {/* Administration button */}
-        <div className={`${isAdminPath ? "-mt-4" : ""}`}>
+        <div
+          className={`${isAdminPath ? "-mt-4" : ""} ${
+            isSessionsPath ? "mb-0" : "mb-6"
+          }`}
+        >
           <Link href="/administration">
             <Image
               src={isAdminPath ? adminButton : adminButtonNoBg}
@@ -147,6 +174,20 @@ export default function Sidebar({ pathname }: { pathname: string }) {
               alt="Administration Button"
               priority
             />
+          </Link>
+        </div>
+        {/* Sessions button */}
+        <div className={`${isSessionsPath ? "-mt-4" : "mb-6"}`}>
+          <Link href="/sessions">
+            <div
+              className={`w-[7rem] h-[3rem] flex items-center justify-center rounded-lg cursor-pointer transition-all ${
+                isSessionsPath
+                  ? "bg-buttonActive text-white"
+                  : "text-gray-700 hover:bg-accent"
+              }`}
+            >
+              <span className="text-sm font-medium">Sessions</span>
+            </div>
           </Link>
         </div>
         {/* Settings and Logout container */}

@@ -107,8 +107,6 @@ export default function MetersTab() {
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
     try {
-      console.log("Fetching locations...");
-
       // Build API parameters
       const params: Record<string, string> = {};
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -116,7 +114,6 @@ export default function MetersTab() {
       }
 
       const response = await axios.get("/api/locations", { params });
-      console.log("Locations API response:", response.data);
 
       const locationsData = response.data.locations || [];
       const mappedLocations = locationsData.map((loc: any) => ({
@@ -125,7 +122,6 @@ export default function MetersTab() {
         sasEnabled: loc.sasEnabled || false, // Default to false if not available
       }));
 
-      console.log("Mapped locations:", mappedLocations);
       setLocations(mappedLocations);
     } catch (err: any) {
       console.error("Error fetching locations:", err);
@@ -164,20 +160,9 @@ export default function MetersTab() {
           params.append("licencee", selectedLicencee);
         }
 
-        console.log("Fetching meters data with params:", {
-          locations: selectedLocations.join(","),
-          startDate: selectedDateRange.start.toISOString(),
-          endDate: selectedDateRange.end.toISOString(),
-          page,
-          limit: 10,
-          search,
-          licencee: selectedLicencee,
-        });
-
         const response = await axios.get<MetersReportResponse>(
           `/api/reports/meters?${params}`
         );
-        console.log("Meters API response:", response.data);
 
         setMetersData(response.data.data);
         setHasData(response.data.data.length > 0);
@@ -198,6 +183,21 @@ export default function MetersTab() {
     },
     [selectedLocations, selectedDateRange, selectedLicencee]
   );
+
+  // Initialize locations once
+  useEffect(() => {
+    if (!locationsInitialized.current) {
+      void fetchLocations();
+      locationsInitialized.current = true;
+    }
+  }, [fetchLocations]);
+
+  // Fetch meters data when locations or date range or licensee changes
+  useEffect(() => {
+    if (selectedLocations.length > 0) {
+      void fetchMetersData(1, searchTerm);
+    }
+  }, [selectedLocations, selectedDateRange.start, selectedDateRange.end, selectedLicencee, fetchMetersData, searchTerm]);
 
   // Handle export
   const handleExport = async () => {
@@ -242,7 +242,7 @@ export default function MetersTab() {
           "Date",
         ],
         data: allData.map((item) => [
-          `"${item.machineId}"`, // Wrap in quotes to prevent Excel formula interpretation
+          `"${(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}"`,
           `"${item.location}"`,
           item.metersIn.toString(), // Remove toLocaleString() to prevent Excel formatting issues
           item.metersOut.toString(),
@@ -275,7 +275,7 @@ export default function MetersTab() {
         },
       };
 
-      await exportData(exportConfig);
+      await exportData(exportConfig, "csv");
       toast.success(`Successfully exported ${allData.length} records`);
     } catch (error) {
       console.error("Export error:", error);
@@ -285,10 +285,7 @@ export default function MetersTab() {
     }
   };
 
-  // Load locations on mount
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+  // (deduped) Load locations handled above
 
   // Auto-select all locations when locations are first loaded
   useEffect(() => {
@@ -577,7 +574,7 @@ export default function MetersTab() {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">
-                          {item.machineId}
+                          {(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -642,7 +639,7 @@ export default function MetersTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-sm font-mono font-medium text-gray-900 truncate">
-                        {item.machineId}
+                        {(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}
                       </h3>
                       <p className="text-xs text-gray-500 truncate">
                         {item.location}

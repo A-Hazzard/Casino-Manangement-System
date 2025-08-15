@@ -1,6 +1,7 @@
 import { useReportStore } from "@/lib/store/useReportStore";
 import { ReportConfig, ReportData } from "@/lib/types/reports";
 import { useState } from "react";
+import axios from "axios";
 
 export function useGenerateReport() {
   const { setReportData, setIsGenerating, setError, setStep } =
@@ -15,18 +16,8 @@ export function useGenerateReport() {
     setLocalError(null);
 
     try {
-      const response = await fetch("/api/analytics/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate report");
-      }
-
-      const data: ReportData = await response.json();
+      const response = await axios.post("/api/analytics/reports", config);
+      const data: ReportData = response.data;
       setReportData(data);
       setStep("view");
     } catch (e: unknown) {

@@ -42,7 +42,6 @@ export default function EnhancedLocationTable({
   onPageChange,
   itemsPerPage = 10,
 }: EnhancedLocationTableProps) {
-  console.log("🔍 EnhancedLocationTable - loading:", loading, "locations count:", locations.length, "totalPages:", totalPages, "totalCount:", totalCount);
   const [sortField, setSortField] = useState<SortField>("moneyIn");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,10 +55,15 @@ export default function EnhancedLocationTable({
     }
   };
 
-  const filteredLocations = locations.filter(location =>
-    location.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    location.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLocations = locations.filter((location) => {
+    const q = searchTerm.toLowerCase();
+    const name = location.locationName || "";
+    const id = (location as any).location || "";
+    return (
+      (typeof name === "string" && name.toLowerCase().includes(q)) ||
+      (typeof id === "string" && id.toLowerCase().includes(q))
+    );
+  });
 
   const sortedLocations = [...filteredLocations].sort((a, b) => {
     let aValue: any;

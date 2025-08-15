@@ -1,4 +1,5 @@
 import { Cabinet } from "./cabinets";
+import { TimePeriod } from "@/lib/types/cabinets";
 
 /**
  * Types for cabinet details functionality
@@ -68,9 +69,11 @@ export type SmibConfigurationProps = {
   cabinet: Cabinet;
 };
 
+// Props with date filtering support
 export type AccountingDetailsProps = {
   cabinet: Cabinet;
-  metricsLoading: boolean;
+  loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
+  activeMetricsFilter?: TimePeriod;
 };

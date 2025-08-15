@@ -3,22 +3,10 @@
  * Replaces moment/dayjs usage with native JavaScript date formatting
  */
 
-export type DateFormatOptions = {
-  locale?: string;
-  timeZone?: string;
-  year?: 'numeric' | '2-digit';
-  month?: 'numeric' | '2-digit' | 'long' | 'short' | 'narrow';
-  day?: 'numeric' | '2-digit';
-  hour?: 'numeric' | '2-digit';
-  minute?: 'numeric' | '2-digit';
-  second?: 'numeric' | '2-digit';
-  weekday?: 'long' | 'short' | 'narrow';
-  era?: 'long' | 'short' | 'narrow';
-  timeZoneName?: 'long' | 'short';
-  hour12?: boolean;
-};
+import type { DateFormatOptions, DateInput } from "@shared/types/dateFormat";
 
-export type DateInput = Date | string | number;
+// Re-export shared types for convenience
+export type { DateFormatOptions, DateInput };
 
 /**
  * Format a date using Intl.DateTimeFormat

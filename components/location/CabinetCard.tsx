@@ -44,7 +44,7 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
         <div className="flex justify-between items-start mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-800">
-              {cabinet.assetNumber || cabinet.serialNumber || "No ID"}
+              {cabinet.assetNumber || (cabinet as any).serialNumber || (cabinet as any).origSerialNumber || (cabinet as any).machineId || "No ID"}
             </h3>
             <p className="text-xs text-gray-500">
               {cabinet.installedGame || cabinet.game || "No Game"}

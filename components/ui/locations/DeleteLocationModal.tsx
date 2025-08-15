@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import deleteIcon from "@/public/deleteIcon.svg";
 import type { DeleteLocationModalProps } from "@/lib/types/components";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function DeleteLocationModal({
   isOpen,
@@ -25,6 +26,7 @@ export default function DeleteLocationModal({
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
+  const locationLogger = createActivityLogger("location");
 
   const handleClose = () => {
     closeDeleteModal();
@@ -34,7 +36,22 @@ export default function DeleteLocationModal({
     if (!selectedLocation?._id) return;
 
     try {
+      const locationData = { ...selectedLocation };
+
       await axios.delete(`/api/locations?id=${selectedLocation._id}`);
+
+      // Log the deletion activity
+      await locationLogger.logDelete(
+        selectedLocation._id,
+        selectedLocation.name ||
+          selectedLocation.locationName ||
+          "Unknown Location",
+        locationData,
+        `Deleted location: ${
+          selectedLocation.name || selectedLocation.locationName
+        }`
+      );
+
       toast.success("Location deleted successfully");
       onDelete();
       closeDeleteModal();

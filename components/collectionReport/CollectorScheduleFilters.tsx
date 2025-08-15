@@ -1,13 +1,4 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RefreshCw } from "lucide-react";
 import { CollectorScheduleFiltersProps } from "@/lib/types/componentProps";
 
 export default function CollectorScheduleFilters({
@@ -23,80 +14,54 @@ export default function CollectorScheduleFilters({
   loading,
 }: CollectorScheduleFiltersProps) {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        {/* Location Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Location
-          </label>
-          <Select value={selectedLocation} onValueChange={onLocationChange} disabled={loading}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {locations.map((location) => (
-                <SelectItem key={location._id} value={location._id}>
-                  {location.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Collector Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Collector
-          </label>
-          <Select value={selectedCollector} onValueChange={onCollectorChange} disabled={loading}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Collectors" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Collectors</SelectItem>
-              {collectors.map((collector) => (
-                <SelectItem key={collector} value={collector}>
-                  {collector}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Status Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Status
-          </label>
-          <Select value={selectedStatus} onValueChange={onStatusChange} disabled={loading}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Reset Button */}
-        <div className="flex items-end">
-          <Button
-            onClick={onResetFilters}
-            variant="outline"
-            className="w-full flex items-center gap-2"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Reset Filters
-          </Button>
-        </div>
+    <div className="bg-buttonActive rounded-t-lg rounded-b-none p-4 flex flex-col gap-y-3 md:flex-row md:items-center md:gap-x-4 md:justify-between w-full">
+      <div className="flex flex-col md:flex-row md:gap-x-4 flex-1">
+        <select
+          className="flex-1 min-w-0 px-4 py-2 rounded-md text-base w-full bg-white text-black border border-gray-200 focus:ring-2 focus:ring-buttonActive mb-1"
+          value={selectedLocation}
+          onChange={(e) => onLocationChange(e.target.value)}
+          disabled={loading}
+        >
+          <option value="all">Select Location</option>
+          {locations.map((loc) => (
+            <option key={loc._id} value={loc._id}>
+              {loc.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="flex-1 min-w-0 px-4 py-2 rounded-md text-base w-full bg-white text-black border border-gray-200 focus:ring-2 focus:ring-buttonActive mb-1"
+          value={selectedCollector}
+          onChange={(e) => onCollectorChange(e.target.value)}
+          disabled={loading}
+        >
+          <option value="all">Select Collector</option>
+          {collectors.map((collector) => (
+            <option key={collector} value={collector}>
+              {collector}
+            </option>
+          ))}
+        </select>
+        <select
+          className="flex-1 min-w-0 px-4 py-2 rounded-md text-base w-full bg-white text-black border border-gray-200 focus:ring-2 focus:ring-buttonActive"
+          value={selectedStatus}
+          onChange={(e) => onStatusChange(e.target.value)}
+          disabled={loading}
+        >
+          <option value="all">Select Status</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
       </div>
+      <button
+        className="bg-button text-white px-4 py-2 text-base rounded-md font-semibold w-full md:w-auto md:ml-auto mt-3 md:mt-0"
+        onClick={onResetFilters}
+        disabled={loading}
+      >
+        Reset Filter
+      </button>
     </div>
   );
 }

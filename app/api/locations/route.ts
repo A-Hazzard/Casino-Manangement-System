@@ -8,24 +8,32 @@ import { UpdateLocationData } from "@/lib/types/location";
 export async function GET(request: Request) {
   try {
     await connectDB();
-    
+
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
+    const licencee = searchParams.get("licencee");
+    const minimal = searchParams.get("minimal") === "1";
+
     
+
     // Build query filter
     const queryFilter: Record<string, string> = {};
     if (licencee && licencee !== "all") {
       queryFilter["rel.licencee"] = licencee;
     }
-    
-    // Fetch locations, only include `geoCoords`, `name`, and `_id`, sorted alphabetically by name
-    const locations = await GamingLocations.find(queryFilter)
+
+    // console.log("🔍 Locations API Debug - Query filter:", queryFilter);
+
+    // Fetch locations. If minimal is requested, project minimal fields only.
+    const projection = minimal
+      ? { _id: 1, name: 1, geoCoords: 1 }
+      : undefined;
+    const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
 
-    console.log(`🔍 Found ${locations.length} total locations`);
-    
+    // console.log(`🔍 Found ${locations.length} total locations`);
+
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];
     const validLocations: any[] = [];
@@ -37,7 +45,7 @@ export async function GET(request: Request) {
         missingGeoCoords.push(`${location._id.toString()} (${location.name})`);
       } else if (location.geoCoords) {
         const { latitude, longitude, longtitude } = location.geoCoords;
-        
+
         // Use longitude if available, otherwise fallback to longtitude
         const validLongitude = longitude !== undefined ? longitude : longtitude;
 
@@ -51,13 +59,14 @@ export async function GET(request: Request) {
       }
     });
 
-    console.log(`✅ Valid locations with coordinates: ${validLocations.length}`);
-    console.log(`❌ Missing geoCoords: ${missingGeoCoords.length}`);
-    console.log(`⚠️ Zero-valued geoCoords: ${zeroGeoCoords.length}`);
 
-    // TEMPORARILY: Return all locations for debugging
-    // TODO: Change back to validLocations once we have proper coordinates
-    const locationsToReturn = locations; // Changed from validLocations to locations
+    // console.log(`❌ Missing geoCoords: ${missingGeoCoords.length}`);
+    // console.log(`⚠️ Zero-valued geoCoords: ${zeroGeoCoords.length}`);
+
+    // Return minimal or full set based on query
+    const locationsToReturn = minimal ? locations : locations;
+
+    
 
     // Prepare log directory
     const logDir = path.join(process.cwd(), "logs");
@@ -82,7 +91,7 @@ export async function GET(request: Request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error:", errorMessage);
+    console.error("❌ Locations API Error:", errorMessage);
     return NextResponse.json({ success: false, message: errorMessage });
   }
 }

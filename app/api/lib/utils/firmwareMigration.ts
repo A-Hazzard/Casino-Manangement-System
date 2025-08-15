@@ -21,7 +21,7 @@ export async function migrateFirmwareSchema() {
       ],
     });
 
-    console.log(`Found ${oldFirmwares.length} firmware records to migrate`);
+    // console.log(`Found ${oldFirmwares.length} firmware records to migrate`);
 
     for (const firmware of oldFirmwares) {
       try {
@@ -41,7 +41,7 @@ export async function migrateFirmwareSchema() {
             },
           });
           
-          console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
+          // console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         } else {
           // If missing new fields but no old file object, set defaults
           await Firmware.findByIdAndUpdate(firmware._id, {
@@ -51,14 +51,14 @@ export async function migrateFirmwareSchema() {
             },
           });
           
-          console.log(`Set defaults for firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
+          // console.log(`Set defaults for firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         }
       } catch (error) {
         console.error(`Failed to migrate firmware ${firmware._id}:`, error);
       }
     }
 
-    console.log('Firmware migration completed');
+    // console.log('Firmware migration completed');
   } catch (error) {
     console.error('Error during firmware migration:', error);
     throw error;

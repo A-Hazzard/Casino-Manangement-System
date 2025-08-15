@@ -16,7 +16,7 @@ export class PerformanceMonitor {
   complete(additionalInfo?: Record<string, any>) {
     const duration = Date.now() - this.startTime;
     const info = additionalInfo ? ` | ${JSON.stringify(additionalInfo)}` : '';
-    console.log(`⏱️ ${this.operationName} completed in ${duration}ms${info}`);
+    // console.log(`⏱️ ${this.operationName} completed in ${duration}ms${info}`);
     return duration;
   }
 

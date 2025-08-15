@@ -13,7 +13,7 @@ import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal"
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { Input } from "@/components/ui/input";
-import { fetchCabinetLocations, fetchCabinets } from "@/lib/helpers/cabinets";
+import { fetchCabinets, fetchCabinetLocations } from "@/lib/helpers/cabinets";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
@@ -28,9 +28,16 @@ import {
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+} from "react";
 import RefreshButton from "@/components/ui/RefreshButton";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import SMIBManagement from "@/components/cabinets/SMIBManagement";
 import MovementRequests from "@/components/cabinets/MovementRequests";
@@ -39,8 +46,13 @@ import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
 import SMIBFirmwareSection from "@/components/ui/firmware/SMIBFirmwareSection";
 import { Toaster } from "sonner";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import ClientOnly from "@/components/ui/common/ClientOnly";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+import CabinetsNavigation from "@/components/cabinets/CabinetsNavigation";
+import { CABINET_TABS_CONFIG } from "@/lib/constants/cabinets";
+import type { CabinetSection } from "@/lib/constants/cabinets";
 
-export default function CabinetsPage() {
+function CabinetsPageContent() {
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -70,6 +82,8 @@ export default function CabinetsPage() {
   const closeUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(false);
 
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -92,15 +106,84 @@ export default function CabinetsPage() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const [activeSection, setActiveSection] = useState<
-    "cabinets" | "smib" | "movement" | "firmware"
-  >("cabinets");
+  // Get active section from URL search params, default to "cabinets"
+  const getActiveSectionFromURL = useCallback((): CabinetSection => {
+    const section = searchParams.get("section");
+    if (section === "movement-requests") return "movement";
+    if (section === "smib-firmware") return "firmware";
+    if (section === "smib") return "smib";
+    return "cabinets";
+  }, [searchParams]);
 
+  const [activeSection, setActiveSection] = useState<CabinetSection>(
+    getActiveSectionFromURL()
+  );
+
+  // Handle section changes with URL updates
+  const handleSectionChange = (section: CabinetSection) => {
+    setActiveSection(section);
+
+    // Update URL based on section
+    const params = new URLSearchParams(searchParams.toString());
+    if (section === "cabinets") {
+      params.delete("section"); // Default section, no param needed
+    } else if (section === "movement") {
+      params.set("section", "movement-requests");
+    } else if (section === "firmware") {
+      params.set("section", "smib-firmware");
+    } else if (section === "smib") {
+      params.set("section", "smib");
+    }
+
+    const newURL = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    router.push(newURL, { scroll: false });
+  };
+
+  // Sync state with URL changes
+  useEffect(() => {
+    const newSection = getActiveSectionFromURL();
+    if (newSection !== activeSection) {
+      setActiveSection(newSection);
+    }
+  }, [searchParams, activeSection, getActiveSectionFromURL]);
+
+  // Calculate financial totals from cabinet data
+  const calculateFinancialTotals = () => {
+    if (!allCabinets || allCabinets.length === 0) {
+      return null;
+    }
+
+    const totals = allCabinets.reduce(
+      (acc, cabinet) => {
+        // Use calculatedMetrics if available, otherwise fall back to direct properties
+        const moneyIn =
+          cabinet.calculatedMetrics?.moneyIn || cabinet.moneyIn || 0;
+        const moneyOut =
+          cabinet.calculatedMetrics?.moneyOut || cabinet.moneyOut || 0;
+        // Calculate gross as moneyIn - moneyOut, or use direct gross property if available
+        const gross = cabinet.gross || moneyIn - moneyOut;
+
+        return {
+          moneyIn: acc.moneyIn + moneyIn,
+          moneyOut: acc.moneyOut + moneyOut,
+          gross: acc.gross + gross,
+        };
+      },
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
+
+    return totals;
+  };
+
+  const financialTotals = calculateFinancialTotals();
+
+  // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
     try {
       const locationsData = await fetchCabinetLocations(selectedLicencee);
       if (Array.isArray(locationsData)) {
-        console.log("Locations data:", locationsData);
         setLocations(locationsData);
       } else {
         console.error("Locations data is not an array:", locationsData);
@@ -227,9 +310,15 @@ export default function CabinetsPage() {
   );
   const totalPages = Math.ceil(sorted.length / 10);
 
-  const handleEdit = (cabinet: Cabinet) => openEditModal(cabinet);
+  const handleEdit = useCallback(
+    (cabinet: Cabinet) => openEditModal(cabinet),
+    [openEditModal]
+  );
 
-  const handleDelete = (cabinet: Cabinet) => openDeleteModal(cabinet);
+  const handleDelete = useCallback(
+    (cabinet: Cabinet) => openDeleteModal(cabinet),
+    [openDeleteModal]
+  );
 
   const mapToCabinetProps = useMemo(() => {
     return (cabinet: Cabinet): CabinetProps => {
@@ -239,13 +328,13 @@ export default function CabinetsPage() {
         locationName: cabinet.locationName || "",
         assetNumber: cabinet.assetNumber || "",
         smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
-        moneyIn: cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0,
-        moneyOut: cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0,
+        moneyIn: cabinet.moneyIn || cabinet.sasMeters?.drop || 0,
+        moneyOut:
+          cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0,
         gross:
           cabinet.gross ||
-          (cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0) -
-            (cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0) -
-            (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
+          (cabinet.moneyIn || cabinet.sasMeters?.drop || 0) -
+            (cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0),
         jackpot: cabinet.jackpot || cabinet.sasMeters?.jackpot || 0,
         lastOnline: cabinet.lastOnline
           ? cabinet.lastOnline.toString()
@@ -321,7 +410,7 @@ export default function CabinetsPage() {
         onClose={closeUploadSmibDataModal}
       />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden xl:w-full xl:mx-auto xl:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -336,11 +425,11 @@ export default function CabinetsPage() {
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
             <div className="flex items-center gap-3 w-full">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                Cabinets
+                Machines
               </h1>
               <Image
                 src="/cabinetsIcon.svg"
-                alt="Cabinets Icon"
+                alt="Machines Icon"
                 width={32}
                 height={32}
                 className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
@@ -391,231 +480,136 @@ export default function CabinetsPage() {
             </div>
           )}
 
-          {/* Section Navigation: Dropdown on mobile, button bar on desktop */}
-          <div className="w-full max-w-full mt-6 mb-4">
-            {/* Mobile: Dropdown */}
-            <div className="md:hidden w-full">
+          {/* Section Navigation */}
+          <div className="mt-8 mb-6">
+            <CabinetsNavigation
+              tabs={CABINET_TABS_CONFIG}
+              activeSection={activeSection}
+              onChange={handleSectionChange}
+              isLoading={loading}
+            />
+          </div>
+
+          {/* Financial Metrics Cards - Only show on cabinets section */}
+          {activeSection === "cabinets" && (
+            <FinancialMetricsCards
+              totals={financialTotals}
+              loading={loading}
+              title="Total for all Machines"
+              className="mt-6"
+            />
+          )}
+
+          {/* Date Filters Row - Visible on both mobile and desktop */}
+          <div className="flex items-center justify-between mt-4 mb-0 gap-4">
+            <div className="flex-1 min-w-0">
+              <DashboardDateFilters
+                disabled={loading || refreshing}
+                hideAllTime={true}
+              />
+            </div>
+          </div>
+          {/* Mobile: Search, Location Filter, and Sort stacked - Only show on cabinets section */}
+          {activeSection === "cabinets" && (
+            <div className="lg:hidden flex flex-col gap-4 mt-4">
+              <div className="relative w-full">
+                <Input
+                  type="text"
+                  placeholder="Search machines..."
+                  className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              </div>
+              <div className="relative w-full">
+                <select
+                  className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive text-base"
+                  value={selectedLocation}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                >
+                  <option value="all">All Locations</option>
+                  {locations.map((location) => (
+                    <option key={location._id} value={location._id}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+                <ArrowDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              <div className="relative w-full">
+                <select
+                  className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive text-base"
+                  value={`${sortOption}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [option, order] = e.target.value.split("-");
+                    setSortOption(option as CabinetSortOption);
+                    setSortOrder(order as "asc" | "desc");
+                  }}
+                >
+                  <option value="moneyIn-desc">Money In (Highest First)</option>
+                  <option value="moneyIn-asc">Money In (Lowest First)</option>
+                  <option value="moneyOut-desc">
+                    Money Out (Highest First)
+                  </option>
+                  <option value="moneyOut-asc">Money Out (Lowest First)</option>
+                  <option value="gross-desc">
+                    Gross Revenue (Highest First)
+                  </option>
+                  <option value="gross-asc">
+                    Gross Revenue (Lowest First)
+                  </option>
+                  <option value="jackpot-desc">Jackpot (Highest First)</option>
+                  <option value="jackpot-asc">Jackpot (Lowest First)</option>
+                  <option value="assetNumber-asc">Asset Number (A to Z)</option>
+                  <option value="assetNumber-desc">
+                    Asset Number (Z to A)
+                  </option>
+                  <option value="locationName-asc">Location (A to Z)</option>
+                  <option value="locationName-desc">Location (Z to A)</option>
+                  <option value="lastOnline-desc">
+                    Last Online (Most Recent)
+                  </option>
+                  <option value="lastOnline-asc">
+                    Last Online (Oldest First)
+                  </option>
+                </select>
+                <ArrowDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Search Row - Purple box - Only show on cabinets section */}
+          {activeSection === "cabinets" && (
+            <div className="hidden lg:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+              <div className="relative flex-1 max-w-md min-w-0">
+                <Input
+                  type="text"
+                  placeholder="Search machines..."
+                  className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              </div>
               <select
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-                value={activeSection}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "firmware_trigger") {
-                    openUploadSmibDataModal();
-                    e.target.value = activeSection;
-                  } else {
-                    setActiveSection(
-                      value as "cabinets" | "smib" | "movement" | "firmware"
-                    );
-                  }
-                }}
+                value={selectedLocation}
+                onChange={(e) => handleLocationChange(e.target.value)}
+                className="w-auto h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
               >
-                <option value="cabinets">Machines</option>
-                {/* Hidden for future use - SMIB Management */}
-                <option value="smib" className="hidden">
-                  SMIB Management
-                </option>
-                <option value="movement">Movement Requests</option>
-                <option value="firmware">SMIB Firmware</option>
+                <option value="all">All Locations</option>
+                {locations.map((location) => (
+                  <option key={location._id} value={location._id}>
+                    {location.name}
+                  </option>
+                ))}
               </select>
             </div>
-            {/* Desktop: Button bar */}
-            <div className="hidden md:flex flex-row gap-3 w-full">
-              <Button
-                className={`px-6 py-2 font-semibold ${
-                  activeSection === "cabinets"
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
-                }`}
-                onClick={() => setActiveSection("cabinets")}
-              >
-                Machines
-              </Button>
-              {/* Hidden for future use - SMIB Management */}
-              <Button
-                className={`hidden px-6 py-2 font-semibold ${
-                  activeSection === "smib"
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
-                }`}
-                onClick={() => setActiveSection("smib")}
-              >
-                SMIB Management
-              </Button>
-              <Button
-                className={`px-6 py-2 font-semibold ${
-                  activeSection === "movement"
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
-                }`}
-                onClick={() => setActiveSection("movement")}
-              >
-                Movement Requests
-              </Button>
-              <Button
-                className={`px-6 py-2 font-semibold ${
-                  activeSection === "firmware"
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
-                }`}
-                onClick={() => setActiveSection("firmware")}
-              >
-                SMIB Firmware
-              </Button>
-            </div>
-          </div>
-
-          {/* Desktop Time Period Filters */}
-          <div className="hidden xl:block mt-4">
-            <DashboardDateFilters disabled={loading || refreshing} />
-          </div>
-
-          {/* Mobile: Date Filters with better responsive layout */}
-          <div className="xl:hidden mt-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Date Filters
-              </h3>
-              <DashboardDateFilters disabled={loading || refreshing} />
-            </div>
-          </div>
+          )}
 
           {/* Section Content */}
           {activeSection === "cabinets" ? (
             <>
-              {/* Mobile Search */}
-              <div className="xl:hidden w-full relative mt-6">
-                <Input
-                  type="text"
-                  placeholder="Search machines..."
-                  className="w-full pr-10 bg-white border-none rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-
-              {/* Mobile Sort and Location Select Below Search */}
-              <div className="flex flex-wrap gap-2 w-full mb-4 xl:hidden mt-4 items-center sm:flex-row flex-col overflow-x-hidden">
-                {/* Sort Button */}
-                <div className="flex-1 min-w-0 w-full sm:w-auto">
-                  <button
-                    className="w-full bg-buttonActive text-white rounded-full flex items-center justify-center gap-2 py-2 px-4 hover:bg-buttonActive/90"
-                    onClick={() => {
-                      const dropdown = document.getElementById(
-                        "mobile-sort-dropdown"
-                      );
-                      if (dropdown) dropdown.classList.toggle("hidden");
-                    }}
-                  >
-                    <ArrowDownIcon className="w-4 h-4" />
-                    <span>Sort</span>
-                  </button>
-                  <div
-                    id="mobile-sort-dropdown"
-                    className="hidden absolute left-0 right-0 z-10 mt-2 bg-white rounded-md shadow-lg py-2 w-full"
-                  >
-                    <div className="flex items-center justify-between px-4 py-2 border-b">
-                      <span className="font-semibold text-sm">Order:</span>
-                      <button
-                        className="ml-2 px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs flex items-center"
-                        onClick={() => {
-                          setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                          document
-                            .getElementById("mobile-sort-dropdown")
-                            ?.classList.add("hidden");
-                        }}
-                      >
-                        {sortOrder === "desc" ? "Descending" : "Ascending"}
-                      </button>
-                    </div>
-                    {[
-                      { label: "Money In", value: "moneyIn" },
-                      { label: "Gross", value: "gross" },
-                      { label: "Asset #", value: "assetNumber" },
-                      { label: "Game", value: "game" },
-                      { label: "Last Online", value: "lastOnline" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => {
-                          handleColumnSort(opt.value as CabinetSortOption);
-                          document
-                            .getElementById("mobile-sort-dropdown")
-                            ?.classList.add("hidden");
-                        }}
-                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                          sortOption === opt.value
-                            ? "bg-gray-100 font-medium"
-                            : ""
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Location Select */}
-                <div className="flex-1 min-w-0 w-full sm:w-auto relative">
-                  <select
-                    className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive"
-                    value={selectedLocation}
-                    onChange={(e) => handleLocationChange(e.target.value)}
-                  >
-                    <option value="all">All Locations</option>
-                    {locations.map((location) => (
-                      <option key={location._id} value={location._id}>
-                        {location.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ArrowDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-                {/* Refresh Button to the right of Location select, only after data is loaded */}
-                {!initialLoading && !loading && (
-                  <div className="flex items-center w-full sm:w-auto">
-                    <RefreshButton
-                      onClick={handleRefresh}
-                      isSyncing={refreshing}
-                      className="bg-buttonActive text-white rounded-full p-2 ml-2 w-full sm:w-auto hover:bg-buttonActive/90"
-                      label="Refresh"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Desktop Search and Location Filter Row with purple background */}
-              <div
-                className={`hidden mt-4 xl:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none ${
-                  loading || initialLoading ? "search-flash" : ""
-                }`}
-              >
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="relative flex-1 max-w-md min-w-0">
-                    <Input
-                      type="text"
-                      placeholder="Search machines..."
-                      className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  </div>
-                  <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full xl:w-auto h-11 rounded-md border-none px-3 bg-white text-gray-700"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map((location) => (
-                      <option key={location._id} value={location._id}>
-                        {location.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               {initialLoading || loading ? (
                 <>
                   {/* Table Skeleton for large screens */}
@@ -623,9 +617,15 @@ export default function CabinetsPage() {
                     <CabinetTableSkeleton />
                   </div>
 
-                  {/* Card Skeleton for small and medium screens */}
+                  {/* Card Skeleton for small screens only */}
                   <div className="block lg:hidden">
-                    <CabinetCardSkeleton />
+                    <ClientOnly
+                      fallback={
+                        <div className="space-y-4 mt-4">Loading...</div>
+                      }
+                    >
+                      <CabinetCardSkeleton />
+                    </ClientOnly>
                   </div>
                 </>
               ) : filteredCabinets.length === 0 ? (
@@ -664,45 +664,52 @@ export default function CabinetsPage() {
                     />
                   </div>
 
-                  {/* Mobile and Tablet Card View */}
+                  {/* Mobile Card View - Only show on small screens */}
                   <div
-                    className="block xl:hidden mt-4 px-1 sm:px-2 md:px-4 space-y-3 sm:space-y-4 w-full max-w-full"
+                    className="block lg:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full"
                     ref={cardsRef}
                   >
-                    {paginatedCabinets.map((cabinet) => (
-                      <CabinetCard
-                        key={cabinet._id}
-                        _id={cabinet._id}
-                        assetNumber={cabinet.assetNumber || ""}
-                        game={cabinet.game || ""}
-                        smbId={
-                          cabinet.smbId ||
-                          cabinet.smibBoard ||
-                          cabinet.relayId ||
-                          ""
-                        }
-                        serialNumber={cabinet.serialNumber || ""}
-                        locationId={cabinet.locationId || ""}
-                        locationName={cabinet.locationName || ""}
-                        moneyIn={cabinet.moneyIn || 0}
-                        moneyOut={cabinet.moneyOut || 0}
-                        cancelledCredits={cabinet.cancelledCredits || 0}
-                        jackpot={cabinet.jackpot || 0}
-                        gross={cabinet.gross || 0}
-                        lastOnline={
-                          cabinet.lastOnline instanceof Date
-                            ? cabinet.lastOnline.toISOString()
-                            : typeof cabinet.lastOnline === "string"
-                            ? cabinet.lastOnline
-                            : undefined
-                        }
-                        installedGame={
-                          cabinet.installedGame || cabinet.game || ""
-                        }
-                        onEdit={() => handleEdit(cabinet)}
-                        onDelete={() => handleDelete(cabinet)}
-                      />
-                    ))}
+                    <ClientOnly fallback={<div>Loading cabinets...</div>}>
+                      {paginatedCabinets.map((cabinet) => (
+                        <CabinetCard
+                          key={cabinet._id}
+                          _id={cabinet._id}
+                          assetNumber={cabinet.assetNumber || ""}
+                          game={cabinet.game || ""}
+                          smbId={
+                            cabinet.smbId ||
+                            cabinet.smibBoard ||
+                            cabinet.relayId ||
+                            ""
+                          }
+                          serialNumber={
+                            (cabinet as any).serialNumber ||
+                            (cabinet as any).origSerialNumber ||
+                            (cabinet as any).machineId ||
+                            ""
+                          }
+                          locationId={cabinet.locationId || ""}
+                          locationName={cabinet.locationName || ""}
+                          moneyIn={cabinet.moneyIn || 0}
+                          moneyOut={cabinet.moneyOut || 0}
+                          cancelledCredits={cabinet.cancelledCredits || 0}
+                          jackpot={cabinet.jackpot || 0}
+                          gross={cabinet.gross || 0}
+                          lastOnline={
+                            cabinet.lastOnline instanceof Date
+                              ? cabinet.lastOnline.toISOString()
+                              : typeof cabinet.lastOnline === "string"
+                              ? cabinet.lastOnline
+                              : undefined
+                          }
+                          installedGame={
+                            cabinet.installedGame || cabinet.game || ""
+                          }
+                          onEdit={() => handleEdit(cabinet)}
+                          onDelete={() => handleDelete(cabinet)}
+                        />
+                      ))}
+                    </ClientOnly>
                   </div>
 
                   {/* Pagination Controls */}
@@ -785,5 +792,13 @@ export default function CabinetsPage() {
       </div>
       <Toaster position="top-right" richColors />
     </>
+  );
+}
+
+export default function CabinetsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CabinetsPageContent />
+    </Suspense>
   );
 }

@@ -9,25 +9,38 @@ import type { Machine as MachineType } from "@/lib/types/machines";
 import { CollectionReportData } from "@/lib/types";
 import { CollectionReport } from "../models/collectionReport";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
+import { getDatesForTimePeriod } from "../utils/dates";
+import type { TimePeriod } from "@/app/api/lib/types";
 
 /**
  * Fetches accepted bills for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of AcceptedBillType.
  */
 export async function getAcceptedBillsByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<AcceptedBillType[]> {
-  console.log(
-    "[API] getAcceptedBillsByMachine: querying for machine",
-    machineId
-  );
   try {
-    const result = (await AcceptedBill.find({
-      machine: machineId,
-    }).lean()) as AcceptedBillType[];
-    console.log("[API] getAcceptedBillsByMachine: result count", result.length);
+    const query: any = { machine: machineId };
+
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        query.createdAt = {
+          $gte: dateRange.startDate,
+          $lte: dateRange.endDate,
+        };
+      }
+    }
+
+    const result = (await AcceptedBill.find(
+      query
+    ).lean()) as AcceptedBillType[];
+
     return result;
   } catch (error) {
     console.error(
@@ -42,21 +55,14 @@ export async function getAcceptedBillsByMachine(
  * Fetches machine events for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of MachineEventType.
  */
 export async function getMachineEventsByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<MachineEventType[]> {
-  console.log(
-    "[API] getMachineEventsByMachine: querying for machine",
-    machineId
-  );
   try {
-    console.log(
-      "[API] getMachineEventsByMachine: checking model",
-      !!MachineEvent
-    );
-
     // Check if MachineEvent model is properly initialized
     if (!MachineEvent || typeof MachineEvent.find !== "function") {
       console.error(
@@ -66,22 +72,25 @@ export async function getMachineEventsByMachine(
       return getMockMachineEvents(machineId);
     }
 
-    const query = { machine: machineId };
-    console.log(
-      "[API] getMachineEventsByMachine: executing query with filter",
-      query
-    );
+    const query: any = { machine: machineId };
+
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        query.timestamp = {
+          $gte: dateRange.startDate,
+          $lte: dateRange.endDate,
+        };
+      }
+    }
 
     const result = (await MachineEvent.find(
       query
     ).lean()) as MachineEventType[];
-    console.log("[API] getMachineEventsByMachine: result count", result.length);
 
     // If no results, return mock data
     if (!result || result.length === 0) {
-      console.log(
-        "[API] getMachineEventsByMachine: No results found, returning mock data"
-      );
       return getMockMachineEvents(machineId);
     }
 
@@ -91,7 +100,6 @@ export async function getMachineEventsByMachine(
       "[API] getMachineEventsByMachine: error fetching data",
       error
     );
-    // Return mock data on error
     return getMockMachineEvents(machineId);
   }
 }
@@ -103,11 +111,6 @@ export async function getMachineEventsByMachine(
  * @returns An array of mock MachineEventType objects.
  */
 function getMockMachineEvents(machineId: string): MachineEventType[] {
-  console.log(
-    "[API] getMockMachineEvents: generating mock data for",
-    machineId
-  );
-
   // Current date/time
   const now = new Date();
 
@@ -256,11 +259,6 @@ function getMockMachineEvents(machineId: string): MachineEventType[] {
     },
   ];
 
-  console.log(
-    "[API] getMockMachineEvents: returning",
-    mockEvents.length,
-    "mock events with correct schema structure"
-  );
   return mockEvents;
 }
 
@@ -268,56 +266,37 @@ function getMockMachineEvents(machineId: string): MachineEventType[] {
  * Fetches collection meters history for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of CollectionMetersHistoryEntry.
  */
 export async function getCollectionMetersHistoryByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<CollectionMetersHistoryEntry[]> {
-  console.log(
-    "[API] getCollectionMetersHistoryByMachine: querying for machine",
-    machineId
-  );
   try {
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: checking Machine model exists",
-      !!Machine
-    );
-
     // Use findOne with specific projection for collectionMetersHistory
     const query = { _id: machineId };
     const projection = { collectionMetersHistory: 1 };
 
-    console.log("[API] getCollectionMetersHistoryByMachine: executing query", {
-      query,
-      projection,
-    });
     const machine = (await Machine.findOne(query, projection).lean()) as Record<
       string,
       unknown
     >;
 
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: machine found?",
-      !!machine
-    );
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: collectionMetersHistory exists?",
-      !!machine?.collectionMetersHistory
-    );
-
-    const result = (machine?.collectionMetersHistory ||
+    let result = (machine?.collectionMetersHistory ||
       []) as CollectionMetersHistoryEntry[];
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: result count",
-      result.length
-    );
 
-    // If no results found, return mock data
-    if (!result || result.length === 0) {
-      console.log(
-        "[API] getCollectionMetersHistoryByMachine: No results found, returning mock data"
-      );
-      return getMockCollectionMetersHistory(machineId);
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        result = result.filter((entry) => {
+          const entryDate = new Date(entry.timestamp);
+          return (
+            entryDate >= dateRange.startDate! && entryDate <= dateRange.endDate!
+          );
+        });
+      }
     }
 
     return result;
@@ -326,7 +305,7 @@ export async function getCollectionMetersHistoryByMachine(
       "[API] getCollectionMetersHistoryByMachine: error fetching data",
       error
     );
-    return getMockCollectionMetersHistory(machineId);
+    return [];
   }
 }
 
@@ -339,11 +318,6 @@ export async function getCollectionMetersHistoryByMachine(
 function getMockCollectionMetersHistory(
   machineId: string
 ): CollectionMetersHistoryEntry[] {
-  console.log(
-    "[API] getMockCollectionMetersHistory: generating mock data for",
-    machineId
-  );
-
   // Current date/time
   const now = new Date();
 
@@ -395,11 +369,6 @@ function getMockCollectionMetersHistory(
     },
   ];
 
-  console.log(
-    "[API] getMockCollectionMetersHistory: returning",
-    mockHistory.length,
-    "mock entries"
-  );
   return mockHistory;
 }
 
@@ -407,18 +376,21 @@ function getMockCollectionMetersHistory(
  * Fetches all accounting details for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an object with acceptedBills, machineEvents, collectionMetersHistory, and machine.
  */
-export async function getAccountingDetails(machineId: string) {
-  console.log("[API] getAccountingDetails called with", machineId);
+export async function getAccountingDetails(
+  machineId: string,
+  timePeriod?: string | null
+) {
   const [acceptedBills, machineEvents, collectionMetersHistory, machine] =
     await Promise.all([
-      getAcceptedBillsByMachine(machineId),
-      getMachineEventsByMachine(machineId),
-      getCollectionMetersHistoryByMachine(machineId),
+      getAcceptedBillsByMachine(machineId, timePeriod),
+      getMachineEventsByMachine(machineId, timePeriod),
+      getCollectionMetersHistoryByMachine(machineId, timePeriod),
       Machine.findOne({ _id: machineId }).lean(),
     ]);
-  console.log("[API] getAccountingDetails finished DB queries");
+
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
 }
 

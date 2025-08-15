@@ -6,60 +6,29 @@ import type {
   ExportDataStructure,
   MachineExportData,
   LocationExportData,
-} from "@/lib/types/reports";
+} from "@shared/types";
 import { toast } from "sonner";
 
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: {
-      startY?: number;
-      head?: string[][];
-      body?: (string | number)[][];
-      theme?: string;
-      headStyles?: Record<string, unknown>;
-      margin?: Record<string, number>;
-      styles?: Record<string, unknown>;
-    }) => jsPDF;
-  }
-}
+// jsPDF autotable typings are declared in lib/types/jspdf-autotable.d.ts
 
-export type ExportFormat = "pdf" | "csv" | "excel";
+import type {
+  ExportFormat,
+  ExportData,
+  LegacyExportData,
+} from "@shared/types/export";
 
-export type ExportData = {
-  overview: any[];
-  sasEvaluation: any[];
-  revenueAnalysis: any[];
-  machines: any[];
-  metadata: {
-    generatedAt: Date;
-    timePeriod: string;
-    selectedLocations: string[];
-    selectedLicencee?: string;
-  };
-};
+// Re-export shared types for convenience
+export type { ExportFormat, ExportData, LegacyExportData };
 
-// Legacy export data type for individual reports
-export type LegacyExportData = {
-  title: string;
-  subtitle?: string;
-  headers: string[];
-  data: (string | number)[][];
-  summary?: {
-    label: string;
-    value: string | number;
-  }[];
-  metadata?: {
-    generatedBy: string;
-    generatedAt: string;
-    dateRange?: string;
-  };
-};
+import axios from "axios";
 
 // Function to load and convert the EOS logo to base64
 const getEOSLogoBase64 = async (): Promise<string> => {
   try {
-    const response = await fetch('/EOS_Logo.png');
-    const blob = await response.blob();
+    const response = await axios.get("/EOS_Logo.png", {
+      responseType: "blob",
+    });
+    const blob = response.data;
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
@@ -67,7 +36,7 @@ const getEOSLogoBase64 = async (): Promise<string> => {
     });
   } catch (error) {
     console.warn("Could not load EOS logo:", error);
-    return '';
+    return "";
   }
 };
 
@@ -278,8 +247,14 @@ export class ExportUtils {
     // Set column widths - make them wider for better number display
     const colWidths = data.headers.map((header) => {
       // Make numeric columns wider
-      if (header.includes("Meters") || header.includes("Money") || header.includes("Games") || 
-          header.includes("Bill") || header.includes("Voucher") || header.includes("Jackpot")) {
+      if (
+        header.includes("Meters") ||
+        header.includes("Money") ||
+        header.includes("Games") ||
+        header.includes("Bill") ||
+        header.includes("Voucher") ||
+        header.includes("Jackpot")
+      ) {
         return { wch: 20 }; // Wider for large numbers
       }
       return { wch: 15 }; // Standard width for other columns
@@ -290,15 +265,21 @@ export class ExportUtils {
     const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
     for (let col = 0; col < data.headers.length; col++) {
       const header = data.headers[col];
-      if (header.includes("Meters") || header.includes("Money") || header.includes("Games") || 
-          header.includes("Bill") || header.includes("Voucher") || header.includes("Jackpot")) {
+      if (
+        header.includes("Meters") ||
+        header.includes("Money") ||
+        header.includes("Games") ||
+        header.includes("Bill") ||
+        header.includes("Voucher") ||
+        header.includes("Jackpot")
+      ) {
         // Apply number format to all cells in this column (skip header row)
         for (let row = range.s.r + 1; row <= range.e.r; row++) {
           const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
           if (worksheet[cellAddress]) {
             // Set cell type to number and format
-            worksheet[cellAddress].t = 'n';
-            worksheet[cellAddress].z = '#,##0'; // Number format with thousands separator
+            worksheet[cellAddress].t = "n";
+            worksheet[cellAddress].z = "#,##0"; // Number format with thousands separator
           }
         }
       }
@@ -345,59 +326,39 @@ export function formatMachineDataForExport(
   machines: MachineExportData[]
 ): ExportDataStructure {
   return {
-    title: "Machine Performance Report",
-    subtitle: "Comprehensive analysis of gaming machine performance",
     headers: [
-      "Machine ID",
-      "Game Title",
-      "Manufacturer",
+      "Serial Number",
+      "Game",
       "Location",
-      "Handle",
-      "Win",
-      "Hold %",
+      "Money In",
+      "Money Out",
+      "Gross",
+      "Jackpot",
       "Games Played",
-      "Status",
+      "Last Activity",
     ],
     data: machines.map((machine) => [
-      machine.id,
-      machine.gameTitle,
-      machine.manufacturer,
-      machine.locationName,
-      machine.totalHandle.toLocaleString(),
-      machine.totalWin.toLocaleString(),
-      `${machine.actualHold.toFixed(1)}%`,
+      (typeof (machine as any).serialNumber === "string" &&
+        (machine as any).serialNumber.trim()) ||
+        (typeof (machine as any).origSerialNumber === "string" &&
+          (machine as any).origSerialNumber.trim()) ||
+        (machine as any).machineId,
+      machine.game,
+      machine.location,
+      machine.moneyIn.toLocaleString(),
+      machine.moneyOut.toLocaleString(),
+      machine.gross.toLocaleString(),
+      machine.jackpot.toLocaleString(),
       machine.gamesPlayed.toLocaleString(),
-      machine.isActive ? "Active" : "Inactive",
+      machine.lastActivity.toLocaleDateString(),
     ]),
-    summary: [
-      { label: "Total Machines", value: machines.length },
-      {
-        label: "Active Machines",
-        value: machines.filter((m) => m.isActive).length,
-      },
-      {
-        label: "Total Handle",
-        value: `$${machines
-          .reduce((sum, m) => sum + m.totalHandle, 0)
-          .toLocaleString()}`,
-      },
-      {
-        label: "Total Win",
-        value: `$${machines
-          .reduce((sum, m) => sum + m.totalWin, 0)
-          .toLocaleString()}`,
-      },
-      {
-        label: "Average Hold %",
-        value: `${(
-          machines.reduce((sum, m) => sum + m.actualHold, 0) / machines.length
-        ).toFixed(1)}%`,
-      },
-    ],
     metadata: {
-      generatedBy: "Evolution1 CMS",
-      generatedAt: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
-      dateRange: "All Time",
+      title: "Machine Performance Report",
+      generatedAt: new Date(),
+      filters: {
+        dateRange: "All Time",
+        generatedBy: "Evolution1 CMS",
+      },
     },
   };
 }
@@ -407,138 +368,122 @@ export function formatLocationDataForExport(
   locations: LocationExportData[]
 ): ExportDataStructure {
   return {
-    title: "Location Performance Report",
-    subtitle: "Performance analysis across all casino locations",
     headers: [
-      "Location ID",
       "Location Name",
-      "Region",
-      "Handle",
-      "Win",
-      "Hold %",
-      "Games Played",
-      "Status",
+      "Total Machines",
+      "Online Machines",
+      "Money In",
+      "Money Out",
+      "Gross",
+      "Performance",
     ],
     data: locations.map((location) => [
-      location.id,
-      location.name,
-      location.region,
-      location.totalHandle.toLocaleString(),
-      location.totalWin.toLocaleString(),
-      `${location.actualHold.toFixed(1)}%`,
-      location.gamesPlayed.toLocaleString(),
-      location.isActive ? "Active" : "Inactive",
+      location.locationName,
+      location.totalMachines.toString(),
+      location.onlineMachines.toString(),
+      location.moneyIn.toLocaleString(),
+      location.moneyOut.toLocaleString(),
+      location.gross.toLocaleString(),
+      location.performance,
     ]),
-    summary: [
-      { label: "Total Locations", value: locations.length },
-      {
-        label: "Active Locations",
-        value: locations.filter((l) => l.isActive).length,
-      },
-      {
-        label: "Total Handle",
-        value: `$${locations
-          .reduce((sum, l) => sum + l.totalHandle, 0)
-          .toLocaleString()}`,
-      },
-      {
-        label: "Total Win",
-        value: `$${locations
-          .reduce((sum, l) => sum + l.totalWin, 0)
-          .toLocaleString()}`,
-      },
-      {
-        label: "Average Hold %",
-        value: `${(
-          locations.reduce((sum, l) => sum + l.actualHold, 0) / locations.length
-        ).toFixed(1)}%`,
-      },
-    ],
     metadata: {
-      generatedBy: "Evolution1 CMS",
-      generatedAt: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
-      dateRange: "All Time",
+      title: "Location Performance Report",
+      generatedAt: new Date(),
+      filters: {
+        dateRange: "All Time",
+        generatedBy: "Evolution1 CMS",
+      },
     },
   };
 }
 
 // Fetch overview data
-const fetchOverviewData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+const fetchOverviewData = async (
+  timePeriod: string,
+  licencee?: string,
+  locationIds?: string[]
+) => {
   try {
     const params = new URLSearchParams({
       timePeriod,
       ...(licencee && { licencee }),
-      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+      ...(locationIds &&
+        locationIds.length > 0 && { locationIds: locationIds.join(",") }),
     });
 
-    const response = await fetch(`/api/analytics/dashboard?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch overview data');
-    
-    const data = await response.json();
-    return data.data || [];
+    const response = await axios.get(`/api/analytics/dashboard?${params}`);
+    return response.data.data || [];
   } catch (error) {
-    console.error('Error fetching overview data:', error);
+    console.error("Error fetching overview data:", error);
     return [];
   }
 };
 
 // Fetch SAS evaluation data
-const fetchSASEvaluationData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+const fetchSASEvaluationData = async (
+  timePeriod: string,
+  licencee?: string,
+  locationIds?: string[]
+) => {
   try {
     const params = new URLSearchParams({
       timePeriod,
       ...(licencee && { licencee }),
-      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+      ...(locationIds &&
+        locationIds.length > 0 && { locationIds: locationIds.join(",") }),
     });
 
-    const response = await fetch(`/api/analytics/locations?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch SAS evaluation data');
-    
-    const data = await response.json();
-    return data.data || [];
+    const response = await axios.get(`/api/analytics/locations?${params}`);
+    return response.data.data || [];
   } catch (error) {
-    console.error('Error fetching SAS evaluation data:', error);
+    console.error("Error fetching SAS evaluation data:", error);
     return [];
   }
 };
 
 // Fetch revenue analysis data
-const fetchRevenueAnalysisData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+const fetchRevenueAnalysisData = async (
+  timePeriod: string,
+  licencee?: string,
+  locationIds?: string[]
+) => {
   try {
     const params = new URLSearchParams({
       timePeriod,
       ...(licencee && { licencee }),
-      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+      ...(locationIds &&
+        locationIds.length > 0 && { locationIds: locationIds.join(",") }),
     });
 
-    const response = await fetch(`/api/metrics/top-machines?${params}&limit=100`);
-    if (!response.ok) throw new Error('Failed to fetch revenue analysis data');
-    
-    const data = await response.json();
-    return data.data || [];
+    const response = await axios.get(
+      `/api/metrics/top-machines?${params}&limit=100`
+    );
+    return response.data.data || [];
   } catch (error) {
-    console.error('Error fetching revenue analysis data:', error);
+    console.error("Error fetching revenue analysis data:", error);
     return [];
   }
 };
 
 // Fetch machines data
-const fetchMachinesData = async (timePeriod: string, licencee?: string, locationIds?: string[]) => {
+const fetchMachinesData = async (
+  timePeriod: string,
+  licencee?: string,
+  locationIds?: string[]
+) => {
   try {
     const params = new URLSearchParams({
       timePeriod,
       limit: "100", // Get more machines for export
       ...(licencee && licencee !== "all" && { licencee }),
-      ...(locationIds && locationIds.length > 0 && { locationIds: locationIds.join(",") })
+      ...(locationIds &&
+        locationIds.length > 0 && { locationIds: locationIds.join(",") }),
     });
 
-    const response = await fetch(`/api/reports/machines?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch machines data');
-    
-    const data = await response.json();
-    return data.data || [];
+    const response = await axios.get(`/api/reports/machines?${params}`);
+    return response.data.data || [];
   } catch (error) {
-    console.error('Error fetching machines data:', error);
+    console.error("Error fetching machines data:", error);
     return [];
   }
 };
@@ -548,69 +493,72 @@ const convertToExcelFormat = (data: ExportData) => {
   const workbook = {
     sheets: [
       {
-        name: 'Overview',
-        data: data.overview.map(item => ({
-          'Location': item.locationName || 'Unknown',
-          'Total Revenue': item.moneyIn || 0,
-          'Total Payout': item.moneyOut || 0,
-          'Gross Profit': item.gross || 0,
-          'Date': item.day || 'Unknown'
-        }))
+        name: "Overview",
+        data: data.overview.map((item) => ({
+          Location: item.locationName || "Unknown",
+          "Total Revenue": item.moneyIn || 0,
+          "Total Payout": item.moneyOut || 0,
+          "Gross Profit": item.gross || 0,
+          Date: item.day || "Unknown",
+        })),
       },
       {
-        name: 'SAS Evaluation',
-        data: data.sasEvaluation.map(item => ({
-          'Location': item.locationName || 'Unknown',
-          'Total Machines': item.totalMachines || 0,
-          'Online Machines': item.onlineMachines || 0,
-          'Performance': item.performance || 'Unknown',
-          'Revenue': item.moneyIn || 0
-        }))
+        name: "SAS Evaluation",
+        data: data.sasEvaluation.map((item) => ({
+          Location: item.locationName || "Unknown",
+          "Total Machines": item.totalMachines || 0,
+          "Online Machines": item.onlineMachines || 0,
+          Performance: item.performance || "Unknown",
+          Revenue: item.moneyIn || 0,
+        })),
       },
       {
-        name: 'Revenue Analysis',
-        data: data.revenueAnalysis.map(item => ({
-          'Location': item.locationName || 'Unknown',
-          'Machine ID': item.machineId || 'Unknown',
-          'Game': item.game || 'Unknown',
-          'Manufacturer': item.manufacturer || 'Not Specified',
-          'Handle': item.handle || 0,
-          'Win/Loss': item.winLoss || 0,
-          'Jackpot': item.jackpot || 0,
-          'Games Played': item.gamesPlayed || 0,
-          'Avg Wager': item.avgWagerPerGame || 0,
-          'Actual Hold %': item.actualHold || 0
-        }))
+        name: "Revenue Analysis",
+        data: data.revenueAnalysis.map((item) => ({
+          Location: item.locationName || "Unknown",
+          "Machine ID": item.machineId || "Unknown",
+          Game: item.game || "Unknown",
+          Manufacturer: item.manufacturer || "Not Specified",
+          Handle: item.handle || 0,
+          "Win/Loss": item.winLoss || 0,
+          Jackpot: item.jackpot || 0,
+          "Games Played": item.gamesPlayed || 0,
+          "Avg Wager": item.avgWagerPerGame || 0,
+          "Actual Hold %": item.actualHold || 0,
+        })),
       },
       {
-        name: 'Machines',
-        data: data.machines.map(item => ({
-          'Machine ID': item.machineId || 'Unknown',
-          'Machine Name': item.machineName || 'Unknown',
-          'Game Title': item.gameTitle || 'Unknown',
-          'Location': item.locationName || 'Unknown',
-          'Manufacturer': item.manufacturer || 'Unknown',
-          'Type': item.machineType || 'Unknown',
-          'Net Win': item.netWin || 0,
-          'Drop': item.drop || 0,
-          'Cancelled Credits': item.totalCancelledCredits || 0,
-          'Jackpot': item.jackpot || 0,
-          'Games Played': item.gamesPlayed || 0,
-          'Hold %': item.actualHold || 0,
-          'Status': item.isOnline ? 'Online' : 'Offline',
-          'SAS Enabled': item.isSasEnabled ? 'Yes' : 'No'
-        }))
+        name: "Machines",
+        data: data.machines.map((item) => ({
+          "Machine ID": item.machineId || "Unknown",
+          "Machine Name": item.machineName || "Unknown",
+          "Game Title": item.gameTitle || "Unknown",
+          Location: item.locationName || "Unknown",
+          Manufacturer: item.manufacturer || "Unknown",
+          Type: item.machineType || "Unknown",
+          "Net Win": item.netWin || 0,
+          Drop: item.drop || 0,
+          "Cancelled Credits": item.totalCancelledCredits || 0,
+          Jackpot: item.jackpot || 0,
+          "Games Played": item.gamesPlayed || 0,
+          "Hold %": item.actualHold || 0,
+          Status: item.isOnline ? "Online" : "Offline",
+          "SAS Enabled": item.isSasEnabled ? "Yes" : "No",
+        })),
       },
       {
-        name: 'Metadata',
+        name: "Metadata",
         data: [
-          { 'Generated At': data.metadata.generatedAt.toLocaleString() },
-          { 'Time Period': data.metadata.timePeriod },
-          { 'Selected Locations': data.metadata.selectedLocations.join(', ') || 'All' },
-          { 'Licencee': data.metadata.selectedLicencee || 'All' }
-        ]
-      }
-    ]
+          { "Generated At": data.metadata.generatedAt.toLocaleString() },
+          { "Time Period": data.metadata.timePeriod },
+          {
+            "Selected Locations":
+              data.metadata.selectedLocations.join(", ") || "All",
+          },
+          { Licencee: data.metadata.selectedLicencee || "All" },
+        ],
+      },
+    ],
   };
 
   return workbook;
@@ -620,41 +568,44 @@ const convertToExcelFormat = (data: ExportData) => {
 const downloadExcel = (workbook: any, filename: string) => {
   // For now, we'll create a CSV-like format that can be opened in Excel
   // In a production environment, you'd use a library like xlsx or exceljs
-  
-  let csvContent = '';
-  
+
+  let csvContent = "";
+
   workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
     csvContent += `\n=== ${sheet.name} ===\n`;
-    
+
     if (sheet.data.length > 0) {
       // Headers
       const headers = Object.keys(sheet.data[0]);
-      csvContent += headers.join(',') + '\n';
-      
+      csvContent += headers.join(",") + "\n";
+
       // Data rows
       sheet.data.forEach((row: any) => {
-        const values = headers.map(header => {
+        const values = headers.map((header) => {
           const value = row[header];
           // Escape commas and quotes
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          if (
+            typeof value === "string" &&
+            (value.includes(",") || value.includes('"'))
+          ) {
             return `"${value.replace(/"/g, '""')}"`;
           }
           return value;
         });
-        csvContent += values.join(',') + '\n';
+        csvContent += values.join(",") + "\n";
       });
     }
-    
-    csvContent += '\n';
+
+    csvContent += "\n";
   });
-  
+
   // Create and download file
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -667,16 +618,17 @@ export const exportAllReports = async (
   locationIds?: string[]
 ) => {
   try {
-    toast.loading('Preparing export...');
-    
+    toast.loading("Preparing export...");
+
     // Fetch all data including machines
-    const [overviewData, sasData, revenueData, machinesData] = await Promise.all([
-      fetchOverviewData(timePeriod, licencee, locationIds),
-      fetchSASEvaluationData(timePeriod, licencee, locationIds),
-      fetchRevenueAnalysisData(timePeriod, licencee, locationIds),
-      fetchMachinesData(timePeriod, licencee, locationIds)
-    ]);
-    
+    const [overviewData, sasData, revenueData, machinesData] =
+      await Promise.all([
+        fetchOverviewData(timePeriod, licencee, locationIds),
+        fetchSASEvaluationData(timePeriod, licencee, locationIds),
+        fetchRevenueAnalysisData(timePeriod, licencee, locationIds),
+        fetchMachinesData(timePeriod, licencee, locationIds),
+      ]);
+
     // Prepare export data
     const exportData: ExportData = {
       overview: overviewData,
@@ -687,95 +639,104 @@ export const exportAllReports = async (
         generatedAt: new Date(),
         timePeriod,
         selectedLocations: locationIds || [],
-        selectedLicencee: licencee
-      }
+        selectedLicencee: licencee,
+      },
     };
-    
+
     // Convert to Excel format
     const workbook = convertToExcelFormat(exportData);
-    
+
     // Generate filename
-    const timestamp = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString().split("T")[0];
     const filename = `casino-reports-${timePeriod}-${timestamp}.csv`;
-    
+
     // Download file
     downloadExcel(workbook, filename);
-    
+
     toast.dismiss();
-    toast.success('Export completed successfully!');
-    
+    toast.success("Export completed successfully!");
   } catch (error) {
-    console.error('Export error:', error);
+    console.error("Export error:", error);
     toast.dismiss();
-    toast.error('Failed to export reports. Please try again.');
+    toast.error("Failed to export reports. Please try again.");
   }
 };
 
 // Legacy export function for individual reports (maintains backward compatibility)
-export const exportData = async (data: LegacyExportData, format: string = "csv") => {
+export const exportData = async (
+  data: LegacyExportData,
+  format: string = "csv"
+) => {
   try {
-    toast.loading('Preparing export...');
-    
+    toast.loading("Preparing export...");
+
     // For now, we'll create a CSV-like format that can be opened in Excel
-    let csvContent = '';
-    
+    let csvContent = "";
+
     // Title and subtitle
     csvContent += `${data.title}\n`;
     if (data.subtitle) {
       csvContent += `${data.subtitle}\n`;
     }
-    csvContent += '\n';
-    
+    csvContent += "\n";
+
     // Headers
-    csvContent += data.headers.join(',') + '\n';
-    
+    csvContent += data.headers.join(",") + "\n";
+
     // Data rows
-    data.data.forEach(row => {
-      const values = row.map(value => {
+    data.data.forEach((row) => {
+      const values = row.map((value) => {
         // Escape commas and quotes
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        if (
+          typeof value === "string" &&
+          (value.includes(",") || value.includes('"'))
+        ) {
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value;
       });
-      csvContent += values.join(',') + '\n';
+      csvContent += values.join(",") + "\n";
     });
-    
+
     // Summary
     if (data.summary && data.summary.length > 0) {
-      csvContent += '\nSummary:\n';
-      data.summary.forEach(item => {
+      csvContent += "\nSummary:\n";
+      data.summary.forEach((item) => {
         csvContent += `${item.label}: ${item.value}\n`;
       });
     }
-    
+
     // Metadata
     if (data.metadata) {
-      csvContent += '\nMetadata:\n';
+      csvContent += "\nMetadata:\n";
       csvContent += `Generated by: ${data.metadata.generatedBy}\n`;
       csvContent += `Generated at: ${data.metadata.generatedAt}\n`;
       if (data.metadata.dateRange) {
         csvContent += `Date range: ${data.metadata.dateRange}\n`;
       }
     }
-    
+
     // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${data.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `${data.title.toLowerCase().replace(/\s+/g, "-")}-${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.dismiss();
-    toast.success('Export completed successfully!');
-    
+    toast.success("Export completed successfully!");
   } catch (error) {
-    console.error('Export error:', error);
+    console.error("Export error:", error);
     toast.dismiss();
-    toast.error('Failed to export data. Please try again.');
+    toast.error("Failed to export data. Please try again.");
   }
 };

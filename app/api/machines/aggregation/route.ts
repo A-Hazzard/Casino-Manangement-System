@@ -10,42 +10,54 @@ import {
 
 // Helper function to get date range based on time period
 function getDateRangeForTimePeriod(timePeriod: string): DateRange {
+  // Use timezone-aware date calculations for Trinidad
+  const tz = "America/Port_of_Spain";
   const now = new Date();
-  const end = new Date(now);
-  const start = new Date(now);
+
+  let start: Date;
+  let end: Date;
 
   switch (timePeriod) {
     case "Today":
-      // Start of today
-      start.setHours(0, 0, 0, 0);
+      // Start of today in Trinidad timezone
+      start = new Date(
+        now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
+      );
+      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
       break;
     case "Yesterday":
-      // Start of yesterday
-      start.setDate(start.getDate() - 1);
-      start.setHours(0, 0, 0, 0);
-      // End of yesterday
-      end.setDate(end.getDate() - 1);
-      end.setHours(23, 59, 59, 999);
+      // Start of yesterday in Trinidad timezone
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      start = new Date(
+        yesterday.toLocaleDateString("en-CA", { timeZone: tz }) +
+          "T00:00:00.000Z"
+      );
+      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
       break;
+    case "7d":
     case "last7days":
       // 7 days ago
-      start.setDate(start.getDate() - 7);
-      start.setHours(0, 0, 0, 0);
+      end = now;
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
+    case "30d":
     case "last30days":
       // 30 days ago
-      start.setDate(start.getDate() - 30);
-      start.setHours(0, 0, 0, 0);
+      end = now;
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
     case "Custom":
       // Custom date range would need to be handled with additional parameters
       // For now, default to last 30 days if Custom is specified without dates
-      start.setDate(start.getDate() - 30);
-      start.setHours(0, 0, 0, 0);
+      end = now;
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
     default:
       // Default to Today if no valid time period is specified
-      start.setHours(0, 0, 0, 0);
+      start = new Date(
+        now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
+      );
+      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   return { start, end };
@@ -53,7 +65,6 @@ function getDateRangeForTimePeriod(timePeriod: string): DateRange {
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("🔌 [0%] Connecting to DB...");
     await connectDB();
 
     const { searchParams } = new URL(req.url);
@@ -67,14 +78,6 @@ export async function GET(req: NextRequest) {
     const endDateParam = searchParams.get("endDate");
 
     // Log the query parameters for debugging
-    console.log("📋 Query Parameters:", {
-      locationId,
-      searchTerm,
-      licensee,
-      timePeriod,
-      startDate: startDateParam,
-      endDate: endDateParam,
-    });
 
     // Get date range for time period filtering
     let dateRange: DateRange;
@@ -89,10 +92,6 @@ export async function GET(req: NextRequest) {
 
     const { start, end } = dateRange;
 
-    console.log(
-      `📅 Time period: ${timePeriod}, Date range: ${start.toISOString()} to ${end.toISOString()}`
-    );
-
     // We only want "active" locations
     const matchStage: MachineAggregationMatchStage = {
       deletedAt: { $in: [null, new Date(-1)] },
@@ -103,12 +102,9 @@ export async function GET(req: NextRequest) {
 
     if (licensee) {
       matchStage["rel.licencee"] = licensee;
-      console.log(`🔍 Filtering by licencee: ${licensee}`);
     } else {
-      console.log("🔍 No licencee filter applied, showing all licencees");
     }
 
-    console.log("📊 [30%] Building aggregation pipeline...");
     const pipeline: mongoose.PipelineStage[] = [
       // 1) match relevant location(s)
       { $match: matchStage },
@@ -212,31 +208,17 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    console.log("🚀 [90%] Executing aggregation...");
-
     const result = await GamingLocations.aggregate(pipeline).exec();
-
-    console.log(
-      `✅ [100%] Aggregation complete. Returning ${result.length} cabinets`
-    );
 
     // Log a sample of the results if they exist
     if (result.length > 0) {
-      console.log("Sample result:", JSON.stringify(result[0], null, 2));
       return NextResponse.json(
         { success: true, data: result },
         { status: 200 }
       );
     } else {
-      console.log(
-        "No results returned from aggregation. Checking for locations..."
-      );
-
       // Check if there are any gaming locations matching the filter
       const locations = await GamingLocations.find(matchStage).lean();
-      console.log(
-        `Found ${locations.length} gaming locations matching filter criteria.`
-      );
 
       if (locations.length > 0) {
         // Check if these locations have machines
@@ -308,14 +290,7 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        console.log(
-          `Found ${locationsWithMachines.length} locations with machines.`
-        );
         if (locationsWithMachines.length > 0) {
-          console.log(
-            "Sample machine data:",
-            JSON.stringify(locationsWithMachines[0], null, 2)
-          );
           return NextResponse.json(
             { success: true, data: locationsWithMachines },
             { status: 200 }
@@ -324,7 +299,6 @@ export async function GET(req: NextRequest) {
       }
 
       // If we got here, no data matched our criteria
-      console.log("No locations with machines found. Returning empty array.");
       return NextResponse.json({ success: true, data: [] }, { status: 200 });
     }
   } catch (error) {

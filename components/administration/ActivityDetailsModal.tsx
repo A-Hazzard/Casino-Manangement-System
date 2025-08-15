@@ -39,7 +39,9 @@ export default function ActivityDetailsModal({
 
   if (!open || !activity) return null;
 
-  const getActionColor = (actionType: string) => {
+  const getActionColor = (actionType: string | undefined) => {
+    if (!actionType) return "text-gray-600 bg-gray-50";
+
     switch (actionType.toLowerCase()) {
       case "create":
         return "text-blue-600 bg-blue-50";
@@ -52,7 +54,9 @@ export default function ActivityDetailsModal({
     }
   };
 
-  const getEntityIcon = (entityType: string) => {
+  const getEntityIcon = (entityType: string | undefined) => {
+    if (!entityType) return <User className="w-5 h-5" />;
+
     switch (entityType.toLowerCase()) {
       case "user":
         return <User className="w-5 h-5" />;
@@ -97,7 +101,8 @@ export default function ActivityDetailsModal({
                 Activity Details
               </h2>
               <p className="text-gray-600 mt-1">
-                {activity.entityType} • {activity.entity.name}
+                {activity.entityType || activity.resource} •{" "}
+                {activity.entity?.name || activity.resourceName || "Unknown"}
               </p>
             </div>
           </div>
@@ -116,10 +121,12 @@ export default function ActivityDetailsModal({
                       Performed by
                     </p>
                     <p className="text-sm text-gray-600">
-                      {activity.actor.email}
+                      {activity.actor?.email ||
+                        activity.username ||
+                        "Unknown User"}
                     </p>
                     <p className="text-xs text-gray-500 capitalize">
-                      {activity.actor.role}
+                      {activity.actor?.role || "User"}
                     </p>
                   </div>
                 </div>
@@ -156,10 +163,16 @@ export default function ActivityDetailsModal({
                     <p className="text-sm font-medium text-gray-900">Action</p>
                     <p
                       className={`text-sm font-semibold capitalize ${
-                        getActionColor(activity.actionType).split(" ")[0]
+                        getActionColor(
+                          activity.actionType || activity.action
+                        ).split(" ")[0]
                       }`}
                     >
-                      {activity.actionType.toLowerCase()}
+                      {(
+                        activity.actionType ||
+                        activity.action ||
+                        "unknown"
+                      ).toLowerCase()}
                     </p>
                   </div>
                 </div>
@@ -171,9 +184,17 @@ export default function ActivityDetailsModal({
           {activity.changes && activity.changes.length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                {activity.actionType.toLowerCase() === "create"
+                {(
+                  activity.actionType ||
+                  activity.action ||
+                  "unknown"
+                ).toLowerCase() === "create"
                   ? `Fields Created (${activity.changes.length})`
-                  : activity.actionType.toLowerCase() === "delete"
+                  : (
+                      activity.actionType ||
+                      activity.action ||
+                      "unknown"
+                    ).toLowerCase() === "delete"
                   ? `Fields Deleted (${activity.changes.length})`
                   : `Changes Made (${activity.changes.length})`}
               </h3>
@@ -192,7 +213,11 @@ export default function ActivityDetailsModal({
                           Field {index + 1}
                         </span>
                       </div>
-                      {activity.actionType.toLowerCase() === "create" ? (
+                      {(
+                        activity.actionType ||
+                        activity.action ||
+                        "unknown"
+                      ).toLowerCase() === "create" ? (
                         // For CREATE operations, show only the created value
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -204,7 +229,11 @@ export default function ActivityDetailsModal({
                             </p>
                           </div>
                         </div>
-                      ) : activity.actionType.toLowerCase() === "delete" ? (
+                      ) : (
+                          activity.actionType ||
+                          activity.action ||
+                          "unknown"
+                        ).toLowerCase() === "delete" ? (
                         // For DELETE operations, show only the deleted value
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">

@@ -61,20 +61,22 @@ func main() {
 	dstDB := dstClient.Database("sas-dev")
 
 	collections := []string{
+		"acceptedbills",
+		"activityLogs",
 		"collections",
 		"collectionreports",
-		"machineevents",
-		"acceptedbills",
-		"gaminglocations",
-		"machines",
 		"countries",
-		"users",
-		"meters",
-		"schedulers",
-		"licencees",
-		"movementrequests",
-		"activityLogs",
 		"firmwares",
+		"gaminglocations",
+		"licencees",
+		"machineevents",
+		"machinesessions",
+		"machines",
+		"meters",
+		"members",
+		"movementrequests",
+		"schedulers",
+		"users",
 	}
 
 	var wg sync.WaitGroup

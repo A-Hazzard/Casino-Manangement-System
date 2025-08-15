@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -86,15 +87,7 @@ export default function SMIBFirmwareModal({
       formData.append("versionDetails", versionDetails);
       formData.append("file", selectedFile);
 
-      const response = await fetch("/api/firmwares", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Upload failed");
-      }
+      await axios.post("/api/firmwares", formData);
 
       // Success
       onUploadComplete?.();

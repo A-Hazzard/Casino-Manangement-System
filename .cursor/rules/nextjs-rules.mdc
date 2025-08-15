@@ -36,6 +36,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Avoid type duplication** - Import and re-export from shared types instead of redefining.
 - Always import types from their respective type files - avoid redefining types.
 - Ensure type exports are properly named and documented.
+- **Handle type conflicts properly** - When accessing properties that may not exist in a type, use proper fallback logic (e.g., `property || fallbackValue`).
 
 **Shared Types Structure:**
 - `shared/types/database.ts` - Database-related types
@@ -43,6 +44,8 @@ All contributors should adhere to the following rules, which are enforced throug
 - `shared/types/api.ts` - API request/response types
 - `shared/types/common.ts` - Common utility types
 - `shared/types/auth.ts` - Authentication types
+- `shared/types/analytics.ts` - Analytics and dashboard types
+- `shared/types/index.ts` - Central export point for all shared types
 
 **References:**  
 - `shared/types/` - Shared types across frontend and backend
@@ -73,12 +76,14 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Context providers should be in [`lib/contexts/`](mdc:lib/contexts) or [`context/`](mdc:context).**
 - **Feature-specific code should be organized within their related directories** in `lib/` (e.g., `lib/chat/`, `lib/profile/`).
 - Do not mix API logic with UI or utility logic.
+- **Create reusable UI components** in `components/ui/` for common patterns (e.g., `FinancialMetricsCards`). This folder is commonly for library components so only create components if the library doesn't have.
 
 **Folder Structure Best Practices:**
 - **Shared code** → `shared/` (types, utilities, constants)
 - **Frontend-specific** → `lib/` (helpers, utils, contexts, types)
 - **Backend-specific** → `app/api/` (routes, models, helpers)
 - **Components** → `components/` (UI components, pages)
+- **UI Components** → `components/ui/` (reusable UI components)
 - **Feature modules** → `lib/[feature]/` (e.g., `lib/chat/`, `lib/auth/`)
 
 **References:**  
@@ -86,6 +91,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - `lib/helpers/` - API-related logic and helpers
 - `lib/utils/` - Shared utilities
 - `components/` - UI components and pages
+- `components/ui/` - Reusable UI components
 - `app/` - Next.js app directory structure
 
 ---
@@ -127,6 +133,10 @@ All contributors should adhere to the following rules, which are enforced throug
 - Keep components focused on a single responsibility.
 - Extract reusable UI elements into separate components.
 - Implement proper error handling in components, especially for async operations.
+- **Create reusable components** for common UI patterns (e.g., financial metrics cards, data tables).
+- **Use proper prop types** with clear interfaces for component props.
+- **Implement loading states** for async operations with skeleton loaders.
+- **Handle data aggregation** in components when displaying totals from multiple data sources.
 
 ---
 
@@ -140,6 +150,8 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Use debouncing for search inputs** to prevent excessive API calls.
 - **Implement proper cleanup** for event listeners, timeouts, and subscriptions.
 - **Memoize expensive computations** and callback functions to prevent unnecessary re-renders.
+- **Calculate derived data efficiently** - Use `useMemo` for expensive calculations like financial totals.
+- **Optimize data aggregation** - Calculate totals once and reuse them across components.
 
 ---
 
@@ -203,11 +215,13 @@ All contributors should adhere to the following rules, which are enforced throug
   - **Optional vs required fields** based on API behavior
   - **Nested object structures** and their relationships
   - **Array types** and their element structures
+  - **Calculated fields** that may not exist in the original data structure
 - **Validation approach:**
   - **Use TypeScript strict mode** to catch type mismatches
   - **Test API endpoints** to verify response structure
   - **Check runtime data** in browser dev tools
   - **Validate against database schema** for entity types
+  - **Handle missing properties gracefully** with fallback values and proper type guards
 
 **References:**
 - `app/api/` - API route handlers
@@ -224,5 +238,7 @@ Use your tools don't guess: If you're unsure about code or files, open them - do
 **Always check dependencies before deleting code** - Use grep_search to verify usage patterns.
 **Prefer shared types over duplicates** - Maintain single source of truth for types.
 **Trace API data flow** - Check original backend source before creating/modifying types.
+**Handle type conflicts gracefully** - Use proper fallback logic for missing properties.
+**Create reusable components** - Extract common UI patterns into reusable components.
 
 All contributors must follow these rules to ensure a robust, maintainable, and secure codebase.

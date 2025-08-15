@@ -194,6 +194,7 @@ const sampleScheduledReports: ScheduledReport[] = [
         deliveryMethod: "email",
       },
     ],
+    lastRun: "2024-01-01T09:00:00Z",
     nextRun: "2024-02-01T09:00:00Z",
     status: "paused",
     createdBy: "finance_admin",
@@ -318,6 +319,7 @@ export default function ScheduledTab() {
           role: "User",
           deliveryMethod: "email" as const,
         })),
+      lastRun: "Never", // New report hasn't run yet
       nextRun: calculateNextRun(formData),
       status: formData.enabled ? "active" : "paused",
       createdBy: "current_user",

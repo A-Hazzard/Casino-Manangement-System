@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import SMIBFirmwareTable from "./SMIBFirmwareTable";
@@ -17,11 +18,8 @@ export default function SMIBFirmwareSection() {
   const fetchFirmwares = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/firmwares");
-      if (!response.ok) {
-        throw new Error("Failed to fetch firmwares");
-      }
-      const data = await response.json();
+      const response = await axios.get("/api/firmwares");
+      const data = response.data;
       setFirmwares(data);
     } catch (error) {
       // Log error for debugging in development
@@ -47,7 +45,6 @@ export default function SMIBFirmwareSection() {
 
   const handleDownloadComplete = () => {
     // Can add a toast notification here if needed
-    console.log("Download completed");
   };
 
   const openModal = () => setIsModalOpen(true);

@@ -5,8 +5,8 @@ import { Eye, EyeOff } from "lucide-react";
 import type { LoginFormProps } from "@/shared/types/auth";
 
 export default function LoginForm({
-  email,
-  setEmail,
+  identifier,
+  setIdentifier,
   password,
   setPassword,
   showPassword,
@@ -36,23 +36,23 @@ export default function LoginForm({
       )}
       <form onSubmit={handleLogin} className="space-y-6">
         <div>
-          <Label htmlFor="email" className="text-gray-600">
-            Email Address
+          <Label htmlFor="identifier" className="text-gray-600">
+            Email or Username
           </Label>
           <Input
-            id="email"
-            type="email"
+            id="identifier"
+            type="text"
             autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             disabled={loading || redirecting}
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? "email-error" : undefined}
+            aria-invalid={!!errors.identifier}
+            aria-describedby={errors.identifier ? "identifier-error" : undefined}
             className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2"
           />
-          {errors.email && (
-            <p className="text-destructive text-xs mt-1" id="email-error">
-              {errors.email}
+          {errors.identifier && (
+            <p className="text-destructive text-xs mt-1" id="identifier-error">
+              {errors.identifier}
             </p>
           )}
         </div>

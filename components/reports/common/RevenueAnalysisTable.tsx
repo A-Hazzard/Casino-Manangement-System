@@ -40,11 +40,16 @@ export default function RevenueAnalysisTable({
 
   // Filter locations based on search term
   const filteredLocations = useMemo(() => {
-    if (!searchTerm.trim()) return locations;
-
-    return locations.filter((location) =>
-      location.locationName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (!searchTerm?.trim()) return locations;
+    const q = (searchTerm || "").toLowerCase();
+    return locations.filter((location) => {
+      const name = location.locationName || "";
+      const id = (location as any)?.location || "";
+      return (
+        (typeof name === "string" && name.toLowerCase().includes(q)) ||
+        (typeof id === "string" && id.toLowerCase().includes(q))
+      );
+    });
   }, [locations, searchTerm]);
 
   // Sort locations

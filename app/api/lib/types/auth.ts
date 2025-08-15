@@ -18,7 +18,7 @@ export type UserDocument = Document & {
 };
 
 export type LoginRequestBody = {
-  emailAddress: string;
+  identifier: string; // email or username
   password: string;
 };
 

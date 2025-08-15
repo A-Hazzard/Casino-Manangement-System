@@ -28,11 +28,14 @@ declare module "@/lib/hooks/useCabinetDetails" {
 
 // Make TypeScript recognize our component
 declare module "@/components/cabinetDetails/AccountingDetails" {
+  import { TimePeriod } from "@/lib/types/cabinets";
+
   export type AccountingDetailsProps = {
     cabinet: CabinetDetail;
     metricsLoading: boolean;
     activeMetricsTabContent: string;
     setActiveMetricsTabContent: (tab: string) => void;
+    activeMetricsFilter?: TimePeriod;
   };
 
   export const AccountingDetails: React.FC<AccountingDetailsProps>;

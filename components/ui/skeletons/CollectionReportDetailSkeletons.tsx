@@ -9,7 +9,7 @@ import type { CollectionReportSkeletonProps } from "@/lib/types/pages";
 export const CollectionReportSkeleton = ({
   pathname,
 }: CollectionReportSkeletonProps) => (
-  <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col overflow-hidden">
+  <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 md:pl-36 min-h-screen bg-background flex flex-col overflow-hidden">
     <Sidebar pathname={pathname} />
     <main className="flex-1 lg:ml-4">
       <Header

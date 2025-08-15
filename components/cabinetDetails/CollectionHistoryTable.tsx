@@ -34,7 +34,15 @@ export function CollectionHistoryTable({
             {sortedData.map((row) => (
               <tr key={row._id} className="text-center">
                 <td className="p-2 border border-background">
-                  {new Date(row.timestamp).toLocaleString()}
+                  {new Date(row.timestamp).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true,
+                  })}
                 </td>
                 <td className="p-2 border border-background">{row.metersIn}</td>
                 <td className="p-2 border border-background">
@@ -71,7 +79,16 @@ export function CollectionHistoryTable({
             className="bg-white rounded-xl shadow-md overflow-hidden w-full"
           >
             <div className="bg-blue-500 text-white px-4 py-2 font-semibold text-sm">
-              Time: {new Date(row.timestamp).toLocaleString()}
+              Time:{" "}
+              {new Date(row.timestamp).toLocaleString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true,
+              })}
             </div>
             <div className="p-4 flex flex-col gap-1">
               <div className="flex justify-between">

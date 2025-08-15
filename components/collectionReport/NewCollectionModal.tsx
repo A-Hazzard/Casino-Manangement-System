@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Trash2, Edit3 } from "lucide-react";
+import axios from "axios";
 import type {
   CollectionReportMachineEntry,
   CollectionDocument,
@@ -38,35 +39,29 @@ import { v4 as uuidv4 } from "uuid";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 async function fetchInProgressCollections(
   collector: string
 ): Promise<CollectionDocument[]> {
-  const res = await fetch(
+  const res = await axios.get(
     `/api/collections?collector=${collector}&isCompleted=false`
   );
-  if (!res.ok) throw new Error("Failed to fetch collections");
-  return res.json();
+  return res.data;
 }
 
 async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
-  const res = await fetch("/api/collections", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to add machine");
-  return res.json();
+  const res = await axios.post("/api/collections", data);
+  return res.data;
 }
 
 async function deleteMachineCollection(
   id: string
 ): Promise<{ success: boolean }> {
-  const res = await fetch(`/api/collections?id=${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete machine");
-  return res.json();
+  const res = await axios.delete(`/api/collections?id=${id}`);
+  return res.data;
 }
 
 export default function NewCollectionModal({
@@ -76,6 +71,7 @@ export default function NewCollectionModal({
 }: NewCollectionModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const user = useUserStore((state) => state.user);
+  const collectionLogger = createActivityLogger("session");
 
   const [selectedLocationId, setSelectedLocationId] = useState<
     string | undefined
@@ -315,7 +311,16 @@ export default function NewCollectionModal({
     };
 
     try {
-      await addMachineCollection(entryData);
+      const result = await addMachineCollection(entryData);
+
+      // Log the creation activity
+      await collectionLogger.logCreate(
+        result._id || entryData.machineId || "unknown",
+        `${entryData.machineCustomName} at ${selectedLocationName}`,
+        entryData,
+        `Created collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
+      );
+
       toast.success("Machine added!");
       await fetchInProgressCollections(user._id).then(
         setCollectedMachineEntries
@@ -356,7 +361,21 @@ export default function NewCollectionModal({
       return;
     }
     try {
+      const entryToDelete = collectedMachineEntries.find((e) => e._id === _id);
+      const entryData = entryToDelete ? { ...entryToDelete } : null;
+
       await deleteMachineCollection(_id);
+
+      // Log the deletion activity
+      if (entryData) {
+        await collectionLogger.logDelete(
+          _id,
+          `${entryData.machineCustomName} at ${selectedLocationName}`,
+          entryData,
+          `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
+        );
+      }
+
       toast.success("Machine deleted!");
       await fetchInProgressCollections(user._id).then(
         setCollectedMachineEntries
@@ -606,7 +625,12 @@ export default function NewCollectionModal({
                         )?.machineId !== machine._id
                       }
                     >
-                      {machine.name} ({machine.serialNumber})
+                      {machine.name} (
+                      {(machine as any).serialNumber ||
+                        (machine as any).origSerialNumber ||
+                        (machine as any).machineId ||
+                        "N/A"}
+                      )
                       {collectedMachineEntries.find(
                         (e) => e.machineId === machine._id
                       ) &&
@@ -647,7 +671,11 @@ export default function NewCollectionModal({
                   variant="default"
                   className="w-full bg-lighterBlueHighlight text-primary-foreground"
                 >
-                  {machineForDataEntry.name} ({machineForDataEntry.serialNumber}
+                  {machineForDataEntry.name} (
+                  {(machineForDataEntry as any).serialNumber ||
+                    (machineForDataEntry as any).origSerialNumber ||
+                    (machineForDataEntry as any).machineId ||
+                    "N/A"}
                   )
                 </Button>
 

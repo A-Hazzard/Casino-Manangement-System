@@ -8,28 +8,32 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
 
-    if (!licensee) {
-      return NextResponse.json(
-        { message: "Licensee is required" },
-        { status: 400 }
-      );
+    let query: any = { deletedAt: { $exists: false } };
+
+    // If licensee is provided, filter by licensee
+    if (licensee) {
+      query["rel.licencee"] = licensee;
     }
 
-    const locations = await GamingLocations.find(
-      { "rel.licencee": licensee },
-      { _id: 1, name: 1 }
-    ).lean();
+    const locations = await GamingLocations.find(query, {
+      _id: 1,
+      name: 1,
+    }).lean();
 
     const formattedLocations = locations.map((loc) => ({
-      id: loc._id,
+      _id: loc._id,
       name: loc.name,
     }));
 
-    return NextResponse.json({ locations: formattedLocations });
+    return NextResponse.json({
+      success: true,
+      data: formattedLocations,
+    });
   } catch (error) {
     console.error("Error fetching gaming locations:", error);
     return NextResponse.json(
       {
+        success: false,
         message: "Failed to fetch gaming locations",
         error: (error as Error).message,
       },

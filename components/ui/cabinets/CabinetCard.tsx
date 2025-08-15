@@ -106,7 +106,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           {props.locationName || "No Location"}
         </p>
         <p className="text-xs xs:text-xs sm:text-sm text-gray-600 truncate">
-          {props.serialNumber || "No S/N"}
+          {props.serialNumber || props.assetNumber || "No S/N"}
         </p>
       </div>
 

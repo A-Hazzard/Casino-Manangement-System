@@ -27,6 +27,17 @@ export async function getUserByEmail(
 }
 
 /**
+ * Finds a user by username (case-insensitive).
+ */
+export async function getUserByUsername(
+  username: string
+): Promise<UserDocumentWithPassword | null> {
+  return UserModel.findOne({
+    username: { $regex: new RegExp(`^${username}$`, "i") },
+  });
+}
+
+/**
  * Formats user data for frontend consumption
  */
 export function formatUsersForResponse(users: UserDocument[]) {

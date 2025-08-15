@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
 import type { TopMachinesTableProps, TopMachine } from "@/lib/types/components";
@@ -30,13 +31,8 @@ export default function TopMachinesTable({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/metrics/top-machines?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch top machines data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(`/api/metrics/top-machines?${params}`);
+        const result = response.data;
         setMachines(result.data || []);
       } catch (err) {
         console.error("Error fetching top machines data:", err);
@@ -159,9 +155,13 @@ export default function TopMachinesTable({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-gray-500">Machine ID</div>
+          <div className="text-xs text-gray-500">Machine</div>
           <div className="text-sm font-medium text-gray-900">
-            {machine.machineId}
+            {(typeof (machine as any).serialNumber === "string" &&
+              (machine as any).serialNumber.trim()) ||
+              (typeof (machine as any).origSerialNumber === "string" &&
+                (machine as any).origSerialNumber.trim()) ||
+              machine.machineId}
           </div>
         </div>
       </div>

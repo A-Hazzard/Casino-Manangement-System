@@ -3,7 +3,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
 import { LocationFilter } from "@/lib/types/location";
-import { createDatabaseIndexes } from "@/app/api/lib/utils/createIndexes";
+// Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const _machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
+    const showAllLocations = searchParams.get("showAllLocations") === "true";
 
     // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
@@ -20,18 +21,9 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(requestedLimit, 10); // Cap at 10 for faster loading
     const skip = (page - 1) * limit;
 
-    console.log(
-      "🔍 API - Requested limit:",
-      requestedLimit,
-      "Actual limit:",
-      limit,
-      "Page:",
-      page,
-      "Skip:",
-      skip
-    );
 
-    let startDate: Date, endDate: Date;
+
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (timePeriod === "Custom") {
       const customStart = searchParams.get("startDate");
@@ -50,11 +42,11 @@ export async function GET(req: NextRequest) {
       endDate = e;
     }
 
-    console.log("🔍 API - timePeriod:", timePeriod);
-    console.log("🔍 API - startDate:", startDate.toISOString());
-    console.log("🔍 API - endDate:", endDate.toISOString());
-    console.log("🔍 API - current system time:", new Date().toISOString());
-    console.log("🔍 API - licencee:", licencee);
+    // console.log("🔍 API - timePeriod:", timePeriod);
+    // console.log("🔍 API - startDate:", startDate?.toISOString() || "All Time");
+    // console.log("🔍 API - endDate:", endDate?.toISOString() || "All Time");
+    // console.log("🔍 API - current system time:", new Date().toISOString());
+    // console.log("🔍 API - licencee:", licencee);
 
     const db = await connectDB();
     if (!db) {
@@ -65,7 +57,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Ensure indexes are created for optimal performance
-    await createDatabaseIndexes();
+    // Do not auto-create indexes on every request
 
     // Build location filter for the aggregation
     const locationMatchStage: any = {
@@ -76,7 +68,7 @@ export async function GET(req: NextRequest) {
       locationMatchStage["rel.licencee"] = licencee;
     }
 
-    console.log("🔍 API - Using optimized aggregation pipeline");
+    // console.log("🔍 API - Using optimized aggregation pipeline");
 
     // Use MongoDB aggregation pipeline for much better performance
     const aggregationPipeline = [
@@ -135,7 +127,20 @@ export async function GET(req: NextRequest) {
           as: "meterAggregation",
         },
       },
-      // Stage 4: Calculate metrics
+      // Stage 4: Add a flag to indicate if location has any data
+      {
+        $addFields: {
+          hasData: {
+            $or: [
+              { $gt: [{ $size: "$machines" }, 0] },
+              { $gt: [{ $ifNull: [{ $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] }, 0] }, 0] },
+            ],
+          },
+        },
+      },
+      // Stage 5: Filter locations based on showAllLocations parameter
+      ...(showAllLocations ? [] : [{ $match: { hasData: true } }]),
+      // Stage 6: Calculate metrics
       {
         $addFields: {
           location: { $toString: "$_id" },
@@ -222,17 +227,17 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      // Stage 5: Calculate gross revenue
+      // Stage 7: Calculate gross revenue
       {
         $addFields: {
           gross: { $subtract: ["$moneyIn", "$moneyOut"] },
         },
       },
-      // Stage 6: Sort by gross revenue (highest first)
+      // Stage 8: Sort by gross revenue (highest first)
       {
         $sort: { gross: -1 },
       },
-      // Stage 7: Apply pagination
+      // Stage 9: Apply pagination
       {
         $facet: {
           metadata: [{ $count: "totalCount" }],
@@ -241,7 +246,7 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    console.log("🔍 API - Executing aggregation pipeline...");
+    // console.log("🔍 API - Executing aggregation pipeline...");
     const result = await db
       .collection("gaminglocations")
       .aggregate(aggregationPipeline, {
@@ -249,7 +254,7 @@ export async function GET(req: NextRequest) {
       })
       .toArray();
 
-    console.log("🔍 API - Aggregation completed");
+    // console.log("🔍 API - Aggregation completed");
 
     // Extract results
     const metadata = result[0]?.metadata[0] || { totalCount: 0 };
@@ -260,14 +265,8 @@ export async function GET(req: NextRequest) {
     const endTime = Date.now();
     const duration = endTime - startTime;
 
-    console.log("🔍 API - Pagination:", {
-      page,
-      limit,
-      totalCount,
-      totalPages,
-      dataLength: paginatedData.length,
-    });
-    console.log("🔍 API - Request completed in", duration, "ms");
+
+    // console.log("🔍 API - Request completed in", duration, "ms");
 
     return NextResponse.json({
       data: paginatedData,

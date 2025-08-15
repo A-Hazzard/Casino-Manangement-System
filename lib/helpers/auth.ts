@@ -9,16 +9,16 @@ import { useUserStore } from "@/lib/store/userStore";
  * @returns Promise resolving to an object indicating success or failure, and an optional message.
  */
 export async function loginUser({
-  emailAddress,
+  identifier,
   password,
 }: {
-  emailAddress: string;
+  identifier: string;
   password: string;
 }) {
   try {
     const { data } = await axios.post(
       "/api/auth/login/",
-      { emailAddress, password },
+      { identifier, password },
       { withCredentials: true }
     );
 
@@ -27,15 +27,32 @@ export async function loginUser({
         useUserStore.getState().setUser(data.user);
       }
       return { success: true };
-    } else
+    } else {
       return {
         success: false,
         message: data.message || "Invalid Credentials.",
       };
+    }
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
-    return { success: false, message: errorMessage };
+    // Handle axios errors properly to extract human-readable messages
+    if (axios.isAxiosError(error)) {
+      // Log the full error to console for debugging
+      console.error("Login API error:", error);
+
+      // Extract the human-readable message from the API response
+      const errorMessage =
+        error.response?.data?.message ||
+        "An unexpected error occurred. Please try again.";
+
+      return { success: false, message: errorMessage };
+    }
+
+    // Handle non-axios errors
+    console.error("Login error:", error);
+    return {
+      success: false,
+      message: "An unexpected error occurred. Please try again.",
+    };
   }
 }
 

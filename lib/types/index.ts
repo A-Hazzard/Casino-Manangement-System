@@ -1,7 +1,19 @@
-import type { DashboardData, Meter, Metrics, TopPerformingData, ActiveFilters, TimeFrames } from "@shared/types";
+import type {
+  DashboardData,
+  Metrics,
+  TopPerformingData,
+  ActiveFilters,
+  TimeFrames,
+} from "@shared/types";
 
 // Re-export shared types for convenience
-export type { DashboardData, Meter, Metrics, TopPerformingData, ActiveFilters, TimeFrames };
+export type {
+  DashboardData,
+  Metrics,
+  TopPerformingData,
+  ActiveFilters,
+  TimeFrames,
+};
 
 // Legacy type alias for backward compatibility
 export type dashboardData = DashboardData;

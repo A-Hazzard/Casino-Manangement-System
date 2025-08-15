@@ -100,10 +100,12 @@ export async function GET(request: NextRequest) {
       sasMeters: {
         coinIn: (sasMeters as SasMeters)?.coinIn || 0,
         coinOut: (sasMeters as SasMeters)?.coinOut || 0,
+        drop: (sasMeters as SasMeters)?.drop || 0,
         jackpot: (sasMeters as SasMeters)?.jackpot || 0,
         gamesPlayed: (sasMeters as SasMeters)?.gamesPlayed || 0,
         gamesWon: (sasMeters as SasMeters)?.gamesWon || 0,
         currentCredits: (sasMeters as SasMeters)?.currentCredits || 0,
+        totalCancelledCredits: (sasMeters as SasMeters)?.totalCancelledCredits || 0,
         ...(sasMeters as Record<string, unknown>),
       },
 
@@ -134,12 +136,12 @@ export async function GET(request: NextRequest) {
         moneyIn:
           meterData.drop ||
           meterData.movement?.drop ||
-          (sasMeters as SasMeters)?.coinIn ||
+          (sasMeters as SasMeters)?.drop ||
           0,
         moneyOut:
-          meterData.coinOut ||
-          meterData.movement?.coinOut ||
-          (sasMeters as SasMeters)?.coinOut ||
+          meterData.totalCancelledCredits ||
+          meterData.movement?.totalCancelledCredits ||
+          (sasMeters as SasMeters)?.totalCancelledCredits ||
           0,
         jackpot:
           meterData.jackpot ||

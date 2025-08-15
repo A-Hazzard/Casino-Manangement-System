@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Cross1Icon, DownloadIcon } from "@radix-ui/react-icons";
 import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
@@ -52,12 +53,11 @@ export const DownloadFirmwareModal = ({
     if (!selectedFirmware) return;
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/firmwares/${selectedFirmware._id}/download`
+      const response = await axios.get(
+        `/api/firmwares/${selectedFirmware._id}/download`,
+        { responseType: "blob" }
       );
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -149,4 +149,4 @@ export const DownloadFirmwareModal = ({
       </div>
     </div>
   );
-}; 
+};

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔄 Starting sync for report: ${reportId}`);
+    // console.log(`🔄 Starting sync for report: ${reportId}`);
 
     // Get all collections for this report
     const collections = await Collections.find({
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       const machineId = collection.machineId;
 
       if (!machineId) {
-        console.log(`⚠️ Skipping collection ${collection._id}: No machine ID`);
+        // console.log(`⚠️ Skipping collection ${collection._id}: No machine ID`);
         continue;
       }
 
@@ -56,9 +56,7 @@ export async function POST(request: NextRequest) {
         ? new Date(collection.sasMeters.sasEndTime)
         : new Date(); // Default to current time
 
-      console.log(
-        `🔍 Processing machine ${machineId} for period: ${sasStartTime.toISOString()} to ${sasEndTime.toISOString()}`
-      );
+      // console.log(`🔍 Processing machine ${machineId} for period: ${sasStartTime.toISOString()} to ${sasEndTime.toISOString()}`);
 
       // Get meter data within the SAS time period
       const metersInPeriod = await Meters.find({
@@ -67,9 +65,7 @@ export async function POST(request: NextRequest) {
       }).sort({ readAt: 1 }); // Sort ascending to get chronological order
 
       if (metersInPeriod.length === 0) {
-        console.log(
-          `⚠️ No meters found for machine ${machineId} in the specified period`
-        );
+        // console.log(`⚠️ No meters found for machine ${machineId} in the specified period`);
         continue;
       }
 
@@ -115,21 +111,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log(
-          `✅ Updated collection ${collection._id} for machine ${machineId}:`,
-          {
-            drop: totalDrop,
-            cancelled: totalCancelledCredits,
-            gross: sasGross,
-            metersProcessed: metersInPeriod.length,
-          }
-        );
+
       }
     }
 
-    console.log(
-      `✅ Sync completed successfully. Updated ${updatedCollections} collections out of ${collections.length}`
-    );
+
 
     return NextResponse.json({
       success: true,

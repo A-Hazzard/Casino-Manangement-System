@@ -231,7 +231,6 @@ export class ReportExportUtils {
   static async exportToPDF(data: any, reportType: string, filename?: string) {
     // TODO: Implement PDF generation using libraries like jsPDF or Puppeteer
     // This is a placeholder for PDF export functionality
-    console.log(`PDF export for ${reportType} - Coming Soon`);
     throw new Error("PDF export functionality is not yet implemented");
   }
 

@@ -230,7 +230,7 @@ export default function VouchersTab() {
         },
       };
 
-      await exportData(voucherExportData, "pdf");
+      await exportData(voucherExportData, "csv");
       toast.success("Voucher management data exported successfully");
     } catch (error) {
       const errorMessage =

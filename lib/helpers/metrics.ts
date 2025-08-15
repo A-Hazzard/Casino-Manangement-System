@@ -33,14 +33,20 @@ import { formatISODate } from "@/shared/utils/dateFormat";
  */
 export async function getMetrics(
   timePeriod: TimePeriod = "7d",
-  startDate?: Date,
-  endDate?: Date,
+  startDate?: Date | string,
+  endDate?: Date | string,
   licencee?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
+    let normalizedStart: Date | undefined;
+    let normalizedEnd: Date | undefined;
     if (timePeriod === "Custom" && startDate && endDate) {
-      url += `&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      const sd = startDate instanceof Date ? startDate : new Date(startDate);
+      const ed = endDate instanceof Date ? endDate : new Date(endDate);
+      normalizedStart = sd;
+      normalizedEnd = ed;
+      url += `&startDate=${sd.toISOString()}&endDate=${ed.toISOString()}`;
     }
     if (licencee && licencee !== "all") {
       url += `&licencee=${licencee}`;
@@ -99,8 +105,8 @@ export async function getMetrics(
     const filledData = fillMissingIntervals(
       sortedData,
       timePeriod,
-      startDate,
-      endDate
+      normalizedStart,
+      normalizedEnd
     );
 
     return filledData;

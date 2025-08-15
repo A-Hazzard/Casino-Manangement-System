@@ -23,6 +23,7 @@ export type TimePeriod =
   | "7d"
   | "last30days"
   | "30d"
+  | "All Time"
   | "Custom";
 
 // MongoDB related types
@@ -48,8 +49,8 @@ export type RegexFilter = {
 
 // Helper type for getting multiple date ranges
 export type CustomDate = {
-  startDate: Date;
-  endDate: Date;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
 };
 
 // Query filter type
@@ -65,7 +66,7 @@ export type QueryFilter = {
 
 // API params type
 export type ApiParamsType = {
-  timePeriod: "Today" | "Yesterday" | "7d" | "30d" | "Custom";
+  timePeriod: "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
   licencee: string;
 };
 

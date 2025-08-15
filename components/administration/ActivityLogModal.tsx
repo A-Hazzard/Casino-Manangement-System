@@ -9,12 +9,14 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
 import { DateRange as RDPDateRange } from "react-day-picker";
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 import { format } from "date-fns";
 import { ReactNode } from "react";
+import axios from "axios";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 type ActivityLogModalProps = {
   open: boolean;
@@ -57,8 +59,10 @@ const getActionIcon = (actionType: string) => {
 };
 
 const generateDescription = (log: ActivityLog): ReactNode => {
-  const actorEmail = log.actor.email;
-  const entityName = log.entity.name;
+  // Use new fields if available, fallback to legacy fields
+  const actorEmail = log.username || log.actor?.email || "Unknown User";
+  const entityName = log.resourceName || log.entity?.name || "Unknown Resource";
+  const action = log.action || log.actionType || "unknown";
 
   if (log.changes && log.changes.length > 0) {
     if (log.changes.length === 1) {
@@ -97,7 +101,17 @@ const generateDescription = (log: ActivityLog): ReactNode => {
     }
   }
 
-  switch (log.actionType.toLowerCase()) {
+  // Use details field if available
+  if (log.details) {
+    return (
+      <>
+        <span className="font-semibold text-gray-800">{actorEmail}</span>{" "}
+        {log.details}
+      </>
+    );
+  }
+
+  switch (action.toLowerCase()) {
     case "create":
       return (
         <>
@@ -127,9 +141,8 @@ const generateDescription = (log: ActivityLog): ReactNode => {
         <>
           <span className="font-semibold text-gray-800">{actorEmail}</span>{" "}
           performed{" "}
-          <span className="text-blue-600 font-semibold">{log.actionType}</span>{" "}
-          action on{" "}
-          <span className="text-blue-600 font-semibold">{entityName}</span>
+          <span className="text-blue-600 font-semibold">{action}</span> action
+          on <span className="text-blue-600 font-semibold">{entityName}</span>
         </>
       );
   }
@@ -162,16 +175,17 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
   return Object.entries(groups).map(([range, entries]) => ({
     range,
     entries: entries.map((log) => {
-      const { icon, bg } = getActionIcon(log.actionType);
+      const action = log.action || log.actionType || "unknown";
+      const { icon, bg } = getActionIcon(action);
       return {
         id: log._id?.toString() || Math.random().toString(),
         time: format(new Date(log.timestamp), "h:mm a"),
-        type: log.actionType.toLowerCase(),
+        type: action.toLowerCase(),
         icon,
         iconBg: bg,
         user: {
-          email: log.actor.email,
-          role: log.actor.role,
+          email: log.username || log.actor?.email || "Unknown User",
+          role: log.actor?.role || "User",
         },
         description: generateDescription(log),
         originalActivity: log,
@@ -186,12 +200,17 @@ export default function ActivityLogModal({
 }: ActivityLogModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [activityType, setActivityType] = useState("update");
-  const [dateRange, setDateRange] = useState<RDPDateRange | undefined>(
-    undefined
-  );
-  const [pendingDateRange, setPendingDateRange] = useState<
-    RDPDateRange | undefined
-  >(dateRange);
+
+  // Use dashboard store for date filtering
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
+
+  // Convert dashboard store date format to DateRange format
+  const dateRange: RDPDateRange | undefined = customDateRange
+    ? {
+        from: customDateRange.startDate,
+        to: customDateRange.endDate,
+      }
+    : undefined;
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,44 +232,84 @@ export default function ActivityLogModal({
     }
   }, [open]);
 
-  const handleGoClick = () => {
-    setDateRange(pendingDateRange);
-    setCurrentPage(1);
-  };
-
   const fetchActivities = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams({
-        entityType: "Licensee",
+        resource: "licensee",
         limit: itemsPerPage.toString(),
-        skip: ((currentPage - 1) * itemsPerPage).toString(),
+        page: currentPage.toString(),
       });
 
-        params.append("actionType", activityType.toUpperCase());
+      params.append("action", activityType);
 
-      if (dateRange?.from) {
-        params.append("startDate", dateRange.from.toISOString());
+      // Use dashboard store date filtering
+      if (activeMetricsFilter === "Custom" && customDateRange) {
+        const sd =
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate as unknown as string);
+        const ed =
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate as unknown as string);
+        params.append("startDate", sd.toISOString());
+        params.append("endDate", ed.toISOString());
+      } else if (activeMetricsFilter !== "All Time") {
+        // Add date filtering based on activeMetricsFilter
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date = now;
+
+        switch (activeMetricsFilter) {
+          case "Today":
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            );
+            break;
+          case "Yesterday":
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1
+            );
+            endDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1,
+              23,
+              59,
+              59
+            );
+            break;
+          case "last7days":
+          case "7d":
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case "last30days":
+          case "30d":
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // Default to last 7 days
+        }
+
+        params.append("startDate", startDate.toISOString());
+        params.append("endDate", endDate.toISOString());
       }
 
-      if (dateRange?.to) {
-        params.append("endDate", dateRange.to.toISOString());
-      }
-
-      const response = await fetch(`/api/activity-logs?${params}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch activity logs");
-      }
-
-      const data = await response.json();
+      const response = await axios.get(`/api/activity-logs?${params}`);
+      const data = response.data;
 
       if (data.success) {
-        setActivities(data.data || []);
+        // Fix: The API returns data.data.activities, not data.data
+        setActivities(data.data.activities || []);
         setTotalPages(
-          Math.ceil((data.total || data.count || 0) / itemsPerPage)
+          Math.ceil((data.data.pagination?.totalCount || 0) / itemsPerPage)
         );
       } else {
         throw new Error(data.message || "An unknown error occurred");
@@ -260,15 +319,16 @@ export default function ActivityLogModal({
     } finally {
       setLoading(false);
     }
-  }, [activityType, dateRange, currentPage]);
+  }, [activityType, activeMetricsFilter, customDateRange, currentPage]);
 
   useEffect(() => {
-      fetchActivities();
+    fetchActivities();
   }, [fetchActivities]);
 
-  const groupedActivities = useMemo(() => groupActivitiesByDate(activities), [
-    activities,
-  ]);
+  const groupedActivities = useMemo(
+    () => groupActivitiesByDate(activities),
+    [activities]
+  );
 
   const handleActivityTypeChange = (type: string) => {
     setActivityType(type);
@@ -277,8 +337,8 @@ export default function ActivityLogModal({
 
   const handleActivityClick = (activity: ActivityLog) => {
     if (activity.changes && activity.changes.length > 1) {
-    setSelectedActivity(activity);
-    setIsDetailsModalOpen(true);
+      setSelectedActivity(activity);
+      setIsDetailsModalOpen(true);
     }
   };
 
@@ -286,32 +346,30 @@ export default function ActivityLogModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-        <div
-          ref={modalRef}
+      <div
+        ref={modalRef}
         className="bg-gray-50 rounded-2xl shadow-2xl w-[95%] h-[95%] max-w-4xl flex flex-col overflow-hidden border border-gray-200"
-        >
-          {/* Header */}
+      >
+        {/* Header */}
         <div className="flex items-center justify-between p-6 bg-white border-b border-gray-200">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-xl mr-4">
               <IdCard className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">
-                Activity Log
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-800">Activity Log</h2>
               <p className="text-sm text-gray-500">
                 Recent activities of all licensees
               </p>
             </div>
           </div>
-            <button
-              onClick={onClose}
+          <button
+            onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
+          >
             <X className="w-6 h-6 text-gray-600" />
-            </button>
-          </div>
+          </button>
+        </div>
 
         {/* Filters */}
         <div className="p-6 bg-white border-b border-gray-200">
@@ -333,31 +391,10 @@ export default function ActivityLogModal({
               ))}
             </div>
             <div className="flex items-center space-x-2">
-              <ModernDateRangePicker
-                value={pendingDateRange}
-                onChange={setPendingDateRange}
-                onGo={handleGoClick}
-                onSetLastMonth={() => {
-                  const now = new Date();
-                  const firstDayLastMonth = new Date(
-                    now.getFullYear(),
-                    now.getMonth() - 1,
-                    1
-                  );
-                  const lastDayLastMonth = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    0
-                  );
-                  setPendingDateRange({
-                    from: firstDayLastMonth,
-                    to: lastDayLastMonth,
-                  });
-                }}
-              />
+              <ActivityLogDateFilter />
             </div>
-                  </div>
-                </div>
+          </div>
+        </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
@@ -368,46 +405,48 @@ export default function ActivityLogModal({
           ) : error ? (
             <div className="text-center text-red-500">{error}</div>
           ) : (
-                <div className="space-y-8">
+            <div className="space-y-8">
               {groupedActivities.map((group, groupIndex) => (
                 <div key={groupIndex}>
                   <div className="sticky top-0 bg-gray-50 py-2 mb-4">
                     <h3 className="text-lg font-semibold text-gray-600">
-                          {group.range}
-                        </h3>
-                      </div>
+                      {group.range}
+                    </h3>
+                  </div>
                   <ul className="space-y-4">
                     {group.entries.map((entry) => (
                       <li
                         key={entry.id}
                         className="flex items-start space-x-4 p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => handleActivityClick(entry.originalActivity)}
+                        onClick={() =>
+                          handleActivityClick(entry.originalActivity)
+                        }
                       >
                         <div
                           className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white ${entry.iconBg}`}
-                                >
-                                  {entry.icon}
-                                </div>
+                        >
+                          {entry.icon}
+                        </div>
                         <div className="flex-1">
                           <p className="text-sm text-gray-700">
                             {entry.description}
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
-                                {entry.time}
+                            {entry.time}
                           </p>
-                                  </div>
-                                  {entry.originalActivity.changes &&
+                        </div>
+                        {entry.originalActivity.changes &&
                           entry.originalActivity.changes.length > 1 && (
                             <ChevronRight className="w-5 h-5 text-gray-400" />
-                                    )}
+                          )}
                       </li>
-                        ))}
+                    ))}
                   </ul>
-                    </div>
-                  ))}
                 </div>
-              )}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Pagination */}
         <div className="p-4 bg-white border-t border-gray-200">
@@ -417,33 +456,32 @@ export default function ActivityLogModal({
               size="sm"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-                  >
-                    Previous
+            >
+              Previous
             </Button>
             <span className="text-sm text-gray-700">
               Page {currentPage} of {totalPages}
-                  </span>
+            </span>
             <Button
               variant="outline"
               size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
               disabled={currentPage === totalPages}
-                  >
-                    Next
-              </Button>
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
       {selectedActivity && (
-      <ActivityDetailsModal
-        open={isDetailsModalOpen}
+        <ActivityDetailsModal
+          open={isDetailsModalOpen}
           onClose={() => setIsDetailsModalOpen(false)}
-        activity={selectedActivity}
-      />
+          activity={selectedActivity}
+        />
       )}
     </div>
   );
 }
-

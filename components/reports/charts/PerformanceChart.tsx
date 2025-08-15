@@ -35,7 +35,7 @@ export default function PerformanceChart({
 
   // Transform data for Recharts
   const chartData = data.map((point) => ({
-    date: point.label || point.date,
+    date: point.label,
     value: point.value,
     formattedValue: formatCurrency(point.value),
   }));

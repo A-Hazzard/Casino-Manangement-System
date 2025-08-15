@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Location } from "@/lib/types";
 import type { EditLocationModalProps } from "@/lib/types/components";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function EditLocationModal({
   isOpen,
@@ -40,6 +41,7 @@ export default function EditLocationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const locationLogger = createActivityLogger("location");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -190,7 +192,23 @@ export default function EditLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
       };
 
+      const previousData = { ...selectedLocation };
+
       await axios.put("/api/locations", locationData);
+
+      // Log the update activity
+      await locationLogger.logUpdate(
+        selectedLocation.locationName || selectedLocation._id || "unknown",
+        selectedLocation.locationName ||
+          selectedLocation.name ||
+          "Unknown Location",
+        previousData,
+        locationData,
+        `Updated location: ${
+          selectedLocation.locationName || selectedLocation.name
+        }`
+      );
+
       toast.success("Location updated successfully");
       onLocationUpdated?.();
       handleClose();

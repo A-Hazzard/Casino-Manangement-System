@@ -7,7 +7,7 @@ import { formatCurrency } from "@/lib/utils";
  * @returns Bill validator table component.
  */
 type ExtendedBillValidatorTableProps = {
-  bills: Array<{ denomination: number; count: number }>;
+  bills: Array<{ denomination: number; quantity: number; subtotal?: number }>;
 };
 
 const DEFAULT_DENOMS = [20, 100, 500, 1000, 2000, 5000];
@@ -20,7 +20,7 @@ export const BillValidatorTable: React.FC<ExtendedBillValidatorTableProps> = ({
   for (const bill of bills) {
     denomMap.set(
       bill.denomination,
-      (denomMap.get(bill.denomination) || 0) + bill.count
+      (denomMap.get(bill.denomination) || 0) + bill.quantity
     );
   }
   const tableRows = DEFAULT_DENOMS.map((denom) => {

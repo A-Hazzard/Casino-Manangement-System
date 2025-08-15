@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Pencil } from "lucide-react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
 import { toast } from "sonner";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
-    const response = await fetch(`/api/users/${userId}`);
-    if (!response.ok) {
-      return null;
-    }
-    const { user } = await response.json();
+    const response = await axios.get(`/api/users/${userId}`);
+    const { user } = response.data;
     return user;
   } catch (error) {
     console.error("Failed to fetch user data", error);
@@ -38,6 +37,7 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const userLogger = createActivityLogger("user");
 
   useEffect(() => {
     if (open && authUser?._id) {
@@ -90,10 +90,10 @@ export default function ProfileModal({
   const handleSave = async () => {
     if (!userData) return;
 
-    const payload: { 
-      _id: string; 
-      profile: typeof formData; 
-      password?: { current: string; new: string } 
+    const payload: {
+      _id: string;
+      profile: typeof formData;
+      password?: { current: string; new: string };
     } = {
       _id: userData._id,
       profile: formData,
@@ -117,22 +117,24 @@ export default function ProfileModal({
     }
 
     try {
-      const response = await fetch(`/api/users/${userData._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const previousData = { ...userData };
 
-      const result = await response.json();
+      await axios.put(`/api/users/${userData._id}`, payload);
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to update profile");
-      }
+      // Log the profile update activity
+      await userLogger.logUpdate(
+        userData._id,
+        userData.username,
+        previousData,
+        payload,
+        `Updated profile for user: ${userData.username}`
+      );
 
       toast.success("Profile updated successfully!");
       onClose();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update profile.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update profile.";
       toast.error(errorMessage);
       console.error(error);
     }
@@ -322,7 +324,9 @@ export default function ProfileModal({
                           }
                         />
                       ) : (
-                        <p className="p-2">{formData?.address?.street || "-"}</p>
+                        <p className="p-2">
+                          {formData?.address?.street || "-"}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -360,7 +364,9 @@ export default function ProfileModal({
                           }
                         />
                       ) : (
-                        <p className="p-2">{formData?.address?.region || "-"}</p>
+                        <p className="p-2">
+                          {formData?.address?.region || "-"}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -427,7 +433,9 @@ export default function ProfileModal({
                           type="date"
                           className="w-full rounded-md p-2 bg-white border border-border"
                           value={
-                            formData?.identification?.dateOfBirth?.split("T")[0] || ""
+                            formData?.identification?.dateOfBirth?.split(
+                              "T"
+                            )[0] || ""
                           }
                           onChange={(e) =>
                             handleInputChange(
@@ -533,7 +541,10 @@ export default function ProfileModal({
                           className="w-full rounded-md p-2 bg-white border border-border"
                           value={passwordData.currentPassword}
                           onChange={(e) =>
-                            handlePasswordChange("currentPassword", e.target.value)
+                            handlePasswordChange(
+                              "currentPassword",
+                              e.target.value
+                            )
                           }
                         />
                       </div>
@@ -560,7 +571,10 @@ export default function ProfileModal({
                           className="w-full rounded-md p-2 bg-white border border-border"
                           value={passwordData.confirmPassword}
                           onChange={(e) =>
-                            handlePasswordChange("confirmPassword", e.target.value)
+                            handlePasswordChange(
+                              "confirmPassword",
+                              e.target.value
+                            )
                           }
                         />
                       </div>
@@ -592,4 +606,4 @@ export default function ProfileModal({
       </Dialog.Portal>
     </Dialog.Root>
   );
-} 
+}

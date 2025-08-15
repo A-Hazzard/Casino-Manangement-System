@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get date range - handle both timePeriod and startDate/endDate parameters
-    let startDate: Date, endDate: Date;
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (startDateParam && endDateParam) {
       // Use provided startDate and endDate
@@ -41,6 +41,13 @@ export async function GET(req: NextRequest) {
       const dateRange = getDatesForTimePeriod(timePeriod);
       startDate = dateRange.startDate;
       endDate = dateRange.endDate;
+      
+      // For All Time, provide reasonable defaults if needed
+      if (!startDate || !endDate) {
+        const now = new Date();
+        endDate = now;
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Default to last 30 days
+      }
     }
 
     // Build aggregation pipeline for top performing machines

@@ -22,7 +22,7 @@ export const CabinetDetailsLoadingState = ({
 }: CabinetDetailsLoadingStateProps) => (
   <>
     <Sidebar pathname={pathname} />
-    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
+    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 md:pl-36 min-h-screen bg-background flex">
       <main className="flex flex-col flex-1 p-6">
         <Header
           selectedLicencee={selectedLicencee}
@@ -60,7 +60,7 @@ export const CabinetDetailsErrorState = ({
 }: CabinetDetailsErrorStateProps) => (
   <>
     <Sidebar pathname={pathname} />
-    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
+    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 md:pl-36 min-h-screen bg-background flex">
       <main className="flex flex-col flex-1 p-6">
         <Header
           selectedLicencee={selectedLicencee}

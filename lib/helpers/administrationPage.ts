@@ -1,6 +1,7 @@
 import type { User, SortKey } from "@/lib/types/administration";
 import type { Licensee } from "@/lib/types/licensee";
 import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
+import axios from "axios";
 import {
   fetchUsers,
   filterAndSortUsers,
@@ -315,17 +316,7 @@ export const licenseeManagement = {
         updateData.expiryDate = getNext30Days();
       }
 
-      const response = await fetch("/api/licensees", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        toast.error(errorData.message || "Failed to update payment status");
-        return;
-      }
+      await axios.put("/api/licensees", updateData);
 
       await refreshLicensees();
       toast.success("Payment status updated successfully");

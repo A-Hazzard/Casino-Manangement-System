@@ -1,7 +1,12 @@
 // Shared entity types used across frontend and backend
 import { Types } from "mongoose";
 import type { MongooseId, WithTimestamps } from "./common";
-import type { SasMeters, MeterData, BillValidatorData, CollectionMetersHistoryEntry } from "./database";
+import type {
+  SasMeters,
+  MeterData,
+  BillValidatorData,
+  CollectionMetersHistoryEntry,
+} from "./database";
 
 // Location types
 export type Location = {
@@ -134,6 +139,7 @@ export type MachineDocument = {
   assetStatus?: string;
   lastActivity?: Date;
   sasMeters?: SasMeters;
+  billValidator?: BillValidatorData;
   gameConfig?: {
     accountingDenomination?: number;
     theoreticalRtp?: number;
@@ -361,4 +367,8 @@ export type MovementRequest = {
   approvedBySecond?: string;
 };
 
-export type MovementRequestStatus = "pending" | "approved" | "rejected" | "in progress"; 
+export type MovementRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "in progress";

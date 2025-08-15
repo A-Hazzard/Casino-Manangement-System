@@ -20,6 +20,8 @@ import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { TimePeriod } from "@/lib/types/api";
 import RefreshButton from "@/components/ui/RefreshButton";
 import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
+import { fetchAllGamingLocations } from "@/lib/helpers/locations";
+import { fetchLocationDetailsById } from "@/lib/helpers/locations";
 
 export default function LocationDetailsPage() {
   const params = useParams();
@@ -54,20 +56,85 @@ export default function LocationDetailsPage() {
   // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
 
+  // Effect to handle licensee changes - refetch locations and update selection
+  useEffect(() => {
+    const handleLicenceeChange = async () => {
+      try {
+        // Check if current location exists for the new licensee by fetching location details
+        const locationData = await fetchLocationDetailsById(
+          slug,
+          selectedLicencee
+        );
+
+        // If location data is null or the name is the slug (fallback), it means the location doesn't exist for this licensee
+        if (!locationData.data || locationData.name === slug) {
+          // Try to get the first available location for this licensee
+          const formattedLocations = await fetchAllGamingLocations(
+            selectedLicencee
+          );
+
+          if (formattedLocations.length > 0) {
+            // Current location doesn't belong to new licensee, redirect to first available
+            const firstLocation = formattedLocations[0];
+            router.replace(`/locations/${firstLocation.id}/details`);
+          } else {
+            // No locations for this licensee, clear cabinets
+            setCabinets([]);
+            setFilteredCabinets([]);
+            setSelectedCabinet(null);
+          }
+        }
+      } catch (error) {
+        console.error("Error handling licencee change:", error);
+      }
+    };
+
+    // Only run if we have a licensee selected
+    if (selectedLicencee) {
+      handleLicenceeChange();
+    }
+  }, [selectedLicencee, router, slug]);
+
   // Use helpers to fetch data
   useEffect(() => {
     setMetricsLoading(true);
-    fetchLocationDetails(slug).then((location) => {
-      if (location) setLocationInfo(location);
-      fetchCabinets(slug, activeMetricsFilter, selectedLicencee).then(
-        (cabinets) => {
-          setCabinets(cabinets);
-          setFilteredCabinets(cabinets);
-          setSelectedCabinet(cabinets[0] || null);
-          setMetricsLoading(false);
-        }
-      );
-    });
+
+    const initializePage = async () => {
+      try {
+        // Get location name from the formatted locations list
+        const formattedLocations = await fetchAllGamingLocations(
+          selectedLicencee
+        );
+
+        // Find the current location in the list
+        const currentLocation = formattedLocations.find(
+          (loc) => loc.id === slug
+        );
+
+        const locationName = currentLocation ? currentLocation.name : slug;
+
+        // Fetch location details and cabinets in parallel
+        const [location, cabinets] = await Promise.all([
+          fetchLocationDetails(slug, selectedLicencee),
+          fetchCabinets(slug, activeMetricsFilter, selectedLicencee),
+        ]);
+
+        if (location) setLocationInfo(location);
+        setCabinets(cabinets);
+        setFilteredCabinets(cabinets);
+        setSelectedCabinet(cabinets[0] || null);
+      } catch (error) {
+        console.error("Error initializing page:", error);
+        // Set empty arrays on error to prevent loading states
+        setCabinets([]);
+        setFilteredCabinets([]);
+        setSelectedCabinet(null);
+      } finally {
+        setMetricsLoading(false);
+      }
+    };
+
+    initializePage();
   }, [slug, activeMetricsFilter, selectedLicencee]);
 
   // Add refresh function
@@ -75,18 +142,22 @@ export default function LocationDetailsPage() {
     setRefreshing(true);
     setMetricsLoading(true);
     try {
-      const location = await fetchLocationDetails(slug);
+      // Fetch location details and cabinets in parallel
+      const [location, cabinets] = await Promise.all([
+        fetchLocationDetails(slug, selectedLicencee),
+        fetchCabinets(slug, activeMetricsFilter, selectedLicencee),
+      ]);
+
       if (location) setLocationInfo(location);
-      const cabinets = await fetchCabinets(
-        slug,
-        activeMetricsFilter,
-        selectedLicencee
-      );
       setCabinets(cabinets);
       setFilteredCabinets(cabinets);
       setSelectedCabinet(cabinets[0] || null);
     } catch (error) {
       console.error("Error refreshing data:", error);
+      // Set empty arrays on error to prevent loading states
+      setCabinets([]);
+      setFilteredCabinets([]);
+      setSelectedCabinet(null);
     } finally {
       setMetricsLoading(false);
       setRefreshing(false);
@@ -99,7 +170,7 @@ export default function LocationDetailsPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
           <Header
             selectedLicencee={selectedLicencee}
@@ -138,6 +209,7 @@ export default function LocationDetailsPage() {
                 { label: "Yesterday", value: "Yesterday" as TimePeriod },
                 { label: "Last 7 days", value: "7d" as TimePeriod },
                 { label: "30 days", value: "30d" as TimePeriod },
+                { label: "All Time", value: "All Time" as TimePeriod },
                 { label: "Custom", value: "Custom" as TimePeriod },
               ].map((filter) => (
                 <Button
@@ -177,11 +249,11 @@ export default function LocationDetailsPage() {
                     </p>
                     <p>
                       <span className="font-medium">Address:</span>{" "}
-                      {locationInfo.address || "N/A"}
+                      {locationInfo.address || "-"}
                     </p>
                     <p>
                       <span className="font-medium">Licensee:</span>{" "}
-                      {locationInfo.licencee || "N/A"}
+                      {locationInfo.licencee || "-"}
                     </p>
                   </div>
                 </div>
@@ -275,9 +347,10 @@ export default function LocationDetailsPage() {
           {selectedCabinet && (
             <AccountingDetails
               cabinet={selectedCabinet}
-              metricsLoading={metricsLoading}
+              loading={metricsLoading}
               activeMetricsTabContent={activeMetricsTabContent}
               setActiveMetricsTabContent={setActiveMetricsTabContent}
+              activeMetricsFilter="All Time"
             />
           )}
         </main>

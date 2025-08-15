@@ -8,6 +8,7 @@ import {
   UserAuthPayload,
 } from "@/lib/types/index";
 import { TimePeriod } from "@/app/api/lib/types";
+import type { Firmware } from "./firmware";
 
 export type DashBoardStore = {
   initialLoading: boolean;
@@ -66,4 +67,15 @@ export type UserStore = {
   user: UserAuthPayload | null;
   setUser: (_user: UserAuthPayload) => void;
   clearUser: () => void;
+};
+
+// Frontend-specific store types
+export type FirmwareActionsState = {
+  selectedFirmware: Firmware | null;
+  isDeleteModalOpen: boolean;
+  isDownloadModalOpen: boolean;
+  openDeleteModal: (firmware: Firmware) => void;
+  closeDeleteModal: () => void;
+  openDownloadModal: (firmware: Firmware) => void;
+  closeDownloadModal: () => void;
 };

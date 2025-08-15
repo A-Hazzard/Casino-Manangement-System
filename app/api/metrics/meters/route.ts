@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
       endDate = new Date(endDate).toISOString();
     } else {
       const dates = getDatesForTimePeriod(apiParams.timePeriod);
-      startDate = dates.startDate.toISOString();
-      endDate = dates.endDate.toISOString();
+      startDate = dates.startDate?.toISOString() || "All Time";
+      endDate = dates.endDate?.toISOString() || "All Time";
     }
 
     if (!startDate || !endDate) {
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(`Fetching meters for ${apiParams.timePeriod}...`);
+    // console.log(`Fetching meters for ${apiParams.timePeriod}...`);
 
     const metrics = await getMetricsForLocations(
       db,
@@ -81,17 +81,17 @@ export async function GET(req: NextRequest) {
 
     if (apiParams.licencee) {
       if (metrics.length > 0) {
-        console.log("Metrics successfully retrieved for licencee");
+        // console.log("Metrics successfully retrieved for licencee");
       } else {
         console.error(
           `No metrics data found for licencee ${apiParams.licencee}`
         );
       }
     } else {
-      console.log("Metrics successfully retrieved");
+      // console.log("Metrics successfully retrieved");
     }
 
-    console.log(`Successfully retrieved metrics for: ${apiParams.timePeriod}`);
+    // console.log(`Successfully retrieved metrics for: ${apiParams.timePeriod}`);
 
     // If a licencee filter is used, wrap the result in an object with key "result"
     return NextResponse.json(metrics);

@@ -3,11 +3,15 @@ import { connectDB } from "../lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
 import mongoose from "mongoose";
 import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
+// TODO: Import date utilities when implementing date filtering
+// import { getDatesForTimePeriod } from "../lib/utils/dates";
+import { Meters } from "../lib/models/meters";
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const id = request.nextUrl.searchParams.get("id");
+    const timePeriod = request.nextUrl.searchParams.get("timePeriod");
 
     if (!id) {
       return NextResponse.json(
@@ -16,20 +20,263 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use findOne with string _id
+    // Fetch machine with all associated data for optimal performance
     const machine = await Machine.findOne({ _id: id });
 
-    if (machine) {
-      return NextResponse.json({
-        success: true,
-        data: machine,
-      });
-    } else {
+    if (!machine) {
       return NextResponse.json(
         { success: false, error: "Cabinet not found" },
         { status: 404 }
       );
     }
+
+    // Implement timezone-aware date filtering using $facet aggregation
+    // This approach calculates all time periods in a single efficient query
+    let meterData;
+
+    if (timePeriod && timePeriod !== "All Time") {
+      // Use $facet to calculate specific time period efficiently
+      const facetAggregation = await Meters.aggregate([
+        // 1) Restrict to the machine
+        { $match: { machine: id } },
+
+        // 2) Compute time boundaries (use Trinidad timezone)
+        {
+          $set: {
+            tz: "America/Port_of_Spain",
+            now: "$$NOW",
+          },
+        },
+        {
+          $set: {
+            todayStart: {
+              $dateTrunc: { date: "$now", unit: "day", timezone: "$tz" },
+            },
+            tomorrowStart: {
+              $dateAdd: {
+                startDate: {
+                  $dateTrunc: { date: "$now", unit: "day", timezone: "$tz" },
+                },
+                unit: "day",
+                amount: 1,
+              },
+            },
+            last7Start: {
+              $dateSubtract: { startDate: "$now", unit: "day", amount: 7 },
+            },
+            last30Start: {
+              $dateSubtract: { startDate: "$now", unit: "day", amount: 30 },
+            },
+          },
+        },
+
+        // 3) Compute the requested time window
+        {
+          $facet: {
+            [timePeriod]: (() => {
+              switch (timePeriod) {
+                case "Today":
+                  return [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $gte: ["$createdAt", "$todayStart"] },
+                            { $lt: ["$createdAt", "$tomorrowStart"] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $group: {
+                        _id: null,
+                        drop: { $sum: "$movement.drop" },
+                        totalCancelledCredits: {
+                          $sum: "$movement.totalCancelledCredits",
+                        },
+                        jackpot: { $sum: "$movement.jackpot" },
+                        coinIn: { $sum: "$movement.coinIn" },
+                        coinOut: { $sum: "$movement.coinOut" },
+                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
+                        gamesWon: { $sum: "$movement.gamesWon" },
+                      },
+                    },
+                  ];
+                case "Yesterday":
+                  return [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            {
+                              $gte: [
+                                "$createdAt",
+                                {
+                                  $dateSubtract: {
+                                    startDate: "$todayStart",
+                                    unit: "day",
+                                    amount: 1,
+                                  },
+                                },
+                              ],
+                            },
+                            { $lt: ["$createdAt", "$todayStart"] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $group: {
+                        _id: null,
+                        drop: { $sum: "$movement.drop" },
+                        totalCancelledCredits: {
+                          $sum: "$movement.totalCancelledCredits",
+                        },
+                        jackpot: { $sum: "$movement.jackpot" },
+                        coinIn: { $sum: "$movement.coinIn" },
+                        coinOut: { $sum: "$movement.coinOut" },
+                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
+                        gamesWon: { $sum: "$movement.gamesWon" },
+                      },
+                    },
+                  ];
+                case "7d":
+                  return [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $gte: ["$createdAt", "$last7Start"] },
+                            { $lt: ["$createdAt", "$now"] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $group: {
+                        _id: null,
+                        drop: { $sum: "$movement.drop" },
+                        totalCancelledCredits: {
+                          $sum: "$movement.totalCancelledCredits",
+                        },
+                        jackpot: { $sum: "$movement.jackpot" },
+                        coinIn: { $sum: "$movement.coinIn" },
+                        coinOut: { $sum: "$movement.coinOut" },
+                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
+                        gamesWon: { $sum: "$movement.gamesWon" },
+                      },
+                    },
+                  ];
+                case "30d":
+                  return [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $gte: ["$createdAt", "$last30Start"] },
+                            { $lt: ["$createdAt", "$now"] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $group: {
+                        _id: null,
+                        drop: { $sum: "$movement.drop" },
+                        totalCancelledCredits: {
+                          $sum: "$movement.totalCancelledCredits",
+                        },
+                        jackpot: { $sum: "$movement.jackpot" },
+                        coinIn: { $sum: "$movement.coinIn" },
+                        coinOut: { $sum: "$movement.coinOut" },
+                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
+                        gamesWon: { $sum: "$movement.gamesWon" },
+                      },
+                    },
+                  ];
+                default:
+                  return [{ $group: { _id: null, drop: { $literal: 0 } } }];
+              }
+            })(),
+          },
+        },
+
+        // 4) Coalesce empty results to 0
+        {
+          $project: {
+            machine: id,
+            drop: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.drop`, 0] }, 0],
+            },
+            totalCancelledCredits: {
+              $ifNull: [
+                { $arrayElemAt: [`$${timePeriod}.totalCancelledCredits`, 0] },
+                0,
+              ],
+            },
+            jackpot: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.jackpot`, 0] }, 0],
+            },
+            coinIn: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.coinIn`, 0] }, 0],
+            },
+            coinOut: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.coinOut`, 0] }, 0],
+            },
+            gamesPlayed: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.gamesPlayed`, 0] }, 0],
+            },
+            gamesWon: {
+              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.gamesWon`, 0] }, 0],
+            },
+          },
+        },
+      ]);
+
+      meterData = facetAggregation;
+    } else {
+      // Fetch all meter data without filtering (All Time)
+      meterData = await Meters.aggregate([
+        { $match: { machine: id } },
+        {
+          $group: {
+            _id: null,
+            // Financial metrics as per financial-metrics-guide.md
+            drop: { $sum: "$movement.drop" }, // Money In (Handle)
+            totalCancelledCredits: { $sum: "$movement.totalCancelledCredits" }, // Money Out
+            jackpot: { $sum: "$movement.jackpot" },
+            coinIn: { $sum: "$movement.coinIn" },
+            coinOut: { $sum: "$movement.coinOut" },
+            gamesPlayed: { $sum: "$movement.gamesPlayed" },
+            gamesWon: { $sum: "$movement.gamesWon" },
+          },
+        },
+      ]);
+    }
+
+    // Integrate meter data with machine data
+    if (meterData.length > 0) {
+      const aggregatedMeters = meterData[0];
+      machine.sasMeters = {
+        drop: aggregatedMeters.drop || 0,
+        totalCancelledCredits: aggregatedMeters.totalCancelledCredits || 0,
+        jackpot: aggregatedMeters.jackpot || 0,
+        coinIn: aggregatedMeters.coinIn || 0,
+        coinOut: aggregatedMeters.coinOut || 0,
+        gamesPlayed: aggregatedMeters.gamesPlayed || 0,
+        gamesWon: aggregatedMeters.gamesWon || 0,
+      };
+
+      // Also update meterData for compatibility
+      machine.meterData = {
+        movement: machine.sasMeters,
+      };
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: machine,
+    });
   } catch (error) {
     console.error("Error fetching machine:", error);
     return NextResponse.json(

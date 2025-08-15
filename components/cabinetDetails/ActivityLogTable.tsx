@@ -1,103 +1,278 @@
 import React, { useState, useMemo } from "react";
-import type { MachineEvent } from "@/lib/types/api";
+import {
+  CheckIcon,
+  PlusIcon,
+  ChevronDownIcon,
+  MinusIcon,
+} from "@radix-ui/react-icons";
+
+type MachineEvent = {
+  _id: string;
+  eventType: string;
+  description: string;
+  command: string;
+  gameName: string;
+  date: string;
+  eventLogLevel: string;
+  eventSuccess: boolean;
+  sequence?: Array<{
+    description: string;
+    logLevel: string;
+    success: boolean;
+    createdAt: string;
+  }>;
+};
 
 type ExtendedActivityLogTableProps = {
   data: MachineEvent[];
 };
 
 /**
- * Renders the Activity Log table.
+ * Renders the Activity Log table with filters and updated structure.
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
 const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
   data,
 }) => {
-  // Prepare for search, pagination, and animation
-  const [search, setSearch] = useState("");
+  // Filter states
+  const [eventTypeFilter, setEventTypeFilter] = useState("");
+  const [eventFilter, setEventFilter] = useState("");
+  const [gameFilter, setGameFilter] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
+    new Set()
+  );
 
-  // Filter and sort data for search
+  // Get unique values for filter dropdowns
+  const uniqueEventTypes = useMemo(() => {
+    const types = [...new Set(data.map((item) => item.eventType))];
+    return types.filter(Boolean).sort();
+  }, [data]);
+
+  const uniqueEvents = useMemo(() => {
+    const events = [...new Set(data.map((item) => item.description))];
+    return events.filter(Boolean).sort();
+  }, [data]);
+
+  const uniqueGames = useMemo(() => {
+    const games = [...new Set(data.map((item) => item.gameName))];
+    return games.filter(Boolean).sort();
+  }, [data]);
+
+  // Filter and sort data
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const lower = search.toLowerCase();
-    return data.filter(
-      (ev) =>
-        ev.command?.toLowerCase().includes(lower) ||
-        ev.description?.toLowerCase().includes(lower) ||
-        ev.relay?.toLowerCase().includes(lower) ||
-        (ev.date &&
-          new Date(ev.date).toLocaleString().toLowerCase().includes(lower))
-    );
-  }, [data, search]);
+    let filteredData = data;
+
+    if (eventTypeFilter) {
+      filteredData = filteredData.filter((item) =>
+        item.eventType?.toLowerCase().includes(eventTypeFilter.toLowerCase())
+      );
+    }
+
+    if (eventFilter) {
+      filteredData = filteredData.filter((item) =>
+        item.description?.toLowerCase().includes(eventFilter.toLowerCase())
+      );
+    }
+
+    if (gameFilter) {
+      filteredData = filteredData.filter((item) =>
+        item.gameName?.toLowerCase().includes(gameFilter.toLowerCase())
+      );
+    }
+
+    return filteredData;
+  }, [data, eventTypeFilter, eventFilter, gameFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const toggleSequence = (eventId: string) => {
+    const newExpanded = new Set(expandedSequences);
+    if (newExpanded.has(eventId)) {
+      newExpanded.delete(eventId);
+    } else {
+      newExpanded.add(eventId);
+    }
+    setExpandedSequences(newExpanded);
+  };
+
   return (
     <div className="w-full">
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">Machine Activity</h2>
-          {/* Add reload button logic if needed */}
-        </div>
-        <div className="relative w-full mb-4">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full text-sm outline-none"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <svg
-              className="w-4 h-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      {/* Filter Controls */}
+      <div className="mb-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Event Type Filter */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Type
+            </label>
+            <select
+              value={eventTypeFilter}
+              onChange={(e) => {
+                setEventTypeFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
+              <option value="">All Event Types</option>
+              {uniqueEventTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Event Filter */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event
+            </label>
+            <select
+              value={eventFilter}
+              onChange={(e) => {
+                setEventFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
+            >
+              <option value="">All Events</option>
+              {uniqueEvents.map((event) => (
+                <option key={event} value={event}>
+                  {event}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Game Filter */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Game
+            </label>
+            <select
+              value={gameFilter}
+              onChange={(e) => {
+                setGameFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
+            >
+              <option value="">All Games</option>
+              {uniqueGames.map((game) => (
+                <option key={game} value={game}>
+                  {game}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
+
       {/* Desktop Table View */}
       <div className="hidden lg:block w-full overflow-x-auto rounded-lg">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-blue-500 text-white">
-              <th className="p-2 border border-background">Date</th>
-              <th className="p-2 border border-background">Command</th>
-              <th className="p-2 border border-background">Type</th>
-              <th className="p-2 border border-background">Description</th>
-              <th className="p-2 border border-background">Relay ID</th>
+            <tr className="bg-button text-white">
+              <th className="p-3 border border-border text-sm">Type</th>
+              <th className="p-3 border border-border text-sm">Event</th>
+              <th className="p-3 border border-border text-sm">Event Code</th>
+              <th className="p-3 border border-border text-sm">Game</th>
+              <th className="p-3 border border-border text-sm">Date</th>
             </tr>
           </thead>
           <tbody>
             {paged.map((row, idx) => (
-              <tr key={row._id || idx} className="text-center">
-                <td className="p-2 border border-background">
-                  {row.date ? new Date(row.date).toLocaleString() : ""}
-                </td>
-                <td className="p-2 border border-background font-mono">
-                  {row.command || ""}
-                </td>
-                <td className="p-2 border border-background">
-                  {row.commandType || ""}
-                </td>
-                <td className="p-2 border border-background text-left">
-                  {row.description || ""}
-                </td>
-                <td className="p-2 border border-background font-mono">
-                  {row.relay || ""}
-                </td>
-              </tr>
+              <React.Fragment key={row._id || idx}>
+                <tr className="text-center hover:bg-muted">
+                  <td className="p-3 border border-border">
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckIcon className="w-4 h-4 text-green-500" />
+                      {row.eventType || "General"}
+                    </div>
+                  </td>
+                  <td className="p-3 border border-border text-left">
+                    <div className="flex items-center justify-between">
+                      <span>{row.description || "No activity"}</span>
+                      {row.sequence && row.sequence.length > 0 && (
+                        <button
+                          onClick={() => toggleSequence(row._id)}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          {expandedSequences.has(row._id) ? (
+                            <MinusIcon className="w-4 h-4 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <PlusIcon className="w-4 h-4 text-green-500 hover:text-green-600" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    {/* Sequence Dropdown within the same cell */}
+                    {expandedSequences.has(row._id) &&
+                      row.sequence &&
+                      row.sequence.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <h4 className="font-medium text-gray-700 mb-2 text-sm">
+                            Sequence Details
+                          </h4>
+                          <div className="space-y-2">
+                            {row.sequence.map((seq, seqIdx) => (
+                              <div
+                                key={seqIdx}
+                                className="bg-gray-50 p-2 rounded border text-xs"
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium">
+                                    {seq.description}
+                                  </span>
+                                  <span
+                                    className={`px-1 py-0.5 rounded text-xs ${
+                                      seq.success
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
+                                  >
+                                    {seq.logLevel}
+                                  </span>
+                                </div>
+                                <div className="text-gray-500">
+                                  {formatDate(seq.createdAt)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </td>
+                  <td className="p-3 border border-border font-mono">
+                    {row.command || "00"}
+                  </td>
+                  <td className="p-3 border border-border">
+                    {row.gameName || "Rhapsody S3"}
+                  </td>
+                  <td className="p-3 border border-border">
+                    {formatDate(row.date)}
+                  </td>
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -108,89 +283,144 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
         {paged.map((row, idx) => (
           <div
             key={row._id || idx}
-            className="bg-white rounded-xl shadow-md overflow-hidden w-full"
+            className="bg-container rounded-lg shadow-md overflow-hidden w-full border border-border"
           >
-            <div className="bg-blue-500 text-white px-4 py-2 font-semibold text-sm">
-              {row.date ? new Date(row.date).toLocaleString() : "No Date"}
+            <div className="bg-button text-white px-4 py-3 font-semibold text-sm">
+              <div className="flex items-center justify-between">
+                <span>{row.eventType || "General"}</span>
+                <CheckIcon className="w-4 h-4" />
+              </div>
             </div>
-            <div className="p-4 flex flex-col gap-2">
+            <div className="p-4 flex flex-col gap-3">
               <div className="flex justify-between items-start">
-                <span className="text-gray-700">Command</span>
-                <span className="font-mono font-medium text-right break-all ml-2">
-                  {row.command || "N/A"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-700">Type</span>
-                <span className="font-medium">{row.commandType || "N/A"}</span>
-              </div>
-              {row.description && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-gray-700">Description</span>
-                  <span className="font-medium text-sm text-gray-800 break-words">
-                    {row.description}
+                <span className="text-gray-700 font-medium">Event</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-right break-all ml-2">
+                    {row.description || "No activity"}
                   </span>
+                  {row.sequence && row.sequence.length > 0 && (
+                    <button
+                      onClick={() => toggleSequence(row._id)}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      {expandedSequences.has(row._id) ? (
+                        <MinusIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      ) : (
+                        <PlusIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      )}
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
               <div className="flex justify-between">
-                <span className="text-gray-700">Relay ID</span>
+                <span className="text-gray-700 font-medium">Event Code</span>
                 <span className="font-mono font-medium">
-                  {row.relay || "N/A"}
+                  {row.command || "00"}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700 font-medium">Game</span>
+                <span className="font-medium">
+                  {row.gameName || "Rhapsody S3"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700 font-medium">Date</span>
+                <span className="font-medium text-sm">
+                  {formatDate(row.date)}
+                </span>
+              </div>
+
+              {/* Mobile Sequence Dropdown */}
+              {expandedSequences.has(row._id) &&
+                row.sequence &&
+                row.sequence.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-2 text-sm">
+                      Sequence Details
+                    </h4>
+                    <div className="space-y-2">
+                      {row.sequence.map((seq, seqIdx) => (
+                        <div key={seqIdx} className="bg-gray-50 p-2 rounded">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium">
+                              {seq.description}
+                            </span>
+                            <span
+                              className={`text-xs px-1 py-0.5 rounded ${
+                                seq.success
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {seq.logLevel}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {formatDate(seq.createdAt)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         ))}
       </div>
 
       {/* Pagination controls */}
-      <div className="flex justify-center items-center mt-4 gap-2">
-        <button
-          className="px-2 py-1 border rounded"
-          onClick={() => setPage(1)}
-          disabled={page === 1}
-        >
-          {"<<"}
-        </button>
-        <button
-          className="px-2 py-1 border rounded"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-        >
-          {"<"}
-        </button>
-        <span>Page</span>
-        <input
-          type="number"
-          min={1}
-          max={totalPages}
-          value={page}
-          onChange={(e) => {
-            let val = Number(e.target.value);
-            if (isNaN(val)) val = 1;
-            if (val < 1) val = 1;
-            if (val > totalPages) val = totalPages;
-            setPage(val);
-          }}
-          className="w-14 px-2 py-1 border rounded text-center text-sm"
-          aria-label="Page number"
-        />
-        <span>of {Math.max(1, totalPages)}</span>
-        <button
-          className="px-2 py-1 border rounded"
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages || totalPages === 0}
-        >
-          {">"}
-        </button>
-        <button
-          className="px-2 py-1 border rounded"
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages || totalPages === 0}
-        >
-          {">>"}
-        </button>
-      </div>
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-6 gap-2">
+          <button
+            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setPage(1)}
+            disabled={page === 1}
+          >
+            {"<<"}
+          </button>
+          <button
+            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            {"<"}
+          </button>
+          <span className="px-3 py-2 text-sm">Page</span>
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={page}
+            onChange={(e) => {
+              let val = Number(e.target.value);
+              if (isNaN(val)) val = 1;
+              if (val < 1) val = 1;
+              if (val > totalPages) val = totalPages;
+              setPage(val);
+            }}
+            className="w-16 px-2 py-2 border border-border rounded-md text-center text-sm"
+            aria-label="Page number"
+          />
+          <span className="px-3 py-2 text-sm">
+            of {Math.max(1, totalPages)}
+          </span>
+          <button
+            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || totalPages === 0}
+          >
+            {">"}
+          </button>
+          <button
+            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setPage(totalPages)}
+            disabled={page === totalPages || totalPages === 0}
+          >
+            {">>"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

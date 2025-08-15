@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import axios from "axios";
 import { AccountingDetailsProps } from "@/lib/types/cabinetDetails";
 import {
   containerVariants,
@@ -19,37 +20,54 @@ import type { MachineDocument } from "@/shared/types";
 // Export the component as both default and named export
 export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   cabinet,
-  metricsLoading,
+  loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
+  activeMetricsFilter,
 }: AccountingDetailsProps) => {
   const [collectionHistory, setCollectionHistory] = useState<
     CollectionMetersHistoryEntry[]
   >([]);
-  const [activityLog, setActivityLog] = useState<MachineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activityLog, setActivityLog] = useState<any[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [machine, setMachine] = useState<MachineDocument | null>(null);
 
   useEffect(() => {
     async function loadData() {
-      setLoading(true);
+      setDataLoading(true);
       try {
-        const res = await fetch(`/api/machines/${cabinet._id}`);
-        const data = await res.json();
-        const details = data.data || {};
-        setCollectionHistory(details.collectionMetersHistory || []);
-        setActivityLog(details.machineEvents || []);
-        setMachine(details.machine || null);
+        // Use the shared cabinet data - no duplicate API calls needed
+        if (cabinet) {
+          // Extract collection history from the cabinet prop
+          const collectionHistory =
+            (cabinet as any).collectionMetersHistory || [];
+          setCollectionHistory(collectionHistory);
+
+          // Set the machine data - the cabinet itself is the machine data
+          setMachine(cabinet as any);
+
+          // Fetch activity log data with date filtering
+          const eventsParams = new URLSearchParams();
+          if (activeMetricsFilter && activeMetricsFilter !== "All Time") {
+            eventsParams.append("timePeriod", activeMetricsFilter);
+          }
+
+          const eventsRes = await axios.get(
+            `/api/machines/${cabinet._id}/events?${eventsParams.toString()}`
+          );
+          const eventsData = eventsRes.data;
+          setActivityLog(eventsData.events || []);
+        }
       } catch {
         setCollectionHistory([]);
         setActivityLog([]);
         setMachine(null);
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     }
     loadData();
-  }, [cabinet._id]);
+  }, [cabinet, activeMetricsFilter]); // Depend on cabinet and activeMetricsFilter
 
   return (
     <motion.div
@@ -132,7 +150,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
                   >
-                    {/* Handle */}
+                    {/* Handle (Money In) */}
                     <motion.div
                       className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
                       variants={itemVariants}
@@ -146,7 +164,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Handle
                       </h4>
                       <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-orangeHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -179,7 +197,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Total Cancelled Credits
                       </h4>
                       <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-blueHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -213,7 +231,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Gross
                       </h4>
                       <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-pinkHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -249,7 +267,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Jackpot
                       </h4>
                       <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-blueHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -271,7 +289,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 ) : activeMetricsTabContent === "Live Metrics" ? (
                   <motion.div
                     key="live-metrics"
-                    className="flex flex-wrap lg:flex-nowrap gap-3 md:gap-4 max-w-full"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-full"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
@@ -279,7 +297,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                   >
                     {/* Coin In */}
                     <motion.div
-                      className="bg-container p-4 md:p-6 rounded-lg shadow w-full lg:flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(50%-0.5rem)]"
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
                       variants={itemVariants}
                       whileHover={{
                         y: -5,
@@ -291,7 +309,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Coin In
                       </h4>
                       <div className="h-1 w-full bg-greenHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-greenHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -312,7 +330,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                     {/* Coin Out */}
                     <motion.div
-                      className="bg-container p-4 md:p-6 rounded-lg shadow w-full lg:flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(50%-0.5rem)]"
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
                       variants={itemVariants}
                       whileHover={{
                         y: -5,
@@ -324,7 +342,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Coin Out
                       </h4>
                       <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-pinkHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -343,9 +361,78 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       )}
                     </motion.div>
 
+                    {/* Total Hand Paid Cancelled Credits */}
+                    <motion.div
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
+                      variants={itemVariants}
+                      whileHover={{
+                        y: -5,
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        Total Hand Paid Cancelled Credits
+                      </h4>
+                      <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
+                      {loading ? (
+                        <div className="flex justify-center items-center h-6">
+                          <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-blueHighlight border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          <p className="text-center text-base md:text-xl font-bold">
+                            {formatCurrency(
+                              Number(
+                                cabinet?.sasMeters
+                                  ?.totalHandPaidCancelledCredits ??
+                                  cabinet?.meterData?.movement
+                                    ?.totalHandPaidCancelledCredits ??
+                                  0
+                              )
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* Current Credits */}
+                    <motion.div
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
+                      variants={itemVariants}
+                      whileHover={{
+                        y: -5,
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        Current Credits
+                      </h4>
+                      <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
+                      {loading ? (
+                        <div className="flex justify-center items-center h-6">
+                          <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-orangeHighlight border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          <p className="text-center text-base md:text-xl font-bold">
+                            {formatCurrency(
+                              Number(
+                                cabinet?.sasMeters?.currentCredits ??
+                                  cabinet?.meterData?.movement
+                                    ?.currentCredits ??
+                                  0
+                              )
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+
                     {/* Games Played */}
                     <motion.div
-                      className="bg-container p-4 md:p-6 rounded-lg shadow w-full lg:flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(50%-0.5rem)]"
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
                       variants={itemVariants}
                       whileHover={{
                         y: -5,
@@ -357,7 +444,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Games Played
                       </h4>
                       <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-orangeHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -374,7 +461,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                     {/* Games Won */}
                     <motion.div
-                      className="bg-container p-4 md:p-6 rounded-lg shadow w-full lg:flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(50%-0.5rem)]"
+                      className="bg-container p-4 md:p-6 rounded-lg shadow"
                       variants={itemVariants}
                       whileHover={{
                         y: -5,
@@ -386,7 +473,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         Games Won
                       </h4>
                       <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
-                      {metricsLoading ? (
+                      {loading ? (
                         <div className="flex justify-center items-center h-6">
                           <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-blueHighlight border-t-transparent rounded-full animate-spin"></div>
                         </div>
@@ -404,25 +491,36 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 ) : activeMetricsTabContent === "Bill Validator" ? (
                   <motion.div
                     key="bill-validator"
-                    className="flex justify-center items-center w-full"
+                    className="w-full"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <div className="w-full max-w-xl">
+                    <div className="w-full max-w-xl mx-auto">
+                      {/* Current Balance */}
+                      <div className="mb-4 text-center">
+                        <p className="text-lg font-semibold">
+                          Current Balance:{" "}
+                          {formatCurrency(
+                            Number(machine?.billValidator?.balance || 0)
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Bill Validator Table */}
                       <BillValidatorTable
                         bills={
                           machine &&
                           machine.billValidator &&
                           typeof machine.billValidator === "object" &&
-                          "billsAccepted" in machine.billValidator &&
-                          Array.isArray(
-                            (machine.billValidator as BillValidatorData)
-                              .billsAccepted
-                          )
-                            ? (machine.billValidator as BillValidatorData)
-                                .billsAccepted || []
+                          "notes" in machine.billValidator &&
+                          Array.isArray(machine.billValidator.notes)
+                            ? machine.billValidator.notes.map((note: any) => ({
+                                denomination: note.denomination,
+                                quantity: note.quantity,
+                                subtotal: note.denomination * note.quantity,
+                              })) || []
                             : []
                         }
                       />

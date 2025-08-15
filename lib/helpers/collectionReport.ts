@@ -347,11 +347,8 @@ export async function getAllLocationNames(): Promise<string[]> {
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const response = await fetch("/api/collectionReport/locations");
-    if (!response.ok) {
-      throw new Error("Failed to fetch location names");
-    }
-    const data: Record<string, unknown> = await response.json();
+    const response = await axios.get("/api/collectionReport/locations");
+    const data: Record<string, unknown> = response.data;
     if ("locations" in data && Array.isArray(data.locations)) {
       return data.locations.map((location: Record<string, unknown>) => String(location.name || "Unknown"));
     }

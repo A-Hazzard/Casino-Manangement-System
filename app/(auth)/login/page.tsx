@@ -11,10 +11,10 @@ import LoginForm from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>(
     {}
   );
   const [message, setMessage] = useState("");
@@ -31,8 +31,8 @@ export default function LoginPage() {
     e.preventDefault();
     setErrors({});
     let valid = true;
-    if (!validateEmail(email)) {
-      setErrors((prev) => ({ ...prev, email: "Invalid email address." }));
+    if (!identifier) {
+      setErrors((prev) => ({ ...prev, identifier: "Enter email or username." }));
       valid = false;
     }
     if (!validatePassword(password)) {
@@ -45,7 +45,7 @@ export default function LoginPage() {
     if (!valid) return;
     setLoading(true);
     try {
-      const response = await loginUser({ emailAddress: email, password });
+      const response = await loginUser({ identifier, password });
       if (response.success) {
         toast.success("Login successful. Redirecting...");
         setRedirecting(true);
@@ -93,8 +93,8 @@ export default function LoginPage() {
                   />
                 </div>
                 <LoginForm
-                  email={email}
-                  setEmail={setEmail}
+                  identifier={identifier}
+                  setIdentifier={setIdentifier}
                   password={password}
                   setPassword={setPassword}
                   showPassword={showPassword}

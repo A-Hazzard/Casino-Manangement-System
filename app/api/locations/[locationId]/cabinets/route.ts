@@ -15,9 +15,7 @@ export async function POST(request: NextRequest) {
     const url = request.nextUrl;
     const locationId = url.pathname.split("/")[3]; // Extracts ID from /api/locations/[locationId]/cabinets
 
-    console.log(
-      `🔍 POST request to create cabinet for location: ${locationId}`
-    );
+    // console.log(`🔍 POST request to create cabinet for location: ${locationId}`);
 
     const db = await connectDB();
 
@@ -32,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Verify location exists
     const location = await GamingLocations.findOne({ _id: locationId });
     if (!location) {
-      console.log(`❌ Location not found with ID: ${locationId}`);
+      // console.log(`❌ Location not found with ID: ${locationId}`);
       return NextResponse.json(
         { success: false, error: "Location not found" },
         { status: 404 }
@@ -53,9 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      `📝 Creating cabinet for location: ${location.name || locationId}`
-    );
+
 
     // Create the new machine
     const newMachine = new Machine({
@@ -82,7 +78,7 @@ export async function POST(request: NextRequest) {
     });
 
     await newMachine.save();
-    console.log(`✅ Cabinet created successfully with ID: ${newMachine._id}`);
+    // console.log(`✅ Cabinet created successfully with ID: ${newMachine._id}`);
 
     return NextResponse.json({
       success: true,

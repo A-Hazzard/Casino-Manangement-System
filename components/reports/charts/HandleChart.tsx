@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   LineChart,
   Line,
@@ -37,13 +38,10 @@ export default function HandleChart({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/analytics/handle-trends?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch handle data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(
+          `/api/analytics/handle-trends?${params}`
+        );
+        const result = response.data;
         setData(result.data || []);
       } catch (err) {
         console.error("Error fetching handle data:", err);

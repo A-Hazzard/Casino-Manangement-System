@@ -110,13 +110,12 @@ export const mapToCabinetProps = (
     locationName: cabinet.locationName || "",
     assetNumber: cabinet.assetNumber || "",
     smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
-    moneyIn: cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0,
-    moneyOut: cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0,
+    moneyIn: cabinet.moneyIn || cabinet.sasMeters?.drop || 0,
+    moneyOut: cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0,
     gross:
       cabinet.gross ||
-      (cabinet.moneyIn || cabinet.sasMeters?.coinIn || 0) -
-        (cabinet.moneyOut || cabinet.sasMeters?.coinOut || 0) -
-        (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
+      (cabinet.moneyIn || cabinet.sasMeters?.drop || 0) -
+        (cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0),
     jackpot: cabinet.jackpot || cabinet.sasMeters?.jackpot || 0,
     lastOnline: cabinet.lastOnline
       ? cabinet.lastOnline.toString()

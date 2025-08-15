@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
 import {
@@ -26,6 +27,7 @@ import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
@@ -49,14 +51,18 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { isMachineOnline } from "@/lib/utils/machines";
 
 export default function MachinesTab() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   // Separate states for different purposes (streaming approach)
   const [overviewMachines, setOverviewMachines] = useState<MachineData[]>([]); // Paginated for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
   const [offlineMachines, setOfflineMachines] = useState<MachineData[]>([]); // Offline machines only
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>(
+  const [locations, setLocations] = useState<{ id: string; name: string; sasEnabled: boolean }[]>(
     []
   );
 
@@ -65,6 +71,7 @@ export default function MachinesTab() {
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [offlineLoading, setOfflineLoading] = useState(false);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Pagination for overview tab
@@ -117,57 +124,34 @@ export default function MachinesTab() {
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Build API parameters helper
-  const buildApiParams = useCallback(
-    (type: string, page?: number) => {
-      const params: Record<string, string> = {
-        type,
-      };
-
-      if (page) {
-        params.page = page.toString();
-        params.limit = "10";
-      }
-
-      if (selectedLicencee && selectedLicencee !== "all") {
-        params.licencee = selectedLicencee;
-      }
-
-      // Use reports store date range for consistency with other tabs
-      if (selectedDateRange?.start && selectedDateRange?.end) {
-        params.startDate = selectedDateRange.start.toISOString();
-        params.endDate = selectedDateRange.end.toISOString();
-      }
-
-      // Add online status filter
-      if (onlineStatusFilter !== "all") {
-        params.onlineStatus = onlineStatusFilter;
-      }
-
-      return params;
-    },
-    [selectedLicencee, selectedDateRange, onlineStatusFilter]
-  );
+  // Location selection states for each tab (single location selection)
+  const [overviewSelectedLocation, setOverviewSelectedLocation] = useState<string>("all");
+  const [comparisonSelectedLocation, setComparisonSelectedLocation] = useState<string>("all");
+  const [evaluationSelectedLocation, setEvaluationSelectedLocation] = useState<string>("all");
+  const [offlineSelectedLocation, setOfflineSelectedLocation] = useState<string>("all");
 
   // Fetch locations data
   const fetchLocationsData = useCallback(async () => {
     try {
-      const params =
-        selectedLicencee && selectedLicencee !== "all"
-          ? { licensee: selectedLicencee }
-          : {};
+      const params: Record<string, string> = {};
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licensee = selectedLicencee;
+      }
+      
+      const response = await axios.get("/api/locations", { params });
 
-      const response = await axios.get("/api/gaming-locations", { params });
-      const locationsData =
-        response.data.locations ||
-        response.data.map((location: any) => ({
-          id: location._id,
-          name: location.name,
-        }));
-      setLocations(locationsData);
-      console.log("🔍 Fetched locations:", locationsData.length);
+      const locationsData = response.data.locations || [];
+      const mappedLocations = locationsData.map((loc: any) => ({
+        id: loc._id,
+        name: loc.name,
+        sasEnabled: loc.sasEnabled || false, // Default to false if not available
+      }));
+
+      setLocations(mappedLocations);
     } catch (error) {
       console.error("Failed to fetch locations:", error);
+      const errorMessage = (error as any).response?.data?.error || (error as any).message || "Failed to load locations";
+      toast.error(errorMessage);
       // Set empty locations array to prevent further errors
       setLocations([]);
     }
@@ -177,15 +161,28 @@ export default function MachinesTab() {
   const fetchMachineStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const params = buildApiParams("stats");
-      console.log("🔍 Fetching machine stats with params:", params);
+      const params: Record<string, string> = {
+        type: "stats",
+      };
+
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      if (selectedDateRange?.start && selectedDateRange?.end) {
+        params.startDate = selectedDateRange.start.toISOString();
+        params.endDate = selectedDateRange.end.toISOString();
+      }
+
+      if (onlineStatusFilter !== "all") {
+        params.onlineStatus = onlineStatusFilter;
+      }
 
       const response = await axios.get<MachineStatsApiResponse>(
         "/api/reports/machines",
         { params }
       );
       setMachineStats(response.data);
-      console.log("🔍 Machine stats:", response.data);
     } catch (error) {
       console.error("Failed to fetch machine stats:", error);
       setError("Failed to load machine statistics");
@@ -193,7 +190,7 @@ export default function MachinesTab() {
     } finally {
       setStatsLoading(false);
     }
-  }, [buildApiParams]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter]);
 
   // Fetch overview machines (paginated)
   const fetchOverviewMachines = useCallback(
@@ -202,8 +199,28 @@ export default function MachinesTab() {
         setOverviewLoading(true);
         setError(null);
 
-        const params = buildApiParams("overview", page);
-        console.log("🔍 Fetching overview machines with params:", params);
+        const params: Record<string, string> = {
+          type: "overview",
+          page: page.toString(),
+          limit: "10",
+        };
+
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.licencee = selectedLicencee;
+        }
+
+        if (overviewSelectedLocation && overviewSelectedLocation !== "all") {
+          params.locationId = overviewSelectedLocation;
+        }
+
+        if (selectedDateRange?.start && selectedDateRange?.end) {
+          params.startDate = selectedDateRange.start.toISOString();
+          params.endDate = selectedDateRange.end.toISOString();
+        }
+
+        if (onlineStatusFilter !== "all") {
+          params.onlineStatus = onlineStatusFilter;
+        }
 
         const response = await axios.get<MachinesApiResponse>(
           "/api/reports/machines",
@@ -214,12 +231,6 @@ export default function MachinesTab() {
 
         setOverviewMachines(machinesData);
         setPagination(paginationData);
-        console.log(
-          "🔍 Overview machines:",
-          machinesData.length,
-          "Pagination:",
-          paginationData
-        );
       } catch (error) {
         console.error("Failed to fetch overview machines:", error);
         setError("Failed to load overview machines");
@@ -228,15 +239,36 @@ export default function MachinesTab() {
         setOverviewLoading(false);
       }
     },
-    [buildApiParams]
+    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, overviewSelectedLocation]
   );
 
   // Fetch all machines for performance analysis (loads on tab switch)
   const fetchAllMachines = useCallback(async () => {
     try {
       setAnalysisLoading(true);
-      const params = buildApiParams("all");
-      console.log("🔍 Fetching all machines for analysis with params:", params);
+      const params: Record<string, string> = {
+        type: "all",
+      };
+
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      // Apply location filter based on active tab
+      if (activeTab === "comparison" && comparisonSelectedLocation && comparisonSelectedLocation !== "all") {
+        params.locationId = comparisonSelectedLocation;
+      } else if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "all") {
+        params.locationId = evaluationSelectedLocation;
+      }
+
+      if (selectedDateRange?.start && selectedDateRange?.end) {
+        params.startDate = selectedDateRange.start.toISOString();
+        params.endDate = selectedDateRange.end.toISOString();
+      }
+
+      if (onlineStatusFilter !== "all") {
+        params.onlineStatus = onlineStatusFilter;
+      }
 
       const response = await axios.get<MachinesApiResponse>(
         "/api/reports/machines",
@@ -245,20 +277,39 @@ export default function MachinesTab() {
       const { data: allMachinesData } = response.data;
 
       setAllMachines(allMachinesData);
-      console.log("🔍 All machines for analysis:", allMachinesData.length);
     } catch (error) {
       console.error("Failed to fetch all machines:", error);
       toast.error("Failed to load performance analysis data");
     } finally {
       setAnalysisLoading(false);
     }
-  }, [buildApiParams]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, comparisonSelectedLocation, evaluationSelectedLocation]);
 
   // Fetch offline machines (loads on tab switch)
   const fetchOfflineMachines = useCallback(async () => {
     try {
       setOfflineLoading(true);
-      const params = buildApiParams("offline");
+      const params: Record<string, string> = {
+        type: "offline",
+      };
+
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      if (offlineSelectedLocation && offlineSelectedLocation !== "all") {
+        params.locationId = offlineSelectedLocation;
+      }
+
+      if (selectedDateRange?.start && selectedDateRange?.end) {
+        params.startDate = selectedDateRange.start.toISOString();
+        params.endDate = selectedDateRange.end.toISOString();
+      }
+
+      if (onlineStatusFilter !== "all") {
+        params.onlineStatus = onlineStatusFilter;
+      }
+
       console.log("🔍 Fetching offline machines with params:", params);
 
       const response = await axios.get<MachinesApiResponse>(
@@ -268,22 +319,37 @@ export default function MachinesTab() {
       const { data: offlineMachinesData } = response.data;
 
       setOfflineMachines(offlineMachinesData);
-      console.log("🔍 Offline machines:", offlineMachinesData.length);
     } catch (error) {
       console.error("Failed to fetch offline machines:", error);
       toast.error("Failed to load offline machines data");
     } finally {
       setOfflineLoading(false);
     }
-  }, [buildApiParams]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, offlineSelectedLocation]);
 
   // Backend search fallback when frontend search finds no results
   const performBackendSearch = useCallback(
     async (searchTerm: string, type: string = "overview") => {
       try {
-        const params = buildApiParams(type, 1);
-        params.search = searchTerm; // Add search parameter for backend search
-        console.log("🔍 Performing backend search with params:", params);
+        const params: Record<string, string> = {
+          type,
+          page: "1",
+          limit: "10",
+          search: searchTerm,
+        };
+
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.licencee = selectedLicencee;
+        }
+
+        if (selectedDateRange?.start && selectedDateRange?.end) {
+          params.startDate = selectedDateRange.start.toISOString();
+          params.endDate = selectedDateRange.end.toISOString();
+        }
+
+        if (onlineStatusFilter !== "all") {
+          params.onlineStatus = onlineStatusFilter;
+        }
 
         const response = await axios.get<MachinesApiResponse>(
           "/api/reports/machines",
@@ -314,13 +380,12 @@ export default function MachinesTab() {
             hasPrevPage: paginationData.hasPrevPage,
           }));
         }
-        console.log("🔍 Backend search results:", machinesData.length);
       } catch (error) {
         console.error("Failed to perform backend search:", error);
         toast.error("Backend search failed");
       }
     },
-    [buildApiParams]
+    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter]
   );
 
   // Handle search with backend fallback for overview tab
@@ -351,16 +416,11 @@ export default function MachinesTab() {
 
       // If frontend search finds results, use them
       if (frontendFiltered.length > 0) {
-        console.log(
-          "🔍 Frontend search found results:",
-          frontendFiltered.length
-        );
         return;
       }
 
       // If frontend search finds no results and search term is long enough, try backend search
       if (value.length > 2) {
-        console.log("🔍 No frontend results, trying backend search");
         await performBackendSearch(value, "overview");
       }
     },
@@ -417,12 +477,35 @@ export default function MachinesTab() {
 
   const handleExportMeters = async () => {
     try {
-      const machinesToExport =
-        activeTab === "overview"
-          ? overviewMachines
-          : activeTab === "comparison"
-          ? allMachines
-          : offlineMachines;
+      // Ensure we have data to export
+      let machinesToExport: MachineData[] = [];
+      
+      if (activeTab === "overview") {
+        if (overviewMachines.length === 0) {
+          toast.error("No overview data available to export. Please wait for data to load.");
+          return;
+        }
+        machinesToExport = overviewMachines;
+      } else if (activeTab === "comparison") {
+        if (allMachines.length === 0) {
+          toast.error("No comparison data available to export. Please wait for data to load.");
+          return;
+        }
+        machinesToExport = allMachines;
+      } else if (activeTab === "offline") {
+        if (offlineMachines.length === 0) {
+          toast.error("No offline data available to export. Please wait for data to load.");
+          return;
+        }
+        machinesToExport = offlineMachines;
+      } else {
+        // Default to overview data
+        if (overviewMachines.length === 0) {
+          toast.error("No data available to export. Please wait for data to load.");
+          return;
+        }
+        machinesToExport = overviewMachines;
+      }
 
       const metersData = {
         title: "Machines Export Report",
@@ -455,13 +538,13 @@ export default function MachinesTab() {
           machine.gameTitle,
           machine.locationName,
           machine.manufacturer,
-          machine.machineType,
+          "Slot", // Default type since it's not in the data
           machine.netWin.toLocaleString(),
           machine.drop.toLocaleString(),
           machine.totalCancelledCredits.toLocaleString(),
-          machine.jackpot.toLocaleString(),
+          "0", // Jackpot not available in current data
           machine.gamesPlayed.toLocaleString(),
-          machine.actualHold?.toFixed(1) + "%" || "0.0%",
+          machine.theoreticalHold?.toFixed(1) + "%" || "0.0%",
           machine.isOnline ? "Online" : "Offline",
           machine.isSasEnabled ? "Yes" : "No",
         ]),
@@ -483,13 +566,13 @@ export default function MachinesTab() {
           {
             label: "Total Net Win",
             value: `$${machinesToExport
-              .reduce((sum, m) => sum + m.netWin, 0)
+              .reduce((sum, m) => sum + (m.netWin || 0), 0)
               .toLocaleString()}`,
           },
           {
             label: "Total Drop",
             value: `$${machinesToExport
-              .reduce((sum, m) => sum + m.drop, 0)
+              .reduce((sum, m) => sum + (m.drop || 0), 0)
               .toLocaleString()}`,
           },
         ],
@@ -557,9 +640,6 @@ export default function MachinesTab() {
 
   // Filter machines based on search and filters (for overview tab)
   const filteredMachines = useMemo(() => {
-    console.log("🔍 Filtering overview machines:", overviewMachines.length);
-    console.log("🔍 Filter criteria:", { searchTerm, locationFilter });
-
     const filtered = overviewMachines
       .filter((machine) => {
         const matchesSearch =
@@ -573,8 +653,9 @@ export default function MachinesTab() {
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
 
-        const matchesLocation =
-          locationFilter === "all" || machine.locationId === locationFilter;
+                const matchesLocation =
+          overviewSelectedLocation === "all" ||
+          overviewSelectedLocation === machine.locationId;
 
         return matchesSearch && matchesLocation;
       })
@@ -590,15 +671,20 @@ export default function MachinesTab() {
         gamesWon: 0, // Default value since not provided by API
       }));
 
-    console.log("🔍 Filtered overview machines:", filtered.length);
     return filtered;
-  }, [overviewMachines, searchTerm, locationFilter]);
+  }, [overviewMachines, searchTerm, overviewSelectedLocation]);
 
   // Filter analysis data based on search
   const filteredAnalysisData = useMemo(() => {
     const filtered = allMachines.filter((machine) => {
       const matchesSearch =
         (machine.machineName || "")
+          .toLowerCase()
+          .includes(analysisSearchTerm.toLowerCase()) ||
+        (machine.serialNumber || "")
+          .toLowerCase()
+          .includes(analysisSearchTerm.toLowerCase()) ||
+        (machine.machineId || "")
           .toLowerCase()
           .includes(analysisSearchTerm.toLowerCase()) ||
         (machine.gameTitle || "")
@@ -608,14 +694,15 @@ export default function MachinesTab() {
           .toLowerCase()
           .includes(analysisSearchTerm.toLowerCase());
 
-      const matchesLocation =
-        locationFilter === "all" || machine.locationId === locationFilter;
+            const matchesLocation =
+        comparisonSelectedLocation === "all" ||
+        comparisonSelectedLocation === machine.locationId;
 
       return matchesSearch && matchesLocation;
     });
 
     return filtered;
-  }, [allMachines, analysisSearchTerm, locationFilter]);
+  }, [allMachines, analysisSearchTerm, comparisonSelectedLocation]);
 
   // Filter offline data based on search
   const filteredOfflineData = useMemo(() => {
@@ -629,16 +716,20 @@ export default function MachinesTab() {
           .includes(offlineSearchTerm.toLowerCase()) ||
         (machine.manufacturer || "")
           .toLowerCase()
+          .includes(offlineSearchTerm.toLowerCase()) ||
+        (machine.locationName || "")
+          .toLowerCase()
           .includes(offlineSearchTerm.toLowerCase());
 
-      const matchesLocation =
-        locationFilter === "all" || machine.locationId === locationFilter;
+            const matchesLocation =
+        offlineSelectedLocation === "all" ||
+        offlineSelectedLocation === machine.locationId;
 
       return matchesSearch && matchesLocation;
     });
 
     return filtered;
-  }, [offlineMachines, offlineSearchTerm, locationFilter]);
+  }, [offlineMachines, offlineSearchTerm, offlineSelectedLocation]);
 
   // Helper functions for performance analysis
   const getPerformanceRating = (holdDifference: number) => {
@@ -686,8 +777,8 @@ export default function MachinesTab() {
     }
   };
 
-  // Mock evaluation data
-  const mockEvaluationData = useMemo(() => {
+  // Real evaluation data from allMachines
+  const evaluationData = useMemo(() => {
     return allMachines.map((machine) => {
       const theoreticalHold = machine.theoreticalHold || 85;
       const actualHold = machine.actualHold || 87.5;
@@ -695,9 +786,13 @@ export default function MachinesTab() {
 
       return {
         machineId: machine.machineId,
-        serialNumber: machine.machineId, // Use machineId as serial number
+        serialNumber:
+          (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
+          (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+          machine.machineId,
         machineName: machine.machineName,
         locationName: machine.locationName,
+        locationId: machine.locationId,
         manufacturer: machine.manufacturer,
         gameTitle: machine.gameTitle,
         theoreticalHold,
@@ -713,7 +808,7 @@ export default function MachinesTab() {
 
   // Filter evaluation data based on search
   const filteredEvaluationData = useMemo(() => {
-    return mockEvaluationData.filter((machine) => {
+    return evaluationData.filter((machine) => {
       const matchesSearch =
         (machine.machineName || "")
           .toLowerCase()
@@ -729,36 +824,162 @@ export default function MachinesTab() {
           .includes(evaluationSearchTerm.toLowerCase());
 
       const matchesLocation =
-        locationFilter === "all" || machine.locationName === locationFilter;
+        evaluationSelectedLocation === "all" || 
+        evaluationSelectedLocation === machine.locationId;
 
       return matchesSearch && matchesLocation;
     });
-  }, [mockEvaluationData, evaluationSearchTerm, locationFilter]);
+  }, [evaluationData, evaluationSearchTerm, evaluationSelectedLocation]);
 
-  // Load data on component mount (streaming approach)
+  // Generate real chart data from evaluation data
+  const evaluationChartData = useMemo(() => {
+    if (filteredEvaluationData.length === 0) return [];
+
+    // Group by manufacturer
+    const manufacturerData = filteredEvaluationData.reduce((acc, machine) => {
+      const manufacturer = machine.manufacturer || "Unknown";
+      if (!acc[manufacturer]) {
+        acc[manufacturer] = {
+          name: manufacturer,
+          machines: 0,
+          totalNetWin: 0,
+          totalGamesPlayed: 0,
+          avgHold: 0,
+          holdValues: [],
+        };
+      }
+      acc[manufacturer].machines++;
+      acc[manufacturer].totalNetWin += machine.netWin;
+      acc[manufacturer].totalGamesPlayed += machine.gamesPlayed;
+      acc[manufacturer].holdValues.push(machine.actualHold);
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate averages and format data
+    return Object.values(manufacturerData).map((data: any) => ({
+      name: data.name,
+      machines: data.machines,
+      totalNetWin: data.totalNetWin,
+      totalGamesPlayed: data.totalGamesPlayed,
+      avgHold: data.holdValues.length > 0 
+        ? data.holdValues.reduce((sum: number, val: number) => sum + val, 0) / data.holdValues.length 
+        : 0,
+    }));
+  }, [filteredEvaluationData]);
+
+  // Generate games performance chart data
+  const gamesPerformanceData = useMemo(() => {
+    if (filteredEvaluationData.length === 0) return [];
+
+    // Group by game title
+    const gameData = filteredEvaluationData.reduce((acc, machine) => {
+      const gameTitle = machine.gameTitle || "Unknown";
+      if (!acc[gameTitle]) {
+        acc[gameTitle] = {
+          name: gameTitle,
+          machines: 0,
+          totalNetWin: 0,
+          totalGamesPlayed: 0,
+          avgHold: 0,
+          holdValues: [],
+        };
+      }
+      acc[gameTitle].machines++;
+      acc[gameTitle].totalNetWin += machine.netWin;
+      acc[gameTitle].totalGamesPlayed += machine.gamesPlayed;
+      acc[gameTitle].holdValues.push(machine.actualHold);
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate averages and format data, limit to top 5 games
+    return Object.values(gameData)
+      .map((data: any) => ({
+        name: data.name,
+        machines: data.machines,
+        totalNetWin: data.totalNetWin,
+        totalGamesPlayed: data.totalGamesPlayed,
+        avgHold: data.holdValues.length > 0 
+          ? data.holdValues.reduce((sum: number, val: number) => sum + val, 0) / data.holdValues.length 
+          : 0,
+      }))
+      .sort((a: any, b: any) => b.totalNetWin - a.totalNetWin)
+      .slice(0, 5);
+  }, [filteredEvaluationData]);
+
+  // Load data on component mount and when dependencies change
   useEffect(() => {
     const loadDataStreaming = async () => {
-      // 1. Load stats first (fastest)
-      await fetchMachineStats();
+      // Set loading states for all tabs
+      setStatsLoading(true);
+      setOverviewLoading(true);
+      setAnalysisLoading(true);
+      setOfflineLoading(true);
+      setEvaluationLoading(true);
 
-      // 2. Load overview data (paginated, fast)
-      await fetchOverviewMachines(1);
+      try {
+        // 1. Load stats first (fastest)
+        await fetchMachineStats();
 
-      // 3. Load locations data
-      await fetchLocationsData();
+        // 2. Load overview data (paginated, fast)
+        await fetchOverviewMachines(1);
+
+        // 3. Load locations data
+        await fetchLocationsData();
+
+        // 4. Always load all machines data for evaluation tab
+        await fetchAllMachines();
+      } finally {
+        // Clear loading states
+        setStatsLoading(false);
+        setOverviewLoading(false);
+        setAnalysisLoading(false);
+        setOfflineLoading(false);
+        setEvaluationLoading(false);
+      }
     };
 
     loadDataStreaming();
-  }, [fetchMachineStats, fetchOverviewMachines, fetchLocationsData]);
+  }, [
+    selectedLicencee, 
+    selectedDateRange?.start, 
+    selectedDateRange?.end,
+    fetchMachineStats,
+    fetchOverviewMachines,
+    fetchLocationsData,
+    fetchAllMachines
+  ]);
 
-  // Refetch data when date range changes
+  // Show loading state for current tab when licensee changes
   useEffect(() => {
-    if (selectedDateRange?.start && selectedDateRange?.end) {
-      // Refetch stats and overview data when date range changes
-      fetchMachineStats();
+    if (activeTab === "overview") {
+      setOverviewLoading(true);
+    } else if (activeTab === "comparison") {
+      setAnalysisLoading(true);
+    } else if (activeTab === "evaluation") {
+      setEvaluationLoading(true);
+    } else if (activeTab === "offline") {
+      setOfflineLoading(true);
+    }
+  }, [selectedLicencee, activeTab]);
+
+  // Effects to trigger data refetch when location selections change
+  useEffect(() => {
+    if (activeTab === "overview" && overviewSelectedLocation) {
       fetchOverviewMachines(1);
     }
-  }, [selectedDateRange, fetchMachineStats, fetchOverviewMachines]);
+  }, [overviewSelectedLocation, activeTab, fetchOverviewMachines]);
+
+  useEffect(() => {
+    if ((activeTab === "comparison" || activeTab === "evaluation") && (comparisonSelectedLocation || evaluationSelectedLocation)) {
+      fetchAllMachines();
+    }
+  }, [comparisonSelectedLocation, evaluationSelectedLocation, activeTab, fetchAllMachines]);
+
+  useEffect(() => {
+    if (activeTab === "offline" && offlineSelectedLocation) {
+      fetchOfflineMachines();
+    }
+  }, [offlineSelectedLocation, activeTab, fetchOfflineMachines]);
 
   // Handle online status filter change
   const handleOnlineStatusFilterChange = useCallback(
@@ -777,13 +998,13 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: machine.machineId,
+        serialNumber: (machine as any).serialNumber || (machine as any).origSerialNumber || machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
         smbId: machine.machineId,
-        moneyIn: machine.coinIn || 0,
-        moneyOut: machine.coinOut || 0,
+        moneyIn: machine.drop || 0,
+        moneyOut: machine.totalCancelledCredits || 0,
         gross: machine.netWin || 0,
         jackpot: 0,
         lastOnline: machine.lastActivity,
@@ -807,13 +1028,13 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: machine.machineId,
+        serialNumber: (machine as any).serialNumber || (machine as any).origSerialNumber || machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
         smbId: machine.machineId,
-        moneyIn: machine.coinIn || 0,
-        moneyOut: machine.coinOut || 0,
+        moneyIn: machine.drop || 0,
+        moneyOut: machine.totalCancelledCredits || 0,
         gross: machine.netWin || 0,
         jackpot: 0,
         lastOnline: machine.lastActivity,
@@ -830,26 +1051,61 @@ export default function MachinesTab() {
     [openDeleteModal]
   );
 
-  // Handle tab change with lazy loading
+  // Handle tab change with explicit fetch per tab
   const handleTabChange = useCallback(
     async (tab: string) => {
       setActiveTab(tab);
 
-      if (tab === "comparison" && allMachines.length === 0) {
-        await fetchAllMachines();
-      } else if (tab === "offline" && offlineMachines.length === 0) {
-        await fetchOfflineMachines();
-      } else if (tab === "evaluation" && allMachines.length === 0) {
-        await fetchAllMachines();
+      // Update URL param to persist tab state
+      try {
+        const sp = new URLSearchParams(searchParams?.toString() || "");
+        sp.set("mtab", tab);
+        // ensure section is machines
+        sp.set("section", "machines");
+        router.replace(`${pathname}?${sp.toString()}`);
+      } catch {}
+
+      if (tab === "overview") {
+        setOverviewLoading(true);
+        try {
+          await fetchOverviewMachines(1);
+        } finally {
+          setOverviewLoading(false);
+        }
+      } else if (tab === "comparison") {
+        setAnalysisLoading(true);
+        try {
+          await fetchAllMachines();
+        } finally {
+          setAnalysisLoading(false);
+        }
+      } else if (tab === "evaluation") {
+        setEvaluationLoading(true);
+        try {
+          await fetchAllMachines();
+        } finally {
+          setEvaluationLoading(false);
+        }
+      } else if (tab === "offline") {
+        setOfflineLoading(true);
+        try {
+          await fetchOfflineMachines();
+        } finally {
+          setOfflineLoading(false);
+        }
       }
     },
-    [
-      allMachines.length,
-      offlineMachines.length,
-      fetchAllMachines,
-      fetchOfflineMachines,
-    ]
+    [fetchOverviewMachines, fetchAllMachines, fetchOfflineMachines, router, pathname, searchParams]
   );
+
+  // Initialize activeTab from URL
+  useEffect(() => {
+    const initial = searchParams?.get("mtab");
+    if (initial && initial !== activeTab) {
+      setActiveTab(initial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Calculate overview statistics from filtered machines
   const overviewStats = useMemo(() => {
@@ -868,12 +1124,12 @@ export default function MachinesTab() {
       0
     );
     const totalJackpot = filteredMachines.reduce(
-      (sum, m) => sum + (m.jackpot || 0),
+      (sum, m) => sum + 0, // Jackpot not available in current data
       0
     );
     const averageHold =
       totalMachines > 0
-        ? filteredMachines.reduce((sum, m) => sum + (m.actualHold || 0), 0) /
+        ? filteredMachines.reduce((sum, m) => sum + (m.theoreticalHold || 0), 0) /
           totalMachines
         : 0;
 
@@ -1107,7 +1363,7 @@ export default function MachinesTab() {
 
         <TabsContent value="overview" className="space-y-4">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
             <div className="flex-1">
               <Input
                 placeholder="Search machines..."
@@ -1116,27 +1372,19 @@ export default function MachinesTab() {
                 className="w-full text-gray-900 placeholder:text-gray-600 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-full md:w-48 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <SelectValue
-                  placeholder="All Locations"
-                  className="text-gray-900"
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-full md:w-[420px]">
+              <LocationSingleSelect
+                locations={locations}
+                selectedLocation={overviewSelectedLocation}
+                onSelectionChange={setOverviewSelectedLocation}
+                placeholder="Select Location"
+              />
+            </div>
             <Select
               value={onlineStatusFilter}
               onValueChange={handleOnlineStatusFilterChange}
             >
-              <SelectTrigger className="w-full md:w-48 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+              <SelectTrigger className="w-full md:w-40 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                 <SelectValue
                   placeholder="All Status"
                   className="text-gray-900"
@@ -1148,6 +1396,14 @@ export default function MachinesTab() {
                 <SelectItem value="offline">Offline</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={() => fetchOverviewMachines(1)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportMeters}>
+                <Download className="h-4 w-4 mr-2" /> Export
+              </Button>
+            </div>
           </div>
 
           {/* Machine List */}
@@ -1172,6 +1428,14 @@ export default function MachinesTab() {
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Export Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchOverviewMachines(1)}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
                   </Button>
                 </div>
               </div>
@@ -1247,7 +1511,11 @@ export default function MachinesTab() {
                                       </div>
                                       <div className="text-sm text-muted-foreground">
                                         {machine.manufacturer || "Unknown"} •{" "}
-                                        {machine.machineId}
+                                        {
+                                          (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
+                                            (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                            machine.machineId
+                                        }
                                       </div>
                                     </div>
                                   </td>
@@ -1357,7 +1625,11 @@ export default function MachinesTab() {
                                 </h4>
                                 <p className="text-sm text-muted-foreground">
                                   {machine.manufacturer || "Unknown"} •{" "}
-                                  {machine.machineId}
+                                  {
+                                    (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
+                                      (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                      machine.machineId
+                                  }
                                 </p>
                               </div>
                             </div>
@@ -1491,11 +1763,17 @@ export default function MachinesTab() {
         <TabsContent value="comparison" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Machine Performance Comparison</CardTitle>
-              <CardDescription>
-                Compare actual machine performance against theoretical
-                expectations
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Machine Performance Comparison</CardTitle>
+                  <CardDescription>
+                    Compare actual machine performance against theoretical expectations
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchAllMachines}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {analysisLoading ? (
@@ -1516,25 +1794,14 @@ export default function MachinesTab() {
                         className="w-full text-gray-900 placeholder:text-gray-600 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
-                    <Select
-                      value={locationFilter}
-                      onValueChange={setLocationFilter}
-                    >
-                      <SelectTrigger className="w-full md:w-48 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        <SelectValue
-                          placeholder="All Locations"
-                          className="text-gray-900"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Locations</SelectItem>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="w-full md:w-[420px]">
+                      <LocationSingleSelect
+                        locations={locations}
+                        selectedLocation={comparisonSelectedLocation}
+                        onSelectionChange={setComparisonSelectedLocation}
+                        placeholder="Select Location"
+                      />
+                    </div>
                   </div>
 
                   <div className="rounded-md border">
@@ -1574,7 +1841,11 @@ export default function MachinesTab() {
                                     {machine.machineName}
                                   </div>
                                   <div className="text-sm text-muted-foreground">
-                                    {machine.machineId}
+                                    {
+                                      (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
+                                        (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                        machine.machineId
+                                    }
                                   </div>
                                 </div>
                               </td>
@@ -1684,42 +1955,304 @@ export default function MachinesTab() {
         </TabsContent>
 
         <TabsContent value="evaluation" className="space-y-6">
-          {/* Header Section */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Machine Evaluation Report
-                </h2>
-                <p className="text-gray-600 mt-1">
-                  Comprehensive analysis of machine performance and revenue
-                  metrics
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh Data
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Report
-                </Button>
-              </div>
+          {/* Filters for Evaluation Tab */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
+            <div className="flex-1">
+              <Input
+                placeholder="Search machines..."
+                value={evaluationSearchTerm}
+                onChange={(e) => setEvaluationSearchTerm(e.target.value)}
+                className="w-full text-gray-900 placeholder:text-gray-600 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="w-full md:w-[420px]">
+              <LocationSingleSelect
+                locations={locations}
+                selectedLocation={evaluationSelectedLocation}
+                onSelectionChange={setEvaluationSelectedLocation}
+                placeholder="Select Location"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={async () => {
+                setEvaluationLoading(true);
+                try { await fetchAllMachines(); } finally { setEvaluationLoading(false); }
+              }}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+              <Button variant="outline" size="sm" onClick={async () => {
+                // reuse meters export for now as representative (net win and games)
+                await handleExportMeters();
+              }}>
+                <Download className="h-4 w-4 mr-2" /> Export
+              </Button>
             </div>
           </div>
+          {evaluationLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+              <span>Loading evaluation data...</span>
+            </div>
+          ) : (
+            <>
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Manufacturers Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  Manufacturers Performance
+                </CardTitle>
+                <CardDescription>
+                  Performance metrics by manufacturer
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {evaluationChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={evaluationChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v: number) => {
+                        const abs = Math.abs(v);
+                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
+                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
+                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+                        return `${v}`;
+                      }} />
+                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Legend />
+                      <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
+                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Filters Section */}
+            {/* Games Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-green-600" />
+                  Top Games Performance
+                </CardTitle>
+                <CardDescription>
+                  Performance metrics by game type
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {gamesPerformanceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={gamesPerformanceData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v: number) => {
+                        const abs = Math.abs(v);
+                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
+                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
+                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+                        return `${v}`;
+                      }} />
+                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Legend />
+                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
+                      <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Hold Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  Hold Performance
+                </CardTitle>
+                <CardDescription>
+                  Actual vs Theoretical Hold by manufacturer
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {evaluationChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={evaluationChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v: number) => {
+                        const abs = Math.abs(v);
+                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
+                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
+                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+                        return `${v}`;
+                      }} />
+                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Legend />
+                      <Bar dataKey="avgHold" fill="#8b5cf6" name="Avg Hold (%)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Manufacturers Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  Manufacturers Performance
+                </CardTitle>
+                <CardDescription>
+                  Performance metrics by manufacturer
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {evaluationChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={evaluationChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v: number) => {
+                        const abs = Math.abs(v);
+                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
+                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
+                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+                        return `${v}`;
+                      }} />
+                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Legend />
+                      <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
+                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Games Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-green-600" />
+                  Top Games Performance
+                </CardTitle>
+                <CardDescription>
+                  Performance metrics by game type
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {gamesPerformanceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={gamesPerformanceData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v: number) => {
+                        const abs = Math.abs(v);
+                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
+                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
+                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+                        return `${v}`;
+                      }} />
+                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Legend />
+                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
+                      <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Hold Performance Chart */}
+            <Card className="h-96">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  Hold Performance
+                </CardTitle>
+                <CardDescription>
+                  Actual vs Theoretical Hold by manufacturer
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {evaluationChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={evaluationChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="avgHold" fill="#8b5cf6" name="Avg Hold (%)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="text-gray-500">No data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top 5 Machines Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Filters & Controls</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-orange-600" />
+                Top 5 Machines
+              </CardTitle>
+              <CardDescription>
+                Highest performing machines by revenue and hold percentage
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <Input
                     placeholder="Search machines..."
@@ -1748,235 +2281,14 @@ export default function MachinesTab() {
                 </Select>
                 <Button
                   variant="outline"
-                  className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                  onClick={() => {
+                    setEvaluationSearchTerm("");
+                    setLocationFilter("all");
+                  }}
                 >
                   Clear Filters
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Summary Section */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Performance Summary
-                </h3>
-                <p className="text-blue-700 font-medium">
-                  {filteredEvaluationData.length > 0
-                    ? `${Math.round(
-                        (filteredEvaluationData.filter(
-                          (m) =>
-                            m.performanceRating === "excellent" ||
-                            m.performanceRating === "good"
-                        ).length /
-                          filteredEvaluationData.length) *
-                          100
-                      )}% of machines are performing at or above theoretical standards`
-                    : "Loading performance data..."}
-                </p>
-              </div>
-              <div className="flex gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {
-                      filteredEvaluationData.filter(
-                        (m) => m.performanceRating === "excellent"
-                      ).length
-                    }
-                  </div>
-                  <div className="text-sm text-gray-600">Excellent</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {
-                      filteredEvaluationData.filter(
-                        (m) => m.performanceRating === "good"
-                      ).length
-                    }
-                  </div>
-                  <div className="text-sm text-gray-600">Good</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {
-                      filteredEvaluationData.filter(
-                        (m) => m.performanceRating === "average"
-                      ).length
-                    }
-                  </div>
-                  <div className="text-sm text-gray-600">Average</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
-                    {
-                      filteredEvaluationData.filter(
-                        (m) => m.performanceRating === "poor"
-                      ).length
-                    }
-                  </div>
-                  <div className="text-sm text-gray-600">Poor</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Manufacturers Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  Manufacturers Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by manufacturer across key indicators
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={[
-                      {
-                        name: "Floor Positions",
-                        "Gold Club d.o.o.": 80,
-                        "Rhapsody C": 20,
-                      },
-                      {
-                        name: "Total Handle",
-                        "Gold Club d.o.o.": 80,
-                        "Rhapsody C": 15,
-                      },
-                      {
-                        name: "Total Win",
-                        "Gold Club d.o.o.": 100,
-                        "Rhapsody C": 15,
-                      },
-                      {
-                        name: "Canc. Credits",
-                        "Gold Club d.o.o.": 95,
-                        "Rhapsody C": -5,
-                      },
-                    ]}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Gold Club d.o.o." fill="#3b82f6" />
-                    <Bar dataKey="Rhapsody C" fill="#6b7280" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Games Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-green-600" />
-                  Games Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by game type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={[
-                      {
-                        name: "Floor Positions",
-                        "Gold Club d.o.o.": 80,
-                        "Rhapsody C": 20,
-                      },
-                      {
-                        name: "Total Handle",
-                        "Gold Club d.o.o.": 80,
-                        "Rhapsody C": 15,
-                      },
-                      {
-                        name: "Total Win",
-                        "Gold Club d.o.o.": 100,
-                        "Rhapsody C": -5,
-                      },
-                    ]}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Gold Club d.o.o." fill="#10b981" />
-                    <Bar dataKey="Rhapsody C" fill="#6b7280" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Games Performance Revenue Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
-                  Games Performance Revenue
-                </CardTitle>
-                <CardDescription>
-                  Revenue performance metrics by game type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={[
-                      {
-                        name: "Total Drop",
-                        "Gold Club d.o.o.": 95,
-                        "Rhapsody C": 5,
-                      },
-                      {
-                        name: "Canc. Credits",
-                        "Gold Club d.o.o.": 95,
-                        "Rhapsody C": 5,
-                      },
-                      {
-                        name: "Total Gross",
-                        "Gold Club d.o.o.": 100,
-                        "Rhapsody C": -5,
-                      },
-                    ]}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Gold Club d.o.o." fill="#8b5cf6" />
-                    <Bar dataKey="Rhapsody C" fill="#6b7280" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Top 5 Machines Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-orange-600" />
-                Top 5 Machines
-              </CardTitle>
-              <CardDescription>
-                Highest performing machines by revenue and hold percentage
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -2029,7 +2341,11 @@ export default function MachinesTab() {
                             {machine.locationName}
                           </td>
                           <td className="p-3 text-sm font-mono">
-                            {machine.serialNumber}
+                            {
+                              (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
+                                (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                machine.machineId
+                            }
                           </td>
                           <td className="p-3 text-sm">{machine.gameTitle}</td>
                           <td className="p-3 text-sm">
@@ -2086,6 +2402,8 @@ export default function MachinesTab() {
               )}
             </CardContent>
           </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="offline" className="space-y-4">
@@ -2115,25 +2433,14 @@ export default function MachinesTab() {
                         className="w-full text-gray-900 placeholder:text-gray-600 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
-                    <Select
-                      value={locationFilter}
-                      onValueChange={setLocationFilter}
-                    >
-                      <SelectTrigger className="w-full md:w-48 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        <SelectValue
-                          placeholder="All Locations"
-                          className="text-gray-900"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Locations</SelectItem>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="w-full md:w-[420px]">
+                      <LocationSingleSelect
+                        locations={locations}
+                        selectedLocation={offlineSelectedLocation}
+                        onSelectionChange={setOfflineSelectedLocation}
+                        placeholder="Select Location"
+                      />
+                    </div>
                   </div>
 
                   <div className="mb-4">

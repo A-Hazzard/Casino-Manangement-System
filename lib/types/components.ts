@@ -269,6 +269,12 @@ export type LocationMapProps = {
   height?: string;
   showMetrics?: boolean;
   selectedLocationId?: string;
+  // Optional pre-aggregated metrics to avoid duplicate API calls
+  aggregates?: any[];
+  // Two-phase loading props
+  gamingLocations?: any[]; // Basic location data for immediate display
+  gamingLocationsLoading?: boolean; // Loading state for gaming locations
+  financialDataLoading?: boolean; // Loading state for financial data
 };
 
 // Chart Props Types

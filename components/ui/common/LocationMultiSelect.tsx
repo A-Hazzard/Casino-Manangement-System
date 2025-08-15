@@ -43,15 +43,15 @@ export default function LocationMultiSelect({
   };
 
   const handleClearAll = () => {
-    console.log("Clearing all selections");
     onSelectionChange([]);
     setIsOpen(false); // Close the dropdown after clearing
   };
 
   // Filter options based on search term
-  const filteredOptions = locations.filter((option) =>
-    option.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = locations.filter((option) => {
+    const name = option.name || "";
+    return name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const selectedOptions = locations.filter((option) =>
     selectedLocations.includes(option.id)

@@ -1,5 +1,5 @@
 import { SignJWT } from "jose";
-import { getUserByEmail } from "./users";
+import { getUserByEmail, getUserByUsername } from "./users";
 import { sendEmail } from "../../lib/utils/email";
 import { UserAuthPayload } from "@/lib/types";
 import { comparePassword } from "../utils/validation";
@@ -15,10 +15,13 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
  * @returns Authentication result containing token and user payload
  */
 export async function authenticateUser(
-  email: string,
-  password: string,
+  identifier: string,
+  password: string
 ): Promise<AuthResult> {
-  const user = await getUserByEmail(email);
+  // Accept either email or username
+  const user = /\S+@\S+\.\S+/.test(identifier)
+    ? await getUserByEmail(identifier)
+    : await getUserByUsername(identifier);
   if (!user) return { success: false, message: "User not found." };
 
   const isMatch = await comparePassword(password, user.password || "");
@@ -63,7 +66,9 @@ export async function authenticateUser(
  * @param email - User email address
  * @returns Result indicating if the email was sent successfully
  */
-export async function sendResetPasswordEmail(email: string): Promise<AuthResult> {
+export async function sendResetPasswordEmail(
+  email: string
+): Promise<AuthResult> {
   const user = await getUserByEmail(email);
   if (!user) {
     return { success: false, message: "User not found." };

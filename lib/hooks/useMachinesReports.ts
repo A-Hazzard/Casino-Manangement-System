@@ -9,12 +9,10 @@ export function useMachinesAnalytics() {
   // Use useCallback to memoize setter functions
   const setIsLoading = useCallback(() => {
     // TODO: Add loading state to reports store
-    console.log("Setting loading state");
   }, []);
 
   const setError = useCallback(() => {
     // TODO: Add error state to reports store
-    console.log("Setting error state");
   }, []);
 
   // Use useMemo to memoize the selectedMachineIds array

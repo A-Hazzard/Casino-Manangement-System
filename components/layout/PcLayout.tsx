@@ -13,6 +13,7 @@ import Chart from "@/components/ui/dashboard/Chart";
 import { RefreshCw, BarChart3 } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function PcLayout(props: PcLayoutProps) {
@@ -27,34 +28,78 @@ export default function PcLayout(props: PcLayoutProps) {
   const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
   const [aggLoading, setAggLoading] = useState(true);
 
+  // Machine stats state for online/offline counts
+  const [machineStats, setMachineStats] = useState<{
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null>(null);
+  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
+
+  // Fetch machine stats (like reports tab) for online/offline counts
   useEffect(() => {
-    const fetchLocationAggregation = async () => {
-      setAggLoading(true);
+    let aborted = false;
+    const fetchMachineStats = async () => {
+      setMachineStatsLoading(true);
       try {
-        const res = await fetch("/api/locationAggregation?timePeriod=Today");
-        const response = await res.json();
-        // Extract the data array from the response
-        setLocationAggregates(response.data || []);
+        const params = new URLSearchParams();
+        params.append("licensee", "all"); // Get all machines
+
+        const res = await axios.get(
+          `/api/analytics/machines/stats?${params.toString()}`
+        );
+        const data = res.data;
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: data.totalMachines || 0,
+            onlineMachines: data.onlineMachines || 0,
+            offlineMachines: data.offlineMachines || 0,
+          });
+        }
       } catch {
-        setLocationAggregates([]);
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
       } finally {
-        setAggLoading(false);
+        if (!aborted) setMachineStatsLoading(false);
       }
     };
-    fetchLocationAggregation();
+    fetchMachineStats();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
-  // Calculate total online/offline from aggregation
-  const onlineCount = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce(
-        (sum, loc) => sum + (loc.onlineMachines || 0),
-        0
-      )
-    : 0;
-  const totalMachines = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
-    : 0;
-  const offlineCount = totalMachines - onlineCount;
+  // Only fetch locationAggregation for MapPreview when needed
+  useEffect(() => {
+    let aborted = false;
+    const fetchAgg = async () => {
+      setAggLoading(true);
+      try {
+        const res = await axios.get(
+          `/api/locationAggregation?timePeriod=Today`
+        );
+        const json = res.data;
+        if (!aborted) setLocationAggregates(json.data || []);
+      } catch {
+        if (!aborted) setLocationAggregates([]);
+      } finally {
+        if (!aborted) setAggLoading(false);
+      }
+    };
+    fetchAgg();
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  // Use machine stats for online/offline counts
+  const onlineCount = machineStats?.onlineMachines || 0;
+  const offlineCount = machineStats?.offlineMachines || 0;
 
   return (
     <div className="hidden xl:block">
@@ -157,18 +202,22 @@ export default function PcLayout(props: PcLayoutProps) {
 
         {/* Right Section (Map & Status) - 40% Width (2/5 columns) */}
         <div className="col-span-2 space-y-6">
-          {/* Online/Offline Status Widget */}
-          <div className="bg-container rounded-lg shadow-md p-6">
-            <MachineStatusWidget
-              isLoading={aggLoading}
-              onlineCount={onlineCount}
-              offlineCount={offlineCount}
-            />
-          </div>
-
           {/* Map Preview Section */}
           <div className="bg-container rounded-lg shadow-md p-6">
-            <MapPreview gamingLocations={props.gamingLocations} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Location Map</h3>
+              {aggLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span>Loading financial data...</span>
+                </div>
+              )}
+            </div>
+            <MapPreview
+              gamingLocations={props.gamingLocations}
+              locationAggregates={locationAggregates}
+              aggLoading={aggLoading}
+            />
           </div>
 
           {/* Top Performing Section */}
