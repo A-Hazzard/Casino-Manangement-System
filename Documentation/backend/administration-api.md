@@ -3,13 +3,31 @@
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## Overview
-The Administration & Users API provides comprehensive user management, system administration, and access control functionality for the gaming system. It handles user creation, role management, permissions, and administrative operations.
+The Administration & Users API provides comprehensive user management, system administration, and access control functionality for the gaming system. It handles user creation, role management, permissions, and administrative operations with comprehensive logging for audit trails and security monitoring.
 
 ## Base URLs
 ```
 /api/users
 /api/admin
 /api/activity-logs
+```
+
+## API Logging
+
+All endpoints in this API include comprehensive logging using the `APILogger` utility (`app/api/lib/utils/logger.ts`). Each request is logged with:
+
+- **Timestamp**: ISO format timestamp
+- **Duration**: Request processing time in milliseconds
+- **Method & Endpoint**: HTTP method and endpoint path
+- **User Context**: User identification when available
+- **IP Address**: Client IP address for security tracking
+- **User Agent**: Browser/client information
+- **Request Parameters**: Query parameters and relevant request data
+- **Response Status**: Success/failure status with details
+
+**Log Format Example:**
+```
+[2024-01-15T10:30:45.123Z] [INFO] (245ms) GET /api/users: Users fetched successfully User: admin123 IP: 192.168.1.100 Params: {"licensee":"all"} Data: {"count":15}
 ```
 
 ## Users API
@@ -48,6 +66,8 @@ Retrieves all system users with optional filtering.
 }
 ```
 
+**Logging:** Comprehensive logging with user count and filtering context
+
 **Used By:**
 - `/administration` page - User management interface
 - User listing components
@@ -62,7 +82,7 @@ Creates a new system user.
 ```json
 {
   "username": "newuser",
-  "emailAddress": "newuser@example.com",
+  "email": "newuser@example.com",
   "password": "securepassword123",
   "roles": ["user"],
   "profile": {
@@ -88,7 +108,7 @@ Creates a new system user.
   "user": {
     "_id": "new_user_id",
     "username": "newuser",
-    "emailAddress": "newuser@example.com",
+    "email": "newuser@example.com",
     "roles": ["user"],
     "profile": {
       "firstName": "Jane",
@@ -123,6 +143,8 @@ Creates a new system user.
 }
 ```
 
+**Logging:** Success/failure logging with user creation details and validation errors
+
 **Used By:**
 - User creation forms
 - Administrative interfaces
@@ -137,7 +159,7 @@ Updates an existing system user.
 {
   "_id": "user_id",
   "username": "updateduser",
-  "emailAddress": "updated@example.com",
+  "email": "updated@example.com",
   "roles": ["admin", "user"],
   "profile": {
     "firstName": "Updated",
@@ -146,6 +168,7 @@ Updates an existing system user.
     "department": "Management"
   },
   "isEnabled": true,
+  "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
   "resourcePermissions": {
     "locations": ["read", "write"],
     "machines": ["read", "write"],
@@ -161,7 +184,7 @@ Updates an existing system user.
   "user": {
     "_id": "user_id",
     "username": "updateduser",
-    "emailAddress": "updated@example.com",
+    "email": "updated@example.com",
     "roles": ["admin", "user"],
     "profile": {
       "firstName": "Updated",
@@ -170,6 +193,7 @@ Updates an existing system user.
       "department": "Management"
     },
     "isEnabled": true,
+    "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
     "resourcePermissions": {
       "locations": ["read", "write"],
       "machines": ["read", "write"],
@@ -179,6 +203,8 @@ Updates an existing system user.
   }
 }
 ```
+
+**Logging:** Change tracking with before/after values and update context
 
 **Used By:**
 - User editing forms
@@ -199,55 +225,164 @@ Deletes a system user.
 **Response (Success - 200):**
 ```json
 {
-  "success": true
+  "success": true,
+  "message": "User deleted successfully"
 }
 ```
 
+**Response (Error - 404):**
+```json
+{
+  "success": false,
+  "message": "User not found"
+}
+```
+
+**Logging:** Deletion confirmation with user context and security tracking
+
 **Used By:**
-- User management interface
-- Administrative cleanup
+- User deletion forms
+- Administrative interfaces
 
 ---
 
-### GET /api/users/[id]
-Retrieves detailed information for a specific user.
+## Licensees API
 
-**Path Parameters:**
-- `id` (string): User ID
+### GET /api/licensees
+Retrieves all licensees with optional filtering.
+
+**Query Parameters:**
+- `licensee` (string, optional): Filter by specific licensee ID or name
+
+**Response (Success - 200):**
+```json
+{
+  "licensees": [
+    {
+      "_id": "licensee_id",
+      "name": "Casino Royale",
+      "country": "United States",
+      "licenseKey": "CR-2024-001",
+      "isPaid": true,
+      "expiryDate": "2024-12-31T23:59:59.000Z",
+      "startDate": "2024-01-01T00:00:00.000Z",
+      "contactEmail": "contact@casinoroyale.com",
+      "contactPhone": "+1234567890"
+    }
+  ]
+}
+```
+
+**Logging:** Access logging with filtering context and licensee count
+
+**Used By:**
+- Licensee management interfaces
+- Payment tracking systems
+
+---
+
+### POST /api/licensees
+Creates a new licensee.
+
+**Request Body:**
+```json
+{
+  "name": "New Casino",
+  "country": "Canada",
+  "contactEmail": "info@newcasino.com",
+  "contactPhone": "+1234567890",
+  "startDate": "2024-01-01T00:00:00.000Z",
+  "expiryDate": "2024-12-31T23:59:59.000Z"
+}
+```
+
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "licensee": {
+    "_id": "new_licensee_id",
+    "name": "New Casino",
+    "country": "Canada",
+    "licenseKey": "NC-2024-001",
+    "isPaid": false,
+    "expiryDate": "2024-12-31T23:59:59.000Z",
+    "startDate": "2024-01-01T00:00:00.000Z",
+    "contactEmail": "info@newcasino.com",
+    "contactPhone": "+1234567890",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+**Logging:** Creation logging with licensee details and license key generation
+
+**Used By:**
+- Licensee creation forms
+- Administrative interfaces
+
+---
+
+### PUT /api/licensees
+Updates an existing licensee.
+
+**Request Body:**
+```json
+{
+  "_id": "licensee_id",
+  "name": "Updated Casino",
+  "isPaid": true,
+  "expiryDate": "2025-12-31T23:59:59.000Z"
+}
+```
 
 **Response (Success - 200):**
 ```json
 {
   "success": true,
-  "data": {
-    "user": {
-      "_id": "user_id",
-      "username": "johndoe",
-      "emailAddress": "john@example.com",
-      "roles": ["admin"],
-      "profile": {
-        "firstName": "John",
-        "lastName": "Doe",
-        "phone": "+1234567890",
-        "department": "IT"
-      },
-      "isEnabled": true,
-      "resourcePermissions": {
-        "locations": ["read", "write"],
-        "machines": ["read", "write"],
-        "reports": ["read", "write", "export"]
-      },
-      "lastLogin": "2024-01-01T12:00:00.000Z",
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    }
+  "licensee": {
+    "_id": "licensee_id",
+    "name": "Updated Casino",
+    "isPaid": true,
+    "expiryDate": "2025-12-31T23:59:59.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
   }
 }
 ```
 
+**Logging:** Update logging with change tracking and payment status updates
+
 **Used By:**
-- User profile pages
-- Administrative user details
+- Licensee editing forms
+- Payment management interfaces
+
+---
+
+### DELETE /api/licensees
+Deletes a licensee.
+
+**Request Body:**
+```json
+{
+  "_id": "licensee_id"
+}
+```
+
+**Response (Success - 200):**
+```json
+{
+  "success": true,
+  "message": "Licensee deleted successfully"
+}
+```
+
+**Logging:** Deletion logging with licensee context and security tracking
+
+**Used By:**
+- Licensee deletion forms
+- Administrative interfaces
+
+---
 
 ## Activity Logs API
 
@@ -255,92 +390,143 @@ Retrieves detailed information for a specific user.
 Retrieves system activity logs with filtering and pagination.
 
 **Query Parameters:**
-- `page` (number, default: 1): Page number for pagination
-- `limit` (number, default: 50): Number of logs per page
-- `userId` (string, optional): Filter by user ID
-- `action` (string, optional): Filter by action type
-- `resource` (string, optional): Filter by resource type
-- `startDate` (string, optional): Start date for filtering
-- `endDate` (string, optional): End date for filtering
+- `entityType` (string, optional): Filter by entity type (user, licensee, etc.)
+- `actionType` (string, optional): Filter by action type (create, update, delete)
+- `actor` (string, optional): Filter by actor ID
+- `startDate` (string, optional): Start date for filtering (ISO format)
+- `endDate` (string, optional): End date for filtering (ISO format)
+- `page` (number, optional): Page number for pagination
+- `limit` (number, optional): Number of records per page
 
 **Response (Success - 200):**
 ```json
 {
-  "success": true,
-  "data": {
-    "logs": [
-      {
-        "_id": "log_id",
-        "userId": "user_id",
-        "username": "johndoe",
-        "action": "login",
-        "resource": "auth",
-        "details": "User logged in successfully",
-        "ipAddress": "192.168.1.100",
-        "userAgent": "Mozilla/5.0...",
-        "timestamp": "2024-01-01T12:00:00.000Z",
-        "metadata": {
-          "location": "Main Office",
-          "sessionId": "session_123"
+  "activityLogs": [
+    {
+      "_id": "log_id",
+      "actor": {
+        "id": "user_id",
+        "name": "John Doe",
+        "username": "johndoe"
+      },
+      "actionType": "update",
+      "entityType": "user",
+      "entity": {
+        "id": "target_user_id",
+        "name": "Jane Smith"
+      },
+      "changes": {
+        "before": {
+          "roles": ["user"],
+          "isEnabled": true
+        },
+        "after": {
+          "roles": ["admin", "user"],
+          "isEnabled": true
         }
-      }
-    ],
-    "pagination": {
-      "currentPage": 1,
-      "totalPages": 5,
-      "totalLogs": 250,
-      "hasNextPage": true,
-      "hasPrevPage": false
+      },
+      "timestamp": "2024-01-01T10:30:45.123Z",
+      "ip": "192.168.1.100",
+      "userAgent": "Mozilla/5.0..."
     }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "pages": 8
   }
 }
 ```
 
+**Logging:** Access logging for audit trail queries with filtering context
+
 **Used By:**
-- `/administration` page - Activity monitoring
-- Security auditing
-- Compliance reporting
+- Activity log interfaces
+- Audit trail systems
+- Security monitoring
 
-## Admin API
+---
 
-### POST /api/admin/create-indexes
-Creates database indexes for optimal performance.
+### POST /api/activity-logs
+Creates a new activity log entry.
 
-**Request Body:** None required
-
-**Response (Success - 200):**
+**Request Body:**
 ```json
 {
-  "success": true,
-  "message": "Database indexes created successfully",
-  "indexes": [
-    {
-      "collection": "users",
-      "index": "emailAddress_1",
-      "status": "created"
-    },
-    {
-      "collection": "machinesessions",
-      "index": "startTime_1",
-      "status": "created"
+  "actor": {
+    "id": "user_id",
+    "name": "John Doe",
+    "username": "johndoe"
+  },
+  "actionType": "create",
+  "entityType": "user",
+  "entity": {
+    "id": "new_user_id",
+    "name": "Jane Smith"
+  },
+  "changes": {
+    "before": null,
+    "after": {
+      "username": "janesmith",
+      "email": "jane@example.com",
+      "roles": ["user"]
     }
-  ]
+  },
+  "timestamp": "2024-01-01T10:30:45.123Z"
 }
 ```
 
-**Used By:**
-- System initialization
-- Performance optimization
-- Database maintenance
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "activityLog": {
+    "_id": "new_log_id",
+    "actor": {
+      "id": "user_id",
+      "name": "John Doe",
+      "username": "johndoe"
+    },
+    "actionType": "create",
+    "entityType": "user",
+    "entity": {
+      "id": "new_user_id",
+      "name": "Jane Smith"
+    },
+    "changes": {
+      "before": null,
+      "after": {
+        "username": "janesmith",
+        "email": "jane@example.com",
+        "roles": ["user"]
+      }
+    },
+    "timestamp": "2024-01-01T10:30:45.123Z",
+    "ip": "192.168.1.100",
+    "userAgent": "Mozilla/5.0...",
+    "createdAt": "2024-01-01T10:30:45.123Z"
+  }
+}
+```
 
-## Database Models
+**Logging:** Creation logging for audit trail entries with security context
+
+**Used By:**
+- System-wide activity tracking
+- Audit trail generation
+- Security monitoring systems
+
+---
+
+## Data Models
 
 ### User Model
 ```typescript
 interface User {
   _id: string;
   username: string;
-  emailAddress: string;
+  email: string;
   password: string; // Hashed
   roles: string[];
   profile: {
@@ -348,19 +534,34 @@ interface User {
     lastName: string;
     phone?: string;
     department?: string;
-    avatar?: string;
+    licensee?: string;
   };
   isEnabled: boolean;
-  profilePicture?: string;
+  profilePicture?: string; // Base64 or URL
   resourcePermissions: {
-    [resource: string]: string[];
+    locations: string[];
+    machines: string[];
+    reports: string[];
   };
-  lastLogin?: Date;
-  failedLoginAttempts: number;
-  accountLocked: boolean;
   createdAt: Date;
   updatedAt: Date;
-  deletedAt?: Date;
+}
+```
+
+### Licensee Model
+```typescript
+interface Licensee {
+  _id: string;
+  name: string;
+  country: string;
+  licenseKey: string;
+  isPaid: boolean;
+  expiryDate: Date;
+  startDate: Date;
+  contactEmail: string;
+  contactPhone: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -368,97 +569,72 @@ interface User {
 ```typescript
 interface ActivityLog {
   _id: string;
-  userId: string;
-  username: string;
-  action: string;
-  resource: string;
-  details: string;
-  ipAddress: string;
-  userAgent: string;
+  actor: {
+    id: string;
+    name: string;
+    username: string;
+  };
+  actionType: 'create' | 'update' | 'delete' | 'login' | 'logout';
+  entityType: 'user' | 'licensee' | 'location' | 'machine';
+  entity: {
+    id: string;
+    name: string;
+  };
+  changes: {
+    before: any;
+    after: any;
+  };
   timestamp: Date;
-  metadata: Record<string, any>;
+  ip: string;
+  userAgent: string;
+  createdAt: Date;
 }
 ```
 
-## Features
-
-### User Management
-- **Role-Based Access Control**: Multiple roles with different permissions
-- **Resource Permissions**: Granular permissions per resource type
-- **Profile Management**: User profile information and avatars
-- **Account Status**: Enable/disable user accounts
-- **Password Security**: Secure password hashing and validation
-
-### Activity Monitoring
-- **Comprehensive Logging**: All user actions are logged
-- **Security Auditing**: Track login attempts, IP addresses, user agents
-- **Compliance Support**: Detailed audit trails for regulatory compliance
-- **Real-time Monitoring**: Live activity monitoring capabilities
-
-### Administrative Functions
-- **Database Optimization**: Index creation and maintenance
-- **System Health**: Performance monitoring and optimization
-- **Security Management**: User lockout and security policies
-- **Backup and Recovery**: System backup and restoration capabilities
-
 ## Security Features
 
-### Authentication & Authorization
-- **JWT Tokens**: Secure token-based authentication
-- **Role-Based Access**: Hierarchical role system
-- **Resource Permissions**: Fine-grained permission control
-- **Session Management**: Secure session handling
+- **Authentication**: JWT-based authentication for all endpoints
+- **Authorization**: Role-based access control (RBAC)
+- **Input Validation**: Comprehensive validation for all request data
+- **Rate Limiting**: Protection against abuse and DDoS attacks
+- **Activity Logging**: Complete audit trail for all operations
+- **API Logging**: Structured logging for security monitoring and performance tracking
 
-### Audit & Compliance
-- **Activity Logging**: Complete audit trail
-- **IP Tracking**: Source IP address logging
-- **User Agent Logging**: Browser/client information
-- **Metadata Storage**: Additional context for each action
+## Error Handling
 
-### Data Protection
-- **Password Hashing**: Secure password storage
-- **Input Validation**: Comprehensive input sanitization
-- **SQL Injection Protection**: Parameterized queries
-- **XSS Protection**: Cross-site scripting prevention
+All endpoints return consistent error responses:
 
-## Error Codes
+**Standard Error Format:**
+```json
+{
+  "success": false,
+  "message": "Human-readable error message",
+  "error": "Technical error details (development only)"
+}
+```
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request (Invalid input) |
-| 401 | Unauthorized (Authentication required) |
-| 403 | Forbidden (Insufficient permissions) |
-| 404 | Not Found (User not found) |
-| 409 | Conflict (Username/email already exists) |
-| 500 | Internal Server Error |
-
-## Dependencies
-
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT token validation
-- **Password Hashing**: bcrypt
-- **Validation**: Custom validation utilities
-- **Middleware**: Database connection middleware
-
-## Related Frontend Pages
-
-- **Administration** (`/administration`): Main administrative interface
-- **User Management**: User creation, editing, and management
-- **Activity Monitoring**: System activity and audit logs
-- **Security Settings**: Access control and security configuration
+**Common HTTP Status Codes:**
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized (authentication required)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `409` - Conflict (duplicate data)
+- `500` - Internal Server Error
 
 ## Performance Considerations
 
-### Data Optimization
-- **Indexed Queries**: Proper database indexing for fast queries
+- **Database Indexing**: Optimized indexes for common queries
 - **Pagination**: Efficient pagination for large datasets
-- **Selective Loading**: Load only required user data
-- **Caching Strategy**: Cache frequently accessed user data
+- **Caching**: Response caching for frequently accessed data
+- **Logging Performance**: Non-blocking logging operations
+- **Image Processing**: Optimized profile picture handling
 
-### Security Optimization
-- **Rate Limiting**: Prevent brute force attacks
-- **Session Management**: Efficient session handling
-- **Audit Trail**: Optimized logging without performance impact
-- **Permission Caching**: Cache user permissions for faster access
+## Compliance and Audit
+
+- **Regulatory Compliance**: Meets gaming industry audit requirements
+- **Data Retention**: Configurable log retention policies
+- **Audit Trail**: Complete audit trail for all operations
+- **Security Monitoring**: Real-time security event tracking
+- **Performance Monitoring**: System performance and usage analytics

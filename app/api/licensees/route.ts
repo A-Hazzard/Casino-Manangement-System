@@ -7,11 +7,14 @@ import {
   updateLicensee as updateLicenseeHelper,
   deleteLicensee as deleteLicenseeHelper,
 } from "@/app/api/lib/helpers/licensees";
+import { apiLogger } from "@/app/api/lib/utils/logger";
 
 export async function GET(request: NextRequest) {
-  await connectDB();
+  const context = apiLogger.createContext(request, "/api/licensees");
+  apiLogger.startLogging();
 
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const licenseeFilter = searchParams.get("licensee");
 
@@ -27,11 +30,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully fetched ${formattedLicensees.length} licensees`
+    );
     return new Response(JSON.stringify({ licensees: formattedLicensees }), {
       status: 200,
     });
   } catch (error) {
-    console.error("Error fetching licensees:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    apiLogger.logError(context, "Failed to fetch licensees", errorMessage);
     return new Response(
       JSON.stringify({ success: false, message: "Failed to fetch licensees" }),
       { status: 500 }

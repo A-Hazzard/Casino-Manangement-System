@@ -362,44 +362,44 @@ export default function UserActivityLogModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black bg-opacity-50 p-2 md:p-4">
         <div
           ref={modalRef}
-          className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+          className="bg-gray-50 rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="relative bg-white border-b border-gray-200 px-6 py-6">
+          <div className="relative bg-white border-b border-gray-200 px-4 md:px-6 py-4 md:py-6">
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+              className="absolute top-3 md:top-4 right-3 md:right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
               onClick={onClose}
               aria-label="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 md:w-6 md:h-6" />
             </button>
-            <h2 className="text-3xl font-bold text-center text-gray-900 pr-12">
+            <h2 className="text-xl md:text-3xl font-bold text-center text-gray-900 pr-10 md:pr-12">
               User Activity Log
             </h2>
           </div>
 
           {/* Filter Section */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
-              <span className="font-semibold text-lg text-gray-700 flex-shrink-0">
+          <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4">
+            <div className="flex flex-col gap-4 w-full">
+              <span className="font-semibold text-lg text-gray-700">
                 Filter By:
               </span>
-              <div className="flex flex-wrap gap-3 flex-1">
+              <div className="flex flex-col sm:flex-row gap-3">
                 {/* Date Filters */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <ActivityLogDateFilter />
                 </div>
 
                 {/* Activity Type Filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-600">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                     Activity Type:
                   </span>
                   <select
-                    className="rounded-xl px-4 py-2.5 font-semibold text-base bg-white border-2 border-gray-300 text-gray-700 focus:outline-none focus:border-blue-500 transition-colors"
+                    className="rounded-xl px-3 md:px-4 py-2 md:py-2.5 font-semibold text-sm md:text-base bg-white border-2 border-gray-300 text-gray-700 focus:outline-none focus:border-blue-500 transition-colors min-w-0"
                     value={activityType}
                     onChange={(e) => handleActivityTypeChange(e.target.value)}
                   >
@@ -414,7 +414,7 @@ export default function UserActivityLogModal({
 
           {/* Activity Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6">
+            <div className="px-4 md:px-6 py-4 md:py-6">
               {loading && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

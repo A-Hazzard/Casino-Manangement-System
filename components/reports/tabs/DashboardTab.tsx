@@ -260,32 +260,32 @@ export default function DashboardTab() {
       className="space-y-6"
     >
       {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
+        <div className="w-full lg:w-auto">
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
             Casino Performance Overview
           </h2>
           <p className="text-sm text-gray-600">
             Real-time analytics and key performance indicators
           </p>
           {realTimeMetrics && (
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-2">
               <Badge
                 variant="outline"
-                className="text-green-600 border-green-600"
+                className="text-green-600 border-green-600 text-xs"
               >
                 Live • {realTimeMetrics.currentPlayers} players
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 {realTimeMetrics.activeTerminals} terminals active
               </Badge>
             </div>
           )}
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           {/* Time Period Filters */}
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             {timeFilterButtons.map((filter) => (
               <Button
                 key={filter.id}
@@ -316,7 +316,7 @@ export default function DashboardTab() {
       </div>
 
       {/* KPI Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {sampleKpiMetrics.map((metric, index) => (
           <motion.div
             key={metric.title}
@@ -325,19 +325,21 @@ export default function DashboardTab() {
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-lg ${metric.bgColor}`}>
-                    <metric.icon className={`w-6 h-6 ${metric.color}`} />
+                  <div className={`p-1.5 sm:p-2 rounded-lg ${metric.bgColor}`}>
+                    <metric.icon
+                      className={`w-5 h-5 sm:w-6 sm:h-6 ${metric.color}`}
+                    />
                   </div>
                   <div className="flex items-center gap-1">
                     {metric.trend === "up" ? (
-                      <TrendingUp className="w-4 h-4 text-green-600" />
+                      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                     ) : (
-                      <TrendingDown className="w-4 h-4 text-red-600" />
+                      <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
                     )}
                     <span
-                      className={`text-sm font-medium ${
+                      className={`text-xs sm:text-sm font-medium ${
                         metric.trend === "up"
                           ? "text-green-600"
                           : "text-red-600"
@@ -348,12 +350,14 @@ export default function DashboardTab() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
                     {metric.format === "currency"
                       ? `$${metric.value.toLocaleString()}`
                       : metric.value.toLocaleString()}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">{metric.title}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
+                    {metric.title}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -362,7 +366,7 @@ export default function DashboardTab() {
       </div>
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
         {/* Location Performance Map */}
         <Card>
           <CardHeader>

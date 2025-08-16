@@ -241,6 +241,7 @@ export default function ScheduledTab() {
     []
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("scheduled");
   // Commented out unused variables
   // const [selectedReport, setSelectedReport] = useState<ScheduledReport | null>(null);
   // const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -441,8 +442,9 @@ export default function ScheduledTab() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="scheduled" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="scheduled"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -462,6 +464,19 @@ export default function ScheduledTab() {
             Gaming Day Config
           </TabsTrigger>
         </TabsList>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="scheduled">Scheduled Reports</option>
+            <option value="history">Execution History</option>
+            <option value="gaming-day">Gaming Day Config</option>
+          </select>
+        </div>
 
         <TabsContent value="scheduled" className="space-y-4">
           {/* Header */}

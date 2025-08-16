@@ -99,44 +99,66 @@ export default function ReportsDateFilters() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {timeFilterButtons.map((filter) => (
-        <Button
-          key={filter.value}
-          className={`px-3 py-1 text-sm rounded-md transition-colors ${
-            activeMetricsFilter === filter.value
-              ? "bg-buttonActive text-white"
-              : "bg-button text-white hover:bg-button/90"
-          }`}
-          onClick={() => handleFilterClick(filter.value)}
+    <div className="space-y-4">
+      {/* Desktop: Button layout */}
+      <div className="hidden md:flex flex-wrap items-center gap-2">
+        {timeFilterButtons.map((filter) => (
+          <Button
+            key={filter.value}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              activeMetricsFilter === filter.value
+                ? "bg-buttonActive text-white"
+                : "bg-button text-white hover:bg-button/90"
+            }`}
+            onClick={() => handleFilterClick(filter.value)}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Mobile: Select dropdown */}
+      <div className="md:hidden">
+        <select
+          value={activeMetricsFilter}
+          onChange={(e) => handleFilterClick(e.target.value as TimePeriod)}
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
         >
-          {filter.label}
-        </Button>
-      ))}
+          {timeFilterButtons.map((filter) => (
+            <option key={filter.value} value={filter.value}>
+              {filter.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Custom Date Picker (both mobile and desktop) */}
       {showCustomPicker && activeMetricsFilter === "Custom" && (
-        <ModernDateRangePicker
-          value={
-            pendingCustomDateRange
-              ? {
-                  from: pendingCustomDateRange.startDate,
-                  to: pendingCustomDateRange.endDate,
-                }
-              : undefined
-          }
-          onChange={(range) =>
-            setPendingCustomDateRange(
-              range && range.from && range.to
-                ? { startDate: range.from, endDate: range.to }
+        <div className="mt-4">
+          <ModernDateRangePicker
+            value={
+              pendingCustomDateRange
+                ? {
+                    from: pendingCustomDateRange.startDate,
+                    to: pendingCustomDateRange.endDate,
+                  }
                 : undefined
-            )
-          }
-          onGo={handleApplyCustomRange}
-          onCancel={() => {
-            setShowCustomPicker(false);
-            setPendingCustomDateRange(undefined);
-          }}
-          onSetLastMonth={handleSetLastMonth}
-        />
+            }
+            onChange={(range) =>
+              setPendingCustomDateRange(
+                range && range.from && range.to
+                  ? { startDate: range.from, endDate: range.to }
+                  : undefined
+              )
+            }
+            onGo={handleApplyCustomRange}
+            onCancel={() => {
+              setShowCustomPicker(false);
+              setPendingCustomDateRange(undefined);
+            }}
+            onSetLastMonth={handleSetLastMonth}
+          />
+        </div>
       )}
     </div>
   );

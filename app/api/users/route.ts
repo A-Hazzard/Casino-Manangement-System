@@ -10,11 +10,14 @@ import {
   updateUser as updateUserHelper,
   deleteUser as deleteUserHelper,
 } from "@/app/api/lib/helpers/users";
+import { apiLogger } from "@/app/api/lib/utils/logger";
 
 export async function GET(request: NextRequest): Promise<Response> {
-  await connectDB();
+  const context = apiLogger.createContext(request, "/api/users");
+  apiLogger.startLogging();
 
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
 
@@ -44,9 +47,15 @@ export async function GET(request: NextRequest): Promise<Response> {
       });
     }
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully fetched ${result.length} users`
+    );
     return new Response(JSON.stringify({ users: result }), { status: 200 });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    apiLogger.logError(context, "Failed to fetch users", errorMessage);
     return new Response(
       JSON.stringify({ success: false, message: "Failed to fetch users" }),
       { status: 500 }
@@ -55,24 +64,30 @@ export async function GET(request: NextRequest): Promise<Response> {
 }
 
 export async function PUT(request: NextRequest): Promise<Response> {
-  await connectDB();
-  const body = await request.json();
-  const { _id, ...updateFields } = body;
-
-  if (!_id) {
-    return new Response(
-      JSON.stringify({ success: false, message: "User ID is required" }),
-      { status: 400 }
-    );
-  }
+  const context = apiLogger.createContext(request, "/api/users");
+  apiLogger.startLogging();
 
   try {
+    await connectDB();
+    const body = await request.json();
+    const { _id, ...updateFields } = body;
+
+    if (!_id) {
+      apiLogger.logError(context, "User update failed", "User ID is required");
+      return new Response(
+        JSON.stringify({ success: false, message: "User ID is required" }),
+        { status: 400 }
+      );
+    }
+
     const updatedUser = await updateUserHelper(_id, updateFields, request);
+    apiLogger.logSuccess(context, `Successfully updated user ${_id}`);
     return new Response(JSON.stringify({ success: true, user: updatedUser }), {
       status: 200,
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    apiLogger.logError(context, "User update failed", errorMsg);
     return new Response(
       JSON.stringify({
         success: false,
@@ -85,22 +100,32 @@ export async function PUT(request: NextRequest): Promise<Response> {
 }
 
 export async function DELETE(request: NextRequest): Promise<Response> {
-  await connectDB();
-  const body = await request.json();
-  const { _id } = body;
-
-  if (!_id) {
-    return new Response(
-      JSON.stringify({ success: false, message: "User ID is required" }),
-      { status: 400 }
-    );
-  }
+  const context = apiLogger.createContext(request, "/api/users");
+  apiLogger.startLogging();
 
   try {
+    await connectDB();
+    const body = await request.json();
+    const { _id } = body;
+
+    if (!_id) {
+      apiLogger.logError(
+        context,
+        "User deletion failed",
+        "User ID is required"
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: "User ID is required" }),
+        { status: 400 }
+      );
+    }
+
     await deleteUserHelper(_id, request);
+    apiLogger.logSuccess(context, `Successfully deleted user ${_id}`);
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    apiLogger.logError(context, "User deletion failed", errorMsg);
     return new Response(
       JSON.stringify({
         success: false,
@@ -113,42 +138,60 @@ export async function DELETE(request: NextRequest): Promise<Response> {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  await connectDB();
-  const body = await request.json();
-  const {
-    username,
-    emailAddress,
-    password,
-    roles = [],
-    profile = {},
-    isEnabled = true,
-    profilePicture = null,
-    resourcePermissions = {},
-  } = body;
-
-  if (!username || typeof username !== "string") {
-    return new Response(
-      JSON.stringify({ success: false, message: "Username is required" }),
-      { status: 400 }
-    );
-  }
-  if (!emailAddress || !validateEmail(emailAddress)) {
-    return new Response(
-      JSON.stringify({ success: false, message: "Valid email is required" }),
-      { status: 400 }
-    );
-  }
-  if (!password || !validatePassword(password)) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: "Password must be at least 6 characters",
-      }),
-      { status: 400 }
-    );
-  }
+  const context = apiLogger.createContext(request, "/api/users");
+  apiLogger.startLogging();
 
   try {
+    await connectDB();
+    const body = await request.json();
+    const {
+      username,
+      emailAddress,
+      password,
+      roles = [],
+      profile = {},
+      isEnabled = true,
+      profilePicture = null,
+      resourcePermissions = {},
+    } = body;
+
+    if (!username || typeof username !== "string") {
+      apiLogger.logError(
+        context,
+        "User creation failed",
+        "Username is required"
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: "Username is required" }),
+        { status: 400 }
+      );
+    }
+    if (!emailAddress || !validateEmail(emailAddress)) {
+      apiLogger.logError(
+        context,
+        "User creation failed",
+        "Valid email is required"
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: "Valid email is required" }),
+        { status: 400 }
+      );
+    }
+    if (!password || !validatePassword(password)) {
+      apiLogger.logError(
+        context,
+        "User creation failed",
+        "Password must be at least 6 characters"
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Password must be at least 6 characters",
+        }),
+        { status: 400 }
+      );
+    }
+
     const userWithoutPassword = await createUserHelper(
       {
         username,
@@ -163,12 +206,17 @@ export async function POST(request: NextRequest): Promise<Response> {
       request
     );
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully created user ${username} with email ${emailAddress}`
+    );
     return new Response(
       JSON.stringify({ success: true, user: userWithoutPassword }),
       { status: 201 }
     );
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    apiLogger.logError(context, "User creation failed", errorMsg);
     return new Response(
       JSON.stringify({
         success: false,

@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { ExportUtils, exportData } from "@/lib/utils/exportUtils";
@@ -280,13 +282,6 @@ const CasinoLocationCard = ({
           <span className="text-lg font-semibold text-gray-900">
             {location.locationName}
           </span>
-          <span
-            className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${getPerformanceColor(
-              location.performance
-            )}`}
-          >
-            {location.performance}
-          </span>
           {isComparisonSelected && (
             <div className="ml-2 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
               <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
@@ -309,13 +304,13 @@ const CasinoLocationCard = ({
         <div>
           <div className="text-xs text-gray-500">Gross Revenue:</div>
           <div className="text-green-600 font-bold text-lg">
-            ${(location.gross || 0).toLocaleString()}
+            {formatCurrency(location.gross || 0)}
           </div>
         </div>
         <div>
           <div className="text-xs text-gray-500">Drop:</div>
           <div className="text-yellow-600 font-bold text-lg">
-            ${(location.drop || 0).toLocaleString()}
+            {formatCurrency(location.drop || 0)}
           </div>
         </div>
         <div>
@@ -330,7 +325,7 @@ const CasinoLocationCard = ({
         <div>
           <div className="text-xs text-gray-500">Cancelled Credits:</div>
           <div className="text-gray-900 font-bold text-lg">
-            ${(location.cancelledCredits || 0).toLocaleString()}
+            {formatCurrency(location.cancelledCredits || 0)}
           </div>
         </div>
       </div>
@@ -342,12 +337,12 @@ const CasinoLocationCard = ({
           <span className="text-xs text-gray-500">
             Total:{" "}
             <span className="font-semibold text-gray-900">
-              ${totalRevenue.toLocaleString()}
+              {formatCurrency(totalRevenue)}
             </span>
           </span>
         </div>
         {trendLoading ? (
-          <div className="h-32 w-full bg-gray-200 rounded animate-pulse"></div>
+          <Skeleton className="h-32 w-full rounded" />
         ) : (
           <div className="h-32 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -370,7 +365,7 @@ const CasinoLocationCard = ({
                 />
                 <Tooltip
                   formatter={(value: any) => [
-                    `$${value.toLocaleString()}`,
+                    formatCurrency(value as number),
                     "Revenue",
                   ]}
                   labelFormatter={(label) => `${label}`}
@@ -391,62 +386,19 @@ const CasinoLocationCard = ({
           <span>
             Peak:{" "}
             <span className="font-semibold text-gray-900">
-              ${peakRevenue.toLocaleString()}
+              {formatCurrency(peakRevenue)}
             </span>
           </span>
           <span>
             Avg:{" "}
             <span className="font-semibold text-gray-900">
-              ${avgRevenue.toLocaleString()}
+              {formatCurrency(avgRevenue)}
             </span>
           </span>
         </div>
       </div>
 
-      {/* Daily Trend */}
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className={`w-2 h-2 rounded-full ${getDailyTrendColor(
-            dailyPerformance
-          )} inline-block`}
-        ></span>
-        <span
-          className={`${getDailyTrendTextColor(
-            dailyPerformance
-          )} text-sm font-semibold`}
-        >
-          {dailyPerformance >= 0 ? "+" : ""}
-          {dailyPerformance}% {dailyPerformance >= 0 ? "above" : "below"} target
-        </span>
-      </div>
-
-      {/* Top Performer */}
-      <div className="border-t pt-3 mt-2">
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle className="w-4 h-4 text-yellow-500" />
-          <span className="text-sm font-medium text-gray-700">
-            Top Performer
-          </span>
-        </div>
-        {performerLoading ? (
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
-            <div className="h-3 bg-gray-200 rounded w-24"></div>
-          </div>
-        ) : topPerformer ? (
-          <>
-            <div className="text-gray-900 font-semibold">
-              {topPerformer.machineName}
-            </div>
-            <div className="text-xs text-gray-500">
-              ${topPerformer.revenue.toLocaleString()} •{" "}
-              {topPerformer.holdPercentage.toFixed(1)}% hold
-            </div>
-          </>
-        ) : (
-          <div className="text-xs text-gray-500">No data available</div>
-        )}
-      </div>
+      {/* Simplified: removed daily trend and top performer sections */}
     </div>
   );
 };
@@ -464,11 +416,11 @@ export default function LocationsTab() {
   const [metricsOverview, setMetricsOverview] =
     useState<LocationMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
-  
+
   // Two-phase loading: gaming locations (fast) + financial data (slow)
   const [gamingLocations, setGamingLocations] = useState<any[]>([]);
   const [gamingLocationsLoading, setGamingLocationsLoading] = useState(true);
-  
+
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -494,7 +446,11 @@ export default function LocationsTab() {
 
       const response = await axios.get(`/api/locations?${params.toString()}`);
       const { locations: locationsData } = response.data;
-      console.log('🗺️ Gaming locations fetched:', locationsData?.length || 0, 'locations');
+      console.log(
+        "🗺️ Gaming locations fetched:",
+        locationsData?.length || 0,
+        "locations"
+      );
       setGamingLocations(locationsData || []);
     } catch (error) {
       console.error("Error loading gaming locations:", error);
@@ -522,7 +478,7 @@ export default function LocationsTab() {
     setLocationsLoading(true);
     setPaginationLoading(true);
     setGamingLocationsLoading(true);
-    
+
     try {
       console.log("🔍 LocationsTab - selectedLicencee:", selectedLicencee);
       console.log(
@@ -1122,7 +1078,8 @@ export default function LocationsTab() {
           onValueChange={handleLocationsTabChange}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+          {/* Desktop Navigation */}
+          <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
             <TabsTrigger
               value="overview"
               className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -1142,6 +1099,19 @@ export default function LocationsTab() {
               Revenue Analysis
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden mb-6">
+            <select
+              value={activeTab}
+              onChange={(e) => handleLocationsTabChange(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            >
+              <option value="overview">Overview</option>
+              <option value="location-evaluation">SAS Evaluation</option>
+              <option value="location-revenue">Revenue Analysis</option>
+            </select>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -1190,10 +1160,10 @@ export default function LocationsTab() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-green-600">
+                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                         ${metricsOverview.totalGross.toLocaleString()}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Total Gross Revenue
                       </p>
                       <p className="text-xs text-green-600 font-medium">
@@ -1203,10 +1173,10 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-yellow-600">
+                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
                         ${metricsOverview.totalDrop.toLocaleString()}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Total Drop
                       </p>
                       <p className="text-xs text-yellow-600 font-medium">
@@ -1216,11 +1186,11 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-black">
+                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words">
                         $
                         {metricsOverview.totalCancelledCredits.toLocaleString()}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Total Cancelled Credits
                       </p>
                       <p className="text-xs text-black font-medium">
@@ -1230,11 +1200,11 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                         {metricsOverview.onlineMachines}/
                         {metricsOverview.totalMachines}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Online Machines
                       </p>
                       <Progress

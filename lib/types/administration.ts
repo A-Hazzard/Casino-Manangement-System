@@ -68,5 +68,6 @@ export type UserDetailsModalProps = {
     idType?: string;
     idNumber?: string;
     notes?: string;
+    profilePicture?: string | null;
   }) => void;
 };

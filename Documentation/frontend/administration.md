@@ -13,6 +13,7 @@ This page provides user and licensee management for the casino management system
   - Assign roles and permissions with granular control
   - Resource-based permissions (location and module access)
   - User profile management with detailed personal information
+  - **Profile Picture Management:** Upload, crop (circular format), and remove profile pictures
   - Password reset and account status management
   - Activity logs for user actions and system events
 - **Licensee Management:**
@@ -28,10 +29,11 @@ This page provides user and licensee management for the casino management system
   - Change history with before/after values
   - Filterable activity logs by date, user, and action type
   - IP address logging for security tracking
+  - **Enhanced API Logging:** All endpoints include structured logging with duration, timestamps, and context
 - **Security Features:**
   - Role-based access control (RBAC)
   - Resource permissions for location-specific access
-  - Password complexity requirements
+  - Password complexity requirements with real-time validation
   - Account enable/disable functionality
   - Session management and authentication tracking
 - **Responsive Interface:**
@@ -40,6 +42,7 @@ This page provides user and licensee management for the casino management system
   - Modal-based forms for data entry
   - Real-time search and filtering
   - Pagination with configurable page sizes
+  - **Enhanced Mobile Responsiveness:** Optimized layouts, responsive text sizing, and mobile-friendly navigation
 - **Data Export:**
   - Export user and licensee lists
   - Activity log export for compliance
@@ -65,17 +68,20 @@ This page provides user and licensee management for the casino management system
 - **Modal Components:**
   - `components/administration/RolesPermissionsModal.tsx` - User roles and permissions
   - `components/administration/DeleteUserModal.tsx` - User deletion confirmation
-  - `components/administration/UserDetailsModal.tsx` - User profile details
-  - `components/administration/AddUserDetailsModal.tsx` - Add user step 1 (details)
-  - `components/administration/AddUserRolesModal.tsx` - Add user step 2 (roles)
+  - `components/administration/UserDetailsModal.tsx` - User profile details with profile picture management
+  - `components/administration/AddUserDetailsModal.tsx` - Add user step 1 (details with profile picture upload)
+  - `components/administration/AddUserRolesModal.tsx` - Add user step 2 (roles with enhanced location selection)
   - `components/administration/AddLicenseeModal.tsx` - Add licensee form
   - `components/administration/EditLicenseeModal.tsx` - Edit licensee form
   - `components/administration/DeleteLicenseeModal.tsx` - Licensee deletion confirmation
   - `components/administration/ActivityLogModal.tsx` - System activity logs
   - `components/administration/PaymentHistoryModal.tsx` - Licensee payment history
-  - `components/administration/UserActivityLogModal.tsx` - User activity logs
+  - `components/administration/UserActivityLogModal.tsx` - User activity logs with mobile-responsive design
   - `components/administration/LicenseeSuccessModal.tsx` - Licensee creation success
   - `components/administration/PaymentStatusConfirmModal.tsx` - Payment status change confirmation
+- **Profile Picture Components:**
+  - `components/ui/image/CircleCropModal.tsx` - Circular image cropping functionality
+  - `components/ui/image/ImageUpload.tsx` - Image upload with preview
 
 ### State Management
 - **Local State:** React `useState` hooks for complex form and UI state
@@ -88,42 +94,62 @@ This page provides user and licensee management for the casino management system
   - `sortConfig` - Table sorting configuration
   - Modal states for various operations
   - Form states for user and licensee creation/editing
+  - Profile picture states (upload, crop, preview)
 
 ### Data Flow
 1. **Initial Load:** Fetches users and licensees on component mount
 2. **Search/Filter:** Filters data based on search terms and criteria
 3. **Sorting:** Sorts data based on selected columns
 4. **Pagination:** Displays paginated results
-5. **CRUD Operations:** Creates, updates, and deletes users/licensees
+5. **CRUD Operations:** Creates, updates, and deletes users/licensees with comprehensive logging
 6. **Real-time Updates:** Refreshes data after operations
+7. **Profile Picture Management:** Handles upload, cropping, and storage of user profile images
 
 ### API Integration
 
 #### User Management Endpoints
 - **GET `/api/users`** - Fetches all users with profile data
-  - Returns: `{ users: User[] }` with complete user profiles
+  - Returns: `{ users: User[] }` with complete user profiles including profile pictures
+  - **Logging:** Comprehensive API logging with duration and context
 - **POST `/api/users`** - Creates new user
-  - Body: `{ username, emailAddress, password, roles, profile, isEnabled, resourcePermissions }`
+  - Body: `{ username, email, password, roles, profile, isEnabled, resourcePermissions, profilePicture }`
   - Returns: `{ success: true, user: User }`
+  - **Logging:** Success/failure logging with user creation details
 - **PUT `/api/users`** - Updates existing user
   - Body: `{ _id, ...updateFields }`
   - Returns: `{ success: true, user: User }`
+  - **Logging:** Change tracking with before/after values
 - **DELETE `/api/users`** - Deletes user
   - Body: `{ _id }`
   - Returns: `{ success: true }`
+  - **Logging:** Deletion confirmation with user context
 
 #### Licensee Management Endpoints
 - **GET `/api/licensees`** - Fetches all licensees
   - Returns: `{ licensees: Licensee[] }`
+  - **Logging:** Access logging with filtering context
 - **POST `/api/licensees`** - Creates new licensee
   - Body: Licensee data without system fields
   - Returns: `{ success: true, licensee: Licensee }`
+  - **Logging:** Creation logging with licensee details
 - **PUT `/api/licensees`** - Updates existing licensee
   - Body: `{ _id, ...updateFields }`
   - Returns: `{ success: true, licensee: Licensee }`
+  - **Logging:** Update logging with change tracking
 - **DELETE `/api/licensees`** - Deletes licensee
   - Body: `{ _id }`
   - Returns: `{ success: true }`
+  - **Logging:** Deletion logging with licensee context
+
+#### Activity Logging Endpoints
+- **GET `/api/activity-logs`** - Retrieves activity logs with filtering
+  - Query Parameters: `entityType`, `actionType`, `actor`, `startDate`, `endDate`
+  - Returns: `{ activityLogs: ActivityLog[] }`
+  - **Logging:** Access logging for audit trail queries
+- **POST `/api/activity-logs`** - Creates new activity log entry
+  - Body: `{ actor, actionType, entityType, entity, changes, timestamp }`
+  - Returns: `{ success: true, activityLog: ActivityLog }`
+  - **Logging:** Creation logging for audit trail entries
 
 #### Data Processing
 - **Administration Helper:** `lib/helpers/administration.ts` - User management utilities
@@ -136,6 +162,10 @@ This page provides user and licensee management for the casino management system
   - `createLicensee()` - Creates new licensee
   - `updateLicensee()` - Updates existing licensee
   - `deleteLicensee()` - Deletes licensee
+- **API Logging Utility:** `app/api/lib/utils/logger.ts` - Comprehensive API logging
+  - `APILogger` class for structured logging
+  - `withLogging` decorator for endpoint wrapping
+  - Context creation with user identification and request details
 
 ### Key Dependencies
 
@@ -145,15 +175,18 @@ This page provides user and licensee management for the casino management system
 - **Axios:** HTTP client for API calls
 - **Sonner:** Toast notifications for user feedback
 - **Lucide React:** Various icons for UI elements
+- **React Image Crop:** Image cropping functionality for profile pictures
 
 #### Type Definitions
 - **Administration Types:** `lib/types/administration.ts` - User management types
-  - `User`, `SortKey`, `ResourcePermissions`
+  - `User`, `SortKey`, `ResourcePermissions`, `UserDetailsModalProps`
 - **Licensee Types:** `lib/types/licensee.ts` - Licensee management types
   - `Licensee` - Complete licensee data structure
 - **Page Types:** `lib/types/pages.ts` - Form and page-specific types
   - `AddUserForm`, `AddLicenseeForm`
 - **Shared Types:** `@shared/types` - Core type definitions
+- **API Logging Types:** `app/api/lib/utils/logger.ts` - Logging interface definitions
+  - `LogContext`, `LogResult`
 
 #### Utility Functions
 - **Validation Utils:** `lib/utils/validation.ts` - Form validation
@@ -161,6 +194,9 @@ This page provides user and licensee management for the casino management system
   - `validatePassword()` - Password strength validation
 - **Licensee Utils:** `lib/utils/licensee.ts` - Licensee-specific utilities
   - `getNext30Days()` - Date calculation for license expiry
+- **Image Utils:** `lib/utils/image.ts` - Image processing utilities
+  - `compressImage()` - Image compression for uploads
+  - `validateImageFile()` - Image file validation
 
 ### Component Hierarchy
 ```
@@ -176,9 +212,9 @@ AdministrationPage (app/administration/page.tsx)
 │   └── User Modals
 │       ├── RolesPermissionsModal
 │       ├── DeleteUserModal
-│       ├── UserDetailsModal
-│       ├── AddUserDetailsModal
-│       └── AddUserRolesModal
+│       ├── UserDetailsModal (with profile picture management)
+│       ├── AddUserDetailsModal (with profile picture upload)
+│       └── AddUserRolesModal (with enhanced location selection)
 └── Licensees Section
     ├── LicenseeSearchBar (components/administration/LicenseeSearchBar.tsx)
     ├── LicenseeTable (components/administration/LicenseeTable.tsx) [Desktop]
@@ -202,6 +238,8 @@ AdministrationPage (app/administration/page.tsx)
 - **Pagination:** Efficient data display with configurable page sizes
 - **Form Validation:** Client and server-side validation for data integrity
 - **Activity Logging:** Comprehensive audit trail for all operations
+- **Profile Picture Management:** Upload, crop, and storage of user profile images
+- **Enhanced Location Selection:** Improved location management with "Select All" functionality
 
 ### Security Features
 - **Role-Based Access:** Granular permissions for different user types
@@ -209,6 +247,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Input Validation:** Comprehensive validation for all form inputs
 - **Audit Trail:** Activity logging for security and compliance
 - **Secure API Calls:** Authenticated requests with proper error handling
+- **Profile Picture Security:** Secure image upload and storage with validation
 
 ### Error Handling
 - **API Failures:** Graceful degradation with user-friendly error messages
@@ -216,6 +255,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Network Issues:** Retry logic and fallback error states
 - **Loading States:** Skeleton loaders and loading indicators
 - **Toast Notifications:** User feedback for all operations
+- **Image Upload Errors:** Validation and error handling for profile pictures
 
 ### Performance Optimizations
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting, pagination)
@@ -223,6 +263,31 @@ AdministrationPage (app/administration/page.tsx)
 - **Efficient Filtering:** Optimized search and filter algorithms
 - **Pagination:** Reduces DOM size and improves performance
 - **Image Optimization:** Next.js Image component with SVG imports
+- **API Logging:** Non-blocking logging operations to prevent performance impact
+- **Responsive Design:** Optimized layouts for different screen sizes
+
+## Recent Enhancements
+
+### Profile Picture Management (Latest)
+- **Circular Image Cropping:** Industry-standard circular profile picture cropping
+- **Upload Functionality:** Drag-and-drop and file picker support
+- **Image Validation:** File type, size, and format validation
+- **Preview System:** Real-time preview of uploaded and cropped images
+- **Storage Integration:** Secure storage and retrieval of profile pictures
+
+### Enhanced API Logging (Latest)
+- **Structured Logging:** Comprehensive logging for all API endpoints
+- **Performance Tracking:** Request duration and timing information
+- **Context Capture:** User identification, IP addresses, and request details
+- **Audit Trail:** Complete audit trail for compliance and security
+- **Error Tracking:** Detailed error logging with context
+
+### Mobile Responsiveness Improvements (Latest)
+- **Responsive Text Sizing:** Adaptive font sizes for different screen sizes
+- **Mobile Navigation:** Optimized navigation for mobile devices
+- **Touch-Friendly Controls:** Improved touch targets and interactions
+- **Responsive Layouts:** Flexible layouts that adapt to screen size
+- **Performance Optimization:** Optimized rendering for mobile devices
 
 ## Notes Section
 
@@ -234,23 +299,28 @@ The administration page is like a **control center for managing people and busin
 
 **👥 What Users Are**
 - **Collection**: Queries the `users` collection in the database
-- **Fields Used**: `username`, `emailAddress`, `roles`, `profile`, `isEnabled`
+- **Fields Used**: `username`, `email`, `roles`, `profile`, `isEnabled`, `profilePicture`
 - **Simple Explanation**: These are the people who can log into your casino management system - like managers, collectors, and administrators
 
 **🔍 How User Search Works**
 - **Collection**: Filters the `users` collection
-- **Fields Used**: Searches by `username` or `emailAddress`
+- **Fields Used**: Searches by `username` or `email`
 - **Simple Explanation**: Like searching through a phone book - you type a name or email and it shows matching users
 
 **📝 Adding New Users**
 - **Collection**: Creates new records in the `users` collection
-- **Fields Used**: `username`, `emailAddress`, `password`, `roles`, `profile`
-- **Simple Explanation**: Like creating a new employee account - you fill out their details and assign what they're allowed to do
+- **Fields Used**: `username`, `email`, `password`, `roles`, `profile`, `profilePicture`
+- **Simple Explanation**: Like creating a new employee account - you fill out their details, upload a profile picture, and assign what they're allowed to do
 
 **🔐 User Permissions System**
 - **Collection**: Updates `resourcePermissions` field in `users` collection
 - **Fields Used**: `roles`, `resourcePermissions`, `allowedLocations`
 - **Simple Explanation**: Like giving someone keys to different rooms - you decide which parts of the system they can access
+
+**🖼️ Profile Picture Management**
+- **Collection**: Stores profile pictures in the `users` collection
+- **Fields Used**: `profilePicture` - URL or base64 encoded image
+- **Simple Explanation**: Like adding a photo to an employee ID - users can upload, crop, and manage their profile pictures
 
 #### **Licensee Management Section**
 
@@ -281,13 +351,18 @@ The administration page is like a **control center for managing people and busin
 - **Fields Used**: Filters by `entityType`, `actionType`, `actor.id`, `timestamp`
 - **Simple Explanation**: Like reviewing security footage - you can see who made changes, when, and what they changed
 
+**📊 API Logging**
+- **Collection**: Logs all API requests and responses
+- **Fields Used**: `timestamp`, `duration`, `method`, `endpoint`, `status`, `user`, `ip`
+- **Simple Explanation**: Like a detailed logbook - records every system interaction with timing and context
+
 #### **Database Queries Explained**
 
 **For User Management:**
 ```javascript
 // Queries the users collection
 // Filters by: licensee (optional)
-// Returns: all users with their profiles and permissions
+// Returns: all users with their profiles, permissions, and profile pictures
 ```
 
 **For Licensee Management:**
@@ -304,6 +379,13 @@ The administration page is like a **control center for managing people and busin
 // Returns: filtered activity records with change details
 ```
 
+**For API Logging:**
+```javascript
+// Logs all API requests and responses
+// Includes: timing, user context, request details, response status
+// Purpose: audit trail, performance monitoring, security tracking
+```
+
 #### **Why This Matters for Casino Operations**
 
 **👥 User Management Benefits:**
@@ -311,6 +393,7 @@ The administration page is like a **control center for managing people and busin
 - **Roles**: Give different people different permissions (managers vs. collectors)
 - **Audit Trail**: Know who made what changes and when
 - **Multi-location**: Manage users across different casino locations
+- **Profile Pictures**: Visual identification and professional appearance
 
 **🏢 Licensee Management Benefits:**
 - **Revenue Tracking**: Know which casinos have paid their fees
@@ -323,5 +406,13 @@ The administration page is like a **control center for managing people and busin
 - **Compliance**: Meet regulatory requirements for audit trails
 - **Troubleshooting**: See what went wrong and who was involved
 - **Accountability**: Hold people responsible for their actions
+- **Performance Monitoring**: Track system performance and usage patterns
 
-The administration page essentially **manages the people and businesses** that use your casino management system, ensuring proper access control, payment tracking, and security compliance. 
+**📊 API Logging Benefits:**
+- **Audit Compliance**: Complete audit trail for regulatory requirements
+- **Security Monitoring**: Track suspicious activity and access patterns
+- **Performance Optimization**: Identify slow operations and bottlenecks
+- **Troubleshooting**: Detailed logs for debugging and issue resolution
+- **Operational Transparency**: Full visibility into system operations
+
+The administration page essentially **manages the people and businesses** that use your casino management system, ensuring proper access control, payment tracking, security compliance, and operational transparency through comprehensive logging and audit trails. 

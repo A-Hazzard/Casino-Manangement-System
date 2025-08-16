@@ -73,11 +73,10 @@ export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div className="text-2xl font-bold text-gray-900">
-            {typeof metric.value === 'number' 
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
+            {typeof metric.value === "number"
               ? formatValue(metric.value, metric.format)
-              : metric.value
-            }
+              : metric.value}
           </div>
 
           {metric.change !== undefined && (

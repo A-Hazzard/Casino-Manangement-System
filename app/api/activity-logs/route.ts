@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { ActivityLog } from "@/app/api/lib/models/activityLog";
+import { apiLogger } from "@/app/api/lib/utils/logger";
 
 export async function POST(request: NextRequest) {
+  const context = apiLogger.createContext(request, "/api/activity-logs");
+  apiLogger.startLogging();
+
   try {
     await connectDB();
 
@@ -49,6 +53,10 @@ export async function POST(request: NextRequest) {
 
     await activityLog.save();
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully logged activity for ${resource} ${resourceId}`
+    );
     return NextResponse.json(
       {
         success: true,
@@ -58,12 +66,14 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error logging activity:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    apiLogger.logError(context, "Failed to log activity", errorMessage);
     return NextResponse.json(
       {
         success: false,
         error: "Failed to log activity",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: errorMessage,
       },
       { status: 500 }
     );
@@ -71,6 +81,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const context = apiLogger.createContext(request, "/api/activity-logs");
+  apiLogger.startLogging();
+
   try {
     await connectDB();
 
@@ -115,6 +128,12 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully fetched ${
+        activities.length
+      } activity logs (page ${page}/${Math.ceil(totalCount / limit)})`
+    );
     return NextResponse.json({
       success: true,
       data: {
@@ -130,12 +149,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching activity logs:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    apiLogger.logError(context, "Failed to fetch activity logs", errorMessage);
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch activity logs",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: errorMessage,
       },
       { status: 500 }
     );

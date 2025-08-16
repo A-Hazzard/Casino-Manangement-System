@@ -313,7 +313,8 @@ export default function ComplianceTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="overview"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -333,6 +334,19 @@ export default function ComplianceTab() {
             Deadlines
           </TabsTrigger>
         </TabsList>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeSubTab}
+            onChange={(e) => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="overview">Overview</option>
+            <option value="audits">Recent Audits</option>
+            <option value="deadlines">Deadlines</option>
+          </select>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -406,7 +420,7 @@ export default function ComplianceTab() {
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <span className="font-medium">Resolved Issues</span>
                     </div>
-                    <span className="text-2xl font-bold text-green-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                       {metrics.resolvedIssues}
                     </span>
                   </div>
@@ -416,7 +430,7 @@ export default function ComplianceTab() {
                       <AlertTriangle className="w-5 h-5 text-red-600" />
                       <span className="font-medium">Critical Issues</span>
                     </div>
-                    <span className="text-2xl font-bold text-red-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
                       {metrics.criticalIssues}
                     </span>
                   </div>
@@ -426,7 +440,7 @@ export default function ComplianceTab() {
                       <Clock className="w-5 h-5 text-blue-600" />
                       <span className="font-medium">Avg. Resolution Time</span>
                     </div>
-                    <span className="text-2xl font-bold text-blue-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                       {metrics.averageResolutionTime} days
                     </span>
                   </div>

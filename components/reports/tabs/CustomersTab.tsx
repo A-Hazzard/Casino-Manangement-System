@@ -286,7 +286,8 @@ export default function CustomersTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="overview"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -312,6 +313,20 @@ export default function CustomersTab() {
             Behavior
           </TabsTrigger>
         </TabsList>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeSubTab}
+            onChange={(e) => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="overview">Overview</option>
+            <option value="demographics">Demographics</option>
+            <option value="loyalty">Loyalty Tiers</option>
+            <option value="behavior">Behavior</option>
+          </select>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -495,7 +510,7 @@ export default function CustomersTab() {
                       </span>
                     </div>
                     <h3 className="font-semibold text-lg">{tier.tier}</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mt-1 break-words">
                       {tier.count.toLocaleString()}
                     </p>
                     <p className="text-sm text-gray-600">

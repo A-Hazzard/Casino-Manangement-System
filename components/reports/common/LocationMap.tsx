@@ -11,6 +11,13 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import type { LocationMapProps } from "@/lib/types/components";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatCurrency } from "@/lib/utils/formatting";
 import { getMapCenterByLicensee } from "@/lib/utils/location";
 
 // Dynamically import react-leaflet components (SSR disabled)
@@ -84,19 +91,27 @@ const getLocationStats = (location: any, locationAggregates: any[]) => {
   };
 };
 
-// Helper function to get performance color based on gross revenue
-const getPerformanceColor = (gross: number) => {
-  if (gross >= 100000) return "text-green-600";
-  if (gross >= 50000) return "text-blue-600";
-  if (gross >= 10000) return "text-yellow-600";
-  return "text-red-600";
+// Helper functions using Revenue Performance (%) per documentation
+// Revenue % = (gross / drop) * 100
+const computeRevenuePercent = (gross: number, moneyIn: number) => {
+  if (!moneyIn || moneyIn <= 0) return 0;
+  return (gross / moneyIn) * 100;
 };
 
-// Helper function to get performance label
-const getPerformanceLabel = (gross: number) => {
-  if (gross >= 100000) return "excellent";
-  if (gross >= 50000) return "good";
-  if (gross >= 10000) return "average";
+const getPerformanceColor = (gross: number, moneyIn: number) => {
+  const pct = computeRevenuePercent(gross, moneyIn);
+  if (pct > 20) return "text-green-600"; // Excellent
+  if (pct >= 15) return "text-blue-600"; // Good
+  if (pct >= 10) return "text-yellow-600"; // Average
+  return "text-red-600"; // Poor
+};
+
+// Helper function to get performance label from revenue % thresholds
+const getPerformanceLabel = (gross: number, moneyIn: number) => {
+  const pct = computeRevenuePercent(gross, moneyIn);
+  if (pct > 20) return "excellent";
+  if (pct >= 15) return "good";
+  if (pct >= 10) return "average";
   return "poor";
 };
 
@@ -111,8 +126,8 @@ const LocationPopupContent = ({
   isFinancialDataLoading: boolean;
 }) => {
   const stats = getLocationStats(location, locationAggregates);
-  const performance = getPerformanceLabel(stats.gross);
-  const performanceColor = getPerformanceColor(stats.gross);
+  const performance = getPerformanceLabel(stats.gross, stats.moneyIn);
+  const performanceColor = getPerformanceColor(stats.gross, stats.moneyIn);
 
   return (
     <div className="min-w-[280px] p-2">
@@ -146,7 +161,7 @@ const LocationPopupContent = ({
               <Skeleton className="h-4 w-16" />
             ) : (
               <span className="font-medium text-green-600">
-                ${stats.gross.toLocaleString()}
+                {formatCurrency(stats.gross)}
               </span>
             )}
           </div>
@@ -177,7 +192,7 @@ const LocationPopupContent = ({
             <Skeleton className="h-4 w-20" />
           ) : (
             <div className="font-medium text-yellow-600">
-              ${stats.moneyIn.toLocaleString()}
+              {formatCurrency(stats.moneyIn)}
             </div>
           )}
           <div className="text-xs text-muted-foreground">Money In</div>
@@ -510,8 +525,8 @@ export default function LocationMap({
     if (!lon) return null;
 
     const stats = getLocationStats(locationObj, locationAggregates);
-    const performance = getPerformanceLabel(stats.gross);
-    const performanceColor = getPerformanceColor(stats.gross);
+    const performance = getPerformanceLabel(stats.gross, stats.moneyIn);
+    const performanceColor = getPerformanceColor(stats.gross, stats.moneyIn);
 
     return (
       <Marker key={key} position={[lat, lon]}>
@@ -594,9 +609,9 @@ export default function LocationMap({
           </div>
         )}
 
-        <div className="flex gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Sidebar */}
-          <div className="w-72 flex flex-col">
+          <div className="w-full lg:w-72 flex flex-col">
             <div className="relative mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -611,7 +626,7 @@ export default function LocationMap({
             </div>
             {/* Dropdown always below input */}
             {showSearchResults && (
-              <div className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10">
                 {searchResults.length > 0 ? (
                   searchResults.map((location) => {
                     const locationName =
@@ -657,12 +672,12 @@ export default function LocationMap({
             )}
           </div>
           {/* Map */}
-          <div className="flex-1">
+          <div className="flex-1 min-h-[400px] lg:min-h-[32rem]">
             <MapContainer
               center={mapCenter}
               zoom={6}
               scrollWheelZoom={true}
-              style={{ height: "32rem", width: "100%" }}
+              style={{ height: "100%", width: "100%", minHeight: "400px" }}
               ref={handleMapCreated}
             >
               <TileLayer
@@ -682,25 +697,69 @@ export default function LocationMap({
                 );
               })}
             </MapContainer>
-            {/* Map Legend */}
-            <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Excellent Performance</span>
+            {/* Map Legend with tooltips */}
+            <TooltipProvider>
+              <div className="mt-4 flex flex-wrap gap-2 lg:gap-4 text-xs text-muted-foreground">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-help">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="hidden sm:inline">
+                        Excellent Performance
+                      </span>
+                      <span className="sm:hidden">Excellent</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-[280px]">
+                      Revenue % &gt; 20%. Calculated as (Gross / Drop) × 100.
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-help">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="hidden sm:inline">Good Performance</span>
+                      <span className="sm:hidden">Good</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-[280px]">
+                      Revenue % between 15% and 20%.
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-help">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <span className="hidden sm:inline">
+                        Average Performance
+                      </span>
+                      <span className="sm:hidden">Average</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-[280px]">
+                      Revenue % between 10% and 15%.
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-help">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span className="hidden sm:inline">Poor Performance</span>
+                      <span className="sm:hidden">Poor</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-[280px]">Revenue % below 10%.</div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Good Performance</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>Average Performance</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span>Poor Performance</span>
-              </div>
-            </div>
+            </TooltipProvider>
           </div>
         </div>
       </CardContent>

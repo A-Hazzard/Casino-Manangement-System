@@ -31,7 +31,7 @@ export default function ReportsNavigation({
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
       {/* Desktop Navigation */}
-      <nav className="hidden xl:flex space-x-8 overflow-x-auto px-6">
+      <nav className="hidden md:flex space-x-8 overflow-x-auto px-6">
         {visibleTabs.map((tab) => (
           <motion.button
             key={tab.id}
@@ -60,7 +60,7 @@ export default function ReportsNavigation({
       </nav>
 
       {/* Mobile Navigation */}
-      <div className="xl:hidden px-4 py-2">
+      <div className="md:hidden px-4 py-3">
         <select
           value={activeView}
           onChange={(e) => onTabChange(e.target.value as ReportView)}
@@ -73,7 +73,7 @@ export default function ReportsNavigation({
             </option>
           ))}
         </select>
-        <p className="text-xs text-gray-600 mt-2">
+        <p className="text-xs text-gray-600 mt-2 px-1">
           {visibleTabs.find((tab) => tab.id === activeView)?.description}
         </p>
       </div>

@@ -4,8 +4,12 @@ import path from "path";
 import fs from "fs";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
+import { apiLogger } from "@/app/api/lib/utils/logger";
 
 export async function GET(request: Request) {
+  const context = apiLogger.createContext(request as any, "/api/locations");
+  apiLogger.startLogging();
+
   try {
     await connectDB();
 
@@ -14,25 +18,17 @@ export async function GET(request: Request) {
     const licencee = searchParams.get("licencee");
     const minimal = searchParams.get("minimal") === "1";
 
-    
-
     // Build query filter
     const queryFilter: Record<string, string> = {};
     if (licencee && licencee !== "all") {
       queryFilter["rel.licencee"] = licencee;
     }
 
-    // console.log("🔍 Locations API Debug - Query filter:", queryFilter);
-
     // Fetch locations. If minimal is requested, project minimal fields only.
-    const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1 }
-      : undefined;
+    const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
-
-    // console.log(`🔍 Found ${locations.length} total locations`);
 
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];
@@ -59,14 +55,8 @@ export async function GET(request: Request) {
       }
     });
 
-
-    // console.log(`❌ Missing geoCoords: ${missingGeoCoords.length}`);
-    // console.log(`⚠️ Zero-valued geoCoords: ${zeroGeoCoords.length}`);
-
     // Return minimal or full set based on query
     const locationsToReturn = minimal ? locations : locations;
-
-    
 
     // Prepare log directory
     const logDir = path.join(process.cwd(), "logs");
@@ -87,11 +77,15 @@ export async function GET(request: Request) {
     // Append log entry
     fs.appendFileSync(logFile, logData);
 
+    apiLogger.logSuccess(
+      context,
+      `Successfully fetched ${locationsToReturn.length} locations (minimal: ${minimal})`
+    );
     return NextResponse.json({ locations: locationsToReturn }, { status: 200 });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("❌ Locations API Error:", errorMessage);
+    apiLogger.logError(context, "Failed to fetch locations", errorMessage);
     return NextResponse.json({ success: false, message: errorMessage });
   }
 }

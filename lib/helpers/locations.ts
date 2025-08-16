@@ -316,7 +316,7 @@ export const searchLocations = async (
     }
 
     const response = await axios.get("/api/locations/search", { params });
-    return response.data.data || [];
+    return response.data || [];
   } catch (error) {
     console.error("Failed to search locations:", error);
     return [];
