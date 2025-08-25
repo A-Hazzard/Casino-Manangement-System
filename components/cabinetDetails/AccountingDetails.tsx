@@ -12,9 +12,10 @@ import CollectionHistorySkeleton from "./CollectionHistorySkeleton";
 import ActivityLogSkeleton from "./ActivityLogSkeleton";
 import { CollectionHistoryTable } from "./CollectionHistoryTable";
 import { ActivityLogTable } from "./ActivityLogTable";
+import type { MachineEvent } from "./ActivityLogTable";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
-import type { MachineEvent } from "@/lib/types/api";
-import type { BillValidatorData } from "@/lib/types/machines";
+
+
 import type { MachineDocument } from "@/shared/types";
 
 // Export the component as both default and named export
@@ -28,23 +29,23 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   const [collectionHistory, setCollectionHistory] = useState<
     CollectionMetersHistoryEntry[]
   >([]);
-  const [activityLog, setActivityLog] = useState<any[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [activityLog, setActivityLog] = useState<Record<string, unknown>[]>([]);
+
   const [machine, setMachine] = useState<MachineDocument | null>(null);
 
   useEffect(() => {
     async function loadData() {
-      setDataLoading(true);
+
       try {
         // Use the shared cabinet data - no duplicate API calls needed
         if (cabinet) {
           // Extract collection history from the cabinet prop
           const collectionHistory =
-            (cabinet as any).collectionMetersHistory || [];
+            (cabinet as Record<string, unknown>).collectionMetersHistory as CollectionMetersHistoryEntry[] || [];
           setCollectionHistory(collectionHistory);
 
           // Set the machine data - the cabinet itself is the machine data
-          setMachine(cabinet as any);
+          setMachine(cabinet as MachineDocument);
 
           // Fetch activity log data with date filtering
           const eventsParams = new URLSearchParams();
@@ -63,7 +64,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
         setActivityLog([]);
         setMachine(null);
       } finally {
-        setDataLoading(false);
+
       }
     }
     loadData();
@@ -516,10 +517,10 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           typeof machine.billValidator === "object" &&
                           "notes" in machine.billValidator &&
                           Array.isArray(machine.billValidator.notes)
-                            ? machine.billValidator.notes.map((note: any) => ({
-                                denomination: note.denomination,
-                                quantity: note.quantity,
-                                subtotal: note.denomination * note.quantity,
+                            ? machine.billValidator.notes.map((note: Record<string, unknown>) => ({
+                                denomination: note.denomination as number,
+                                quantity: note.quantity as number,
+                                subtotal: (note.denomination as number) * (note.quantity as number),
                               })) || []
                             : []
                         }
@@ -538,7 +539,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     {loading ? (
                       <ActivityLogSkeleton />
                     ) : (
-                      <ActivityLogTable data={activityLog} />
+                      <ActivityLogTable data={activityLog as MachineEvent[]} />
                     )}
                   </motion.div>
                 ) : activeMetricsTabContent === "Collection History" ? (

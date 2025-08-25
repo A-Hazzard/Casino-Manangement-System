@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 // Removed auto-index creation to avoid conflicts and extra latency
-import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,7 +49,7 @@ export async function GET(req: NextRequest) {
     // console.log("Date range:", { start, end });
 
     // Build query filter for machines
-    const machineMatchStage: any = {
+    const machineMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
@@ -99,16 +98,7 @@ export async function GET(req: NextRequest) {
 
     // console.log("Found machines:", machinesData.length);
 
-    // Debug: Show some sample machines to see their gamingLocation values
-    if (machinesData.length === 0) {
-      const sampleMachines = await db
-        .collection("machines")
-        .find({ deletedAt: { $in: [null, new Date(-1)] } })
-        .project({ _id: 1, serialNumber: 1, gamingLocation: 1 })
-        .limit(5)
-        .toArray();
-      // console.log("Sample machines in database:", sampleMachines);
-    }
+
 
 
 
@@ -125,14 +115,14 @@ export async function GET(req: NextRequest) {
 
     // Create a map for quick location name lookup
     const locationMap = new Map();
-    locationsData.forEach((loc: any) => {
-      locationMap.set(loc._id.toString(), loc.name);
+    locationsData.forEach((loc: Record<string, unknown>) => {
+      locationMap.set((loc._id as string).toString(), loc.name as string);
     });
 
     // Get additional meter data from the meters collection for missing fields
     const machineIds = machinesData.map(
-      (machine: any) =>
-        machine.serialNumber || machine.Custom?.name || machine._id.toString()
+      (machine: Record<string, unknown>) =>
+        (machine.serialNumber as string) || (machine.Custom as Record<string, unknown>)?.name as string || (machine._id as string).toString()
     );
 
     const metersData = await db
@@ -152,7 +142,7 @@ export async function GET(req: NextRequest) {
 
     // Create a map for meter data lookup - get the latest meter data for each machine
     const metersMap = new Map();
-    metersData.forEach((meter: any) => {
+    metersData.forEach((meter: Record<string, unknown>) => {
       // Only set if we don't already have data for this machine (to get the latest)
       if (!metersMap.has(meter.machine)) {
         metersMap.set(meter.machine, meter);
@@ -160,31 +150,31 @@ export async function GET(req: NextRequest) {
     });
 
     // Transform data for the table with enhanced validation
-    let transformedData = machinesData.map((machine: any) => {
+    let transformedData = machinesData.map((machine: Record<string, unknown>) => {
       const locationName = machine.gamingLocation
         ? locationMap.get(machine.gamingLocation.toString()) ||
           "Unknown Location"
         : "Unknown Location";
 
       const machineId =
-        machine.serialNumber || machine.Custom?.name || machine._id.toString();
+        machine.serialNumber || (machine.Custom as Record<string, unknown>)?.name || (machine._id as string).toString();
       const meterData = metersMap.get(machineId);
 
       // Validate meter values are reasonable (non-negative numbers)
-      const validateMeter = (value: any): number => {
+      const validateMeter = (value: unknown): number => {
         const num = Number(value) || 0;
         return num >= 0 ? num : 0;
       };
 
       return {
         machineId: machineId,
-        metersIn: validateMeter(machine.sasMeters?.coinIn),
-        metersOut: validateMeter(machine.sasMeters?.coinOut),
-        jackpot: validateMeter(machine.sasMeters?.jackpot),
+        metersIn: validateMeter((machine.sasMeters as Record<string, unknown>)?.coinIn),
+        metersOut: validateMeter((machine.sasMeters as Record<string, unknown>)?.coinOut),
+        jackpot: validateMeter((machine.sasMeters as Record<string, unknown>)?.jackpot),
         billIn: validateMeter(meterData?.movement?.billIn),
         voucherOut: validateMeter(meterData?.movement?.voucherOut),
         attPaidCredits: validateMeter(meterData?.movement?.attPaidCredits),
-        gamesPlayed: validateMeter(machine.sasMeters?.gamesPlayed),
+        gamesPlayed: validateMeter((machine.sasMeters as Record<string, unknown>)?.gamesPlayed),
         location: locationName,
         locationId: machine.gamingLocation?.toString() || "",
         createdAt: machine.lastActivity,
@@ -196,8 +186,8 @@ export async function GET(req: NextRequest) {
       const searchLower = search.toLowerCase();
       transformedData = transformedData.filter(
         (item) =>
-          item.machineId.toLowerCase().includes(searchLower) ||
-          item.location.toLowerCase().includes(searchLower)
+          (item.machineId as string).toLowerCase().includes(searchLower) ||
+          (item.location as string).toLowerCase().includes(searchLower)
       );
     }
 

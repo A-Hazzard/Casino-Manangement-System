@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
@@ -131,7 +131,7 @@ export default function CabinetDetailPage() {
   );
 
   useEffect(() => {
-    console.log("[DEBUG] useEffect (initial fetch) running with slug:", slug);
+    console.warn("[DEBUG] useEffect (initial fetch) running with slug:", slug);
     fetchCabinetDetailsData();
   }, [slug, fetchCabinetDetailsData]); // Add fetchCabinetDetailsData to dependencies
 
@@ -243,7 +243,6 @@ export default function CabinetDetailPage() {
   if (loading || (!cabinet && !loading && !error)) {
     return (
       <CabinetDetailsLoadingState
-        pathname={pathname}
         selectedLicencee={selectedLicencee}
         setSelectedLicencee={setSelectedLicencee}
         error={error}
@@ -255,7 +254,6 @@ export default function CabinetDetailPage() {
   if (error) {
     return (
       <CabinetDetailsErrorState
-        pathname={pathname}
         selectedLicencee={selectedLicencee}
         setSelectedLicencee={setSelectedLicencee}
         error={error}
@@ -267,11 +265,11 @@ export default function CabinetDetailPage() {
   // Main return statement should be here, AFTER all conditional returns
   return (
     <>
-      <Sidebar pathname={pathname} />
+
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
           <Header
             selectedLicencee={selectedLicencee}
@@ -326,8 +324,8 @@ export default function CabinetDetailPage() {
                   <h1 className="text-2xl font-bold flex items-center">
                     Name:{" "}
                     {cabinet?.serialNumber ||
-                      (cabinet as any)?.origSerialNumber ||
-                      (cabinet as any)?.machineId ||
+                      (cabinet as Record<string, unknown>)?.origSerialNumber as string ||
+                      (cabinet as Record<string, unknown>)?.machineId as string ||
                       "GMID1"}
                     <motion.button
                       className="ml-2 p-1"
@@ -417,8 +415,8 @@ export default function CabinetDetailPage() {
                   <h1 className="text-2xl font-bold flex items-center">
                     Name:{" "}
                     {cabinet?.serialNumber ||
-                      (cabinet as any)?.origSerialNumber ||
-                      (cabinet as any)?.machineId ||
+                      (cabinet as Record<string, unknown>)?.origSerialNumber as string ||
+                      (cabinet as Record<string, unknown>)?.machineId as string ||
                       "GMID1"}
                   </h1>
                   <p className="text-grayHighlight mt-2">
@@ -822,8 +820,32 @@ export default function CabinetDetailPage() {
 
           {/* Date filtering UI */}
           <div className="mt-4 mb-2 max-w-full">
-            {/* Desktop time period filters */}
-            <div className="hidden lg:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
+            {/* Mobile and md/lg: Select dropdown */}
+            <div className="w-full xl:hidden mb-4">
+              <select
+                value={activeMetricsFilter}
+                onChange={(e) =>
+                  handleFilterChange(e.target.value as TimePeriod)
+                }
+                className="w-full md:w-48 rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                disabled={metricsLoading}
+              >
+                {[
+                  { label: "Today", value: "Today" as TimePeriod },
+                  { label: "Yesterday", value: "Yesterday" as TimePeriod },
+                  { label: "Last 7 days", value: "7d" as TimePeriod },
+                  { label: "30 days", value: "30d" as TimePeriod },
+                  { label: "All Time", value: "All Time" as TimePeriod },
+                ].map((filter) => (
+                  <option key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* xl and above: Desktop time period filters */}
+            <div className="hidden xl:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
               {[
                 { label: "Today", value: "Today" as TimePeriod },
                 { label: "Yesterday", value: "Yesterday" as TimePeriod },
@@ -859,60 +881,6 @@ export default function CabinetDetailPage() {
                   </Button>
                 </motion.div>
               ))}
-            </div>
-
-            {/* Mobile dropdown filter */}
-            <div className="lg:hidden flex justify-center mb-4">
-              <div className="relative inline-block w-full max-w-[200px]">
-                <button
-                  className="w-full flex items-center justify-between gap-2 px-4 py-2 bg-buttonActive text-container rounded-full shadow-sm"
-                  onClick={() => {
-                    const dropdown = document.getElementById(
-                      "mobile-filter-dropdown"
-                    );
-                    if (dropdown) {
-                      dropdown.classList.toggle("hidden");
-                    }
-                  }}
-                >
-                  <span>Filter: {activeMetricsFilter}</span>
-                  <ChevronDownIcon className="h-4 w-4" />
-                </button>
-                <div
-                  id="mobile-filter-dropdown"
-                  className="hidden absolute z-10 mt-1 w-full bg-container rounded-md shadow-lg py-1"
-                >
-                  {[
-                    { label: "Today", value: "Today" as TimePeriod },
-                    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-                    { label: "Last 7 days", value: "7d" as TimePeriod },
-                    { label: "30 days", value: "30d" as TimePeriod },
-                    { label: "All Time", value: "All Time" as TimePeriod },
-                  ].map((filter) => (
-                    <button
-                      key={filter.label}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        activeMetricsFilter === filter.value
-                          ? "bg-accent text-buttonActive font-medium"
-                          : "text-grayHighlight hover:bg-muted"
-                      }`}
-                      onClick={() => {
-                        document
-                          .getElementById("mobile-filter-dropdown")
-                          ?.classList.add("hidden");
-                        handleFilterChange(filter.value);
-                      }}
-                      disabled={metricsLoading}
-                    >
-                      {filter.label}
-                      {metricsLoading &&
-                      activeMetricsFilter === filter.value ? (
-                        <span className="ml-2 inline-block w-3 h-3 border-2 border-buttonActive border-t-transparent rounded-full animate-spin"></span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
             {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
             <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 custom-scrollbar w-full p-2 rounded-md">

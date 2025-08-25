@@ -40,7 +40,7 @@ export async function updateCabinetMetricsData(
 /**
  * Fetch cabinet SMIB configuration
  */
-export async function fetchCabinetSmibConfig(cabinetId: string): Promise<any> {
+export async function fetchCabinetSmibConfig(cabinetId: string): Promise<Record<string, unknown>> {
   try {
     const response = await axios.get(`/api/cabinets/${cabinetId}/smib-config`);
     return response.data;
@@ -55,7 +55,7 @@ export async function fetchCabinetSmibConfig(cabinetId: string): Promise<any> {
  */
 export async function updateCabinetSmibConfig(
   cabinetId: string,
-  config: any
+  config: Record<string, unknown>
 ): Promise<void> {
   try {
     await axios.put(`/api/cabinets/${cabinetId}/smib-config`, config);

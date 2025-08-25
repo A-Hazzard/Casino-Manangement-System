@@ -1,6 +1,6 @@
 import React from "react";
 
-interface CollectionReportCardSkeletonProps {
+type CollectionReportCardSkeletonProps = {
   gridLayout?: boolean;
   count?: number;
 }

@@ -1,10 +1,10 @@
 export type ExportFormat = "pdf" | "csv" | "excel";
 
 export type ExportData = {
-  overview: any[];
-  sasEvaluation: any[];
-  revenueAnalysis: any[];
-  machines: any[];
+  overview: Record<string, unknown>[];
+  sasEvaluation: Record<string, unknown>[];
+  revenueAnalysis: Record<string, unknown>[];
+  machines: Record<string, unknown>[];
   metadata: {
     generatedAt: Date;
     timePeriod: string;

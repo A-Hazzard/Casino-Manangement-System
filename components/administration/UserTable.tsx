@@ -72,7 +72,7 @@ export default function UserTable({
                     </div>
                   </div>
                   <Image
-                    src={user.profilePicture || defaultAvatar}
+                    src={user.profilePicture && !user.profilePicture.startsWith("blob:") ? user.profilePicture : defaultAvatar}
                     alt={`${user.username} avatar`}
                     width={32}
                     height={32}

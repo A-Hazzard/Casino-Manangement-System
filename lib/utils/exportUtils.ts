@@ -338,11 +338,11 @@ export function formatMachineDataForExport(
       "Last Activity",
     ],
     data: machines.map((machine) => [
-      (typeof (machine as any).serialNumber === "string" &&
-        (machine as any).serialNumber.trim()) ||
-        (typeof (machine as any).origSerialNumber === "string" &&
-          (machine as any).origSerialNumber.trim()) ||
-        (machine as any).machineId,
+      (typeof (machine as { serialNumber?: string }).serialNumber === "string" &&
+        (machine as { serialNumber?: string }).serialNumber?.trim()) ||
+        (typeof (machine as { origSerialNumber?: string }).origSerialNumber === "string" &&
+          (machine as { origSerialNumber?: string }).origSerialNumber?.trim()) ||
+        (machine as { machineId?: string }).machineId,
       machine.game,
       machine.location,
       machine.moneyIn.toLocaleString(),
@@ -565,13 +565,13 @@ const convertToExcelFormat = (data: ExportData) => {
 };
 
 // Download Excel file
-const downloadExcel = (workbook: any, filename: string) => {
+const downloadExcel = (workbook: { sheets: Array<{ name: string; data: Record<string, unknown>[] }> }, filename: string) => {
   // For now, we'll create a CSV-like format that can be opened in Excel
   // In a production environment, you'd use a library like xlsx or exceljs
 
   let csvContent = "";
 
-  workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
+  workbook.sheets.forEach((sheet: { name: string; data: Record<string, unknown>[] }) => {
     csvContent += `\n=== ${sheet.name} ===\n`;
 
     if (sheet.data.length > 0) {
@@ -580,7 +580,7 @@ const downloadExcel = (workbook: any, filename: string) => {
       csvContent += headers.join(",") + "\n";
 
       // Data rows
-      sheet.data.forEach((row: any) => {
+      sheet.data.forEach((row: Record<string, unknown>) => {
         const values = headers.map((header) => {
           const value = row[header];
           // Escape commas and quotes
@@ -664,8 +664,7 @@ export const exportAllReports = async (
 
 // Legacy export function for individual reports (maintains backward compatibility)
 export const exportData = async (
-  data: LegacyExportData,
-  format: string = "csv"
+  data: LegacyExportData
 ) => {
   try {
     toast.loading("Preparing export...");

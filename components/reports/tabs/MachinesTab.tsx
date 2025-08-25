@@ -40,7 +40,8 @@ import type {
 } from "@/shared/types/machines";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
-import { debounce } from "lodash";
+
+import StatusIcon from "@/components/ui/common/StatusIcon";
 import {
   BarChart,
   Bar,
@@ -51,7 +52,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { isMachineOnline } from "@/lib/utils/machines";
+
 
 export default function MachinesTab() {
   const router = useRouter();
@@ -119,8 +120,7 @@ export default function MachinesTab() {
   const [evaluationSearchTerm, setEvaluationSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [onlineStatusFilter, setOnlineStatusFilter] = useState("all"); // New filter for online/offline
-  const [showOfflineOnly, setShowOfflineOnly] = useState(false);
-  const [showSasOnly, setShowSasOnly] = useState(false);
+
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -141,7 +141,7 @@ export default function MachinesTab() {
       const response = await axios.get("/api/locations", { params });
 
       const locationsData = response.data.locations || [];
-      const mappedLocations = locationsData.map((loc: any) => ({
+      const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
         id: loc._id,
         name: loc.name,
         sasEnabled: loc.sasEnabled || false, // Default to false if not available
@@ -150,8 +150,8 @@ export default function MachinesTab() {
       setLocations(mappedLocations);
     } catch (error) {
       console.error("Failed to fetch locations:", error);
-      const errorMessage = (error as any).response?.data?.error || (error as any).message || "Failed to load locations";
-      toast.error(errorMessage);
+      const errorMessage = (((error as Record<string, unknown>).response as Record<string, unknown>)?.data as Record<string, unknown>)?.error || (error as Record<string, unknown>).message || "Failed to load locations";
+      toast.error(errorMessage as string);
       // Set empty locations array to prevent further errors
       setLocations([]);
     }
@@ -310,7 +310,7 @@ export default function MachinesTab() {
         params.onlineStatus = onlineStatusFilter;
       }
 
-      console.log("🔍 Fetching offline machines with params:", params);
+      console.warn(`🔍 Fetching offline machines with params: ${JSON.stringify(params)}`);
 
       const response = await axios.get<MachinesApiResponse>(
         "/api/reports/machines",
@@ -588,7 +588,7 @@ export default function MachinesTab() {
         },
       };
 
-      await exportData(metersData, "csv");
+      await exportData(metersData);
       toast.success("Machines data exported successfully");
     } catch (error) {
       console.error("Export failed:", error);
@@ -787,8 +787,8 @@ export default function MachinesTab() {
       return {
         machineId: machine.machineId,
         serialNumber:
-          (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
-          (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+          (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+          (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
           machine.machineId,
         machineName: machine.machineName,
         locationName: machine.locationName,
@@ -848,23 +848,26 @@ export default function MachinesTab() {
           holdValues: [],
         };
       }
-      acc[manufacturer].machines++;
-      acc[manufacturer].totalNetWin += machine.netWin;
-      acc[manufacturer].totalGamesPlayed += machine.gamesPlayed;
-      acc[manufacturer].holdValues.push(machine.actualHold);
+      (acc[manufacturer] as Record<string, unknown>).machines = ((acc[manufacturer] as Record<string, unknown>).machines as number) + 1;
+      (acc[manufacturer] as Record<string, unknown>).totalNetWin = ((acc[manufacturer] as Record<string, unknown>).totalNetWin as number) + (machine.netWin as number);
+      (acc[manufacturer] as Record<string, unknown>).totalGamesPlayed = ((acc[manufacturer] as Record<string, unknown>).totalGamesPlayed as number) + (machine.gamesPlayed as number);
+      ((acc[manufacturer] as Record<string, unknown>).holdValues as number[]).push(machine.actualHold as number);
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, unknown>);
 
     // Calculate averages and format data
-    return Object.values(manufacturerData).map((data: any) => ({
-      name: data.name,
-      machines: data.machines,
-      totalNetWin: data.totalNetWin,
-      totalGamesPlayed: data.totalGamesPlayed,
-      avgHold: data.holdValues.length > 0 
-        ? data.holdValues.reduce((sum: number, val: number) => sum + val, 0) / data.holdValues.length 
+    return Object.values(manufacturerData).map((data) => {
+      const typedData = data as Record<string, unknown>;
+      return {
+      name: typedData.name,
+      machines: typedData.machines,
+      totalNetWin: typedData.totalNetWin,
+      totalGamesPlayed: typedData.totalGamesPlayed,
+      avgHold: (typedData.holdValues as number[]).length > 0 
+        ? (typedData.holdValues as number[]).reduce((sum: number, val: number) => sum + val, 0) / (typedData.holdValues as number[]).length 
         : 0,
-    }));
+    };
+    });
   }, [filteredEvaluationData]);
 
   // Generate games performance chart data
@@ -884,25 +887,28 @@ export default function MachinesTab() {
           holdValues: [],
         };
       }
-      acc[gameTitle].machines++;
-      acc[gameTitle].totalNetWin += machine.netWin;
-      acc[gameTitle].totalGamesPlayed += machine.gamesPlayed;
-      acc[gameTitle].holdValues.push(machine.actualHold);
+      (acc[gameTitle] as Record<string, unknown>).machines = ((acc[gameTitle] as Record<string, unknown>).machines as number) + 1;
+      (acc[gameTitle] as Record<string, unknown>).totalNetWin = ((acc[gameTitle] as Record<string, unknown>).totalNetWin as number) + (machine.netWin as number);
+      (acc[gameTitle] as Record<string, unknown>).totalGamesPlayed = ((acc[gameTitle] as Record<string, unknown>).totalGamesPlayed as number) + (machine.gamesPlayed as number);
+      ((acc[gameTitle] as Record<string, unknown>).holdValues as number[]).push(machine.actualHold as number);
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, unknown>);
 
     // Calculate averages and format data, limit to top 5 games
     return Object.values(gameData)
-      .map((data: any) => ({
-        name: data.name,
-        machines: data.machines,
-        totalNetWin: data.totalNetWin,
-        totalGamesPlayed: data.totalGamesPlayed,
-        avgHold: data.holdValues.length > 0 
-          ? data.holdValues.reduce((sum: number, val: number) => sum + val, 0) / data.holdValues.length 
+      .map((data) => {
+        const typedData = data as Record<string, unknown>;
+        return {
+        name: typedData.name,
+        machines: typedData.machines,
+        totalNetWin: typedData.totalNetWin,
+        totalGamesPlayed: typedData.totalGamesPlayed,
+        avgHold: (typedData.holdValues as number[]).length > 0 
+          ? (typedData.holdValues as number[]).reduce((sum: number, val: number) => sum + val, 0) / (typedData.holdValues as number[]).length 
           : 0,
-      }))
-      .sort((a: any, b: any) => b.totalNetWin - a.totalNetWin)
+        };
+      })
+      .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.totalNetWin as number) - (a.totalNetWin as number))
       .slice(0, 5);
   }, [filteredEvaluationData]);
 
@@ -998,7 +1004,7 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: (machine as any).serialNumber || (machine as any).origSerialNumber || machine.machineId,
+        serialNumber: (machine as Record<string, unknown>).serialNumber as string || (machine as Record<string, unknown>).origSerialNumber as string || machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
@@ -1028,7 +1034,7 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: (machine as any).serialNumber || (machine as any).origSerialNumber || machine.machineId,
+        serialNumber: (machine as Record<string, unknown>).serialNumber as string || (machine as Record<string, unknown>).origSerialNumber as string || machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
@@ -1107,43 +1113,7 @@ export default function MachinesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Calculate overview statistics from filtered machines
-  const overviewStats = useMemo(() => {
-    const totalMachines = filteredMachines.length;
-    const onlineMachines = filteredMachines.filter((m) => m.isOnline).length;
-    const totalNetWin = filteredMachines.reduce(
-      (sum, m) => sum + (m.netWin || 0),
-      0
-    );
-    const totalDrop = filteredMachines.reduce(
-      (sum, m) => sum + (m.drop || 0),
-      0
-    );
-    const totalCancelledCredits = filteredMachines.reduce(
-      (sum, m) => sum + (m.totalCancelledCredits || 0),
-      0
-    );
-    const totalJackpot = filteredMachines.reduce(
-      (sum, m) => sum + 0, // Jackpot not available in current data
-      0
-    );
-    const averageHold =
-      totalMachines > 0
-        ? filteredMachines.reduce((sum, m) => sum + (m.theoreticalHold || 0), 0) /
-          totalMachines
-        : 0;
 
-    return {
-      totalMachines,
-      onlineMachines,
-      offlineMachines: totalMachines - onlineMachines,
-      totalNetWin,
-      totalDrop,
-      totalCancelledCredits,
-      totalJackpot,
-      averageHoldPercentage: averageHold,
-    };
-  }, [filteredMachines]);
 
   // Performance analysis data with pagination
   const comparisonData = useMemo(() => {
@@ -1274,8 +1244,8 @@ export default function MachinesTab() {
       {/* Machine Statistics Cards - Load first */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {statsLoading || !machineStats ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="min-h-[120px]">
+          Array.from({ length: 4 }).map((_, index) => (
+                          <Card key={index} className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
                 <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
                 <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
@@ -1424,33 +1394,40 @@ export default function MachinesTab() {
           {/* Machine List */}
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <CardTitle>Machine Performance</CardTitle>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleCompareSelected}
                     disabled={selectedMachineIds.length < 2}
+                    className="flex-shrink-0"
                   >
                     <BarChart3 className="h-4 w-4 mr-2" />
-                    Compare Selected ({selectedMachineIds.length})
+                    <span className="hidden sm:inline">Compare Selected</span>
+                    <span className="sm:hidden">Compare</span>
+                    <span className="ml-1">({selectedMachineIds.length})</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleExportMeters}
+                    className="flex-shrink-0"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export Data
+                    <span className="hidden sm:inline">Export Data</span>
+                    <span className="sm:hidden">Export</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => fetchOverviewMachines(1)}
+                    className="flex-shrink-0"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
+                    <span className="sm:hidden">Refresh</span>
                   </Button>
                 </div>
               </div>
@@ -1464,10 +1441,11 @@ export default function MachinesTab() {
               ) : (
                 <>
                   {/* Desktop Table View */}
-                  <div className="hidden lg:block">
-                    <div className="rounded-md border">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
+                  <div className="hidden md:block">
+                                      {/* Desktop Table View */}
+                  <div className="hidden md:block rounded-md border">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
                           <thead className="border-b bg-muted/50">
                             <tr>
                               <th className="text-left p-3 font-medium">
@@ -1527,8 +1505,8 @@ export default function MachinesTab() {
                                       <div className="text-sm text-muted-foreground">
                                         {machine.manufacturer || "Unknown"} •{" "}
                                         {
-                                          (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
-                                            (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                          (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+                                            (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
                                             machine.machineId
                                         }
                                       </div>
@@ -1557,24 +1535,14 @@ export default function MachinesTab() {
                                     ).toLocaleString()}
                                   </td>
                                   <td className="p-3">
-                                    <Badge
-                                      variant={
-                                        machine.isOnline
-                                          ? "default"
-                                          : "destructive"
-                                      }
-                                    >
-                                      {machine.isOnline ? "Online" : "Offline"}
-                                    </Badge>
+                                    <StatusIcon isOnline={machine.isOnline} />
                                   </td>
                                   <td className="p-3">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() =>
-                                          handleMachineEdit(machine)
-                                        }
+                                        onClick={() => handleMachineEdit(machine)}
                                         className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                       >
                                         <Pencil2Icon className="h-4 w-4" />
@@ -1582,9 +1550,7 @@ export default function MachinesTab() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() =>
-                                          handleMachineDelete(machine)
-                                        }
+                                        onClick={() => handleMachineDelete(machine)}
                                         className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -1597,19 +1563,9 @@ export default function MachinesTab() {
                               <tr>
                                 <td
                                   colSpan={10}
-                                  className="p-8 text-center text-gray-500"
+                                  className="text-center py-8 text-gray-500"
                                 >
-                                  <div className="flex flex-col items-center gap-2">
-                                    <RefreshCw className="w-8 h-8 text-gray-400" />
-                                    <p>
-                                      No machines found matching the current
-                                      filters
-                                    </p>
-                                    <p className="text-sm">
-                                      Try adjusting your search or filter
-                                      criteria
-                                    </p>
-                                  </div>
+                                  No machines found
                                 </td>
                               </tr>
                             )}
@@ -1620,12 +1576,12 @@ export default function MachinesTab() {
                   </div>
 
                   {/* Mobile Card View */}
-                  <div className="lg:hidden space-y-4">
+                  <div className="md:hidden space-y-4">
                     {filteredMachines.length > 0 ? (
                       filteredMachines.map((machine) => (
                         <Card key={machine.machineId} className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-start justify-between mb-3 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               <Checkbox
                                 checked={selectedMachineIds.includes(
                                   machine.machineId
@@ -1633,50 +1589,71 @@ export default function MachinesTab() {
                                 onCheckedChange={() =>
                                   handleMachineSelect(machine.machineId)
                                 }
+                                className="flex-shrink-0"
                               />
-                              <div>
-                                <h4 className="font-medium">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-medium text-sm truncate">
                                   {machine.machineName || "Unknown"}
                                 </h4>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground truncate">
                                   {machine.manufacturer || "Unknown"} •{" "}
                                   {
-                                    (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
-                                      (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                    (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+                                      (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
                                       machine.machineId
                                   }
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant={
-                                  machine.isOnline ? "default" : "destructive"
-                                }
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <StatusIcon isOnline={machine.isOnline} size="sm" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMachineEdit(machine)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex-shrink-0"
                               >
-                                {machine.isOnline ? "Online" : "Offline"}
-                              </Badge>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMachineEdit(machine)}
-                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                >
-                                  <Pencil2Icon className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMachineDelete(machine)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                                <Pencil2Icon className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMachineDelete(machine)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 flex-shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          {/* Tiny screen layout (< 425px) - Single column */}
+                          <div className="block sm:hidden space-y-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Location:</span>
+                              <span className="font-medium">{machine.locationName || "Unknown"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Type:</span>
+                              <span className="font-medium">{machine.machineType || "slot"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Net Win:</span>
+                              <span className="font-medium text-green-600">${(machine.netWin || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Drop:</span>
+                              <span className="font-medium text-yellow-600">${(machine.drop || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Hold %:</span>
+                              <span className="font-medium">{(machine.actualHold || 0).toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Games:</span>
+                              <span className="font-medium">{(machine.gamesPlayed || 0).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          {/* Small screen layout (425px+) - Two columns */}
+                          <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-muted-foreground">
                                 Location:
@@ -1723,17 +1700,9 @@ export default function MachinesTab() {
                         </Card>
                       ))
                     ) : (
-                      <Card className="p-8 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <RefreshCw className="w-8 h-8 text-gray-400" />
-                          <p className="text-gray-500">
-                            No machines found matching the current filters
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            Try adjusting your search or filter criteria
-                          </p>
-                        </div>
-                      </Card>
+                      <div className="text-center py-8 text-gray-500">
+                        No machines found
+                      </div>
                     )}
                   </div>
 
@@ -1819,7 +1788,8 @@ export default function MachinesTab() {
                     </div>
                   </div>
 
-                  <div className="rounded-md border">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block rounded-md border">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="border-b bg-muted/50">
@@ -1857,8 +1827,8 @@ export default function MachinesTab() {
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {
-                                      (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
-                                        (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                                      (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+                                        (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
                                         machine.machineId
                                     }
                                   </div>
@@ -1924,6 +1894,131 @@ export default function MachinesTab() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+
+                  {/* Mobile Card View for Performance Analysis */}
+                  <div className="md:hidden space-y-4">
+                    {comparisonData.map((machine) => (
+                      <Card key={machine.machineId} className="p-4">
+                        <div className="mb-3">
+                          <h4 className="font-medium text-sm">
+                            {machine.machineName}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            {
+                              (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+                                (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+                                machine.machineId
+                            }
+                          </p>
+                        </div>
+                        
+                        {/* Tiny screen layout (< 425px) - Single column */}
+                        <div className="block sm:hidden space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Theoretical Hold:</span>
+                            <span className="font-medium">{machine.theoreticalHold.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Actual Hold:</span>
+                            <span className="font-medium">{machine.actualHold.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Difference:</span>
+                            <span className={`font-medium ${machine.holdDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {machine.holdDifference >= 0 ? "+" : ""}{machine.holdDifference.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Revenue:</span>
+                            <span className="font-medium text-green-600">${machine.netWin.toLocaleString()}</span>
+                          </div>
+                          <div className="mt-2">
+                            <Badge
+                              variant={
+                                machine.performanceRating === "excellent" ||
+                                machine.performanceRating === "good"
+                                  ? "default"
+                                  : "destructive"
+                              }
+                              className={`text-xs ${
+                                machine.performanceRating === "excellent"
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : machine.performanceRating === "good"
+                                  ? "bg-blue-100 text-blue-800 border-blue-200"
+                                  : machine.performanceRating === "average"
+                                  ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                  : "bg-red-100 text-red-800 border-red-200"
+                              }`}
+                            >
+                              {machine.performanceRating
+                                .charAt(0)
+                                .toUpperCase() +
+                                machine.performanceRating.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {/* Small screen layout (425px+) - Two columns */}
+                        <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Theoretical Hold:</span>
+                            <p>{machine.theoreticalHold.toFixed(1)}%</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Actual Hold:</span>
+                            <p>{machine.actualHold.toFixed(1)}%</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Difference:</span>
+                            <p className={`font-medium ${machine.holdDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {machine.holdDifference >= 0 ? "+" : ""}{machine.holdDifference.toFixed(1)}%
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Revenue:</span>
+                            <p className="text-green-600 font-medium">${machine.netWin.toLocaleString()}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Performance:</span>
+                            <div className="mt-1">
+                              <Badge
+                                variant={
+                                  machine.performanceRating === "excellent" ||
+                                  machine.performanceRating === "good"
+                                    ? "default"
+                                    : "destructive"
+                                }
+                                className={
+                                  machine.performanceRating === "excellent"
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : machine.performanceRating === "good"
+                                    ? "bg-blue-100 text-blue-800 border-blue-200"
+                                    : machine.performanceRating === "average"
+                                    ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                    : "bg-red-100 text-red-800 border-red-200"
+                                }
+                              >
+                                {machine.performanceRating
+                                  .charAt(0)
+                                  .toUpperCase() +
+                                  machine.performanceRating.slice(1)}
+                              </Badge>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {machine.performanceRating === "excellent" &&
+                                  "Outperforming theoretical by 1%+"}
+                                {machine.performanceRating === "good" &&
+                                  "Meeting or slightly above theoretical"}
+                                {machine.performanceRating === "average" &&
+                                  "Slightly below theoretical (-1% to 0%)"}
+                                {machine.performanceRating === "poor" &&
+                                  "Significantly below theoretical (-1% or more)"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
 
                   {/* Performance Analysis Pagination Info */}
@@ -2039,7 +2134,7 @@ export default function MachinesTab() {
                         if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
                         return `${v}`;
                       }} />
-                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
                       <Legend />
                       <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
                       <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
@@ -2080,7 +2175,7 @@ export default function MachinesTab() {
                         if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
                         return `${v}`;
                       }} />
-                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
                       <Legend />
                       <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
                       <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
@@ -2121,7 +2216,7 @@ export default function MachinesTab() {
                         if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
                         return `${v}`;
                       }} />
-                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
                       <Legend />
                       <Bar dataKey="avgHold" fill="#8b5cf6" name="Avg Hold (%)" />
                     </BarChart>
@@ -2164,7 +2259,7 @@ export default function MachinesTab() {
                         if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
                         return `${v}`;
                       }} />
-                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
                       <Legend />
                       <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
                       <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
@@ -2205,7 +2300,7 @@ export default function MachinesTab() {
                         if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
                         return `${v}`;
                       }} />
-                      <Tooltip formatter={(value: any) => (typeof value === 'number' ? value.toLocaleString() : value)} />
+                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
                       <Legend />
                       <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
                       <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
@@ -2304,7 +2399,8 @@ export default function MachinesTab() {
                   Clear Filters
                 </Button>
               </div>
-              <div className="overflow-x-auto">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-gray-50">
@@ -2347,7 +2443,7 @@ export default function MachinesTab() {
                     {filteredEvaluationData
                       .sort((a, b) => b.netWin - a.netWin)
                       .slice(0, 5)
-                      .map((machine, index) => (
+                      .map((machine) => (
                         <tr
                           key={machine.machineId}
                           className="border-b hover:bg-gray-50"
@@ -2357,8 +2453,8 @@ export default function MachinesTab() {
                           </td>
                           <td className="p-3 text-sm font-mono">
                             {
-                              (typeof (machine as any).serialNumber === "string" && (machine as any).serialNumber.trim()) ||
-                                (typeof (machine as any).origSerialNumber === "string" && (machine as any).origSerialNumber.trim()) ||
+                              (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
+                                (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
                                 machine.machineId
                             }
                           </td>
@@ -2408,6 +2504,97 @@ export default function MachinesTab() {
                       ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card View for Evaluation */}
+              <div className="md:hidden space-y-4">
+                {filteredEvaluationData
+                  .sort((a, b) => b.netWin - a.netWin)
+                  .slice(0, 5)
+                  .map((machine) => (
+                    <Card key={machine.machineId} className="p-4">
+                      <div className="mb-3">
+                        <h4 className="font-medium text-sm">
+                          {machine.machineName || machine.machineId}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {machine.locationName} • {machine.gameTitle}
+                        </p>
+                      </div>
+                      
+                      {/* Tiny screen layout (< 425px) - Single column */}
+                      <div className="block sm:hidden space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Manufacturer:</span>
+                          <span className="font-medium">{machine.manufacturer}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Handle:</span>
+                          <span className="font-medium">${(machine.netWin + (machine.actualHold * machine.netWin) / 100).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Win/Loss:</span>
+                          <span className={`font-medium ${machine.netWin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ${machine.netWin.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                          <span className="font-medium">${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Actual Hold:</span>
+                          <span className={`font-medium ${machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {machine.actualHold.toFixed(3)}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Theoretical Hold:</span>
+                          <span className="font-medium text-green-600">{machine.theoreticalHold.toFixed(3)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Games Played:</span>
+                          <span className="font-medium">{machine.gamesPlayed.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Small screen layout (425px+) - Two columns */}
+                      <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Manufacturer:</span>
+                          <p>{machine.manufacturer}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Handle:</span>
+                          <p className="font-medium">${(machine.netWin + (machine.actualHold * machine.netWin) / 100).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Win/Loss:</span>
+                          <p className={`font-medium ${machine.netWin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ${machine.netWin.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                          <p>${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Actual Hold:</span>
+                          <p className={`font-medium ${machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {machine.actualHold.toFixed(3)}%
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Theoretical Hold:</span>
+                          <p className="text-green-600">{machine.theoreticalHold.toFixed(3)}%</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Games Played:</span>
+                          <p>{machine.gamesPlayed.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
               </div>
 
               {filteredEvaluationData.length === 0 && (
@@ -2464,7 +2651,8 @@ export default function MachinesTab() {
                     </Badge>
                   </div>
 
-                  <div className="rounded-md border">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block rounded-md border">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="border-b bg-muted/50">
@@ -2532,6 +2720,78 @@ export default function MachinesTab() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+
+                  {/* Mobile Card View for Offline Machines */}
+                  <div className="md:hidden space-y-4">
+                    {offlineMachinesWithDuration.map((machine) => (
+                      <Card key={machine.machineId} className="p-4">
+                        <div className="mb-3">
+                          <h4 className="font-medium text-sm">
+                            {machine.machineName}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            {machine.machineId}
+                          </p>
+                        </div>
+                        
+                        {/* Tiny screen layout (< 425px) - Single column */}
+                        <div className="block sm:hidden space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Location:</span>
+                            <span className="font-medium">{machine.locationName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Last Activity:</span>
+                            <span className="font-medium">{new Date(machine.lastActivity).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Offline Duration:</span>
+                            <span className="font-medium">{machine.offlineDurationFormatted}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Net Win:</span>
+                            <span className="font-medium">${machine.netWin.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Drop:</span>
+                            <span className="font-medium">${machine.drop.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Games:</span>
+                            <span className="font-medium">{machine.gamesPlayed.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Small screen layout (425px+) - Two columns */}
+                        <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Location:</span>
+                            <p>{machine.locationName}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Last Activity:</span>
+                            <p>{new Date(machine.lastActivity).toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Offline Duration:</span>
+                            <p>{machine.offlineDurationFormatted}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Net Win:</span>
+                            <p className="font-medium">${machine.netWin.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Drop:</span>
+                            <p className="font-medium">${machine.drop.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Games:</span>
+                            <p>{machine.gamesPlayed.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
 
                   {/* Offline Machines Pagination */}

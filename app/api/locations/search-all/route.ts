@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build location matching - show ALL locations for the licensee
-    const locationMatch: any = {
+    const locationMatch: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 

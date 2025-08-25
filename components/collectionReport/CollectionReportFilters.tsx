@@ -4,7 +4,6 @@ import React, { useRef, useEffect } from "react";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { gsap } from "gsap";
-import type { LocationSelectItem } from "@/lib/types/location";
 import type { CollectionReportFiltersProps } from "@/lib/types/components";
 
 export default function CollectionReportFilters({

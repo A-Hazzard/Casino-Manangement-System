@@ -215,15 +215,15 @@ export async function fetchLocationDetailsById(
     const locations = response.data.locations || [];
 
     // Try multiple ways to find the location (ObjectId vs string)
-    let locationData = locations.find((loc: any) => loc._id === locationId);
+    let locationData = locations.find((loc: { _id: string | { toString(): string } }) => loc._id === locationId);
     if (!locationData) {
       locationData = locations.find(
-        (loc: any) => loc._id.toString() === locationId
+        (loc: { _id: string | { toString(): string } }) => loc._id.toString() === locationId
       );
     }
     if (!locationData) {
       locationData = locations.find(
-        (loc: any) => loc._id === locationId.toString()
+        (loc: { _id: string | { toString(): string } }) => loc._id === locationId.toString()
       );
     }
 

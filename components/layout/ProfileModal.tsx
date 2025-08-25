@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Pencil } from "lucide-react";
 import axios from "axios";
@@ -8,6 +8,9 @@ import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
 import { toast } from "sonner";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import defaultAvatar from "@/public/defaultAvatar.svg";
+import cameraIcon from "@/public/cameraIcon.svg";
+import CircleCropModal from "@/components/ui/image/CircleCropModal";
 
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
@@ -39,6 +42,11 @@ export default function ProfileModal({
   const [isEditMode, setIsEditMode] = useState(false);
   const userLogger = createActivityLogger("user");
 
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (open && authUser?._id) {
       setIsLoading(true);
@@ -47,6 +55,7 @@ export default function ProfileModal({
           if (data) {
             setUserData(data);
             setFormData(data.profile || {});
+            setProfilePicture(data.profilePicture || null);
           } else {
             toast.error("Could not load user profile.");
             onClose();
@@ -83,8 +92,26 @@ export default function ProfileModal({
     });
   };
 
-  const handlePasswordChange = (field: string, value: string) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setRawImageSrc(e.target?.result as string);
+        setIsCropOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveProfilePicture = () => {
+    setProfilePicture(null);
+  };
+
+  const handleCropComplete = (croppedImageUrl: string) => {
+    setProfilePicture(croppedImageUrl);
+    setIsCropOpen(false);
+    setRawImageSrc(null);
   };
 
   const handleSave = async () => {
@@ -94,9 +121,11 @@ export default function ProfileModal({
       _id: string;
       profile: typeof formData;
       password?: { current: string; new: string };
+      profilePicture?: string | null;
     } = {
       _id: userData._id,
       profile: formData,
+      profilePicture: profilePicture ?? null,
     };
 
     if (
@@ -131,6 +160,18 @@ export default function ProfileModal({
       );
 
       toast.success("Profile updated successfully!");
+      // Emit a browser event so the sidebar can update immediately
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("profile-updated", {
+            detail: {
+              profilePicture,
+              username: userData.username,
+              email: userData.email,
+            },
+          })
+        );
+      }
       onClose();
     } catch (error) {
       const errorMessage =
@@ -143,6 +184,7 @@ export default function ProfileModal({
   const handleCancelEdit = () => {
     if (userData) {
       setFormData(userData.profile || {});
+      setProfilePicture(userData.profilePicture || null);
     }
     setIsEditMode(false);
   };
@@ -182,17 +224,48 @@ export default function ProfileModal({
             </div>
           ) : (
             userData && (
-              <div className="max-h-[80vh] overflow-y-auto pr-4">
+              <div className="max-h-[80vh] overflow-y-auto pr-4 relative z-[150]">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                   {/* Left section */}
                   <div className="w-full lg:w-1/3 flex flex-col items-center">
-                    <Image
-                      src={userData.profilePicture || "/defaultAvatar.svg"}
-                      alt="Avatar"
-                      width={160}
-                      height={160}
-                      className="rounded-full border-4 border-gray-200"
-                    />
+                    <div className="relative">
+                      <Image
+                        src={profilePicture || userData.profilePicture || defaultAvatar}
+                        alt="Avatar"
+                        width={160}
+                        height={160}
+                        className="rounded-full border-4 border-gray-200"
+                      />
+                      {isEditMode && (
+                        <>
+                          <button
+                            type="button"
+                            className="absolute bottom-2 right-2 rounded-full border-2 border-border bg-white p-1 shadow"
+                            onClick={() => fileInputRef.current?.click()}
+                            aria-label="Upload avatar"
+                          >
+                            <Image src={cameraIcon} alt="Edit" width={24} height={24} />
+                          </button>
+                          {(profilePicture || userData.profilePicture) && (
+                            <button
+                              type="button"
+                              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow"
+                              onClick={handleRemoveProfilePicture}
+                              aria-label="Remove avatar"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4"><path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm2 4h2v10h-2V7Zm-4 0h2v10H7V7Zm8 0h2v10h-2V7Z"/></svg>
+                            </button>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                        </>
+                      )}
+                    </div>
                     <h3 className="text-xl font-semibold mt-4">
                       {userData.username}
                     </h3>
@@ -527,62 +600,6 @@ export default function ProfileModal({
                 </div>
 
                 {isEditMode && (
-                  <div className="mt-8">
-                    <h4 className="text-lg font-semibold mb-2 border-b pb-1">
-                      Change Password
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.currentPassword}
-                          onChange={(e) =>
-                            handlePasswordChange(
-                              "currentPassword",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-                      <div>{/* Spacer */}</div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.newPassword}
-                          onChange={(e) =>
-                            handlePasswordChange("newPassword", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.confirmPassword}
-                          onChange={(e) =>
-                            handlePasswordChange(
-                              "confirmPassword",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isEditMode && (
                   <div className="flex justify-end mt-8 gap-4">
                     <Button
                       onClick={handleCancelEdit}
@@ -604,6 +621,19 @@ export default function ProfileModal({
           )}
         </Dialog.Content>
       </Dialog.Portal>
+
+      {/* Profile Picture Cropping Modal */}
+      {isCropOpen && rawImageSrc && (
+        <CircleCropModal
+          open={isCropOpen}
+          onClose={() => {
+            setIsCropOpen(false);
+            setRawImageSrc(null);
+          }}
+          imageSrc={rawImageSrc}
+          onCropped={handleCropComplete}
+        />
+      )}
     </Dialog.Root>
   );
 }

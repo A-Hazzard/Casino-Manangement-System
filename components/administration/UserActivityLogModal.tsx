@@ -12,34 +12,16 @@ import {
 } from "lucide-react";
 import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
-import { DateRange } from "react-day-picker";
+
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import type { ActivityGroup } from "@/lib/types/components";
+import { format } from "date-fns";
 import { ReactNode } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 type UserActivityLogModalProps = {
   open: boolean;
   onClose: () => void;
-};
-
-type ActivityGroup = {
-  range: string;
-  entries: ProcessedActivityEntry[];
-};
-
-type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  type: string;
-  icon: ReactNode;
-  iconBg: string;
-  user: {
-    email: string;
-    role: string;
-  };
-  description: ReactNode;
-  originalActivity: ActivityLog;
 };
 
 const getActionIcon = (actionType: string) => {
@@ -192,19 +174,13 @@ export default function UserActivityLogModal({
   onClose,
 }: UserActivityLogModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [activeFilter, setActiveFilter] = useState("date");
+  const [activeFilter] = useState("date");
   const [activityType, setActivityType] = useState("update");
 
   // Use dashboard store for date filtering
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
-  // Convert dashboard store date format to DateRange format
-  const dateRange: DateRange | undefined = customDateRange
-    ? {
-        from: customDateRange.startDate,
-        to: customDateRange.endDate,
-      }
-    : undefined;
+
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -340,13 +316,7 @@ export default function UserActivityLogModal({
 
   const activityGroups = groupActivitiesByDate(activities);
 
-  const handleFilterChange = (filterKey: string) => {
-    setActiveFilter(filterKey);
-    setCurrentPage(1);
-    if (filterKey === "type") {
-      setActivityType("update");
-    }
-  };
+
 
   const handleActivityTypeChange = (type: string) => {
     setActivityType(type);

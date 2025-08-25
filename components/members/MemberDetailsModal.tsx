@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { X, Edit, Save, X as Cancel } from "lucide-react";
-import { formatPhoneNumber } from "@/lib/utils/phoneFormatter";
 import gsap from "gsap";
 import { toast } from "sonner";
 import axios from "axios";
@@ -166,7 +165,7 @@ export default function MemberDetailsModal({
         month: "long",
         day: "numeric",
       });
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -182,7 +181,7 @@ export default function MemberDetailsModal({
         minute: "2-digit",
         second: "2-digit",
       });
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };

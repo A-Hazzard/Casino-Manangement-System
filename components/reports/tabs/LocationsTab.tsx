@@ -7,9 +7,6 @@ import {
   Download,
   BarChart3,
   Monitor,
-  Wifi,
-  WifiOff,
-  CheckCircle,
   TrendingUp,
   Trophy,
   Activity,
@@ -31,9 +28,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { ExportUtils, exportData } from "@/lib/utils/exportUtils";
+import { exportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+
 
 // Recharts imports for CasinoLocationCard charts
 import {
@@ -50,11 +47,7 @@ import {
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import EnhancedLocationTable from "@/components/reports/common/EnhancedLocationTable";
 import RevenueAnalysisTable from "@/components/reports/common/RevenueAnalysisTable";
-import HandleChart from "@/components/reports/charts/HandleChart";
-import WinLossChart from "@/components/reports/charts/WinLossChart";
-import JackpotChart from "@/components/reports/charts/JackpotChart";
-import PlaysChart from "@/components/reports/charts/PlaysChart";
-import TopMachinesTable from "@/components/reports/common/TopMachinesTable";
+
 import SimpleChart from "@/components/reports/charts/SimpleChart";
 import CompareLocationsModal from "@/components/reports/modals/CompareLocationsModal";
 
@@ -82,7 +75,7 @@ const MetricsOverviewSkeleton = () => (
 );
 
 const TopLocationsSkeleton = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     {[1, 2, 3, 4, 5].map((i) => (
       <div
         key={i}
@@ -137,18 +130,10 @@ const CasinoLocationCard = ({
   onClick: () => void;
   isComparisonSelected?: boolean;
 }) => {
-  const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
-  const [dailyPerformance, setDailyPerformance] = useState(0);
-  const [topPerformer, setTopPerformer] = useState<{
-    machineName: string;
-    revenue: number;
-    holdPercentage: number;
-  } | null>(null);
+  const [revenueTrend, setRevenueTrend] = useState<Record<string, unknown>[]>([]);
   const [trendLoading, setTrendLoading] = useState(false);
-  const [performerLoading, setPerformerLoading] = useState(false);
 
-  const { activeMetricsFilter, customDateRange, selectedLicencee } =
-    useDashBoardStore();
+
 
   const { selectedDateRange } = useReportsStore();
 
@@ -180,18 +165,12 @@ const CasinoLocationCard = ({
           };
         });
         setRevenueTrend(trend);
-        const total = trend.reduce((s, t) => s + (t.revenue || 0), 0);
-        const avg = total / (trend.length || 1);
-        const last = trend.at(-1)?.revenue ?? 0;
-        const perf = avg > 0 ? Math.round(((last - avg) / avg) * 100) : 0;
-        setDailyPerformance(perf);
-      } catch (e) {
+      } catch {
         const trend = Array.from({ length: 24 }, (_, i) => ({
           hour: `${i.toString().padStart(2, "0")}:00`,
           revenue: 0,
         }));
         setRevenueTrend(trend);
-        setDailyPerformance(0);
       } finally {
         setTrendLoading(false);
       }
@@ -199,36 +178,15 @@ const CasinoLocationCard = ({
     fetchHourly();
   }, [location.locationId, selectedDateRange?.start, selectedDateRange?.end]);
 
-  // Generate top performer data from existing location data instead of making API calls
-  useEffect(() => {
-    setPerformerLoading(true);
 
-    // Generate top performer data from the location's revenue data
-    const generateTopPerformer = () => {
-      const baseRevenue = location.gross || 0;
-      if (baseRevenue > 0) {
-        setTopPerformer({
-          machineName: `${location.locationName} - Top Machine`,
-          revenue: Math.floor(baseRevenue * 0.3), // 30% of location revenue
-          holdPercentage: Math.random() * 10 + 5, // 5-15% hold percentage
-        });
-      } else {
-        setTopPerformer(null);
-      }
-      setPerformerLoading(false);
-    };
-
-    // Generate data immediately since we have the location data
-    generateTopPerformer();
-  }, [location]); // Only depend on location data changes
 
   const totalRevenue = revenueTrend.reduce(
-    (sum, item) => sum + item.revenue,
+    (sum, item) => sum + (item.revenue as number),
     0
   );
   const peakRevenue =
     revenueTrend.length > 0
-      ? Math.max(...revenueTrend.map((item) => item.revenue))
+      ? Math.max(...revenueTrend.map((item) => item.revenue as number))
       : 0;
   const avgRevenue =
     revenueTrend.length > 0
@@ -240,34 +198,13 @@ const CasinoLocationCard = ({
     revenue: item.revenue,
   }));
 
-  const getPerformanceColor = (performance: string) => {
-    switch (performance) {
-      case "excellent":
-        return "bg-green-100 text-green-700";
-      case "good":
-        return "bg-blue-100 text-blue-700";
-      case "average":
-        return "bg-yellow-100 text-yellow-700";
-      case "poor":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
 
-  const getDailyTrendColor = (performance: number) => {
-    if (performance >= 0) return "bg-green-500";
-    return "bg-red-500";
-  };
 
-  const getDailyTrendTextColor = (performance: number) => {
-    if (performance >= 0) return "text-green-700";
-    return "text-red-700";
-  };
+
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-auto border border-gray-200 cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] ${
+      className={`bg-white rounded-xl shadow-lg p-6 w-full border border-gray-200 cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] ${
         isSelected
           ? "ring-2 ring-blue-500 shadow-xl bg-blue-50"
           : isComparisonSelected
@@ -279,7 +216,7 @@ const CasinoLocationCard = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold text-gray-900">
+          <span className="text-base sm:text-lg font-semibold text-gray-900">
             {location.locationName}
           </span>
           {isComparisonSelected && (
@@ -288,43 +225,37 @@ const CasinoLocationCard = ({
             </div>
           )}
         </div>
-        {location.sasEnabled ? (
-          <Wifi className="w-5 h-5 text-green-500" />
-        ) : (
-          <WifiOff className="w-5 h-5 text-gray-400" />
-        )}
       </div>
-      <div className="text-sm text-gray-500 mb-4">
-        {location.onlineMachines}/{location.totalMachines} machines online •{" "}
-        {location.sasEnabled ? "SAS Enabled" : "Non-SAS"}
+      <div className="text-xs sm:text-sm text-gray-500 mb-4">
+        {location.onlineMachines}/{location.totalMachines} machines online
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-        <div>
+      {/* Metrics Grid - Responsive layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-x-6 sm:gap-y-2 mb-4">
+        <div className="flex flex-col sm:block">
           <div className="text-xs text-gray-500">Gross Revenue:</div>
-          <div className="text-green-600 font-bold text-lg">
+          <div className="text-green-600 font-bold text-base sm:text-lg">
             {formatCurrency(location.gross || 0)}
           </div>
         </div>
-        <div>
+        <div className="flex flex-col sm:block">
           <div className="text-xs text-gray-500">Drop:</div>
-          <div className="text-yellow-600 font-bold text-lg">
+          <div className="text-yellow-600 font-bold text-base sm:text-lg">
             {formatCurrency(location.drop || 0)}
           </div>
         </div>
-        <div>
-          <div className="text-xs text-gray-500">Hold %:</div>
-          <div className="text-gray-900 font-bold text-lg">
+        <div className="flex flex-col sm:block">
+          <div className="text-xs text-gray-500">Gross %:</div>
+          <div className="text-gray-900 font-bold text-base sm:text-lg">
             {location.drop > 0
               ? ((location.gross / location.drop) * 100).toFixed(1)
               : "0.0"}
             %
           </div>
         </div>
-        <div>
+        <div className="flex flex-col sm:block">
           <div className="text-xs text-gray-500">Cancelled Credits:</div>
-          <div className="text-gray-900 font-bold text-lg">
+          <div className="text-gray-900 font-bold text-base sm:text-lg">
             {formatCurrency(location.cancelledCredits || 0)}
           </div>
         </div>
@@ -364,7 +295,7 @@ const CasinoLocationCard = ({
                   }}
                 />
                 <Tooltip
-                  formatter={(value: any) => [
+                  formatter={(value: unknown) => [
                     formatCurrency(value as number),
                     "Revenue",
                   ]}
@@ -390,7 +321,7 @@ const CasinoLocationCard = ({
             </span>
           </span>
           <span>
-            Avg:{" "}
+            Avg Hourly:{" "}
             <span className="font-semibold text-gray-900">
               {formatCurrency(avgRevenue)}
             </span>
@@ -418,7 +349,7 @@ export default function LocationsTab() {
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
 
   // Two-phase loading: gaming locations (fast) + financial data (slow)
-  const [gamingLocations, setGamingLocations] = useState<any[]>([]);
+  const [gamingLocations, setGamingLocations] = useState<Record<string, unknown>[]>([]);
   const [gamingLocationsLoading, setGamingLocationsLoading] = useState(true);
 
   const [metricsLoading, setMetricsLoading] = useState(true);
@@ -435,8 +366,16 @@ export default function LocationsTab() {
   >([]);
   const [paginationLoading, setPaginationLoading] = useState(true); // Start with loading true
 
+  // Combined loading state for better UX
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  // Store all locations for dropdown selection (not just paginated ones)
+  const [allLocationsForDropdown, setAllLocationsForDropdown] = useState<
+    AggregatedLocation[]
+  >([]);
+
   // Fast fetch for gaming locations (Phase 1)
-  const fetchGamingLocationsAsync = async () => {
+  const fetchGamingLocationsAsync = useCallback(async () => {
     setGamingLocationsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -446,10 +385,8 @@ export default function LocationsTab() {
 
       const response = await axios.get(`/api/locations?${params.toString()}`);
       const { locations: locationsData } = response.data;
-      console.log(
-        "🗺️ Gaming locations fetched:",
-        locationsData?.length || 0,
-        "locations"
+      console.warn(
+        `🗺️ Gaming locations fetched: ${locationsData?.length || 0} locations`
       );
       setGamingLocations(locationsData || []);
     } catch (error) {
@@ -458,7 +395,7 @@ export default function LocationsTab() {
     } finally {
       setGamingLocationsLoading(false);
     }
-  };
+  }, [selectedLicencee]);
 
   // Comparison state
   const [selectedForComparison, setSelectedForComparison] = useState<
@@ -469,205 +406,40 @@ export default function LocationsTab() {
     "locations" | "machines"
   >("locations");
 
-  // Consolidated fetch for all location data (eliminates duplicate API calls)
-  const fetchAllLocationDataAsync = async () => {
-    console.log(
-      "🔍 Starting fetchAllLocationDataAsync - setting loading states to true"
-    );
-    setMetricsLoading(true);
-    setLocationsLoading(true);
-    setPaginationLoading(true);
-    setGamingLocationsLoading(true);
-
-    try {
-      console.log("🔍 LocationsTab - selectedLicencee:", selectedLicencee);
-      console.log(
-        "🔍 LocationsTab - activeMetricsFilter:",
-        activeMetricsFilter
-      );
-
-      // Fetch gaming locations first (for map)
-      await fetchGamingLocationsAsync();
-
-      // Build API parameters for locationAggregation (includes all data we need)
-      const params: Record<string, string> = {
-        limit: "50", // Get more data to avoid pagination issues
-        page: "1",
-        showAllLocations: "true",
-      };
-
-      if (selectedLicencee && selectedLicencee !== "all") {
-        params.licencee = selectedLicencee;
-      }
-
-      // Use appropriate date parameter based on active filter
-      if (activeMetricsFilter === "Today") {
-        params.timePeriod = "Today";
-      } else if (activeMetricsFilter === "Yesterday") {
-        params.timePeriod = "Yesterday";
-      } else if (
-        activeMetricsFilter === "last7days" ||
-        activeMetricsFilter === "7d"
-      ) {
-        params.timePeriod = "7d";
-      } else if (
-        activeMetricsFilter === "last30days" ||
-        activeMetricsFilter === "30d"
-      ) {
-        params.timePeriod = "30d";
-      } else if (activeMetricsFilter === "All Time") {
-        params.timePeriod = "All Time";
-      } else if (
-        activeMetricsFilter === "Custom" &&
-        customDateRange?.startDate &&
-        customDateRange?.endDate
-      ) {
-        params.startDate = (
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate as any)
-        ).toISOString();
-        params.endDate = (
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate as any)
-        ).toISOString();
-      } else {
-        // Fallback to Today if no valid filter
-        params.timePeriod = "Today";
-      }
-
-      console.log("🔍 API params:", params);
-
-      // Single API call to get all location data
-      const response = await axios.get("/api/locationAggregation", { params });
-      const { data: allLocations, pagination } = response.data;
-
-      console.log("🔍 Total locations from API:", allLocations.length);
-      console.log("🔍 Pagination info:", pagination);
-
-      // Check if we have any locations with data
-      const locationsWithData = allLocations.filter(
-        (loc: any) => loc.gross > 0 || loc.moneyIn > 0 || loc.moneyOut > 0
-      );
-      console.log("🔍 Locations with data:", locationsWithData.length);
-
-      // Calculate overall machine statistics from location data
-      const overallMachineStats = allLocations.reduce(
-        (acc: any, loc: any) => {
-          acc.totalGross += loc.gross || 0;
-          acc.totalDrop += loc.moneyIn || 0;
-          acc.totalCancelledCredits += loc.moneyOut || 0;
-          acc.onlineMachines += loc.onlineMachines || 0;
-          acc.totalMachines += loc.totalMachines || 0;
-          return acc;
-        },
-        {
-          totalGross: 0,
-          totalDrop: 0,
-          totalCancelledCredits: 0,
-          onlineMachines: 0,
-          totalMachines: 0,
-        }
-      );
-
-      console.log("🔍 Overall machine stats:", overallMachineStats);
-
-      // Use the overall machine statistics for metrics overview
-      const overview: LocationMetrics = {
-        totalGross: overallMachineStats.totalGross,
-        totalDrop: overallMachineStats.totalDrop,
-        totalCancelledCredits: overallMachineStats.totalCancelledCredits,
-        onlineMachines: overallMachineStats.onlineMachines,
-        totalMachines: overallMachineStats.totalMachines,
-      };
-
-      setMetricsOverview(overview);
-      setMetricsLoading(false);
-
-      // Normalize locations: ensure gross and locationName exist
-      const normalizedLocations = allLocations.map((loc: any) => ({
-        ...loc,
-        gross: loc.gross || 0, // Use the gross from API (should be calculated correctly now)
-        locationName: loc.locationName || loc.name || loc.location || "Unknown",
-      }));
-
-      // Get top 5 locations for overview (include all locations, even those with no data)
-      const sorted = normalizedLocations
-        .sort((a: any, b: any) => (b.gross || 0) - (a.gross || 0))
-        .slice(0, 5)
-        .map((loc: any) => {
-          const sasEnabled = loc.hasSasMachines;
-          console.log(
-            `🔍 Location ${loc.locationName}: hasSasMachines=${loc.hasSasMachines}, hasNonSasMachines=${loc.hasNonSasMachines}, sasEnabled=${sasEnabled}`
-          );
-          return {
-            locationId: loc.location,
-            locationName:
-              loc.locationName || loc.name || loc.location || "Unknown",
-            gross: loc.gross || 0,
-            drop: loc.moneyIn || 0,
-            cancelledCredits: loc.moneyOut || 0,
-            onlineMachines: loc.onlineMachines || 0,
-            totalMachines: loc.totalMachines || 0,
-            performance: "average" as const,
-            sasEnabled: sasEnabled,
-            coordinates: undefined, // Will be added if needed
-            holdPercentage:
-              loc.moneyIn > 0 ? (loc.gross / loc.moneyIn) * 100 : 0,
-          };
-        });
-      setTopLocations(sorted);
-      setLocationsLoading(false);
-
-      // Set paginated data from API response (normalized)
-      setPaginatedLocations(normalizedLocations);
-      setCurrentPage(pagination?.page || 1);
-      setTotalPages(pagination?.totalPages || 1);
-      setTotalCount(pagination?.totalCount || 0);
-
-      // Gaming locations are already set by fetchGamingLocationsAsync
-      setGamingLocationsLoading(false);
-
-      console.log(
-        "🔍 API call successful - setting paginationLoading to false"
-      );
-      // Add a longer delay to make loading state more visible
-      setTimeout(() => {
-        setPaginationLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.log("🔍 API call failed - setting paginationLoading to false");
-      toast.error("Failed to load location data");
-      setMetricsLoading(false);
-      setLocationsLoading(false);
-      setPaginationLoading(false);
-      setGamingLocationsLoading(false);
-      setMetricsOverview(null);
-      setTopLocations([]);
-      setPaginatedLocations([]);
-      setGamingLocations([]);
-      console.error("Error fetching location data:", error);
-    }
-  };
-
-  // Handle pagination (server-side)
-  const handlePageChange = useCallback(
-    async (page: number) => {
-      console.log(
-        "🔍 handlePageChange called - setting paginationLoading to true"
-      );
+  // Simplified data fetching for locations
+  const fetchLocationDataAsync = useCallback(
+    async (specificLocations?: string[]) => {
+              console.warn(`🔍 Starting fetchLocationDataAsync: ${JSON.stringify({ specificLocations })}`);
+      setGamingLocationsLoading(true);
+      setLocationsLoading(true);
+      setMetricsLoading(true);
       setPaginationLoading(true);
+      setIsInitialLoadComplete(false);
+
       try {
-        // Build API parameters for the new page
+        // Fetch gaming locations first (for map)
+        await fetchGamingLocationsAsync();
+
+        // Build API parameters for location data
         const params: Record<string, string> = {
-          limit: "10",
-          page: page.toString(),
+          limit: "1000", // Get all locations
+          page: "1",
+          showAllLocations: "true",
         };
 
         if (selectedLicencee && selectedLicencee !== "all") {
           params.licencee = selectedLicencee;
         }
+
+        // Note: We don't add selectedLocations filter here to ensure dropdown always shows all locations
+        // The selectedLocations filter will be applied separately for data display
+
+        // Add SAS evaluation filter for SAS Evaluation tab
+        if (activeTab === "location-evaluation") {
+          params.sasEvaluationOnly = "true";
+        }
+        // For revenue analysis tab, we want all locations (SAS and non-SAS)
+        // No additional filter needed as it will fetch all locations by default
 
         // Use appropriate date parameter based on active filter
         if (activeMetricsFilter === "Today") {
@@ -684,6 +456,8 @@ export default function LocationsTab() {
           activeMetricsFilter === "30d"
         ) {
           params.timePeriod = "30d";
+        } else if (activeMetricsFilter === "All Time") {
+          params.timePeriod = "All Time";
         } else if (
           activeMetricsFilter === "Custom" &&
           customDateRange?.startDate &&
@@ -692,67 +466,177 @@ export default function LocationsTab() {
           params.startDate = (
             customDateRange.startDate instanceof Date
               ? customDateRange.startDate
-              : new Date(customDateRange.startDate as any)
+              : new Date(customDateRange.startDate as string)
           ).toISOString();
           params.endDate = (
             customDateRange.endDate instanceof Date
               ? customDateRange.endDate
-              : new Date(customDateRange.endDate as any)
+              : new Date(customDateRange.endDate as string)
           ).toISOString();
         } else {
           // Fallback to Today if no valid filter
           params.timePeriod = "Today";
         }
 
-        console.log("🔍 Pagination API params:", params);
+        console.warn(`🔍 Location data API params: ${JSON.stringify(params)}`);
 
-        // Call the aggregation API for the new page
+        // API call to get location data with financial metrics
         const response = await axios.get("/api/locationAggregation", {
           params,
+          timeout: 60000, // 60 second timeout
         });
-        const { data: newLocations, pagination: newPagination } = response.data;
 
-        // Update paginated data
-        setPaginatedLocations(newLocations);
-        setCurrentPage(newPagination?.page || 1);
-        setTotalPages(newPagination?.totalPages || 1);
-        setTotalCount(newPagination?.totalCount || 0);
+        // Check for error response
+        if (response.data.error) {
+          console.error("❌ LocationData API Error:", response.data.error);
+          toast.error("Failed to fetch location data. Please try again.");
+          throw new Error(response.data.error);
+        }
 
-        console.log(
-          "🔍 Pagination API call successful - setting paginationLoading to false"
+        const { data: locationData } = response.data;
+
+        console.warn(`🔍 Location data from API: ${locationData.length}`);
+
+        // Normalize location data
+        const normalizedLocations = locationData.map((loc: Record<string, unknown>) => ({
+          ...loc,
+          gross: loc.gross || 0,
+          locationName:
+            loc.locationName || loc.name || loc.location || "Unknown",
+        }));
+
+        // Store locations for dropdown selection (always all locations)
+        setAllLocationsForDropdown(normalizedLocations);
+
+        // Filter data based on selected locations if any are selected
+        const filteredData = selectedLocations.length > 0 
+          ? normalizedLocations.filter((loc: Record<string, unknown>) => 
+              selectedLocations.includes(loc.location as string)
+            )
+          : normalizedLocations;
+
+        // Set paginated data (filtered if locations are selected)
+        setPaginatedLocations(filteredData);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalCount(normalizedLocations.length);
+
+        // Calculate metrics overview (use filtered data if locations are selected)
+        const dataForMetrics = selectedLocations.length > 0 ? filteredData : normalizedLocations;
+        const overview = dataForMetrics.reduce(
+          (acc: Record<string, unknown>, loc: Record<string, unknown>) => {
+            (acc.totalGross as number) += (loc.gross as number) || 0;
+            (acc.totalDrop as number) += (loc.moneyIn as number) || 0;
+            (acc.totalCancelledCredits as number) += (loc.moneyOut as number) || 0;
+            (acc.onlineMachines as number) += (loc.onlineMachines as number) || 0;
+            (acc.totalMachines as number) += (loc.totalMachines as number) || 0;
+            return acc;
+          },
+          {
+            totalGross: 0,
+            totalDrop: 0,
+            totalCancelledCredits: 0,
+            onlineMachines: 0,
+            totalMachines: 0,
+          }
         );
-        // Add a longer delay to make loading state more visible
-        setTimeout(() => {
-          setPaginationLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.log(
-          "🔍 Pagination API call failed - setting paginationLoading to false"
-        );
-        toast.error("Failed to load page data");
-        console.error("Error fetching page data:", error);
-      } finally {
+
+        setMetricsOverview(overview);
+        setMetricsLoading(false);
+
+        // Get top 5 locations for overview (use filtered data if locations are selected)
+        const dataForTopLocations = selectedLocations.length > 0 ? filteredData : normalizedLocations;
+        const sorted = dataForTopLocations
+          .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.gross as number) || 0) - ((a.gross as number) || 0))
+          .slice(0, 5)
+          .map((loc: Record<string, unknown>) => ({
+            locationId: loc.location,
+            locationName:
+              loc.locationName || loc.name || loc.location || "Unknown",
+            gross: loc.gross || 0,
+            drop: loc.moneyIn || 0,
+            cancelledCredits: loc.moneyOut || 0,
+            onlineMachines: loc.onlineMachines || 0,
+            totalMachines: loc.totalMachines || 0,
+            performance: "average" as const,
+            sasEnabled: loc.hasSasMachines || (loc.sasMachines as number) > 0,
+            coordinates: undefined,
+            holdPercentage:
+              (loc.moneyIn as number) > 0 ? ((loc.gross as number) / (loc.moneyIn as number)) * 100 : 0,
+          }));
+
+        setTopLocations(sorted);
+        setLocationsLoading(false);
+
+        console.warn("🔍 Location data successful - setting loading states to false");
+
+        // Set loading states
+        setGamingLocationsLoading(false);
         setPaginationLoading(false);
+        setIsInitialLoadComplete(true);
+      } catch (error) {
+        console.error("❌ Error fetching location data:", error);
+
+        // Show user-friendly error message
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 500) {
+            toast.error(
+              "Server error: Database query timeout. Please try again."
+            );
+          } else if (error.response?.status === 404) {
+            toast.error("Location data not found. Please check your filters.");
+          } else {
+            toast.error("Failed to load location data. Please try again.");
+          }
+        } else {
+          toast.error("Failed to load location data. Please try again.");
+        }
+
+        // Reset loading states and data
+        setGamingLocationsLoading(false);
+        setLocationsLoading(false);
+        setMetricsLoading(false);
+        setPaginationLoading(false);
+        setIsInitialLoadComplete(false);
+        setAllLocationsForDropdown([]);
+        setPaginatedLocations([]);
+        setMetricsOverview(null);
+        setTopLocations([]);
       }
     },
     [
       selectedLicencee,
+      activeTab,
       activeMetricsFilter,
       customDateRange?.startDate,
       customDateRange?.endDate,
+      fetchGamingLocationsAsync,
+      selectedLocations,
     ]
   );
 
   useEffect(() => {
-    // Single consolidated call to fetch all location data
-    fetchAllLocationDataAsync();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Fetch location data for all tabs (only when filters change, not when locations are selected)
+    if (selectedLocations.length === 0) {
+      fetchLocationDataAsync();
+    }
   }, [
-    activeMetricsFilter,
     selectedLicencee,
+    activeTab,
+    activeMetricsFilter,
     customDateRange?.startDate,
     customDateRange?.endDate,
+    fetchLocationDataAsync,
+    selectedLocations.length,
   ]);
+
+  // Handle location selection by re-querying the API
+  useEffect(() => {
+    if (selectedLocations.length > 0) {
+      // Re-fetch data with selected locations filter
+      fetchLocationDataAsync(selectedLocations);
+    }
+  }, [selectedLocations, fetchLocationDataAsync]);
 
   // Initialize from URL
   useEffect(() => {
@@ -775,35 +659,67 @@ export default function LocationsTab() {
     setCurrentPage(1);
   }, [activeMetricsFilter, selectedDateRange, selectedLicencee]);
 
+  // Filter displayed data when selectedLocations changes
+  useEffect(() => {
+    if (allLocationsForDropdown.length > 0) {
+      const filteredData = selectedLocations.length > 0 
+        ? allLocationsForDropdown.filter((loc) => 
+            selectedLocations.includes(loc.location as string)
+          )
+        : allLocationsForDropdown;
+
+      setPaginatedLocations(filteredData);
+      setTotalCount(filteredData.length);
+      setCurrentPage(1);
+
+      // Recalculate metrics overview
+      const overview = filteredData.reduce(
+        (acc: Record<string, unknown>, loc: Record<string, unknown>) => {
+          (acc.totalGross as number) += (loc.gross as number) || 0;
+          (acc.totalDrop as number) += (loc.moneyIn as number) || 0;
+          (acc.totalCancelledCredits as number) += (loc.moneyOut as number) || 0;
+          (acc.onlineMachines as number) += (loc.onlineMachines as number) || 0;
+          (acc.totalMachines as number) += (loc.totalMachines as number) || 0;
+          return acc;
+        },
+        {
+          totalGross: 0,
+          totalDrop: 0,
+          totalCancelledCredits: 0,
+          onlineMachines: 0,
+          totalMachines: 0,
+        }
+      ) as LocationMetrics;
+      setMetricsOverview(overview);
+
+      // Recalculate top locations
+      const sorted = filteredData
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.gross as number) || 0) - ((a.gross as number) || 0))
+        .slice(0, 5)
+        .map((loc: Record<string, unknown>) => ({
+          locationId: loc.location as string,
+          locationName:
+            (loc.locationName || loc.name || loc.location || "Unknown") as string,
+          gross: (loc.gross || 0) as number,
+          drop: (loc.moneyIn || 0) as number,
+          cancelledCredits: (loc.moneyOut || 0) as number,
+          onlineMachines: (loc.onlineMachines || 0) as number,
+          totalMachines: (loc.totalMachines || 0) as number,
+          performance: "average" as const,
+          sasEnabled: (loc.hasSasMachines || (loc.sasMachines as number) > 0) as boolean,
+          coordinates: undefined,
+          holdPercentage:
+            (loc.moneyIn as number) > 0 ? ((loc.gross as number) / (loc.moneyIn as number)) * 100 : 0,
+        })) as TopLocation[];
+      setTopLocations(sorted);
+    }
+  }, [selectedLocations, allLocationsForDropdown]);
+
   // Debug effect to log state changes
   useEffect(() => {
-    console.log(
-      "🔍 State Debug - paginationLoading:",
-      paginationLoading,
-      "locations count:",
-      paginatedLocations.length,
-      "currentPage:",
-      currentPage,
-      "totalPages:",
-      totalPages,
-      "totalCount:",
-      totalCount
-    );
-    console.log(
-      "🔍 Table Props Debug - totalPages:",
-      totalPages,
-      "totalCount:",
-      totalCount,
-      "onPageChange exists:",
-      !!handlePageChange
-    );
-    console.log(
-      "🔍 Loading State Debug - paginationLoading:",
-      paginationLoading,
-      "should show skeleton:",
-      paginationLoading
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    console.warn(`🔍 State Debug - paginationLoading: ${paginationLoading}, locations count: ${paginatedLocations.length}, currentPage: ${currentPage}, totalPages: ${totalPages}, totalCount: ${totalCount}`);
+    console.warn(`🔍 Table Props Debug - totalPages: ${totalPages}, totalCount: ${totalCount}`);
+    console.warn(`🔍 Loading State Debug - paginationLoading: ${paginationLoading}, should show skeleton: ${paginationLoading}`);
   }, [
     paginationLoading,
     paginatedLocations.length,
@@ -904,7 +820,7 @@ export default function LocationsTab() {
         },
       };
 
-      await exportData(exportDataObj, "csv");
+      await exportData(exportDataObj);
       toast.success("SAS evaluation report exported successfully");
     } catch (error) {
       toast.error("Failed to export report");
@@ -985,7 +901,7 @@ export default function LocationsTab() {
         },
       };
 
-      await exportData(exportDataObj, "csv");
+      await exportData(exportDataObj);
       toast.success("Revenue analysis report exported successfully");
     } catch (error) {
       toast.error("Failed to export report");
@@ -1149,7 +1065,13 @@ export default function LocationsTab() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={fetchAllLocationDataAsync}
+                  onClick={() => {
+                    fetchLocationDataAsync(
+                      selectedLocations.length > 0
+                        ? selectedLocations
+                        : undefined
+                    );
+                  }}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" /> Refresh
                 </Button>
@@ -1259,7 +1181,7 @@ export default function LocationsTab() {
               {locationsLoading ? (
                 <TopLocationsSkeleton />
               ) : topLocations.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {topLocations.map((location) => (
                     <CasinoLocationCard
                       key={location.locationId}
@@ -1315,25 +1237,46 @@ export default function LocationsTab() {
                     Location Selection & Controls
                   </CardTitle>
                   <CardDescription>
-                    Select specific locations to filter data or view all
-                    locations
+                    Select up to 5 SAS-enabled locations to filter data (SAS
+                    locations only)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Locations
+                        Select SAS Locations (Max 5)
                       </label>
-                      <LocationMultiSelect
-                        locations={topLocations.map((loc) => ({
-                          id: loc.locationId,
-                          name: loc.locationName,
-                        }))}
-                        selectedLocations={selectedLocations}
-                        onSelectionChange={setSelectedLocations}
-                        placeholder="Choose locations to filter..."
-                      />
+                      {!isInitialLoadComplete ? (
+                        <div className="w-full h-10 bg-gray-100 rounded-md flex items-center justify-center">
+                          <div className="text-sm text-gray-500">
+                            Loading locations...
+                          </div>
+                        </div>
+                      ) : (
+                        <LocationMultiSelect
+                          locations={allLocationsForDropdown
+                            .filter((loc) => loc.sasMachines > 0) // Only locations with SAS machines for SAS Evaluation
+                            .map((loc) => ({
+                              id: loc.location,
+                              name: loc.locationName,
+                              sasEnabled: loc.sasMachines > 0,
+                            }))}
+                          selectedLocations={selectedLocations}
+                          onSelectionChange={(newSelection) => {
+                            // Limit to 5 selections
+                            if (newSelection.length <= 5) {
+                              setSelectedLocations(newSelection);
+                            } else {
+                              toast.error(
+                                "Maximum 5 locations can be selected"
+                              );
+                            }
+                          }}
+                          placeholder="Choose SAS locations to filter..."
+                          maxSelections={5}
+                        />
+                      )}
                     </div>
                     <div className="flex items-end">
                       <Button
@@ -1350,210 +1293,34 @@ export default function LocationsTab() {
                           ? `${selectedLocations.length} location${
                               selectedLocations.length > 1 ? "s" : ""
                             } selected`
-                          : "Showing all locations"}
+                          : "Please select locations to view data"}
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Enhanced Location Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Location Evaluation Table
-                  </CardTitle>
-                  <CardDescription>
-                    Comprehensive location metrics with SAS status indicators
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <EnhancedLocationTable
-                    key={`enhanced-table-${activeTab}-${paginatedLocations.length}`}
-                    locations={(selectedLocations.length > 0
-                      ? paginatedLocations.filter((loc) => {
-                          // Find the corresponding topLocation to get the correct locationId
-                          const topLocation = topLocations.find(
-                            (tl) => tl.locationName === loc.locationName
-                          );
-                          return topLocation
-                            ? selectedLocations.includes(topLocation.locationId)
-                            : false;
-                        })
-                      : paginatedLocations
-                    ).map((loc) => ({
-                      location: loc.location,
-                      locationName: loc.locationName,
-                      moneyIn: loc.moneyIn,
-                      moneyOut: loc.moneyOut,
-                      gross: loc.gross,
-                      totalMachines: loc.totalMachines,
-                      onlineMachines: loc.onlineMachines,
-                      sasMachines: loc.sasMachines,
-                      nonSasMachines: loc.nonSasMachines,
-                      hasSasMachines: loc.hasSasMachines,
-                      hasNonSasMachines: loc.hasNonSasMachines,
-                      isLocalServer: loc.isLocalServer,
-                      noSMIBLocation: !loc.hasSasMachines,
-                      hasSmib: loc.hasSasMachines,
-                    }))}
-                    onLocationClick={(locationId) => {
-                      // Handle location click - could navigate to location details
-                      console.log("Location clicked:", locationId);
-                    }}
-                    loading={paginationLoading}
-                    error={null}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalCount={totalCount}
-                    onPageChange={handlePageChange}
-                    itemsPerPage={10}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Charts Section - Using existing data instead of API calls */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Generate chart data from existing location data */}
-                {(() => {
-                  // Use filtered locations if any are selected, otherwise use all
-                  const chartLocations =
-                    selectedLocations.length > 0
-                      ? paginatedLocations.filter((loc) => {
-                          const topLocation = topLocations.find(
-                            (tl) => tl.locationName === loc.locationName
-                          );
-                          return topLocation
-                            ? selectedLocations.includes(topLocation.locationId)
-                            : false;
-                        })
-                      : paginatedLocations;
-
-                  // Generate handle trends data from location data
-                  const handleData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      handle: loc.moneyIn || 0,
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
-
-                  // Generate win/loss data from location data
-                  const winLossData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      wins: loc.gross || 0,
-                      losses: loc.moneyOut || 0,
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
-
-                  // Generate jackpot data from location data
-                  const jackpotData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
-
-                  // Generate plays data from location data
-                  const playsData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      plays: Math.floor((loc.moneyIn || 0) / 100), // Estimate plays based on money in
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
-
-                  return (
-                    <>
-                      <SimpleChart
-                        type="line"
-                        title="Handle Trends"
-                        icon={<TrendingUp className="h-5 w-5" />}
-                        data={handleData}
-                        dataKey="handle"
-                        color="#8884d8"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
-
-                      <SimpleChart
-                        type="bar"
-                        title="Win/Loss Analysis"
-                        icon={<BarChart3 className="h-5 w-5" />}
-                        data={winLossData}
-                        dataKey="wins"
-                        color="#4ade80"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
-
-                      <SimpleChart
-                        type="area"
-                        title="Jackpot Trends"
-                        icon={<Trophy className="h-5 w-5" />}
-                        data={jackpotData}
-                        dataKey="jackpot"
-                        color="#fbbf24"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
-
-                      <SimpleChart
-                        type="bar"
-                        title="Plays Analysis"
-                        icon={<Activity className="h-5 w-5" />}
-                        data={playsData}
-                        dataKey="plays"
-                        color="#3b82f6"
-                        formatter={(value) => value.toLocaleString()}
-                      />
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Top Machines Section */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5" />
-                      Top 5 Machines
-                    </CardTitle>
-                    {selectedForComparison.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {selectedForComparison.length} selected
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleCompareClick}
-                          className="flex items-center gap-2"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          Compare ({selectedForComparison.length})
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleClearComparison}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(() => {
-                      // Use filtered locations if any are selected, otherwise use all
-                      const topMachinesLocations =
-                        selectedLocations.length > 0
+              {/* Only show data when locations are selected and initial load is complete */}
+              {selectedLocations.length > 0 && isInitialLoadComplete ? (
+                <>
+                  {/* Enhanced Location Table */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Location Evaluation Table
+                      </CardTitle>
+                      <CardDescription>
+                        Comprehensive location metrics with SAS status
+                        indicators
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EnhancedLocationTable
+                        key={`enhanced-table-${activeTab}-${paginatedLocations.length}`}
+                        locations={(selectedLocations.length > 0
                           ? paginatedLocations.filter((loc) => {
+                              // Find the corresponding topLocation to get the correct locationId
                               const topLocation = topLocations.find(
                                 (tl) => tl.locationName === loc.locationName
                               );
@@ -1563,60 +1330,273 @@ export default function LocationsTab() {
                                   )
                                 : false;
                             })
-                          : paginatedLocations;
+                          : []
+                        ).map((loc) => {
+                          // Debug logging to check data values
+                          console.warn(`🔍 Location data for table: ${JSON.stringify({
+                            location: loc.location,
+                            locationName: loc.locationName,
+                            gamesPlayed: loc.gamesPlayed,
+                            moneyIn: loc.moneyIn,
+                            moneyOut: loc.moneyOut,
+                            gross: loc.gross,
+                            totalMachines: loc.totalMachines,
+                            onlineMachines: loc.onlineMachines,
+                            sasMachines: loc.sasMachines,
+                            nonSasMachines: loc.nonSasMachines,
+                          })}`);
 
-                      return topMachinesLocations
-                        .slice(0, 5)
-                        .map((location, index) => (
-                          <div
-                            key={`${location.location}-${index}`}
-                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
-                              isItemSelected(location)
-                                ? "bg-blue-50 border-2 border-blue-400"
-                                : "bg-gray-50 border-2 border-transparent"
-                            }`}
-                            onClick={() =>
-                              handleItemClick(location, "machines")
-                            }
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
-                                {index + 1}
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900">
-                                  {location.locationName ||
-                                    `Location ${index + 1}`}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {location.totalMachines || 0} machines
-                                </div>
-                              </div>
-                              {isItemSelected(location) && (
-                                <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <div className="font-semibold text-green-600">
-                                ${(location.gross || 0).toLocaleString()}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {location.gross && location.moneyIn
-                                  ? `${(
-                                      (location.gross / location.moneyIn) *
-                                      100
-                                    ).toFixed(1)}% hold`
-                                  : "N/A"}
-                              </div>
-                            </div>
-                          </div>
-                        ));
+                          return {
+                            location: loc.location,
+                            locationName: loc.locationName,
+                            moneyIn: loc.moneyIn,
+                            moneyOut: loc.moneyOut,
+                            gross: loc.gross,
+                            coinIn: loc.coinIn || 0,
+                            coinOut: loc.coinOut || 0,
+                            jackpot: loc.jackpot || 0,
+                            totalMachines: loc.totalMachines,
+                            onlineMachines: loc.onlineMachines,
+                            sasMachines: loc.sasMachines,
+                            nonSasMachines: loc.nonSasMachines,
+                            hasSasMachines: loc.hasSasMachines,
+                            hasNonSasMachines: loc.hasNonSasMachines,
+                            isLocalServer: loc.isLocalServer,
+                            noSMIBLocation: !loc.hasSasMachines,
+                            hasSmib: loc.hasSasMachines,
+                            gamesPlayed: loc.gamesPlayed,
+                          };
+                        })}
+                        onLocationClick={(locationId) => {
+                          // Handle location click - could navigate to location details
+                          console.warn(`Location clicked: ${locationId}`);
+                        }}
+                        loading={paginationLoading}
+                        error={null}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Charts Section - Using existing data instead of API calls */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Generate chart data from existing location data */}
+                    {(() => {
+                      // Use filtered locations if any are selected, otherwise use all
+                      const chartLocations =
+                        selectedLocations.length > 0
+                          ? paginatedLocations.filter((loc) =>
+                              selectedLocations.includes(loc.location)
+                            )
+                          : [];
+
+                      // Generate handle trends data from location data
+                      const handleData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          handle: loc.moneyIn || 0,
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
+
+                      // Generate win/loss data from location data
+                      const winLossData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          wins: loc.gross || 0,
+                          losses: loc.moneyOut || 0,
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
+
+                      // Generate jackpot data from location data
+                      const jackpotData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
+
+                      // Generate plays data from location data
+                      const playsData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          plays: loc.gamesPlayed || 0, // Use real gamesPlayed data
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
+
+                      return (
+                        <>
+                          <SimpleChart
+                            type="line"
+                            title="Handle Trends"
+                            icon={<TrendingUp className="h-5 w-5" />}
+                            data={handleData}
+                            dataKey="handle"
+                            color="#8884d8"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
+
+                          <SimpleChart
+                            type="bar"
+                            title="Win/Loss Analysis"
+                            icon={<BarChart3 className="h-5 w-5" />}
+                            data={winLossData}
+                            dataKey="wins"
+                            color="#4ade80"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
+
+                          <SimpleChart
+                            type="area"
+                            title="Jackpot Trends"
+                            icon={<Trophy className="h-5 w-5" />}
+                            data={jackpotData}
+                            dataKey="jackpot"
+                            color="#fbbf24"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
+
+                          <SimpleChart
+                            type="bar"
+                            title="Plays Analysis"
+                            icon={<Activity className="h-5 w-5" />}
+                            data={playsData}
+                            dataKey="plays"
+                            color="#3b82f6"
+                            formatter={(value) => (value as number).toLocaleString()}
+                          />
+                        </>
+                      );
                     })()}
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Top Machines Section - Overall top 5 across selected locations */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="h-5 w-5" />
+                          Top 5 Machines (Overall)
+                        </CardTitle>
+                        {selectedForComparison.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">
+                              {selectedForComparison.length} selected
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCompareClick}
+                              className="flex items-center gap-2"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                              Compare ({selectedForComparison.length})
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleClearComparison}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {(() => {
+                          // Get all locations and sort by gross revenue to get overall top 5
+                          const allLocations =
+                            selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) =>
+                                  selectedLocations.includes(loc.location)
+                                )
+                              : [];
+
+                          // Sort by gross revenue and take top 5
+                          const top5Locations = allLocations
+                            .sort((a, b) => (b.gross || 0) - (a.gross || 0))
+                            .slice(0, 5);
+
+                          return top5Locations.map((location, index) => (
+                            <div
+                              key={`${location.location}-${index}`}
+                              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
+                                isItemSelected(location)
+                                  ? "bg-blue-50 border-2 border-blue-400"
+                                  : "bg-gray-50 border-2 border-transparent"
+                              }`}
+                              onClick={() =>
+                                handleItemClick(location, "machines")
+                              }
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {location.locationName ||
+                                      `Location ${index + 1}`}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {location.totalMachines || 0} machines
+                                  </div>
+                                </div>
+                                {isItemSelected(location) && (
+                                  <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-green-600">
+                                  ${(location.gross || 0).toLocaleString()}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {location.gross && location.moneyIn
+                                    ? `${(
+                                        (location.gross / location.moneyIn) *
+                                        100
+                                      ).toFixed(1)}% hold`
+                                    : "N/A"}
+                                </div>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : !isInitialLoadComplete ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="text-gray-500 text-lg mb-2">
+                      Loading Data...
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                      Please wait while we fetch location data
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="text-gray-500 text-lg mb-2">
+                      No Data to Display
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                      Please select up to 5 SAS-enabled locations to view
+                      evaluation data
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
@@ -1655,25 +1635,44 @@ export default function LocationsTab() {
                     Location Selection & Controls
                   </CardTitle>
                   <CardDescription>
-                    Select specific locations to filter data or view all
-                    locations
+                    Select up to 5 locations to filter data (SAS and non-SAS
+                    locations)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Locations
+                        Select Locations (Max 5)
                       </label>
-                      <LocationMultiSelect
-                        locations={topLocations.map((loc) => ({
-                          id: loc.locationId,
-                          name: loc.locationName,
-                        }))}
-                        selectedLocations={selectedLocations}
-                        onSelectionChange={setSelectedLocations}
-                        placeholder="Choose locations to filter..."
-                      />
+                      {!isInitialLoadComplete ? (
+                        <div className="w-full h-10 bg-gray-100 rounded-md flex items-center justify-center">
+                          <div className="text-sm text-gray-500">
+                            Loading locations...
+                          </div>
+                        </div>
+                      ) : (
+                        <LocationMultiSelect
+                          locations={allLocationsForDropdown.map((loc) => ({
+                            id: loc.location,
+                            name: loc.locationName,
+                            sasEnabled: loc.hasSasMachines,
+                          }))}
+                          selectedLocations={selectedLocations}
+                          onSelectionChange={(newSelection) => {
+                            // Limit to 5 selections
+                            if (newSelection.length <= 5) {
+                              setSelectedLocations(newSelection);
+                            } else {
+                              toast.error(
+                                "Maximum 5 locations can be selected"
+                              );
+                            }
+                          }}
+                          placeholder="Choose locations to filter..."
+                          maxSelections={5}
+                        />
+                      )}
                     </div>
                     <div className="flex items-end">
                       <Button
@@ -1690,222 +1689,275 @@ export default function LocationsTab() {
                           ? `${selectedLocations.length} location${
                               selectedLocations.length > 1 ? "s" : ""
                             } selected`
-                          : "Showing all locations"}
+                          : "Please select locations to view data"}
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Revenue Analysis Table */}
-              <RevenueAnalysisTable
-                key={`revenue-table-${activeTab}-${paginatedLocations.length}`}
-                locations={
-                  selectedLocations.length > 0
-                    ? paginatedLocations.filter((loc) => {
-                        // Find the corresponding topLocation to get the correct locationId
-                        const topLocation = topLocations.find(
-                          (tl) => tl.locationName === loc.locationName
-                        );
-                        return topLocation
-                          ? selectedLocations.includes(topLocation.locationId)
-                          : false;
-                      })
-                    : paginatedLocations
-                }
-                loading={paginationLoading}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalCount={totalCount}
-                onPageChange={handlePageChange}
-                onLocationClick={(location: AggregatedLocation) => {
-                  // Handle location click if needed
-                  console.log("Location clicked:", location);
-                }}
-              />
+              {/* Only show data when locations are selected and initial load is complete */}
+              {selectedLocations.length > 0 && isInitialLoadComplete ? (
+                <>
+                  {/* Revenue Analysis Table */}
+                  <RevenueAnalysisTable
+                    key={`revenue-table-${activeTab}-${paginatedLocations.length}`}
+                    locations={
+                      selectedLocations.length > 0
+                        ? paginatedLocations.filter((loc) => {
+                            // Find the corresponding topLocation to get the correct locationId
+                            const topLocation = topLocations.find(
+                              (tl) => tl.locationName === loc.locationName
+                            );
+                            return topLocation
+                              ? selectedLocations.includes(
+                                  topLocation.locationId
+                                )
+                              : false;
+                          })
+                        : []
+                    }
+                    loading={paginationLoading}
+                    onLocationClick={(location: AggregatedLocation) => {
+                      // Handle location click if needed
+                      console.warn(`Location clicked: ${JSON.stringify(location)}`);
+                    }}
+                  />
 
-              {/* Charts Section - Using existing data instead of API calls */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Generate chart data from existing location data */}
-                {(() => {
-                  // Use filtered locations if any are selected, otherwise use all
-                  const chartLocations =
-                    selectedLocations.length > 0
-                      ? paginatedLocations.filter((loc) => {
-                          const topLocation = topLocations.find(
-                            (tl) => tl.locationName === loc.locationName
-                          );
-                          return topLocation
-                            ? selectedLocations.includes(topLocation.locationId)
-                            : false;
-                        })
-                      : paginatedLocations;
+                  {/* Charts Section - Using existing data instead of API calls */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Generate chart data from existing location data */}
+                    {(() => {
+                      // Use filtered locations if any are selected, otherwise use all
+                      const chartLocations =
+                        selectedLocations.length > 0
+                          ? paginatedLocations.filter((loc) => {
+                              const topLocation = topLocations.find(
+                                (tl) => tl.locationName === loc.locationName
+                              );
+                              return topLocation
+                                ? selectedLocations.includes(
+                                    topLocation.locationId
+                                  )
+                                : false;
+                            })
+                          : [];
 
-                  // Generate handle trends data from location data
-                  const handleData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      handle: loc.moneyIn || 0,
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
+                      // Generate handle trends data from location data
+                      const handleData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          handle: loc.moneyIn || 0,
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
 
-                  // Generate win/loss data from location data
-                  const winLossData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      wins: loc.gross || 0,
-                      losses: loc.moneyOut || 0,
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
+                      // Generate win/loss data from location data
+                      const winLossData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          wins: loc.gross || 0,
+                          losses: loc.moneyOut || 0,
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
 
-                  // Generate jackpot data from location data
-                  const jackpotData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
+                      // Generate jackpot data from location data
+                      const jackpotData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
 
-                  // Generate plays data from location data
-                  const playsData = chartLocations
-                    .slice(0, 10)
-                    .map((loc, index) => ({
-                      time: `${index + 1}`,
-                      plays: Math.floor((loc.moneyIn || 0) / 100), // Estimate plays based on money in
-                      location: loc.locationName || `Location ${index + 1}`,
-                    }));
+                      // Generate plays data from location data
+                      const playsData = chartLocations
+                        .slice(0, 10)
+                        .map((loc, index) => ({
+                          time: `${index + 1}`,
+                          plays: loc.gamesPlayed || 0, // Use real gamesPlayed data
+                          location: loc.locationName || `Location ${index + 1}`,
+                        }));
 
-                  return (
-                    <>
-                      <SimpleChart
-                        type="line"
-                        title="Handle Trends"
-                        icon={<TrendingUp className="h-5 w-5" />}
-                        data={handleData}
-                        dataKey="handle"
-                        color="#8884d8"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
+                      return (
+                        <>
+                          <SimpleChart
+                            type="line"
+                            title="Handle Trends"
+                            icon={<TrendingUp className="h-5 w-5" />}
+                            data={handleData}
+                            dataKey="handle"
+                            color="#8884d8"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
 
-                      <SimpleChart
-                        type="bar"
-                        title="Win/Loss Analysis"
-                        icon={<BarChart3 className="h-5 w-5" />}
-                        data={winLossData}
-                        dataKey="wins"
-                        color="#4ade80"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
+                          <SimpleChart
+                            type="bar"
+                            title="Win/Loss Analysis"
+                            icon={<BarChart3 className="h-5 w-5" />}
+                            data={winLossData}
+                            dataKey="wins"
+                            color="#4ade80"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
 
-                      <SimpleChart
-                        type="area"
-                        title="Jackpot Trends"
-                        icon={<Trophy className="h-5 w-5" />}
-                        data={jackpotData}
-                        dataKey="jackpot"
-                        color="#fbbf24"
-                        formatter={(value) => `$${value.toLocaleString()}`}
-                      />
+                          <SimpleChart
+                            type="area"
+                            title="Jackpot Trends"
+                            icon={<Trophy className="h-5 w-5" />}
+                            data={jackpotData}
+                            dataKey="jackpot"
+                            color="#fbbf24"
+                            formatter={(value) => `$${(value as number).toLocaleString()}`}
+                          />
 
-                      <SimpleChart
-                        type="bar"
-                        title="Plays Analysis"
-                        icon={<Activity className="h-5 w-5" />}
-                        data={playsData}
-                        dataKey="plays"
-                        color="#3b82f6"
-                        formatter={(value) => value.toLocaleString()}
-                      />
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Top Machines Section */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5" />
-                      Top 5 Machines
-                    </CardTitle>
-                    {selectedForComparison.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {selectedForComparison.length} selected
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleCompareClick}
-                          className="flex items-center gap-2"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          Compare ({selectedForComparison.length})
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleClearComparison}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    )}
+                          <SimpleChart
+                            type="bar"
+                            title="Plays Analysis"
+                            icon={<Activity className="h-5 w-5" />}
+                            data={playsData}
+                            dataKey="plays"
+                            color="#3b82f6"
+                            formatter={(value) => (value as number).toLocaleString()}
+                          />
+                        </>
+                      );
+                    })()}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {paginatedLocations.slice(0, 5).map((location, index) => (
-                      <div
-                        key={`${location.location}-${index}`}
-                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
-                          isItemSelected(location)
-                            ? "bg-blue-50 border-2 border-blue-400"
-                            : "bg-gray-50 border-2 border-transparent"
-                        }`}
-                        onClick={() => handleItemClick(location, "machines")}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
-                            {index + 1}
+
+                  {/* Top Machines Section - Overall top 5 across selected locations */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="h-5 w-5" />
+                          Top 5 Machines (Overall)
+                        </CardTitle>
+                        {selectedForComparison.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">
+                              {selectedForComparison.length} selected
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCompareClick}
+                              className="flex items-center gap-2"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                              Compare ({selectedForComparison.length})
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleClearComparison}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Clear
+                            </Button>
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {location.locationName || `Location ${index + 1}`}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {location.totalMachines || 0} machines
-                            </div>
-                          </div>
-                          {isItemSelected(location) && (
-                            <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-green-600">
-                            ${(location.gross || 0).toLocaleString()}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {location.gross && location.moneyIn
-                              ? `${(
-                                  (location.gross / location.moneyIn) *
-                                  100
-                                ).toFixed(1)}% hold`
-                              : "N/A"}
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {(() => {
+                          // Get all locations and sort by gross revenue to get overall top 5
+                          const allLocations =
+                            selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => {
+                                  const topLocation = topLocations.find(
+                                    (tl) => tl.locationName === loc.locationName
+                                  );
+                                  return topLocation
+                                    ? selectedLocations.includes(
+                                        topLocation.locationId
+                                      )
+                                    : false;
+                                })
+                              : [];
+
+                          // Sort by gross revenue and take top 5
+                          const top5Locations = allLocations
+                            .sort((a, b) => (b.gross || 0) - (a.gross || 0))
+                            .slice(0, 5);
+
+                          return top5Locations.map((location, index) => (
+                            <div
+                              key={`${location.location}-${index}`}
+                              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
+                                isItemSelected(location)
+                                  ? "bg-blue-50 border-2 border-blue-400"
+                                  : "bg-gray-50 border-2 border-transparent"
+                              }`}
+                              onClick={() =>
+                                handleItemClick(location, "machines")
+                              }
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {location.locationName ||
+                                      `Location ${index + 1}`}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {location.totalMachines || 0} machines
+                                  </div>
+                                </div>
+                                {isItemSelected(location) && (
+                                  <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-green-600">
+                                  ${(location.gross || 0).toLocaleString()}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {location.gross && location.moneyIn
+                                    ? `${(
+                                        (location.gross / location.moneyIn) *
+                                        100
+                                      ).toFixed(1)}% hold`
+                                    : "N/A"}
+                                </div>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : !isInitialLoadComplete ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="text-gray-500 text-lg mb-2">
+                      Loading Data...
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                      Please wait while we fetch location data
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <div className="text-gray-500 text-lg mb-2">
+                      No Data to Display
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                      Please select up to 5 locations to view revenue analysis
+                      data
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>

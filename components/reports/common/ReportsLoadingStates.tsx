@@ -4,17 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Bell } from "lucide-react";
 
-interface LoadingOverlayProps {
+type LoadingOverlayProps = {
   isLoading: boolean;
 }
 
-interface AuthLoadingProps {
-  // No props needed for now
-}
+type AuthLoadingProps = Record<string, never>;
 
-interface AccessDeniedProps {
-  // No props needed for now
-}
+type AccessDeniedProps = Record<string, never>;
 
 /**
  * Loading overlay for reports operations

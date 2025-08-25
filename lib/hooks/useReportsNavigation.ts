@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useAuth } from "@/lib/hooks/useAuth";

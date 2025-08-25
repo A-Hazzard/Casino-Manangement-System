@@ -4,8 +4,6 @@ import type {
   ActiveCustomersReport, 
   LocationStatsReport,
   MachinePerformanceReport,
-  CashBalancesReport,
-  FinancialPerformanceReport,
   TerminalCountsReport 
 } from "@/lib/types/reports";
 
@@ -228,7 +226,7 @@ export class ReportExportUtils {
   /**
    * Generate PDF report (placeholder - requires PDF library)
    */
-  static async exportToPDF(data: any, reportType: string, filename?: string) {
+  static async exportToPDF() {
     // TODO: Implement PDF generation using libraries like jsPDF or Puppeteer
     // This is a placeholder for PDF export functionality
     throw new Error("PDF export functionality is not yet implemented");

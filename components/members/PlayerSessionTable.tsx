@@ -37,7 +37,7 @@ const formatLoginTime = (dateTime: string | Date | null | undefined): string => 
     }).format(date);
     
     return `${dateStr}\n${timeStr}`;
-  } catch (error) {
+  } catch {
     return "Invalid Date";
   }
 };
@@ -47,7 +47,6 @@ type PlayerSessionTableProps = {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  memberId: string;
 };
 
 const TABLE_HEADERS = [
@@ -68,10 +67,8 @@ const TABLE_HEADERS = [
 // Session Card Component for Mobile
 const SessionCard = ({
   session,
-  memberId,
 }: {
   session: MemberSession;
-  memberId: string;
 }) => {
   const wonLess = (session.won || 0) - (session.bet || 0);
   const wonLessColor = wonLess >= 0 ? "text-green-600" : "text-red-600";
@@ -164,7 +161,6 @@ export default function PlayerSessionTable({
   currentPage,
   totalPages,
   onPageChange,
-  memberId,
 }: PlayerSessionTableProps) {
   const handleFirstPage = () => onPageChange(0);
   const handleLastPage = () => onPageChange(totalPages - 1);
@@ -250,7 +246,6 @@ export default function PlayerSessionTable({
             <SessionCard
               key={session._id}
               session={session}
-              memberId={memberId}
             />
           ))}
         </div>

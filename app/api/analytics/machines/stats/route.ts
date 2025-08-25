@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
     // Build match stage for machines
-    const machineMatchStage: any = {
+    const machineMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 

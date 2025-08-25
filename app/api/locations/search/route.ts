@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Build metrics aggregation
     const matchStage: MeterMatchStage = {
-      createdAt: { $gte: startDate, $lte: endDate },
+      readAt: { $gte: startDate, $lte: endDate },
     };
     if (licencee) {
       matchStage["rel.licencee"] = licencee;

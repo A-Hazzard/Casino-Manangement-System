@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
     // Filter by licensee if provided
     if (licenseeFilter && licenseeFilter !== "all") {
       formattedLicensees = formattedLicensees.filter((licensee) => {
-        const licenseeId = (licensee as any)._id;
-        const licenseeName = (licensee as any).name;
+        const licenseeId = (licensee as Record<string, unknown>)._id as string;
+        const licenseeName = (licensee as Record<string, unknown>).name as string;
         return licenseeId === licenseeFilter || licenseeName === licenseeFilter;
       });
     }

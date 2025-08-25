@@ -64,7 +64,7 @@ export const formatTime = (
       minute: "2-digit",
       hour12: true,
     }).format(date);
-  } catch (error) {
+      } catch {
     return "Invalid Date";
   }
 };

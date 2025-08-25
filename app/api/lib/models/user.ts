@@ -2,6 +2,7 @@ import mongoose, { model, Schema } from "mongoose";
 
 const UserSchema = new Schema(
   {
+    _id: { type: String, default: () => new mongoose.Types.ObjectId().toHexString() },
     isEnabled: { type: Boolean, default: true },
     roles: [{ type: String }],
     username: { type: String, required: true },

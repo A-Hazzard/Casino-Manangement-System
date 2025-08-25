@@ -20,7 +20,7 @@ export async function GET(
     const filterDate = searchParams.get("filterDate");
 
     // Build query - match both session and machine
-    let query: any = {
+    const query: Record<string, unknown> = {
       machine: machineId,
     };
 
@@ -59,7 +59,7 @@ export async function GET(
       .lean();
 
     // Build filter query
-    let filterQuery: any = { machine: machineId };
+    const filterQuery: Record<string, unknown> = { machine: machineId };
     if (sessionId && sessionId !== "undefined" && sessionId !== "null") {
       filterQuery.currentSession = sessionId;
     }

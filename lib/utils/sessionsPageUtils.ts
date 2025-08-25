@@ -15,7 +15,7 @@ export function formatDate(dateString: string): string {
       second: "2-digit",
       hour12: true,
     });
-  } catch (error) {
+      } catch {
     return "Invalid Date";
   }
 }
@@ -192,7 +192,7 @@ export function createFilterDateTime(
 /**
  * Debounce function for API calls
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

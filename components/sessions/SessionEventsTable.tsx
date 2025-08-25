@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import {
   CheckIcon,
   PlusIcon,
-  ChevronDownIcon,
   MinusIcon,
 } from "@radix-ui/react-icons";
 

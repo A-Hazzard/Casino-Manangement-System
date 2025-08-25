@@ -153,9 +153,8 @@ export default function AddUserRolesModal({
     setIsLoadingLocations(true);
     try {
       const response = await axios.get("/api/locations?minimal=1");
-      console.log(
-        "📍 Fetched locations:",
-        response.data.locations?.length || 0
+      console.warn(
+        `📍 Fetched locations: ${response.data.locations?.length || 0}`
       );
       setLocations(response.data.locations || []);
     } catch (error) {

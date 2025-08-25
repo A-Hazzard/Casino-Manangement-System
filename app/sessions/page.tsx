@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 // Layout components
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 
 // Store
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -20,11 +20,13 @@ import SessionsPagination from "@/components/sessions/SessionsPagination";
 
 // Constants
 import { SESSIONS_ANIMATIONS } from "@/lib/constants/sessions";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
 /**
  * Sessions Page
  * Displays all gaming sessions with filtering, search, and pagination
- * 
+ *
  * Features:
  * - Session listing with responsive design
  * - Search and filtering capabilities
@@ -34,7 +36,6 @@ import { SESSIONS_ANIMATIONS } from "@/lib/constants/sessions";
  */
 export default function SessionsPage() {
   const router = useRouter();
-  const pathname = usePathname();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   const {
@@ -44,7 +45,6 @@ export default function SessionsPage() {
     searchTerm,
     sortBy,
     sortOrder,
-    currentPage,
     pagination,
     handleSearch,
     handleSort,
@@ -60,14 +60,14 @@ export default function SessionsPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
           />
-          
+
           <motion.div
             className="w-full mt-8"
             variants={SESSIONS_ANIMATIONS.pageVariants}
@@ -76,7 +76,16 @@ export default function SessionsPage() {
           >
             {/* Page Header */}
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+                <Image
+                  src={IMAGES.activityLogIcon}
+                  alt="Sessions Icon"
+                  width={32}
+                  height={32}
+                  className="w-6 h-6 sm:w-8 sm:h-8"
+                />
+              </div>
               <p className="text-gray-600">
                 View all gaming sessions and their events
               </p>
@@ -109,10 +118,12 @@ export default function SessionsPage() {
             {/* Sessions Table */}
             {!loading && !error && (
               <>
-                <SessionsTable
-                  sessions={sessions}
-                  onViewEvents={handleViewEvents}
-                />
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <SessionsTable
+                    sessions={sessions}
+                    onViewEvents={handleViewEvents}
+                  />
+                </div>
 
                 {/* Pagination */}
                 <SessionsPagination

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, X, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import type { LocationMultiSelectProps } from "@/lib/types/components";
 
 export default function LocationMultiSelect({
@@ -13,7 +13,6 @@ export default function LocationMultiSelect({
   selectedLocations,
   onSelectionChange,
   placeholder = "Select locations...",
-  maxSelections,
   className,
 }: LocationMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,11 +57,9 @@ export default function LocationMultiSelect({
   );
   const displayText =
     selectedOptions.length > 0
-      ? selectedLocations.length === locations.length && locations.length > 0
-        ? "All Locations"
-        : `${selectedOptions.length} location${
-            selectedOptions.length > 1 ? "s" : ""
-          } selected`
+      ? `${selectedOptions.length} location${
+          selectedOptions.length > 1 ? "s" : ""
+        } selected`
       : placeholder;
 
   return (
@@ -175,32 +172,19 @@ export default function LocationMultiSelect({
       {/* Selected items display */}
       {selectedOptions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {selectedLocations.length === locations.length &&
-          locations.length > 0 ? (
-            // Show "All Locations" when all are selected
+          {selectedOptions.map((option) => (
             <Badge
+              key={option.id}
               variant="secondary"
               className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
             >
-              <span>All Locations</span>
-              <X className="h-3 w-3 cursor-pointer" onClick={handleClearAll} />
+              <span className="truncate max-w-32">{option.name}</span>
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => handleToggleLocation(option.id)}
+              />
             </Badge>
-          ) : (
-            // Show individual location chips when not all are selected
-            selectedOptions.map((option) => (
-              <Badge
-                key={option.id}
-                variant="secondary"
-                className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
-              >
-                <span className="truncate max-w-32">{option.name}</span>
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => handleToggleLocation(option.id)}
-                />
-              </Badge>
-            ))
-          )}
+          ))}
         </div>
       )}
     </div>

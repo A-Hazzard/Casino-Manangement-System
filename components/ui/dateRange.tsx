@@ -16,7 +16,7 @@ export default function DateRange({
         value={(
           CustomDateRange.startDate instanceof Date
             ? CustomDateRange.startDate
-            : new Date(CustomDateRange.startDate as any)
+            : new Date(CustomDateRange.startDate || new Date())
         )
           .toISOString()
           .split("T")[0]}

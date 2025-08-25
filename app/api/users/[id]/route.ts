@@ -6,7 +6,17 @@ export async function GET(request: NextRequest) {
   await connectDB();
   try {
     const id = request.nextUrl.pathname.split("/").pop();
-    const user = await UserModel.findById(id).select("-password");
+    let user = await UserModel.findById(id).select("-password");
+    if (!user) {
+      // Fallback: if ID stored as ObjectId, try converting
+      try {
+        const { Types } = await import("mongoose");
+        const asObjectId = new Types.ObjectId(id);
+        user = await UserModel.findById(asObjectId).select("-password");
+      } catch {
+        // ignore invalid cast
+      }
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -52,9 +62,16 @@ export async function PUT(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { profile, password } = body;
+    const { profile, password, profilePicture } = body;
 
-    const user = await UserModel.findById(id);
+    let user = await UserModel.findById(id);
+    if (!user) {
+      try {
+        const { Types } = await import("mongoose");
+        const asObjectId = new Types.ObjectId(id);
+        user = await UserModel.findById(asObjectId);
+      } catch {}
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -90,6 +107,10 @@ export async function PUT(request: NextRequest) {
         );
       }
       updateFields.password = await hashPassword(password.new);
+    }
+
+    if (profilePicture !== undefined) {
+      updateFields.profilePicture = profilePicture;
     }
 
     // Call updateUser helper for logging and update

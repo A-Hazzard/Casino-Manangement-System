@@ -12,18 +12,24 @@ import {
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import { Calendar } from "lucide-react";
 import type { TimePeriod } from "@/shared/types/common";
+import { Button } from "@/components/ui/button";
 
 export default function ActivityLogDateFilter() {
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
-    customDateRange,
     setCustomDateRange,
     pendingCustomDateRange,
     setPendingCustomDateRange,
+    loadingChartData,
+    loadingTopPerforming,
+    refreshing,
   } = useDashBoardStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Check if any loading state is active
+  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
 
   const handleFilterChange = (value: TimePeriod) => {
     if (value === "Custom") {
@@ -60,21 +66,75 @@ export default function ActivityLogDateFilter() {
       </div>
 
       {!showCustomPicker ? (
-        <Select value={activeMetricsFilter} onValueChange={handleFilterChange}>
-          <SelectTrigger className="w-48 bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors">
-            <SelectValue placeholder="Select date range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Today">Today</SelectItem>
-            <SelectItem value="Yesterday">Yesterday</SelectItem>
-            <SelectItem value="last7days">Last 7 Days</SelectItem>
-            <SelectItem value="last30days">Last 30 Days</SelectItem>
-            <SelectItem value="Custom">Custom Range</SelectItem>
-            <SelectItem value="All Time">All Time</SelectItem>
-          </SelectContent>
-        </Select>
+        <>
+          {/* Mobile and md/lg: Select dropdown */}
+          <div className="xl:hidden">
+            <Select
+              value={activeMetricsFilter}
+              onValueChange={handleFilterChange}
+              disabled={isLoading}
+            >
+              <SelectTrigger className={`w-48 bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}>
+                <SelectValue placeholder="Select date range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Today">Today</SelectItem>
+                <SelectItem value="Yesterday">Yesterday</SelectItem>
+                <SelectItem value="last7days">Last 7 Days</SelectItem>
+                <SelectItem value="last30days">Last 30 Days</SelectItem>
+                <SelectItem value="Custom">Custom Range</SelectItem>
+                <SelectItem value="All Time">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* xl and above: Filter buttons */}
+          <div className="hidden xl:flex items-center gap-2">
+            {[
+              { label: "Today", value: "Today" as TimePeriod },
+              { label: "Yesterday", value: "Yesterday" as TimePeriod },
+              { label: "Last 7 Days", value: "last7days" as TimePeriod },
+              { label: "Last 30 Days", value: "last30days" as TimePeriod },
+              { label: "Custom", value: "Custom" as TimePeriod },
+              { label: "All Time", value: "All Time" as TimePeriod },
+            ].map((filter) => (
+              <Button
+                key={filter.value}
+                onClick={() => handleFilterChange(filter.value)}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  activeMetricsFilter === filter.value
+                    ? "bg-buttonActive text-white"
+                    : "bg-button text-white hover:bg-button/90"
+                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={isLoading}
+              >
+                {filter.label}
+              </Button>
+            ))}
+          </div>
+        </>
       ) : (
         <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowCustomPicker(false)}
+            variant="outline"
+            size="sm"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApplyCustomRange}
+            size="sm"
+            className="bg-buttonActive text-white"
+          >
+            Apply
+          </Button>
+        </div>
+      )}
+
+      {/* Custom Date Picker */}
+      {showCustomPicker && (
+        <div className="mt-4 w-full">
           <ModernDateRangePicker
             value={
               pendingCustomDateRange

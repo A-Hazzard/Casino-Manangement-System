@@ -4,47 +4,44 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import { usePathname } from "next/navigation";
+
+
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+
+
 import type {
   MachineEvent,
   PaginationData,
-  FilterData,
 } from "@/lib/types/sessions";
 
 export default function SessionEventsPage() {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname();
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
-  const [filters, setFilters] = useState<FilterData>({
-    eventTypes: [],
-    events: [],
-    games: [],
-  });
-  const [selectedEventType, setSelectedEventType] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState("");
-  const [selectedGame, setSelectedGame] = useState("");
+
+
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedLicencee, setSelectedLicencee] = useState("All Licensees");
 
-  // Date filter states
-  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
-  const [filterHour, setFilterHour] = useState("00");
-  const [filterMinute, setFilterMinute] = useState("00");
-  const [showDateFilter, setShowDateFilter] = useState(false);
+
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const sessionId = params.sessionId as string;
   const machineId = params.machineId as string;
+
+  const handleFilter = useCallback(() => {
+    // Reset to first page when filtering
+    setCurrentPage(1);
+    // The fetchEvents function will be called by the useEffect when currentPage changes
+  }, []);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -56,29 +53,9 @@ export default function SessionEventsPage() {
         limit: "10",
       });
 
-      if (selectedEventType) {
-        params.append("eventType", selectedEventType);
-      }
 
-      if (selectedEvent) {
-        params.append("event", selectedEvent);
-      }
 
-      if (selectedGame) {
-        params.append("game", selectedGame);
-      }
 
-      // Add date/time filtering
-      if (filterDate) {
-        const filterDateTime = new Date(filterDate);
-        filterDateTime.setHours(
-          parseInt(filterHour),
-          parseInt(filterMinute),
-          0,
-          0
-        );
-        params.append("filterDate", filterDateTime.toISOString());
-      }
 
       const response = await axios.get(
         `/api/sessions/${sessionId}/${machineId}/events?${params}`
@@ -88,7 +65,6 @@ export default function SessionEventsPage() {
 
       setEvents(data.data.events);
       setPagination(data.data.pagination);
-      setFilters(data.data.filters);
     } catch (err) {
       console.error("❌ Events Page Error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -98,12 +74,6 @@ export default function SessionEventsPage() {
     }
   }, [
     currentPage,
-    selectedEventType,
-    selectedEvent,
-    selectedGame,
-    filterDate,
-    filterHour,
-    filterMinute,
     sessionId,
     machineId,
   ]);
@@ -116,26 +86,9 @@ export default function SessionEventsPage() {
     setCurrentPage(page);
   };
 
-  const handleFilterChange = (filterType: string, value: string) => {
-    switch (filterType) {
-      case "eventType":
-        setSelectedEventType(value);
-        break;
-      case "event":
-        setSelectedEvent(value);
-        break;
-      case "game":
-        setSelectedGame(value);
-        break;
-    }
-    setCurrentPage(1);
-  };
 
-  const clearDateFilter = () => {
-    setFilterDate(undefined);
-    setFilterHour("00");
-    setFilterMinute("00");
-  };
+
+
 
   const toggleEventExpansion = (eventId: string) => {
     const newExpanded = new Set(expandedEvents);
@@ -159,7 +112,7 @@ export default function SessionEventsPage() {
         second: "2-digit",
         hour12: true,
       });
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -497,8 +450,8 @@ export default function SessionEventsPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
@@ -522,92 +475,40 @@ export default function SessionEventsPage() {
 
             {/* Date Filter Section */}
             <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex flex-col space-y-4">
-                {/* Date Filter Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Search className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Date Filter
-                    </span>
-                  </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Filter Events by Date
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-end">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDateFilter(!showDateFilter)}
+                    onClick={handleFilter}
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
                   >
-                    {showDateFilter ? "Hide" : "Show"} Date Filter
+                    Filter
                   </Button>
                 </div>
-
-                {showDateFilter && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                    {/* Date Selection */}
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="filter-date"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Date Filter
-                      </label>
-                      <DashboardDateFilters />
-                    </div>
-
-                    {/* Event Filters */}
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="event-type"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Event Filters:
-                      </label>
-                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                        <select
-                          value={selectedEventType}
-                          onChange={(e) =>
-                            handleFilterChange("eventType", e.target.value)
-                          }
-                          className="border border-gray-300 rounded-md px-3 py-1 text-sm w-full sm:w-auto"
-                        >
-                          <option value="">All Event Types</option>
-                          {filters.eventTypes.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={selectedEvent}
-                          onChange={(e) =>
-                            handleFilterChange("event", e.target.value)
-                          }
-                          className="border border-gray-300 rounded-md px-3 py-1 text-sm w-full sm:w-auto"
-                        >
-                          <option value="">All Events</option>
-                          {filters.events.map((event) => (
-                            <option key={event} value={event}>
-                              {event}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={selectedGame}
-                          onChange={(e) =>
-                            handleFilterChange("game", e.target.value)
-                          }
-                          className="border border-gray-300 rounded-md px-3 py-1 text-sm w-full sm:w-auto"
-                        >
-                          <option value="">All Games</option>
-                          {filters.games.map((game) => (
-                            <option key={game} value={game}>
-                              {game}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

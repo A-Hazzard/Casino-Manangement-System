@@ -1,66 +1,61 @@
 import { CustomDate, TimePeriod } from "@/app/api/lib/types";
 
-const DEFAULT_TIMEZONE = "America/Port_of_Spain";
-
 /**
  * Calculates the start and end dates for a specified time period based on a given timezone.
- * Uses timezone-aware date calculations similar to the working MongoDB query pattern.
+ * Uses timezone-aware date calculations for Trinidad time (UTC-4).
  *
  * @param timePeriod - Specifies the period for date calculation. Acceptable values: 'Today', 'Yesterday', '7d', '30d', 'All Time'.
- * @param locationTimeZone - (Optional) Timezone identifier. Defaults to 'America/Port_of_Spain'.
  * @returns An object containing the calculated start and end dates, or undefined dates for 'All Time'.
  */
 export const getDatesForTimePeriod = (
-  timePeriod: TimePeriod,
-  locationTimeZone: string = DEFAULT_TIMEZONE
+  timePeriod: TimePeriod
 ): CustomDate => {
   let startDate: Date | undefined;
   let endDate: Date | undefined;
 
-  // Use timezone-aware date calculations
+  // Use the exact same pattern as the working MongoDB query
   const now = new Date();
 
-  // Helper function to get timezone-aware start of day
-  const getStartOfDay = (date: Date, timezone: string): Date => {
-    // Create a date in the target timezone
-    const options = {
-      timeZone: timezone,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    } as const;
-    const localDate = date.toLocaleDateString("en-CA", options); // YYYY-MM-DD format
-    return new Date(`${localDate}T00:00:00.000Z`);
+  // Helper function to get start of day in Trinidad time (4 AM UTC)
+  const getStartOfDayTrinidad = (date: Date): Date => {
+    // Create a new Date object to avoid mutating the original
+    const newDate = new Date(date);
+    // Set to 4 AM UTC which is midnight Trinidad time (UTC-4)
+    newDate.setHours(4, 0, 0, 0);
+    return newDate;
   };
 
-  // Helper function to get timezone-aware end of day
-  const getEndOfDay = (date: Date, timezone: string): Date => {
-    const startOfDay = getStartOfDay(date, timezone);
-    return new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999
+  // Helper function to get end of day in Trinidad time
+  const getEndOfDayTrinidad = (date: Date): Date => {
+    // Create a new Date object to avoid mutating the original
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setHours(3, 59, 59, 999);
+    return nextDay;
   };
 
   switch (timePeriod) {
     case "Today":
-      startDate = getStartOfDay(now, locationTimeZone);
-      endDate = getEndOfDay(now, locationTimeZone);
+      startDate = getStartOfDayTrinidad(now);
+      endDate = new Date(now); // Create a new Date object to avoid mutation
       break;
 
     case "Yesterday":
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      startDate = getStartOfDay(yesterday, locationTimeZone);
-      endDate = getEndOfDay(yesterday, locationTimeZone);
+      startDate = getStartOfDayTrinidad(yesterday);
+      endDate = getEndOfDayTrinidad(yesterday);
       break;
 
     case "7d":
       const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-      startDate = getStartOfDay(sevenDaysAgo, locationTimeZone);
-      endDate = getEndOfDay(now, locationTimeZone);
+      startDate = getStartOfDayTrinidad(sevenDaysAgo);
+      endDate = new Date(now); // Create a new Date object to avoid mutation
       break;
 
     case "30d":
       const thirtyDaysAgo = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
-      startDate = getStartOfDay(thirtyDaysAgo, locationTimeZone);
-      endDate = getEndOfDay(now, locationTimeZone);
+      startDate = getStartOfDayTrinidad(thirtyDaysAgo);
+      endDate = new Date(now); // Create a new Date object to avoid mutation
       break;
 
     case "All Time":
@@ -71,8 +66,8 @@ export const getDatesForTimePeriod = (
 
     default:
       // Default to Today
-      startDate = getStartOfDay(now, locationTimeZone);
-      endDate = getEndOfDay(now, locationTimeZone);
+      startDate = getStartOfDayTrinidad(now);
+      endDate = new Date(now); // Create a new Date object to avoid mutation
       break;
   }
 

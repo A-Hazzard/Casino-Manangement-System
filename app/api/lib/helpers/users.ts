@@ -98,6 +98,7 @@ export async function createUser(
 
   const hashedPassword = await hashPassword(password);
   const newUser = await UserModel.create({
+    _id: new (await import("mongoose")).default.Types.ObjectId().toHexString(),
     username,
     emailAddress,
     password: hashedPassword,
@@ -148,8 +149,10 @@ export async function createUser(
     }
   }
 
-  const { password: _unused, ...userWithoutPassword } = newUser.toObject();
-  return userWithoutPassword;
+  const userObject = newUser.toObject();
+  // Password is intentionally excluded from return value for security
+  delete userObject.password;
+  return userObject;
 }
 
 /**

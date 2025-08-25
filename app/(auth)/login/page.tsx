@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { loginUser } from "@/lib/helpers/auth";
-import { validateEmail, validatePassword } from "@/lib/utils/validation";
+import { validatePassword } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import LiquidGradient from "@/components/ui/LiquidGradient";
 import LoginForm from "@/components/auth/LoginForm";

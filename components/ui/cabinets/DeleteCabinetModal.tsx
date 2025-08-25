@@ -7,7 +7,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { deleteCabinet } from "@/lib/helpers/cabinets";
-import deleteIcon from "@/public/deleteIcon.svg";
+import { IMAGES } from "@/lib/constants/images";
 
 export const DeleteCabinetModal = () => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
@@ -101,7 +101,7 @@ export const DeleteCabinetModal = () => {
           <div className="p-6">
             <div className="text-center text-foreground space-y-4">
               <div className="flex justify-center mb-4">
-                <Image src={deleteIcon} alt="Delete" width={64} height={64} />
+                <Image src={IMAGES.deleteIcon} alt="Delete" width={64} height={64} />
               </div>
               <p className="text-lg font-semibold">
                 Are you sure you want to mark this cabinet as deleted?

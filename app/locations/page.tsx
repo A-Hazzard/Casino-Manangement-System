@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -26,9 +26,10 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { Button } from "@/components/ui/button";
 import EditLocationModal from "@/components/ui/locations/EditLocationModal";
 import DeleteLocationModal from "@/components/ui/locations/DeleteLocationModal";
@@ -39,6 +40,7 @@ import NewLocationModal from "@/components/ui/locations/NewLocationModal";
 import Image from "next/image";
 import ClientOnly from "@/components/ui/common/ClientOnly";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+import { IMAGES } from "@/lib/constants/images";
 
 // Debounce hook for search optimization
 function useDebounce<T>(value: T, delay: number): T {
@@ -66,7 +68,6 @@ export default function LocationsPage() {
   } = useDashBoardStore();
 
   const {
-    selectedLocation,
     isEditModalOpen,
     isDeleteModalOpen,
     openEditModal,
@@ -83,11 +84,19 @@ export default function LocationsPage() {
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Handler for refresh button
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   // Machine stats state for online/offline counts (like dashboard)
   const [machineStats, setMachineStats] = useState<{
@@ -276,19 +285,7 @@ export default function LocationsPage() {
     return result;
   }, [locationData, selectedFilters]);
 
-  // Memoized totals calculation
-  const { totalOnline, totalOffline } = useMemo(() => {
-    const totalOnline = filtered.reduce(
-      (sum, loc) => sum + (loc.onlineMachines || 0),
-      0
-    );
-    const totalMachines = filtered.reduce(
-      (sum, loc) => sum + (loc.totalMachines || 0),
-      0
-    );
-    const totalOffline = totalMachines - totalOnline;
-    return { totalOnline, totalOffline };
-  }, [filtered]);
+
 
   // Memoized sorted data
   const sortedData = useMemo(() => {
@@ -350,20 +347,12 @@ export default function LocationsPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-          />
-
-          {/* Financial Metrics Cards */}
-          <FinancialMetricsCards
-            totals={financialTotals}
-            loading={loading}
-            title="Total for all Locations"
-            className="mt-6"
           />
 
           {/* Title Row */}
@@ -373,27 +362,36 @@ export default function LocationsPage() {
                 Locations
               </h1>
               <Image
-                src="/locationIcon.svg"
+                src={IMAGES.locationIcon}
                 alt="Location Icon"
                 width={32}
                 height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
+                className="w-6 h-6 sm:w-8 sm:h-8 ml-2"
+              />
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={isLoading}
+                label="Refresh"
+                className="ml-auto"
               />
             </div>
-            {/* Add New Location button (desktop only) */}
-            <Button
-              onClick={openLocationModalLocal}
-              className="hidden lg:flex bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
-            >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
-              <span>New Location</span>
-            </Button>
+            {/* Desktop: New Location button */}
+            <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+              <Button
+                onClick={openLocationModalLocal}
+                className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              >
+                <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
+                  <Plus className="w-4 h-4 text-white" />
+                </div>
+                <span>New Location</span>
+              </Button>
+            </div>
           </div>
 
           {/* Mobile: New Location button below title */}
-          <div className="lg:hidden mt-4 w-full">
+          <div className="md:hidden mt-4 w-full">
             <Button
               onClick={openLocationModalLocal}
               className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
@@ -403,8 +401,17 @@ export default function LocationsPage() {
             </Button>
           </div>
 
-          {/* Date Filters Row - Desktop only */}
-          <div className="hidden lg:flex items-center justify-between mt-4 mb-0 gap-4">
+          {/* Financial Metrics Cards */}
+          <div className="mt-6">
+            <FinancialMetricsCards
+              totals={financialTotals}
+              loading={isLoading}
+              title="Total for all Locations"
+            />
+          </div>
+
+          {/* Date Filters Row - Desktop and md */}
+          <div className="hidden md:flex items-center justify-between mt-4 mb-0 gap-4">
             <div className="flex-1 min-w-0">
               <DashboardDateFilters hideAllTime={true} />
             </div>
@@ -418,7 +425,7 @@ export default function LocationsPage() {
           </div>
 
           {/* Mobile/Tablet: Date Filters and Machine Status stacked */}
-          <div className="lg:hidden flex flex-col gap-4 mt-4">
+          <div className="md:hidden flex flex-col gap-4 mt-4">
             <div className="w-full">
               <DashboardDateFilters hideAllTime={true} />
             </div>
@@ -441,8 +448,8 @@ export default function LocationsPage() {
             </div>
           </div>
 
-          {/* Search Row - Purple box */}
-          <div className="hidden lg:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+          {/* Search Row - Purple box for md and lg */}
+          <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
             <div className="relative flex-1 max-w-md min-w-0">
               <Input
                 type="text"
@@ -460,7 +467,7 @@ export default function LocationsPage() {
             {isLoading ? (
               <>
                 {/* Mobile: show 3 card skeletons */}
-                <div className="block lg:hidden">
+                <div className="block md:hidden">
                   <ClientOnly
                     fallback={
                       <div className="grid grid-cols-1 gap-4">
@@ -478,7 +485,7 @@ export default function LocationsPage() {
                   </ClientOnly>
                 </div>
                 {/* Desktop: show 1 table skeleton */}
-                <div className="hidden lg:block">
+                <div className="hidden md:block">
                   <ClientOnly fallback={<CabinetTableSkeleton />}>
                     <CabinetTableSkeleton />
                   </ClientOnly>
@@ -495,7 +502,7 @@ export default function LocationsPage() {
             ) : (
               <>
                 {/* Mobile: show cards */}
-                <div className="block lg:hidden">
+                <div className="block md:hidden">
                   <ClientOnly
                     fallback={
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
@@ -526,7 +533,7 @@ export default function LocationsPage() {
                   </ClientOnly>
                 </div>
                 {/* Desktop: show table */}
-                <div className="hidden lg:block">
+                <div className="hidden md:block">
                   <LocationTable
                     locations={currentItems}
                     sortOption={sortOption}
@@ -584,13 +591,11 @@ export default function LocationsPage() {
       <EditLocationModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
-        location={selectedLocation._id ? (selectedLocation as any) : null}
         onLocationUpdated={fetchData}
       />
       <DeleteLocationModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        location={selectedLocation._id ? (selectedLocation as any) : null}
         onDelete={fetchData}
       />
       <NewLocationModal

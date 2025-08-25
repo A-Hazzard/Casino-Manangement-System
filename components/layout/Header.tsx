@@ -1,12 +1,9 @@
 "use client";
 import { HeaderProps } from "@/lib/types/componentProps";
-import {
-  HamburgerMenuIcon,
-  Cross2Icon,
-  ExitIcon,
-  DrawingPinFilledIcon,
-} from "@radix-ui/react-icons";
+import { ExitIcon } from "@radix-ui/react-icons";
+import { PanelLeft } from "lucide-react";
 import { usePathname, useParams, useRouter } from "next/navigation";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { filterValueMap } from "@/lib/constants/uiConstants";
@@ -31,15 +28,13 @@ export default function Header({
   const params = useParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isOpen } = useSidebar();
 
   const {
     activeFilters,
     setActiveFilters,
     activeMetricsFilter,
     setActiveMetricsFilter,
-    loadingChartData,
-    setLoadingChartData,
-    setChartData,
     setShowDatePicker,
   } = useDashBoardStore();
 
@@ -70,27 +65,18 @@ export default function Header({
     params.slug &&
     !pathname.includes("/details");
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
   return (
     <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
       <header className="flex flex-col p-0 w-full lg:pt-6 lg:pl-4">
         {/* Menu Button and Main Title Row */}
         <div className="flex items-center justify-start">
-          <button
-            onClick={toggleMobileMenu}
-            className="md:hidden cursor-pointer text-foreground p-2 relative z-50"
-            aria-label="Toggle mobile menu"
+          {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
+          <SidebarTrigger
+            className={cn("md:hidden cursor-pointer text-foreground p-2 relative z-20", isOpen && "invisible")}
+            aria-label="Toggle sidebar"
           >
-            {mobileMenuOpen ? (
-              <Cross2Icon className="h-5 w-5" />
-            ) : (
-              <HamburgerMenuIcon className="h-5 w-5" />
-            )}
-          </button>
-
+            <PanelLeft className="h-6 w-6" />
+          </SidebarTrigger>
           <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
           </h1>

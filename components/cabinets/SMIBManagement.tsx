@@ -7,13 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
 
-const MOCK_SMIBS = [
-  { id: "a1", label: "afscdw67ge" },
-  { id: "b2", label: "Dev Lab" },
-  { id: "c3", label: "Dev Lab 2" },
-  { id: "d4", label: "Test Lab" },
-];
-
 const MOCK_LOCATIONS = [
   { id: "loc1", name: "All Locations" },
   { id: "loc2", name: "Dev Lab" },
@@ -29,32 +22,12 @@ export default function SMIBManagement() {
   const [selectedSMIBs, setSelectedSMIBs] = useState<
     Array<{ id: string; label: string }>
   >([]);
-  const [customSMIB, setCustomSMIB] = useState("");
   const [applyAll, setApplyAll] = useState(false);
 
   const shiftCards = selectedSMIBs.length >= 3;
 
-  const handleSelectSMIB = (
-    smib: { id: string; label: string } | undefined
-  ) => {
-    if (smib && !selectedSMIBs.find((s) => s.id === smib.id)) {
-      setSelectedSMIBs([...selectedSMIBs, smib]);
-    }
-  };
   const handleRemoveSMIB = (id: string) => {
     setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
-  };
-  const handleAddCustomSMIB = () => {
-    if (
-      customSMIB.trim() &&
-      !selectedSMIBs.find((s) => s.label === customSMIB)
-    ) {
-      setSelectedSMIBs([
-        ...selectedSMIBs,
-        { id: customSMIB, label: customSMIB },
-      ]);
-      setCustomSMIB("");
-    }
   };
 
   const currentSelectedLocationName =

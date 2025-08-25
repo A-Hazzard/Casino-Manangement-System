@@ -21,6 +21,7 @@ export async function fetchTopPerformingData(
       headers,
     });
 
+    // The API returns { activeTab, timePeriod, data }
     const rawData: TopPerformingData[] = response.data.data || [];
 
     // Assign colors from the palette

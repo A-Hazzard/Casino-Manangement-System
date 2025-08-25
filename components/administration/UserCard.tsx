@@ -37,7 +37,7 @@ export default function UserCard({
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end mt-2 sm:mt-0">
           <Image
-            src={user.profilePicture || defaultAvatar}
+            src={user.profilePicture && !user.profilePicture.startsWith("blob:") ? user.profilePicture : defaultAvatar}
             alt={`${user.username} avatar`}
             width={24}
             height={24}

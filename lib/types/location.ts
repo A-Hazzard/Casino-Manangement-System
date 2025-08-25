@@ -1,4 +1,10 @@
-import type { Location as SharedLocation, Address, RelationshipInfo, GeoCoordinates, AggregatedLocation } from "@shared/types";
+import type {
+  Location as SharedLocation,
+  Address,
+  RelationshipInfo,
+  GeoCoordinates,
+  AggregatedLocation,
+} from "@shared/types";
 
 // Re-export shared location types
 export type { Address, RelationshipInfo, GeoCoordinates, AggregatedLocation };
@@ -91,7 +97,12 @@ export type LocationStore = {
   isLocationModalOpen: boolean;
   openLocationModal: () => void;
   closeLocationModal: () => void;
-  createLocation: (location: { name: string; address: string; latitude: number; longitude: number }) => Promise<void>;
+  createLocation: (location: {
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  }) => Promise<void>;
 };
 
 export type LocationActionsState = {
@@ -126,7 +137,7 @@ export type MetricsMatchStage = {
 };
 
 export type MeterMatchStage = {
-  createdAt: DateRangeFilter;
+  readAt: DateRangeFilter;
   "rel.licencee"?: string;
   [key: string]: MongoDBQueryValue | undefined;
 };
@@ -182,8 +193,6 @@ export type LocationDateRange = {
   endDate: Date | undefined;
 };
 
-
-
 import { ObjectId } from "mongodb";
 
 export type GamingLocation = {
@@ -194,8 +203,6 @@ export type GamingLocation = {
   isLocalServer?: boolean;
   noSMIBLocation?: boolean;
 };
-
-
 
 export type LocationInfo = {
   _id?: string;

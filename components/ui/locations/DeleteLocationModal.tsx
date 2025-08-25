@@ -13,15 +13,11 @@ import { Button } from "@/components/ui/button";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import axios from "axios";
 import { toast } from "sonner";
-import Image from "next/image";
-import deleteIcon from "@/public/deleteIcon.svg";
+
 import type { DeleteLocationModalProps } from "@/lib/types/components";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function DeleteLocationModal({
-  isOpen,
-  onClose,
-  location,
   onDelete,
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =

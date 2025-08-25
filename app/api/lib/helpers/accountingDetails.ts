@@ -24,7 +24,7 @@ export async function getAcceptedBillsByMachine(
   timePeriod?: string | null
 ): Promise<AcceptedBillType[]> {
   try {
-    const query: any = { machine: machineId };
+    const query: Record<string, unknown> = { machine: machineId };
 
     // Apply date filtering if timePeriod is provided
     if (timePeriod && timePeriod !== "All Time") {
@@ -72,7 +72,7 @@ export async function getMachineEventsByMachine(
       return getMockMachineEvents(machineId);
     }
 
-    const query: any = { machine: machineId };
+    const query: Record<string, unknown> = { machine: machineId };
 
     // Apply date filtering if timePeriod is provided
     if (timePeriod && timePeriod !== "All Time") {
@@ -309,68 +309,7 @@ export async function getCollectionMetersHistoryByMachine(
   }
 }
 
-/**
- * Provides mock collection meters history data when real data is unavailable.
- *
- * @param machineId - The machine ID to use in mock data.
- * @returns An array of mock CollectionMetersHistoryEntry objects.
- */
-function getMockCollectionMetersHistory(
-  machineId: string
-): CollectionMetersHistoryEntry[] {
-  // Current date/time
-  const now = new Date();
 
-  // Generate mock data
-  const mockHistory: CollectionMetersHistoryEntry[] = [
-    {
-      _id: "1",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 7
-      ).toISOString(), // 1 week ago
-      metersIn: 25000,
-      metersOut: 20000,
-      prevMetersIn: 20000,
-      prevMetersOut: 18000,
-      locationReportId: "",
-    },
-    {
-      _id: "2",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 14
-      ).toISOString(), // 2 weeks ago
-      metersIn: 20000,
-      metersOut: 16000,
-      prevMetersIn: 15000,
-      prevMetersOut: 12000,
-      locationReportId: "",
-    },
-    {
-      _id: "3",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 21
-      ).toISOString(), // 3 weeks ago
-      metersIn: 15000,
-      metersOut: 12000,
-      prevMetersIn: 10000,
-      prevMetersOut: 8000,
-      locationReportId: "",
-    },
-    {
-      _id: "4",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 28
-      ).toISOString(), // 4 weeks ago
-      metersIn: 10000,
-      metersOut: 8000,
-      prevMetersIn: 5000,
-      prevMetersOut: 4000,
-      locationReportId: "",
-    },
-  ];
-
-  return mockHistory;
-}
 
 /**
  * Fetches all accounting details for a given machine ID.

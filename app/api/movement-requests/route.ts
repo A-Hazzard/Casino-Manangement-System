@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       ).lean();
 
       const licenseeLocationIds = licenseeLocations.map((loc) =>
-        (loc as any)._id.toString()
+        (loc as { _id: string })._id.toString()
       );
 
       // Filter requests to only include those from/to licensee locations

@@ -17,23 +17,13 @@ import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useLocationStore } from "@/lib/store/locationStore";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Location } from "@/lib/types";
+
+
+
 import type { EditLocationModalProps } from "@/lib/types/components";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function EditLocationModal({
-  isOpen,
-  onClose,
-  location,
   onLocationUpdated,
 }: EditLocationModalProps) {
   const { isEditModalOpen, selectedLocation, closeEditModal } =

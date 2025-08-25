@@ -9,7 +9,7 @@ export async function GET(
   try {
     await connectDB();
 
-    const { id: memberId, machineId } = await params;
+    const { machineId } = await params;
 
     const { searchParams } = new URL(request.url);
     const eventType = searchParams.get("eventType");
@@ -21,7 +21,7 @@ export async function GET(
 
 
     // Build optimized query with indexing considerations
-    let query: any = { machine: machineId };
+    const query: Record<string, unknown> = { machine: machineId };
 
     if (eventType) {
       query.eventType = eventType;

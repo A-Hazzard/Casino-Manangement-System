@@ -5,9 +5,10 @@ import fs from "fs";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 import { apiLogger } from "@/app/api/lib/utils/logger";
+import { NextRequest } from "next/server";
 
 export async function GET(request: Request) {
-  const context = apiLogger.createContext(request as any, "/api/locations");
+  const context = apiLogger.createContext(request as NextRequest, "/api/locations");
   apiLogger.startLogging();
 
   try {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
     const missingGeoCoords: string[] = [];
     const zeroGeoCoords: string[] = [];
-    const validLocations: any[] = [];
+    const validLocations: Record<string, unknown>[] = [];
 
     // Process all locations
     locations.forEach((location) => {

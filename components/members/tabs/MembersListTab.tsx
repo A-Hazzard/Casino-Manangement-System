@@ -28,7 +28,7 @@ import DeleteMemberModal from "@/components/ui/members/DeleteMemberModal";
 import NewMemberModal from "@/components/ui/members/NewMemberModal";
 
 export default function MembersListTab() {
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicencee } = useDashBoardStore();
 
   const {
     selectedMember,
@@ -43,7 +43,6 @@ export default function MembersListTab() {
   const router = useRouter();
 
   // State management
-  const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,18 +82,15 @@ export default function MembersListTab() {
         const result = response.data;
 
         if (result.success && result.data) {
-          setMembers(result.data.members);
           setFilteredMembers(result.data.members);
           setTotalPages(result.data.pagination.totalPages);
           setCurrentPage(result.data.pagination.currentPage - 1); // Convert to 0-based
         } else {
           console.error("Invalid response format:", result);
-          setMembers([]);
           setFilteredMembers([]);
         }
       } catch (error) {
         console.error("Error fetching members:", error);
-        setMembers([]);
         setFilteredMembers([]);
       } finally {
         setLoading(false);
@@ -179,10 +175,6 @@ export default function MembersListTab() {
     const endIndex = startIndex + itemsPerPage;
     return sortedMembers.slice(startIndex, endIndex);
   }, [sortedMembers, currentPage, itemsPerPage]);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
 
   const handleMemberClick = (memberId: string) => {
     router.push(`/members/${memberId}`);
@@ -383,13 +375,13 @@ export default function MembersListTab() {
       <EditMemberModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
-        member={selectedMember._id ? (selectedMember as any) : null}
+        member={selectedMember._id ? selectedMember as Member : null}
         onMemberUpdated={fetchMembers}
       />
       <DeleteMemberModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        member={selectedMember._id ? (selectedMember as any) : null}
+        member={selectedMember._id ? selectedMember as Member : null}
         onDelete={fetchMembers}
       />
       <NewMemberModal

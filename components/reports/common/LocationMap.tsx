@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import getAllGamingLocations from "@/lib/helpers/locations";
 import type { LocationMapProps } from "@/lib/types/components";
 import { Skeleton } from "@/components/ui/skeleton";
+import MapLoader from "@/components/ui/MapLoader";
 import {
   Tooltip,
   TooltipContent,
@@ -37,31 +37,6 @@ const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
 
-type LocationData = {
-  _id: string;
-  name: string;
-  address: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-  };
-  geoCoords?: {
-    lat: number;
-    lng: number;
-  };
-  metrics?: {
-    totalMachines: number;
-    onlineMachines: number;
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-  };
-  sasEnabled?: boolean;
-  isLocalServer?: boolean;
-  hasSmib?: boolean;
-};
-
 // Helper function to get the valid longitude (checks both "longitude" and "longtitude")
 const getValidLongitude = (geo: {
   longitude?: number;
@@ -78,16 +53,16 @@ const getValidLongitude = (geo: {
 };
 
 // Helper function to get location stats from locationAggregation data
-const getLocationStats = (location: any, locationAggregates: any[]) => {
+const getLocationStats = (location: Record<string, unknown>, locationAggregates: Record<string, unknown>[]) => {
   // Try to find matching data in locationAggregates
   const stats = locationAggregates.find((d) => d.location === location._id);
 
   return {
-    moneyIn: stats?.moneyIn ?? 0,
-    moneyOut: stats?.moneyOut ?? 0,
-    gross: stats?.gross ?? 0,
-    totalMachines: stats?.totalMachines ?? location.totalMachines ?? 0,
-    onlineMachines: stats?.onlineMachines ?? location.onlineMachines ?? 0,
+    moneyIn: (stats?.moneyIn as number) ?? 0,
+    moneyOut: (stats?.moneyOut as number) ?? 0,
+    gross: (stats?.gross as number) ?? 0,
+    totalMachines: (stats?.totalMachines as number) ?? (location.totalMachines as number) ?? 0,
+    onlineMachines: (stats?.onlineMachines as number) ?? (location.onlineMachines as number) ?? 0,
   };
 };
 
@@ -121,8 +96,8 @@ const LocationPopupContent = ({
   locationAggregates,
   isFinancialDataLoading,
 }: {
-  location: any;
-  locationAggregates: any[];
+  location: Record<string, unknown>;
+  locationAggregates: Record<string, unknown>[];
   isFinancialDataLoading: boolean;
 }) => {
   const stats = getLocationStats(location, locationAggregates);
@@ -133,7 +108,7 @@ const LocationPopupContent = ({
     <div className="min-w-[280px] p-2">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-lg">
-          {location.name || location.locationName}
+          {(location.name as string) || (location.locationName as string)}
         </h3>
         {isFinancialDataLoading ? (
           <Skeleton className="h-5 w-16 rounded-full" />
@@ -232,28 +207,25 @@ const LocationPopupContent = ({
 };
 
 export default function LocationMap({
-  selectedLocations = [],
-  onLocationSelect,
   compact = false,
   aggregates,
   gamingLocations: propsGamingLocations,
-  gamingLocationsLoading = false,
   financialDataLoading = false,
 }: LocationMapProps) {
   const [mapReady, setMapReady] = useState(false);
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
-  const [gamingLocations, setGamingLocations] = useState<any[]>([]);
+  const [locationAggregates, setLocationAggregates] = useState<Record<string, unknown>[]>([]);
+  const [gamingLocations, setGamingLocations] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Record<string, unknown>[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
   ]); // Trinidad center as initial fallback
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<{ setView: (coords: [number, number], zoom: number) => void; on: (event: string, callback: () => void) => void } | null>(null);
 
   // Initialize Leaflet on client side
   useEffect(() => {
@@ -272,12 +244,7 @@ export default function LocationMap({
   // Get default center based on selected licensee
   useEffect(() => {
     const defaultCenter = getMapCenterByLicensee(selectedLicencee);
-    console.log(
-      "📍 LocationMap: Setting default center for licensee",
-      selectedLicencee,
-      "to:",
-      defaultCenter
-    );
+    console.warn(`📍 LocationMap: Setting default center for licensee ${selectedLicencee} to: ${JSON.stringify(defaultCenter)}`);
     setUserDefaultCenter(defaultCenter);
   }, [selectedLicencee]);
 
@@ -333,11 +300,11 @@ export default function LocationMap({
               const sd =
                 customDateRange.startDate instanceof Date
                   ? customDateRange.startDate
-                  : new Date(customDateRange.startDate as any);
+                  : new Date(customDateRange.startDate as string);
               const ed =
                 customDateRange.endDate instanceof Date
                   ? customDateRange.endDate
-                  : new Date(customDateRange.endDate as any);
+                  : new Date(customDateRange.endDate as string);
               params.append("startDate", sd.toISOString());
               params.append("endDate", ed.toISOString());
             } else {
@@ -402,7 +369,7 @@ export default function LocationMap({
 
     const validLongitude = getValidLongitude(location.geoCoords);
     return (
-      location.geoCoords.latitude === 0 ||
+      (location.geoCoords as Record<string, unknown>).latitude === 0 ||
       validLongitude === undefined ||
       validLongitude === 0
     );
@@ -416,7 +383,7 @@ export default function LocationMap({
 
     const validLongitude = getValidLongitude(location.geoCoords);
     const hasValidCoords =
-      location.geoCoords.latitude !== 0 &&
+      (location.geoCoords as Record<string, unknown>).latitude !== 0 &&
       validLongitude !== undefined &&
       validLongitude !== 0;
 
@@ -435,7 +402,7 @@ export default function LocationMap({
 
     // Search through ALL locations, not just those with valid coordinates
     const filtered = gamingLocations.filter((location) => {
-      const locationName = location.name || location.locationName || "";
+      const locationName = (location.name as string) || (location.locationName as string) || "";
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
 
@@ -444,74 +411,63 @@ export default function LocationMap({
   };
 
   // Zoom to location
-  const zoomToLocation = (location: any) => {
+  const zoomToLocation = (location: Record<string, unknown>) => {
     if (!mapRef.current) return;
 
     // Check if location has valid coordinates
     if (!location.geoCoords) {
-      setSearchQuery(location.name || location.locationName || "");
+      setSearchQuery((location.name as string) || (location.locationName as string) || "");
       setShowSearchResults(false);
       return;
     }
 
-    const lat = location.geoCoords.latitude;
+    const lat = (location.geoCoords as Record<string, unknown>).latitude;
     const lon = getValidLongitude(location.geoCoords);
 
     if (lat && lon && lat !== 0 && lon !== 0) {
-      mapRef.current.setView([lat, lon], 15);
-      setSearchQuery(location.name || location.locationName || "");
+      mapRef.current?.setView([lat as number, lon as number], 15);
+      setSearchQuery((location.name as string) || (location.locationName as string) || "");
       setShowSearchResults(false);
     } else {
-      setSearchQuery(location.name || location.locationName || "");
+      setSearchQuery((location.name as string) || (location.locationName as string) || "");
       setShowSearchResults(false);
     }
   };
 
   // Handle map instance
-  const handleMapCreated = (map: any) => {
-    mapRef.current = map;
-    // When the map fires its load event, ensure loading is cleared
-    if (map && typeof map.on === "function") {
-      map.on("load", () => setLoading(false));
-      // Also clear when first tile layer loads
-      map.on("layeradd", () => setLoading(false));
+  const handleMapCreated = (map: unknown) => {
+    if (map) {
+      const mapInstance = map as { setView: (coords: [number, number], zoom: number) => void; on: (event: string, callback: () => void) => void };
+      mapRef.current = mapInstance;
+      // When the map fires its load event, ensure loading is cleared
+      if (typeof mapInstance.on === "function") {
+        mapInstance.on("load", () => setLoading(false));
+        // Also clear when first tile layer loads
+        mapInstance.on("layeradd", () => setLoading(false));
+      }
     }
   };
 
   // Show loading screen only while map is initializing, not while data loads
   if (!mapReady) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Location Performance Map
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 bg-gray-100 rounded-lg">
-            <Skeleton className="h-full w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <MapLoader />;
+  }
+
+  // Show loader if no data has loaded yet
+  if (loading && gamingLocations.length === 0) {
+    return <MapLoader />;
   }
 
   // Calculate bounds if locations have coordinates
   const mapCenter =
     validLocations.length > 0
       ? ([
-          validLocations[0].geoCoords.latitude,
-          getValidLongitude(validLocations[0].geoCoords)!,
+          (validLocations[0].geoCoords as Record<string, unknown>).latitude,
+          getValidLongitude(validLocations[0].geoCoords as Record<string, unknown>)!,
         ] as [number, number])
       : userDefaultCenter; // User's country center
 
-  console.log(
-    "🗺️ LocationMap: Final map center:",
-    mapCenter,
-    "validLocations:",
-    validLocations.length
-  ); // Debug log
+  console.warn(`🗺️ LocationMap: Final map center: ${JSON.stringify(mapCenter)}, validLocations: ${validLocations.length}`); // Debug log
 
   // Render a marker if valid latitude and a valid longitude are present.
   const renderMarker = (
@@ -519,14 +475,10 @@ export default function LocationMap({
     geo: { longitude?: number; longtitude?: number },
     label: string,
     key: string | number,
-    locationObj: any
+    locationObj: Record<string, unknown>
   ) => {
     const lon = getValidLongitude(geo);
     if (!lon) return null;
-
-    const stats = getLocationStats(locationObj, locationAggregates);
-    const performance = getPerformanceLabel(stats.gross, stats.moneyIn);
-    const performanceColor = getPerformanceColor(stats.gross, stats.moneyIn);
 
     return (
       <Marker key={key} position={[lat, lon]}>
@@ -543,7 +495,7 @@ export default function LocationMap({
 
   if (compact) {
     return (
-      <div className="h-full w-full">
+      <div className="h-full w-full relative z-0">
         <MapContainer
           center={mapCenter}
           zoom={6}
@@ -560,12 +512,13 @@ export default function LocationMap({
 
           {validLocations.map((location) => {
             const locationName =
-              location.name || location.locationName || "Unknown Location";
+              (location.name as string) || (location.locationName as string) || "Unknown Location";
+            const geoCoords = location.geoCoords as Record<string, unknown>;
             return renderMarker(
-              location.geoCoords.latitude,
-              location.geoCoords,
+              geoCoords.latitude as number,
+              geoCoords,
               locationName,
-              location._id,
+              location._id as string,
               location
             );
           })}
@@ -630,18 +583,18 @@ export default function LocationMap({
                 {searchResults.length > 0 ? (
                   searchResults.map((location) => {
                     const locationName =
-                      location.name ||
-                      location.locationName ||
+                      (location.name as string) ||
+                      (location.locationName as string) ||
                       "Unknown Location";
                     const hasValidCoords =
                       location.geoCoords &&
-                      location.geoCoords.latitude !== 0 &&
-                      getValidLongitude(location.geoCoords) !== undefined &&
-                      getValidLongitude(location.geoCoords) !== 0;
+                      (location.geoCoords as Record<string, unknown>).latitude !== 0 &&
+                      getValidLongitude(location.geoCoords as Record<string, unknown>) !== undefined &&
+                      getValidLongitude(location.geoCoords as Record<string, unknown>) !== 0;
 
                     return (
                       <button
-                        key={location._id}
+                        key={location._id as string}
                         onClick={() => zoomToLocation(location)}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-2"
                       >
@@ -672,7 +625,7 @@ export default function LocationMap({
             )}
           </div>
           {/* Map */}
-          <div className="flex-1 min-h-[400px] lg:min-h-[32rem]">
+          <div className="flex-1 min-h-[400px] lg:min-h-[32rem] relative z-0">
             <MapContainer
               center={mapCenter}
               zoom={6}
@@ -687,12 +640,13 @@ export default function LocationMap({
               />
               {validLocations.map((location) => {
                 const locationName =
-                  location.name || location.locationName || "Unknown Location";
+                  (location.name as string) || (location.locationName as string) || "Unknown Location";
+                const geoCoords = location.geoCoords as Record<string, unknown>;
                 return renderMarker(
-                  location.geoCoords.latitude,
-                  location.geoCoords,
+                  geoCoords.latitude as number,
+                  geoCoords,
                   locationName,
-                  location._id,
+                  location._id as string,
                   location
                 );
               })}

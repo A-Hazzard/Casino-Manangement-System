@@ -31,6 +31,8 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --sidebar-expanded: 12rem; /* 192px */
+    --sidebar-collapsed: 5rem; /* 80px */
   }
 
   .dark {
@@ -167,6 +169,16 @@ input[type="checkbox"] {
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #555;
+  }
+
+  /* Reserve left padding for the sidebar on md+ */
+  @media (min-width: 768px) {
+    .md\:pl-sidebar-expanded {
+      padding-left: var(--sidebar-expanded);
+    }
+    .md\:pl-sidebar-collapsed {
+      padding-left: var(--sidebar-collapsed);
+    }
   }
 }
 

@@ -1,23 +1,6 @@
 import { NextRequest } from "next/server";
 
-export interface LogContext {
-  endpoint: string;
-  method: string;
-  userId?: string;
-  ip?: string;
-  userAgent?: string;
-  params?: Record<string, any>;
-}
-
-export interface LogResult {
-  success: boolean;
-  message: string;
-  duration: number;
-  timestamp: string;
-  context: LogContext;
-  error?: string;
-  data?: any;
-}
+import type { LogContext, LogResult } from "@/lib/types/logger";
 
 class APILogger {
   private startTime: number = 0;
@@ -57,7 +40,7 @@ class APILogger {
     return message;
   }
 
-  logSuccess(context: LogContext, message: string, data?: any): void {
+  logSuccess(context: LogContext, message: string, data?: Record<string, unknown>): void {
     const result: LogResult = {
       success: true,
       message,
@@ -67,7 +50,10 @@ class APILogger {
       data,
     };
 
-    console.log(this.formatMessage(result));
+    // Log to console in development, could be replaced with proper logging service
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(this.formatMessage(result));
+    }
   }
 
   logError(context: LogContext, message: string, error?: string): void {
@@ -102,15 +88,7 @@ class APILogger {
 
 export const apiLogger = new APILogger();
 
-// Helper function to extract user info from request
-export function extractUserInfo(request: NextRequest): {
-  userId?: string;
-  email?: string;
-} {
-  // This would need to be implemented based on your authentication system
-  // For now, returning empty object
-  return {};
-}
+
 
 // Decorator-style function for API endpoints
 export function withLogging<R>(

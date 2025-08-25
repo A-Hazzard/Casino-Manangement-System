@@ -72,8 +72,8 @@ export function calculatePagination<T>(
  * Set date range to last month for monthly report
  */
 export function setLastMonthDateRange(
-  setMonthlyDateRange: (range: any) => void,
-  setPendingRange: (range: any) => void
+  setMonthlyDateRange: (range: { from: Date; to: Date }) => void,
+  setPendingRange: (range: { from: Date; to: Date }) => void
 ): void {
   const now = new Date();
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);

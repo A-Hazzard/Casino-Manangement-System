@@ -5,11 +5,12 @@ import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { LocationFilter } from "@/lib/types/location";
 
+
 // Simple in-memory cache for performance
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function getCacheKey(params: any): string {
+function getCacheKey(params: Record<string, unknown>): string {
   return JSON.stringify(params);
 }
 
@@ -30,8 +31,12 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
-    const showAllLocations = searchParams.get("showAllLocations") === "true";
+
+
     const clearCacheParam = searchParams.get("clearCache") === "true";
+    const sasEvaluationOnly = searchParams.get("sasEvaluationOnly") === "true";
+    const basicList = searchParams.get("basicList") === "true";
+    const selectedLocations = searchParams.get("selectedLocations");
 
     // Clear cache if requested (useful for testing)
     if (clearCacheParam) {
@@ -40,8 +45,10 @@ export async function GET(req: NextRequest) {
 
     // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const skip = (page - 1) * limit;
+    // For dropdown/basic lists and selectedLocations, ignore limit by passing a very large value
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? parseInt(limitParam) : 1000000;
+
 
     let startDate: Date | undefined, endDate: Date | undefined;
 
@@ -67,15 +74,23 @@ export async function GET(req: NextRequest) {
       timePeriod,
       licencee,
       machineTypeFilter,
-      showAllLocations,
       startDate,
       endDate,
       page,
       limit,
+      sasEvaluationOnly,
+      basicList,
+      selectedLocations,
     });
 
+    const skipCacheForSelected = Boolean(selectedLocations);
     const cached = cache.get(cacheKey);
-    if (cached && isCacheValid(cached.timestamp) && !clearCacheParam) {
+    if (
+      cached &&
+      isCacheValid(cached.timestamp) &&
+      !clearCacheParam &&
+      !skipCacheForSelected
+    ) {
       return NextResponse.json(cached.data);
     }
 
@@ -92,8 +107,9 @@ export async function GET(req: NextRequest) {
       db.collection("gaminglocations").countDocuments({}, { limit: 1 }),
     ]);
 
-    const dataCheckTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Data check timeout")), 5000)
+    const dataCheckTimeout = new Promise(
+      (_, reject) =>
+        setTimeout(() => reject(new Error("Data check timeout")), 10000) // Increased timeout
     );
 
     try {
@@ -106,11 +122,12 @@ export async function GET(req: NextRequest) {
     const { rows, totalCount } = await getLocationsWithMetrics(
       db,
       { startDate, endDate },
-      showAllLocations,
       licencee,
-      machineTypeFilter,
       page,
-      limit
+      limit,
+      sasEvaluationOnly,
+      basicList,
+      selectedLocations || undefined
     );
 
     // Apply filters if needed
@@ -130,14 +147,14 @@ export async function GET(req: NextRequest) {
 
     const result = {
       data: sortedRows,
-      totalCount: sortedRows.length,
+      totalCount: totalCount,
       page,
       limit,
-      hasMore: page * limit < totalCount,
+      hasMore: false,
     };
 
     // Cache the result (unless cache was cleared)
-    if (!clearCacheParam) {
+    if (!clearCacheParam && !skipCacheForSelected) {
       cache.set(cacheKey, {
         data: result,
         timestamp: Date.now(),
@@ -154,16 +171,17 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("❌ LocationAggregation API Error:", error);
+    console.error(
+      "❌ LocationAggregation API Error:",
+      error instanceof Error ? error.message : String(error)
+    );
 
-    // Return fallback data instead of error
-    return NextResponse.json({
-      data: [],
-      totalCount: 0,
-      page: 1,
-      limit: 50,
-      hasMore: false,
-      error: "Failed to fetch location data",
-    });
+    return NextResponse.json(
+      {
+        error: "Failed to fetch location data",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }

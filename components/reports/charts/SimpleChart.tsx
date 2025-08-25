@@ -14,16 +14,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, BarChart3, Trophy, Activity } from "lucide-react";
+
+type ChartDataPoint = {
+  [key: string]: string | number | null | undefined;
+};
 
 type SimpleChartProps = {
   type: "line" | "bar" | "area";
   title: string;
   icon: React.ReactNode;
-  data: any[];
+  data: ChartDataPoint[];
   dataKey: string;
   color?: string;
-  formatter?: (value: any) => string;
+  formatter?: (value: unknown) => string;
 };
 
 export default function SimpleChart({
@@ -33,7 +36,7 @@ export default function SimpleChart({
   data,
   dataKey,
   color = "#8884d8",
-  formatter = (value) => value.toLocaleString(),
+  formatter = (value) => (value as number)?.toLocaleString() ?? "0",
 }: SimpleChartProps) {
   // Format large numbers for Y-axis
   const formatYAxis = (tickItem: number) => {

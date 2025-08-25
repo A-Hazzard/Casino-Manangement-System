@@ -25,9 +25,7 @@ type DeleteMemberModalProps = {
 };
 
 export default function DeleteMemberModal({
-  isOpen,
   onClose,
-  member,
   onDelete,
 }: DeleteMemberModalProps) {
   const { isDeleteModalOpen, selectedMember, closeDeleteModal } =

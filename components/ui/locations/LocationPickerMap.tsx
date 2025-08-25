@@ -28,7 +28,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
   // Map state
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
+
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
   
   // Search state
@@ -85,10 +85,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
   }, [isLoaded]);
 
-  // Handle marker load
-  const onMarkerLoad = useCallback((markerInstance: google.maps.Marker) => {
-    setMarker(markerInstance);
-  }, []);
+
 
   // Update location from coordinates
   const updateLocationFromCoords = useCallback((lat: number, lng: number) => {
@@ -402,7 +399,6 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         <Marker
           position={center}
           draggable={true}
-          onLoad={onMarkerLoad}
           onDragEnd={onMarkerDragEnd}
         />
       </GoogleMap>

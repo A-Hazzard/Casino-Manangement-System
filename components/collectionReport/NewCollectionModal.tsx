@@ -626,9 +626,9 @@ export default function NewCollectionModal({
                       }
                     >
                       {machine.name} (
-                      {(machine as any).serialNumber ||
-                        (machine as any).origSerialNumber ||
-                        (machine as any).machineId ||
+                      {(machine as Record<string, unknown>).serialNumber as string ||
+                        (machine as Record<string, unknown>).origSerialNumber as string ||
+                        (machine as Record<string, unknown>).machineId as string ||
                         "N/A"}
                       )
                       {collectedMachineEntries.find(
@@ -672,9 +672,9 @@ export default function NewCollectionModal({
                   className="w-full bg-lighterBlueHighlight text-primary-foreground"
                 >
                   {machineForDataEntry.name} (
-                  {(machineForDataEntry as any).serialNumber ||
-                    (machineForDataEntry as any).origSerialNumber ||
-                    (machineForDataEntry as any).machineId ||
+                  {(machineForDataEntry as Record<string, unknown>).serialNumber as string ||
+                    (machineForDataEntry as Record<string, unknown>).origSerialNumber as string ||
+                    (machineForDataEntry as Record<string, unknown>).machineId as string ||
                     "N/A"}
                   )
                 </Button>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Member } from "@/app/api/lib/models/members";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import type { PipelineStage } from "mongoose";
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const licencee = searchParams.get("licencee") || "";
 
     // Build optimized query
-    let query: any = {};
+    const query: Record<string, unknown> = {};
 
     if (search) {
       query.$or = [
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build optimized sort options with indexing considerations
-    let sort: any = {};
+    const sort: Record<string, number> = {};
     if (sortBy === "name") {
       sort["profile.firstName"] = sortOrder === "asc" ? 1 : -1;
       sort["profile.lastName"] = sortOrder === "asc" ? 1 : -1;
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Use aggregation pipeline to get members with location names and win/loss data
-    let pipeline: any[] = [];
+    const pipeline: Record<string, unknown>[] = [];
 
     // Match stage
     pipeline.push({ $match: query });
@@ -151,8 +152,8 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $sort: sort });
 
     // Get total count
-    const countPipeline = [...pipeline, { $count: "total" }];
-    const countResult = await Member.aggregate(countPipeline);
+    const countPipeline = [...pipeline, { $count: "total" } as Record<string, unknown>];
+        const countResult = await Member.aggregate(countPipeline as unknown as PipelineStage[]);
     const totalMembers = countResult[0]?.total || 0;
 
     // Add pagination
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $limit: limit });
 
     // Execute aggregation
-    const members = await Member.aggregate(pipeline);
+        const members = await Member.aggregate(pipeline as unknown as PipelineStage[]);
 
     const response = {
       success: true,

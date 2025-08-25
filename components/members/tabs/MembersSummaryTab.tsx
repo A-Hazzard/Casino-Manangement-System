@@ -56,7 +56,6 @@ export default function MembersSummaryTab() {
   const [locations, setLocations] = useState<Location[]>([]);
   const {
     selectedLicencee,
-    setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -119,11 +118,11 @@ export default function MembersSummaryTab() {
         const sd =
           customDateRange.startDate instanceof Date
             ? customDateRange.startDate
-            : new Date(customDateRange.startDate as any);
+            : new Date(customDateRange.startDate as string);
         const ed =
           customDateRange.endDate instanceof Date
             ? customDateRange.endDate
-            : new Date(customDateRange.endDate as any);
+            : new Date(customDateRange.endDate as string);
         params.append("startDate", sd.toISOString());
         params.append("endDate", ed.toISOString());
       } else if (activeMetricsFilter && activeMetricsFilter !== "Today") {
@@ -262,7 +261,7 @@ export default function MembersSummaryTab() {
       };
 
       return `${month} ${day}${getOrdinalSuffix(day)} ${year}`;
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -310,7 +309,7 @@ export default function MembersSummaryTab() {
         .toString()
         .padStart(2, "0")}`;
       return `${month} ${day}${getOrdinalSuffix(day)} ${year} at ${timeString}`;
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -380,8 +379,8 @@ export default function MembersSummaryTab() {
   });
 
   const sortedMembers = [...filteredMembers].sort((a, b) => {
-    let aValue: any = a[sortBy as keyof MemberSummary];
-    let bValue: any = b[sortBy as keyof MemberSummary];
+    const aValue: unknown = a[sortBy as keyof MemberSummary];
+    const bValue: unknown = b[sortBy as keyof MemberSummary];
 
     if (typeof aValue === "string" && typeof bValue === "string") {
       return sortOrder === "asc"

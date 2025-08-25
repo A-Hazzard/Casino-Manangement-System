@@ -1,16 +1,14 @@
 import React from "react";
-import Sidebar from "@/components/layout/Sidebar";
+
 import Header from "@/components/layout/Header";
-import type { CollectionReportSkeletonProps } from "@/lib/types/pages";
+
 
 /**
  * Main skeleton component for collection report detail page
  */
-export const CollectionReportSkeleton = ({
-  pathname,
-}: CollectionReportSkeletonProps) => (
-  <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 md:pl-36 min-h-screen bg-background flex flex-col overflow-hidden">
-    <Sidebar pathname={pathname} />
+export const CollectionReportSkeleton = () => (
+  <div className="w-full md:w-[90%] lg:w-full md:mx-auto min-h-screen bg-background flex flex-col overflow-hidden">
+
     <main className="flex-1 lg:ml-4">
       <Header
         pageTitle=""

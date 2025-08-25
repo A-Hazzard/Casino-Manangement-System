@@ -91,13 +91,13 @@ export default function MetersTab() {
           `/api/reports/meters?${params}`
         );
         return response.data.data;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching all data for export:", err);
         const errorMessage =
-          err.response?.data?.error ||
-          err.message ||
+          (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error ||
+          (err as Error)?.message ||
           "Failed to load export data";
-        toast.error(errorMessage);
+        toast.error(errorMessage as string);
         return [];
       }
     },
@@ -116,18 +116,18 @@ export default function MetersTab() {
       const response = await axios.get("/api/locations", { params });
 
       const locationsData = response.data.locations || [];
-      const mappedLocations = locationsData.map((loc: any) => ({
+      const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
         id: loc._id,
         name: loc.name,
         sasEnabled: loc.sasEnabled || false, // Default to false if not available
       }));
 
       setLocations(mappedLocations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching locations:", err);
       const errorMessage =
-        err.response?.data?.error || err.message || "Failed to load locations";
-      toast.error(errorMessage);
+        (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error || (err as Error)?.message || "Failed to load locations";
+      toast.error(errorMessage as string);
     }
   }, [selectedLicencee]);
 
@@ -169,14 +169,14 @@ export default function MetersTab() {
         setTotalCount(response.data.totalCount);
         setTotalPages(response.data.totalPages);
         setCurrentPage(response.data.currentPage);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching meters data:", err);
         const errorMessage =
-          err.response?.data?.error ||
-          err.message ||
+          (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error ||
+          (err as Error)?.message ||
           "Failed to load meters data";
-        setError(errorMessage);
-        toast.error(errorMessage);
+        setError(errorMessage as string);
+        toast.error(errorMessage as string);
       } finally {
         setLoading(false);
       }
@@ -242,7 +242,7 @@ export default function MetersTab() {
           "Date",
         ],
         data: allData.map((item) => [
-          `"${(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}"`,
+          `"${(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}"`,
           `"${item.location}"`,
           item.metersIn.toString(), // Remove toLocaleString() to prevent Excel formatting issues
           item.metersOut.toString(),
@@ -275,7 +275,7 @@ export default function MetersTab() {
         },
       };
 
-      await exportData(exportConfig, "csv");
+      await exportData(exportConfig);
       toast.success(`Successfully exported ${allData.length} records`);
     } catch (error) {
       console.error("Export error:", error);
@@ -334,7 +334,7 @@ export default function MetersTab() {
       </div>
 
       {/* Mobile Skeleton */}
-      <div className="lg:hidden space-y-4">
+      <div className="md:hidden space-y-4">
         {[...Array(5)].map((_, index) => (
           <div
             key={index}
@@ -533,7 +533,7 @@ export default function MetersTab() {
               </p>
             </div>
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -574,7 +574,7 @@ export default function MetersTab() {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">
-                          {(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}
+                          {(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -629,7 +629,7 @@ export default function MetersTab() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="lg:hidden space-y-4">
+            <div className="md:hidden space-y-4">
               {metersData.map((item, index) => (
                 <div
                   key={index}
@@ -639,7 +639,7 @@ export default function MetersTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-sm font-mono font-medium text-gray-900 truncate">
-                        {(typeof (item as any).serialNumber === "string" && (item as any).serialNumber.trim()) || (typeof (item as any).origSerialNumber === "string" && (item as any).origSerialNumber.trim()) || item.machineId}
+                        {(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}
                       </h3>
                       <p className="text-xs text-gray-500 truncate">
                         {item.location}

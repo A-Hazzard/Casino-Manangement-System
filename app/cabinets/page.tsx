@@ -1,7 +1,7 @@
 "use client";
 
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { Button } from "@/components/ui/button";
 import CabinetCard from "@/components/ui/cabinets/CabinetCard";
 import {
@@ -18,7 +18,7 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
-import { MachineMovementRecord } from "@/lib/types/reports";
+
 import {
   ArrowDownIcon,
   ChevronLeftIcon,
@@ -36,7 +36,6 @@ import {
   useState,
   Suspense,
 } from "react";
-import RefreshButton from "@/components/ui/RefreshButton";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import SMIBManagement from "@/components/cabinets/SMIBManagement";
@@ -51,6 +50,7 @@ import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import CabinetsNavigation from "@/components/cabinets/CabinetsNavigation";
 import { CABINET_TABS_CONFIG } from "@/lib/constants/cabinets";
 import type { CabinetSection } from "@/lib/constants/cabinets";
+import { IMAGES } from "@/lib/constants/images";
 
 function CabinetsPageContent() {
   const {
@@ -67,18 +67,15 @@ function CabinetsPageContent() {
   // State for New Movement Request Modal
   const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
     useState(false);
-  const openNewMovementRequestModal = () =>
-    setIsNewMovementRequestModalOpen(true);
   const closeNewMovementRequestModal = () =>
     setIsNewMovementRequestModalOpen(false);
 
-  const handleMovementRequestSubmit = (data: MachineMovementRecord) => {
+  const handleMovementRequestSubmit = () => {
     closeNewMovementRequestModal();
   };
 
   const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
     useState(false);
-  const openUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(true);
   const closeUploadSmibDataModal = () => setIsUploadSmibDataModalOpen(false);
 
   const pathname = usePathname();
@@ -104,7 +101,7 @@ function CabinetsPageContent() {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
-  const [refreshing, setRefreshing] = useState(false);
+
 
   // Get active section from URL search params, default to "cabinets"
   const getActiveSectionFromURL = useCallback((): CabinetSection => {
@@ -386,16 +383,11 @@ function CabinetsPageContent() {
     }
   };
 
-  // Handler for refresh button
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadCabinets();
-    setRefreshing(false);
-  };
+
 
   return (
     <>
-      <Sidebar pathname={pathname} />
+
       <EditCabinetModal />
       <DeleteCabinetModal />
       <NewCabinetModal />
@@ -410,7 +402,7 @@ function CabinetsPageContent() {
         onClose={closeUploadSmibDataModal}
       />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -418,67 +410,47 @@ function CabinetsPageContent() {
             pageTitle=""
             hideOptions={false}
             hideLicenceeFilter={false}
-            disabled={loading || refreshing}
+            disabled={loading}
           />
 
           {/* Title and icon layout */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
             <div className="flex items-center gap-3 w-full">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                Machines
+                Cabinets
               </h1>
               <Image
-                src="/cabinetsIcon.svg"
-                alt="Machines Icon"
+                src={IMAGES.cabinetsIcon}
+                alt="Cabinet Icon"
                 width={32}
                 height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8 hidden lg:inline-block ml-2"
+                className="w-6 h-6 sm:w-8 sm:h-8 ml-2"
               />
             </div>
-            {/* Add New Cabinet button (desktop only, only on certain tabs) */}
-            {(activeSection === "cabinets" || activeSection === "movement") && (
+            {/* Desktop: Add Cabinet button */}
+            <div className="hidden md:flex items-center gap-3 flex-shrink-0">
               <Button
-                onClick={() => {
-                  if (activeSection === "cabinets") {
-                    openCabinetModal();
-                  } else if (activeSection === "movement") {
-                    openNewMovementRequestModal();
-                  }
-                }}
-                className="hidden md:flex bg-button hover:bg-button/90 text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+                onClick={() => openCabinetModal()}
+                className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
               >
                 <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
                   <Plus className="w-4 h-4 text-white" />
                 </div>
-                <span>
-                  {activeSection === "cabinets"
-                    ? "Add New Cabinet"
-                    : "Create Movement Request"}
-                </span>
-              </Button>
-            )}
-          </div>
-
-          {/* Mobile: Add New Cabinet button below title */}
-          {(activeSection === "cabinets" || activeSection === "movement") && (
-            <div className="md:hidden mt-4 w-full">
-              <Button
-                onClick={() => {
-                  if (activeSection === "cabinets") {
-                    openCabinetModal();
-                  } else if (activeSection === "movement") {
-                    openNewMovementRequestModal();
-                  }
-                }}
-                className="w-full bg-button hover:bg-button/90 text-white py-3 rounded-lg flex items-center justify-center gap-2"
-              >
-                <Plus size={20} />
-                {activeSection === "cabinets"
-                  ? "Add New Cabinet"
-                  : "Create Movement Request"}
+                <span>Add Cabinet</span>
               </Button>
             </div>
-          )}
+          </div>
+
+          {/* Mobile: Add Cabinet button below title */}
+          <div className="md:hidden mt-4 w-full">
+            <Button
+              onClick={() => openCabinetModal()}
+              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              Add Cabinet
+            </Button>
+          </div>
 
           {/* Section Navigation */}
           <div className="mt-8 mb-6">
@@ -504,14 +476,14 @@ function CabinetsPageContent() {
           <div className="flex items-center justify-between mt-4 mb-0 gap-4">
             <div className="flex-1 min-w-0">
               <DashboardDateFilters
-                disabled={loading || refreshing}
+                disabled={loading}
                 hideAllTime={true}
               />
             </div>
           </div>
           {/* Mobile: Search, Location Filter, and Sort stacked - Only show on cabinets section */}
           {activeSection === "cabinets" && (
-            <div className="lg:hidden flex flex-col gap-4 mt-4">
+            <div className="md:hidden flex flex-col gap-4 mt-4">
               <div className="relative w-full">
                 <Input
                   type="text"
@@ -581,7 +553,7 @@ function CabinetsPageContent() {
 
           {/* Search Row - Purple box - Only show on cabinets section */}
           {activeSection === "cabinets" && (
-            <div className="hidden lg:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+            <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
               <div className="relative flex-1 max-w-md min-w-0">
                 <Input
                   type="text"
@@ -613,12 +585,14 @@ function CabinetsPageContent() {
               {initialLoading || loading ? (
                 <>
                   {/* Table Skeleton for large screens */}
-                  <div className="hidden lg:block">
-                    <CabinetTableSkeleton />
+                  <div className="hidden md:block">
+                    <ClientOnly fallback={<div className="space-y-4 mt-4">Loading...</div>}>
+                      <CabinetTableSkeleton />
+                    </ClientOnly>
                   </div>
 
                   {/* Card Skeleton for small screens only */}
-                  <div className="block lg:hidden">
+                  <div className="block md:hidden">
                     <ClientOnly
                       fallback={
                         <div className="space-y-4 mt-4">Loading...</div>
@@ -641,7 +615,7 @@ function CabinetsPageContent() {
               ) : (
                 <>
                   {/* Desktop Table View with green header and border styling */}
-                  <div className="hidden lg:block" ref={tableRef}>
+                  <div className="hidden md:block" ref={tableRef}>
                     <CabinetTable
                       cabinets={paginatedCabinets.map(mapToCabinetProps)}
                       sortOption={sortOption}
@@ -666,7 +640,7 @@ function CabinetsPageContent() {
 
                   {/* Mobile Card View - Only show on small screens */}
                   <div
-                    className="block lg:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full"
+                    className="block md:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full"
                     ref={cardsRef}
                   >
                     <ClientOnly fallback={<div>Loading cabinets...</div>}>
@@ -683,9 +657,9 @@ function CabinetsPageContent() {
                             ""
                           }
                           serialNumber={
-                            (cabinet as any).serialNumber ||
-                            (cabinet as any).origSerialNumber ||
-                            (cabinet as any).machineId ||
+                            (cabinet as Record<string, unknown>).serialNumber as string ||
+                            (cabinet as Record<string, unknown>).origSerialNumber as string ||
+                            (cabinet as Record<string, unknown>).machineId as string ||
                             ""
                           }
                           locationId={cabinet.locationId || ""}

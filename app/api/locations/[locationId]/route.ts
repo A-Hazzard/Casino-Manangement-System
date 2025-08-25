@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build aggregation pipeline based on your MongoDB compass query
-    const aggregationPipeline: any[] = [
+    const aggregationPipeline: Record<string, unknown>[] = [
       // Match the specific location (similar to your $match: { name: "Big Shot" })
       {
         $match: { _id: { $in: [locationId, locationIdObj] } },
@@ -231,23 +231,23 @@ export async function GET(request: NextRequest) {
 
     // Transform the results to ensure proper data types
     const transformedCabinets: TransformedCabinet[] = cabinetsWithMeters.map(
-      (cabinet: any) => ({
+      (cabinet: Record<string, unknown>) => ({
         _id: cabinet._id?.toString() || "",
         locationId: cabinet.locationId?.toString() || "",
-        locationName: cabinet.locationName || "",
-        assetNumber: cabinet.assetNumber || "",
-        serialNumber: cabinet.serialNumber || "",
-        relayId: cabinet.relayId || "",
-        smibBoard: cabinet.smibBoard || "",
-        smbId: cabinet.smbId || "",
-        lastActivity: cabinet.lastActivity || null,
-        lastOnline: cabinet.lastOnline || null,
-        game: cabinet.game || "",
-        installedGame: cabinet.installedGame || "",
-        cabinetType: cabinet.cabinetType || "",
-        assetStatus: cabinet.assetStatus || "",
-        status: cabinet.status || "",
-        gameType: cabinet.gameType || "",
+        locationName: (cabinet.locationName as string) || "",
+        assetNumber: (cabinet.assetNumber as string) || "",
+        serialNumber: (cabinet.serialNumber as string) || "",
+        relayId: (cabinet.relayId as string) || "",
+        smibBoard: (cabinet.smibBoard as string) || "",
+        smbId: (cabinet.smbId as string) || "",
+        lastActivity: (cabinet.lastActivity as Date) || null,
+        lastOnline: (cabinet.lastOnline as Date) || null,
+        game: (cabinet.game as string) || "",
+        installedGame: (cabinet.installedGame as string) || "",
+        cabinetType: (cabinet.cabinetType as string) || "",
+        assetStatus: (cabinet.assetStatus as string) || "",
+        status: (cabinet.status as string) || "",
+        gameType: (cabinet.gameType as string) || "",
         isCronosMachine: cabinet.isCronosMachine || false,
         // Ensure all numeric fields are properly typed
         moneyIn: Number(cabinet.moneyIn) || 0,
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
         gamesPlayed: Number(cabinet.gamesPlayed) || 0,
         gamesWon: Number(cabinet.gamesWon) || 0,
         cancelledCredits: Number(cabinet.cancelledCredits) || 0,
-        sasMeters: cabinet.sasMeters || null,
+        sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
         online: Boolean(cabinet.online),
         // Add any missing fields that might be expected
         metersData: null, // This was in the original structure
@@ -274,11 +274,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Keep the existing POST method from the original file (if needed)
-export async function POST(request: NextRequest) {
-  // This would be copied from the original file if POST functionality is needed
-  return NextResponse.json(
-    { error: "POST method not implemented in new version" },
-    { status: 501 }
-  );
-}
+

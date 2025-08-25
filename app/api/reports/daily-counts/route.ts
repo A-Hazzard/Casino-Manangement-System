@@ -38,17 +38,16 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const url = new URL(request.url);
     const locationId = url.searchParams.get("locationId");
-    const _startDate = url.searchParams.get("startDate");
-    const _endDate = url.searchParams.get("endDate");
+
 
     // Apply location-based filtering if user has resource permissions
-    const userPermissions = user.resourcePermissions as Record<string, any>;
-    const allowedLocationIds = userPermissions?.["gaming-locations"]?.resources || [];
+    const userPermissions = user.resourcePermissions as Record<string, unknown>;
+    const allowedLocationIds = (userPermissions?.["gaming-locations"] as Record<string, unknown>)?.resources as string[] || [];
     
     // Filter by user's allowed locations if not admin
-    let _locationFilter = {};
+    let locationFilter = {};
     if (!userRoles.includes("admin") && allowedLocationIds.length > 0) {
-      _locationFilter = { locationId: { $in: allowedLocationIds } };
+      locationFilter = { locationId: { $in: allowedLocationIds } };
     }
 
     // Add specific location filter if requested
@@ -59,11 +58,13 @@ export async function GET(request: NextRequest) {
           { status: 403 }
         );
       }
-      _locationFilter = { ..._locationFilter, locationId };
+      // TODO: Use locationFilter in actual data fetching implementation
+      locationFilter = { ...locationFilter, locationId };
     }
 
-    // TODO: Implement actual data fetching logic
+    // TODO: Implement actual data fetching logic using locationFilter
     // This is a placeholder implementation
+    console.warn("Location filter for future implementation:", locationFilter);
     const sampleData: DailyCountsReport[] = [
       {
         locationId: "LOC001",

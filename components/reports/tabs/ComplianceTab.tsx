@@ -198,7 +198,7 @@ export default function ComplianceTab() {
         },
       };
 
-      await exportData(exportDataObj, "csv");
+      await exportData(exportDataObj);
       toast.success("Compliance management data exported successfully");
     } catch (error) {
       const errorMessage =

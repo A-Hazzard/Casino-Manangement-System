@@ -3,12 +3,12 @@
 import Header from "@/components/layout/Header";
 import MobileLayout from "@/components/layout/MobileLayout";
 import PcLayout from "@/components/layout/PcLayout";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { dashboardData } from "@/lib/types";
 import { useCallback, useEffect, useRef } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+
+
 import {
   calculatePieChartLabelData,
   loadGamingLocations,
@@ -17,7 +17,8 @@ import {
   handleDashboardRefresh,
 } from "@/lib/helpers/dashboard";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+
+import { Toaster } from "sonner";
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -56,7 +57,6 @@ function DashboardContent() {
     pieChartSortIsOpen,
     setPieChartSortIsOpen,
   } = useDashBoardStore();
-  const pathname = usePathname();
   // To compare new totals with previous ones.
   const prevTotals = useRef<dashboardData | null>(null);
 
@@ -141,10 +141,9 @@ function DashboardContent() {
         totals.moneyOut !== prevTotals.current.moneyOut ||
         totals.gross !== prevTotals.current.gross)
     ) {
-      setLoadingChartData(false);
       prevTotals.current = totals;
     }
-  }, [totals, setLoadingChartData]);
+  }, [totals]);
 
   // Handle refresh functionality
   const handleRefresh = useCallback(async () => {
@@ -199,16 +198,13 @@ function DashboardContent() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
             disabled={loadingChartData || refreshing}
           />
-
-          {/* Removed duplicate Financial Metrics Cards from top to avoid duplication */}
 
           {/* Main dashboard layouts */}
           <PcLayout
@@ -268,6 +264,7 @@ function DashboardContent() {
           />
         </main>
       </div>
+      <Toaster richColors />
     </>
   );
 }

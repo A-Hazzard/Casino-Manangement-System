@@ -23,6 +23,7 @@
 - 📑 **Pages Overview & Architecture** ([docs](Documentation/pages-overview.md))
 - 🤖 **AI Assistant Integration** ([docs](Documentation/prompt.md))
 - 📋 **Meeting Management** ([docs](Documentation/meeting.md))
+- 🕐 **Timezone Management** ([docs](Documentation/timezone.md)) - **Trinidad (UTC-4) timezone support**
 
 ## 🛠️ Tech Stack
 - **Next.js 15** (App Router)
@@ -39,7 +40,7 @@
 ### 1️⃣ Clone the Repository
 ```sh
 git clone https://gitlab.com/sunny-group/sas/evolution-one-cms.git
-cd "Evolution1 CMS"
+cd "evolution-one-cms"
 ```
 
 ### 2️⃣ Install pnpm (if you don't have it)
@@ -152,6 +153,13 @@ docker run --rm -p 3000:3000 \
 - Always validate and sanitize user input, especially in form submissions
 - Use middleware for route protection where necessary
 
+### Timezone Management
+- **Trinidad Timezone (UTC-4)**: All date fields are automatically converted from UTC to Trinidad local time
+- **Database Storage**: All dates are stored in UTC format in the database
+- **API Responses**: Date fields are automatically converted to Trinidad time before being sent to the frontend
+- **Date Filtering**: When querying by date ranges, use the timezone utility to convert Trinidad time to UTC for database queries
+- **Implementation**: See [Timezone Documentation](Documentation/timezone.md) for detailed implementation guidelines
+
 ### Auditing & Logging
 
 **Critical Importance:** Comprehensive auditing and logging are essential for casino management systems due to regulatory compliance requirements, security monitoring, and operational transparency.
@@ -183,7 +191,7 @@ docker run --rm -p 3000:3000 \
 - **Ensure log data integrity** with proper validation and sanitization
 - **Monitor log performance** to prevent system impact during high-volume operations
 
-## �� Project Structure
+## 🏗️ Project Structure
 ```
 Evolution1 CMS/
 ├── app/                    # Next.js App Router pages
@@ -208,6 +216,7 @@ Evolution1 CMS/
 - **Collection Report:** Collection reporting, monthly summaries, scheduling ([collection-report.md](Documentation/collection-report.md))
 - **Cabinets:** Slot machine/cabinet management, firmware, SMIB ([cabinets.md](Documentation/cabinets.md))
 - **Locations:** Location management, metrics, cabinet assignment ([locations.md](Documentation/locations.md))
+- **Timezone:** Trinidad timezone handling and date conversion ([timezone.md](Documentation/timezone.md))
 
 See [pages-overview.md](Documentation/pages-overview.md) for a full list of pages and documentation status.
 
@@ -225,6 +234,7 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 - **Type Safety:** Comprehensive TypeScript coverage
 - **Code Organization:** Clear separation of concerns
 - **Security First:** Follow OWASP standards and secure practices
+- **Timezone Consistency:** All dates automatically converted to Trinidad time (UTC-4)
 
 **User Management:** Add, edit, and manage user roles and permissions.
 **Activity Logs:** Track all significant actions for auditing and security.

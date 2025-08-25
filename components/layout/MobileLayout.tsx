@@ -1,8 +1,6 @@
 "use client";
 
-import CustomSelect from "@/components/ui/CustomSelect";
 import MapPreview from "@/components/ui/MapPreview";
-import { timeFrames } from "@/lib/constants/uiConstants";
 import { MobileLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
@@ -15,6 +13,8 @@ import { RefreshCw } from "lucide-react";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
 export default function MobileLayout(props: MobileLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -85,7 +85,16 @@ export default function MobileLayout(props: MobileLayoutProps) {
 
       {/* Title */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg">Total for all Locations and Machines</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg">Total for all Locations and Machines</h2>
+          <Image
+            src={IMAGES.dashboardIcon}
+            alt="Dashboard Icon"
+            width={24}
+            height={24}
+            className="w-5 h-5 sm:w-6 sm:h-6"
+          />
+        </div>
       </div>
 
       {/* Machine Status Widget */}
@@ -167,10 +176,42 @@ export default function MobileLayout(props: MobileLayoutProps) {
         />
       )}
 
-      <MapPreview gamingLocations={props.gamingLocations} />
+      {props.loadingChartData ? (
+        <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+          <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
+        </div>
+      ) : (
+        <MapPreview gamingLocations={props.gamingLocations} />
+      )}
 
       {/* Top Performing Section */}
-      {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
+      {props.loadingTopPerforming ? (
+        <div className="space-y-2">
+          <h2 className="text-lg">Top Performing</h2>
+          <div className="relative flex flex-col bg-container w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md">
+            <div className="flex">
+              <div className="w-full px-4 py-2 rounded-tr-3xl rounded-tl-xl bg-gray-100"></div>
+              <div className="w-full px-4 py-2 rounded-tr-3xl bg-gray-100"></div>
+            </div>
+            <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
+              <div className="flex justify-between items-center mb-4">
+                {/* Skeleton for sort by select */}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : props.topPerformingData.length === 0 ? (
         <NoDataMessage message="No top performing data available for the selected period" />
       ) : (
         <div className="space-y-2">

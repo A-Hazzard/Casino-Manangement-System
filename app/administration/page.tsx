@@ -7,7 +7,7 @@ import UserCardSkeleton from "@/components/administration/UserCardSkeleton";
 import UserTable from "@/components/administration/UserTable";
 import UserTableSkeleton from "@/components/administration/UserTableSkeleton";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { Button } from "@/components/ui/button";
 import PaginationControls from "@/components/ui/PaginationControls";
 import AdministrationNavigation from "@/components/administration/AdministrationNavigation";
@@ -27,6 +27,7 @@ import type {
 } from "@/lib/types/administration";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { IMAGES } from "@/lib/constants/images";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import UserDetailsModal from "@/components/administration/UserDetailsModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
@@ -62,6 +63,11 @@ function AdministrationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  // Prevent hydration mismatch by rendering content only on client
+  const [__mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Create activity loggers
   const userLogger = createActivityLogger("user");
@@ -256,8 +262,9 @@ function AdministrationPageContent() {
   };
 
   const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setIsRolesModalOpen(true);
+    // Open full user details editing by default
+    setSelectedUserForDetails(user);
+    setIsUserDetailsModalOpen(true);
   };
 
   const handleDeleteUser = (user: User) => {
@@ -352,9 +359,9 @@ function AdministrationPageContent() {
       password,
       roles,
       profile: {
-        firstName,
-        lastName,
-        gender,
+        firstName: firstName || "",
+        lastName: lastName || "",
+        gender: gender || "",
       },
       isEnabled: true,
       profilePicture: profilePicture || null,
@@ -400,13 +407,27 @@ function AdministrationPageContent() {
       return;
     }
 
-    const licenseeData = {
+    const licenseeData: {
+      name: string;
+      description?: string;
+      country: string;
+      startDate?: Date | string;
+      expiryDate?: Date | string;
+    } = {
       name: licenseeForm.name,
-      description: licenseeForm.description,
       country: licenseeForm.country,
-      startDate: licenseeForm.startDate,
-      expiryDate: licenseeForm.expiryDate,
     };
+
+    // Only add optional fields if they have values
+    if (licenseeForm.description) {
+      licenseeData.description = licenseeForm.description;
+    }
+    if (licenseeForm.startDate) {
+      licenseeData.startDate = licenseeForm.startDate;
+    }
+    if (licenseeForm.expiryDate) {
+      licenseeData.expiryDate = licenseeForm.expiryDate;
+    }
 
     try {
       const result = await createLicensee(licenseeData);
@@ -935,10 +956,11 @@ function AdministrationPageContent() {
     );
   };
 
+  if (!__mounted) return null;
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
           <Header />
           {/* Admin icon and title layout, matching original design */}
@@ -946,7 +968,7 @@ function AdministrationPageContent() {
             <div className="flex items-center">
               <h1 className="text-3xl font-bold mr-4">Administration</h1>
               <Image
-                src="/adminIcon.svg"
+                src={IMAGES.adminIcon}
                 alt="Admin Icon"
                 width={32}
                 height={32}

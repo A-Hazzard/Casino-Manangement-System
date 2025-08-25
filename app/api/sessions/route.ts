@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { MachineSession } from "@/app/api/lib/models/machineSessions";
-import { Machine } from "@/app/api/lib/models/machines";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
     const dateFilter = searchParams.get("dateFilter") || "all";
 
     // Build query
-    let query: any = {};
+    const query: Record<string, unknown> = {};
 
     if (search) {
       query.$or = [

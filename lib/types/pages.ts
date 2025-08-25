@@ -53,10 +53,10 @@ export type AddUserForm = {
 export type AddLicenseeForm = {
   _id?: string;
   name?: string;
-  description?: string;
+  description?: string | undefined;
   country?: string;
-  startDate?: Date | string;
-  expiryDate?: Date | string;
-  prevStartDate?: Date | string;
-  prevExpiryDate?: Date | string;
+  startDate?: Date | string | undefined;
+  expiryDate?: Date | string | undefined;
+  prevStartDate?: Date | string | undefined;
+  prevExpiryDate?: Date | string | undefined;
 };

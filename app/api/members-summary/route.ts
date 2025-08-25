@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const licencee = searchParams.get("licencee");
     
     // Build query filter
-    const matchStage: any = {};
+    const matchStage: Record<string, unknown> = {};
     
     if (licencee && licencee !== "all") {
       // Add licensee filtering if needed

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (licensee && licensee !== "all") {
       // Note: This assumes users have a licensee field or relationship
       // You may need to adjust this based on your actual user data structure
-      result = result.filter((user) => {
+      result = result.filter(() => {
         // For now, return all users since the user model may not have licensee filtering
         // This can be updated when the user model includes licensee information
         return true;

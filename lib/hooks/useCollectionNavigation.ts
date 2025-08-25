@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CollectionView, CollectionTab } from "@/lib/types/collection";
 

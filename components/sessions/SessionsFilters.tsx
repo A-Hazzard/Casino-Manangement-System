@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Search, Filter, ChevronDown } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { SESSION_SORT_OPTIONS } from "@/lib/constants/sessions";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 

@@ -27,9 +27,7 @@ type EditMemberModalProps = {
 };
 
 export default function EditMemberModal({
-  isOpen,
   onClose,
-  member,
   onMemberUpdated,
 }: EditMemberModalProps) {
   const { isEditModalOpen, selectedMember, closeEditModal } =

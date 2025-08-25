@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
+import { Db, Document } from "mongodb";
 // Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
+
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type"); // 'overview', 'stats', 'all', 'offline'
@@ -19,8 +20,6 @@ export async function GET(req: NextRequest) {
     const requestedLimit = parseInt(searchParams.get("limit") || "10");
     const limit = Math.min(requestedLimit, 10);
     const skip = (page - 1) * limit;
-
-
 
     let startDate: Date | undefined, endDate: Date | undefined;
 
@@ -41,7 +40,6 @@ export async function GET(req: NextRequest) {
       endDate = e;
     }
 
-   
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -54,7 +52,7 @@ export async function GET(req: NextRequest) {
     // Do not auto-create indexes on every request
 
     // Build machine filter for all queries
-    const machineMatchStage: any = {
+    const machineMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
@@ -89,7 +87,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Build location filter for licensee
-    const locationMatchStage: any = {
+    const locationMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
@@ -156,30 +154,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Separate function for online machines count
-const getOnlineMachinesCount = async (db: any, machineMatchStage: any) => {
-  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
-  const onlineCount = await db.collection("machines").countDocuments({
-    ...machineMatchStage,
-    lastActivity: { $gte: threeMinutesAgo },
-  });
-
-  return onlineCount;
-};
 
 // Stats endpoint - returns total counts and financial totals
 const getMachineStats = async (
-  db: any,
-  machineMatchStage: any,
-  locationMatchStage: any,
+  db: Db, // MongoDB database connection
+  machineMatchStage: Record<string, unknown>,
+  locationMatchStage: Record<string, unknown>,
   startDate: Date | undefined,
   endDate: Date | undefined
 ) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
   // Use aggregation to join machines with gaminglocations for licensee filtering
-  const aggregationPipeline = [
+  const aggregationPipeline: Document[] = [
     { $match: { deletedAt: { $in: [null, new Date(-1)] } } },
     {
       $lookup: {
@@ -198,19 +186,24 @@ const getMachineStats = async (
     typeof locationMatchStage === "object" &&
     "rel.licencee" in locationMatchStage
   ) {
-    aggregationPipeline.push({
+    (aggregationPipeline as unknown[]).push({
       $match: {
-        "locationDetails.rel.licencee": (locationMatchStage as any)[
+        "locationDetails.rel.licencee": (locationMatchStage as Record<string, unknown>)[
           "rel.licencee"
         ],
       },
-    } as any);
+
+    });
   }
 
   // Get total machines count
   const totalCountResult = await db
     .collection("machines")
-    .aggregate([...aggregationPipeline, { $count: "total" } as any])
+    .aggregate([
+      ...aggregationPipeline,
+
+      { $count: "total" }
+    ] as Document[])
     .toArray();
   const totalCount = totalCountResult[0]?.total || 0;
 
@@ -219,9 +212,11 @@ const getMachineStats = async (
     .collection("machines")
     .aggregate([
       ...aggregationPipeline,
-      { $match: { lastActivity: { $gte: threeMinutesAgo } } } as any,
-      { $count: "total" } as any,
-    ])
+
+      { $match: { lastActivity: { $gte: threeMinutesAgo } } },
+
+      { $count: "total" },
+    ] as Document[])
     .toArray();
   const onlineCount = onlineCountResult[0]?.total || 0;
 
@@ -282,8 +277,6 @@ const getMachineStats = async (
     totalCancelledCredits: 0,
   };
 
-
-
   return NextResponse.json({
     onlineCount,
     offlineCount: totalCount - onlineCount,
@@ -296,9 +289,9 @@ const getMachineStats = async (
 
 // Overview endpoint - paginated machines for overview tab
 const getOverviewMachines = async (
-  db: any,
-  machineMatchStage: any,
-  locationMatchStage: any,
+  db: Db, // MongoDB database connection
+  machineMatchStage: Record<string, unknown>,
+  locationMatchStage: Record<string, unknown>,
   page: number,
   limit: number,
   skip: number,
@@ -323,7 +316,7 @@ const getOverviewMachines = async (
 
   // Add location filter if licensee is specified
   if (locationMatchStage && locationMatchStage["rel.licencee"]) {
-    aggregationPipeline.push({
+    (aggregationPipeline as unknown[]).push({
       $match: {
         "locationDetails.rel.licencee": locationMatchStage["rel.licencee"],
       },
@@ -331,7 +324,8 @@ const getOverviewMachines = async (
   }
 
   // Add projection, sort, skip, and limit
-  aggregationPipeline.push(
+  (aggregationPipeline as unknown[]).push(
+
     {
       $project: {
         _id: 1,
@@ -347,61 +341,65 @@ const getOverviewMachines = async (
         gameConfig: 1,
         locationName: "$locationDetails.name",
       },
-    } as any,
-    { $sort: { "sasMeters.coinIn": -1 } } as any,
-    { $skip: skip } as any,
-    { $limit: limit } as any
+
+    },
+
+    { $sort: { "sasMeters.coinIn": -1 } },
+
+    { $skip: skip },
+
+    { $limit: limit }
   );
 
   const machines = await db
     .collection("machines")
-    .aggregate(aggregationPipeline)
+    .aggregate(aggregationPipeline as Document[])
     .toArray();
 
   // console.log(`🔍 Found ${machines.length} machines for overview`);
 
   // Transform machines data using locationName from aggregation
-  const transformedMachines = machines.map((machine: any) => {
+  const transformedMachines = machines.map((machine: Record<string, unknown>) => {
     // Check if machine has activity in the date range for financial data
     const hasActivityInRange =
       machine.lastActivity &&
       startDate &&
       endDate &&
-      new Date(machine.lastActivity) >= startDate &&
-      new Date(machine.lastActivity) <= endDate;
+      new Date(machine.lastActivity as string) >= startDate &&
+      new Date(machine.lastActivity as string) <= endDate;
 
     return {
-      machineId: machine._id.toString(),
+      machineId: (machine._id as string).toString(),
       machineName:
-        machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+        (machine.Custom as Record<string, unknown>)?.name || machine.serialNumber || "Unknown Machine",
       locationId: machine.gamingLocation?.toString() || "",
       locationName: machine.locationName || "Unknown Location",
       gameTitle: machine.game || "Unknown Game",
       manufacturer: machine.manuf || "Unknown Manufacturer",
       isOnline: !!(
         machine.lastActivity &&
-        new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000)
+        new Date(machine.lastActivity as string) >= new Date(Date.now() - 3 * 60 * 1000)
       ),
       lastActivity: machine.lastActivity,
       isSasEnabled: machine.isSasMachine || false,
-      coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
-      coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+      coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
+      coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
       netWin: hasActivityInRange
-        ? (machine.sasMeters?.drop || 0) -
-          (machine.sasMeters?.totalCancelledCredits || 0)
+        ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
+          ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
         : 0,
-      theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
-      gamesPlayed: hasActivityInRange ? machine.sasMeters?.gamesPlayed || 0 : 0,
-      avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
-      drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+      theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
+      gamesPlayed: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0 : 0,
+      avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
+      drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
       cancelledCredits: hasActivityInRange
-        ? machine.sasMeters?.totalCancelledCredits || 0
+        ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
         : 0,
     };
   });
 
   // Step 4: Get total count for pagination using aggregation with licensee filtering
-  const countPipeline = [
+  const countPipeline: Document[] = [
     { $match: machineMatchStage },
     {
       $lookup: {
@@ -423,17 +421,18 @@ const getOverviewMachines = async (
     });
   }
 
-  countPipeline.push({ $count: "total" } as any);
+  (countPipeline as unknown[]).push(
+
+    { $count: "total" }
+  );
 
   const totalCountResult = await db
     .collection("machines")
-    .aggregate(countPipeline)
+    .aggregate(countPipeline as Document[])
     .toArray();
 
   const totalCount = totalCountResult[0]?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
-
-  
 
   return NextResponse.json({
     data: transformedMachines,
@@ -450,21 +449,17 @@ const getOverviewMachines = async (
 
 // All machines endpoint - for Performance Analysis tab
 const getAllMachines = async (
-  db: any,
+  db: Db, // MongoDB database connection
   searchParams: URLSearchParams,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  locationMatchStage: any
+  locationMatchStage: Record<string, unknown>
 ) => {
   try {
-    const licencee = searchParams.get("licencee");
-    const timePeriod = searchParams.get("timePeriod");
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
     const searchTerm = searchParams.get("search");
 
     // Build machine filter
-    const machineMatchStage: any = {
+    const machineMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
@@ -499,7 +494,7 @@ const getAllMachines = async (
 
     // Add location filter if licensee is specified
     if (locationMatchStage["rel.licencee"]) {
-      aggregationPipeline.push({
+      (aggregationPipeline as unknown[]).push({
         $match: {
           "locationDetails.rel.licencee": locationMatchStage["rel.licencee"],
         },
@@ -507,78 +502,80 @@ const getAllMachines = async (
     }
 
     // Add projection
-    aggregationPipeline.push({
-      $project: {
-        _id: 1,
-        serialNumber: 1,
-        origSerialNumber: 1,
-        "Custom.name": 1,
-        gamingLocation: 1,
-        game: 1,
-        manuf: 1,
-        lastActivity: 1,
-        isSasMachine: 1,
-        sasMeters: 1,
-        gameConfig: 1,
-        locationName: "$locationDetails.name",
-      },
-    } as any);
+    (aggregationPipeline as unknown[]).push(
+
+      {
+        $project: {
+          _id: 1,
+          serialNumber: 1,
+          origSerialNumber: 1,
+          "Custom.name": 1,
+          gamingLocation: 1,
+          game: 1,
+          manuf: 1,
+          lastActivity: 1,
+          isSasMachine: 1,
+          sasMeters: 1,
+          gameConfig: 1,
+          locationName: "$locationDetails.name",
+        },
+
+      }
+    );
 
     // Get all machines for analysis
     const machines = await db
       .collection("machines")
-      .aggregate(aggregationPipeline)
+      .aggregate(aggregationPipeline as Document[])
       .toArray();
 
     // console.log(`🔍 Found ${machines.length} machines for analysis`);
 
     // Transform machines data using locationName from aggregation
-    const transformedMachines = machines.map((machine: any) => {
+    const transformedMachines = machines.map((machine: Record<string, unknown>) => {
       // Check if machine has activity in the date range for financial data
       const hasActivityInRange =
         machine.lastActivity &&
         startDate &&
         endDate &&
-        new Date(machine.lastActivity) >= startDate &&
-        new Date(machine.lastActivity) <= endDate;
+        new Date(machine.lastActivity as string) >= startDate &&
+        new Date(machine.lastActivity as string) <= endDate;
 
       return {
-        machineId: machine._id.toString(),
+        machineId: (machine._id as string).toString(),
         serialNumber:
           machine.serialNumber ||
           machine.origSerialNumber ||
-          machine._id.toString(),
+          (machine._id as string).toString(),
         machineName:
-          machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+          (machine.Custom as Record<string, unknown>)?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
         locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
         manufacturer: machine.manuf || "Unknown Manufacturer",
         isOnline: !!(
           machine.lastActivity &&
-          new Date(machine.lastActivity) >= new Date(Date.now() - 3 * 60 * 1000)
+          new Date(machine.lastActivity as string) >= new Date(Date.now() - 3 * 60 * 1000)
         ),
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
-        coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+        coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
+        coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
         netWin: hasActivityInRange
-          ? (machine.sasMeters?.drop || 0) -
-            (machine.sasMeters?.totalCancelledCredits || 0)
+          ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
+            ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
           : 0,
-        theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
+        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
         gamesPlayed: hasActivityInRange
-          ? machine.sasMeters?.gamesPlayed || 0
+          ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0
           : 0,
-        avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
-        drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+        avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
+        drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
         cancelledCredits: hasActivityInRange
-          ? machine.sasMeters?.totalCancelledCredits || 0
+          ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
           : 0,
       };
     });
-
-
 
     return NextResponse.json({
       data: transformedMachines,
@@ -600,27 +597,20 @@ const getAllMachines = async (
 
 // Offline machines endpoint - for Offline Machines tab
 const getOfflineMachines = async (
-  db: any,
+  db: Db, // MongoDB database connection
   searchParams: URLSearchParams,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  locationMatchStage: any
+  locationMatchStage: Record<string, unknown>
 ) => {
   try {
-    const licencee = searchParams.get("licencee");
-    const timePeriod = searchParams.get("timePeriod");
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
     const searchTerm = searchParams.get("search");
 
     // Build machine filter for offline machines
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-    const machineMatchStage: any = {
+    const machineMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
-      $or: [
-        { lastActivity: { $lt: threeMinutesAgo } },
-        { lastActivity: { $exists: false } },
-      ],
+      lastActivity: { $exists: true, $lt: threeMinutesAgo },
     };
 
     // Add search filter if specified
@@ -655,54 +645,61 @@ const getOfflineMachines = async (
       typeof locationMatchStage === "object" &&
       "rel.licencee" in locationMatchStage
     ) {
-      aggregationPipeline.push({
-        $match: {
-          "locationDetails.rel.licencee": (locationMatchStage as any)[
-            "rel.licencee"
-          ],
-        },
-      } as any);
+      (aggregationPipeline as unknown[]).push(
+  
+        {
+          $match: {
+            "locationDetails.rel.licencee": (locationMatchStage as Record<string, unknown>)[
+              "rel.licencee"
+            ],
+          },
+        }
+      );
     }
 
     // Add projection
-    aggregationPipeline.push({
-      $project: {
-        _id: 1,
-        serialNumber: 1,
-        "Custom.name": 1,
-        gamingLocation: 1,
-        game: 1,
-        manuf: 1,
-        lastActivity: 1,
-        isSasMachine: 1,
-        sasMeters: 1,
-        gameConfig: 1,
-        locationName: "$locationDetails.name",
-      },
-    } as any);
+    (aggregationPipeline as unknown[]).push(
+
+      {
+        $project: {
+          _id: 1,
+          serialNumber: 1,
+          "Custom.name": 1,
+          gamingLocation: 1,
+          game: 1,
+          manuf: 1,
+          lastActivity: 1,
+          isSasMachine: 1,
+          sasMeters: 1,
+          gameConfig: 1,
+          locationName: "$locationDetails.name",
+        },
+
+      }
+    );
 
     // Get offline machines
     const machines = await db
       .collection("machines")
-      .aggregate(aggregationPipeline)
+      .aggregate(aggregationPipeline as Document[])
       .toArray();
 
     // console.log(`🔍 Found ${machines.length} offline machines`);
 
     // Transform machines data using locationName from aggregation
-    const transformedMachines = machines.map((machine: any) => {
+    const transformedMachines = machines.map((machine: Record<string, unknown>) => {
       // Check if machine has activity in the date range for financial data
       const hasActivityInRange =
         machine.lastActivity &&
         startDate &&
         endDate &&
-        new Date(machine.lastActivity) >= startDate &&
-        new Date(machine.lastActivity) <= endDate;
+        new Date(machine.lastActivity as string) >= startDate &&
+        new Date(machine.lastActivity as string) <= endDate;
 
       return {
-        machineId: machine._id.toString(),
+        machineId: (machine._id as string).toString(),
         machineName:
-          machine.Custom?.name || machine.serialNumber || "Unknown Machine",
+          (machine.Custom as Record<string, unknown>)?.name || machine.serialNumber || "Unknown Machine",
         locationId: machine.gamingLocation?.toString() || "",
         locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
@@ -710,20 +707,20 @@ const getOfflineMachines = async (
         isOnline: false, // All machines in this query are offline
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: hasActivityInRange ? machine.sasMeters?.coinIn || 0 : 0,
-        coinOut: hasActivityInRange ? machine.sasMeters?.coinOut || 0 : 0,
+        coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
+        coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
         netWin: hasActivityInRange
-          ? (machine.sasMeters?.drop || 0) -
-            (machine.sasMeters?.totalCancelledCredits || 0)
+          ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
+            ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
           : 0,
-        theoreticalHold: machine.gameConfig?.theoreticalRtp || 0,
+        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
         gamesPlayed: hasActivityInRange
-          ? machine.sasMeters?.gamesPlayed || 0
+          ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0
           : 0,
-        avgBet: hasActivityInRange ? machine.sasMeters?.avgBet || 0 : 0,
-        drop: hasActivityInRange ? machine.sasMeters?.drop || 0 : 0,
+        avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
+        drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
         cancelledCredits: hasActivityInRange
-          ? machine.sasMeters?.totalCancelledCredits || 0
+          ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
           : 0,
       };
     });

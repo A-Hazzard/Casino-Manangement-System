@@ -1,6 +1,5 @@
 // Shared entity types used across frontend and backend
 import { Types } from "mongoose";
-import type { MongooseId, WithTimestamps } from "./common";
 import type {
   SasMeters,
   MeterData,
@@ -59,6 +58,9 @@ export type AggregatedLocation = {
   moneyIn: number;
   moneyOut: number;
   gross: number;
+  coinIn: number;
+  coinOut: number;
+  jackpot: number;
   totalMachines: number;
   onlineMachines: number;
   sasMachines: number;
@@ -68,6 +70,7 @@ export type AggregatedLocation = {
   isLocalServer: boolean;
   noSMIBLocation: boolean;
   hasSmib: boolean;
+  gamesPlayed: number;
 };
 
 // Location metrics for reports and analytics

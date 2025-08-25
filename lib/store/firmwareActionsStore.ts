@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Firmware } from "@/lib/types/firmware";
+
 
 // This is a store for firmware actions (delete modal)
 

@@ -39,11 +39,11 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       formData.append("file", selectedFile);
       formData.append("comments", comments);
 
-      const response = await axios.post(
+      await axios.post(
         "/api/firmware/upload-smib-data",
         formData
       );
-      const result = response.data;
+
 
       // Close modal and clear form on success
       onClose();

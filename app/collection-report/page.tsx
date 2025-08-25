@@ -8,30 +8,23 @@ import React, {
   useMemo,
   Suspense,
 } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast, Toaster } from "sonner";
-import Sidebar from "@/components/layout/Sidebar";
+import { Toaster } from "sonner";
+
 import Header from "@/components/layout/Header";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
+
 import { gsap } from "gsap";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+
+
+
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import type { LocationSelectItem } from "@/lib/types/location";
 import type { SchedulerTableRow } from "@/lib/types/componentProps";
 import {
   fetchMonthlyReportSummaryAndDetails,
   fetchAllLocationNames,
-  getLocationsWithMachines,
   fetchCollectionReportsByLicencee,
 } from "@/lib/helpers/collectionReport";
 import type {
@@ -61,7 +54,7 @@ import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
 import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
+
 import type { CollectorSchedule } from "@/lib/types/components";
 
 // Icons
@@ -69,6 +62,8 @@ import CollectionNavigation from "@/components/collectionReport/CollectionNaviga
 import { COLLECTION_TABS_CONFIG } from "@/lib/constants/collection";
 import type { CollectionView } from "@/lib/types/collection";
 import { useCollectionNavigation } from "@/lib/hooks/useCollectionNavigation";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
 /**
  * Main page component for the Collection Report.
@@ -108,8 +103,6 @@ export default function CollectionReportPage() {
 }
 
 function CollectionReportContent() {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const {
     selectedLicencee,
@@ -119,7 +112,7 @@ function CollectionReportContent() {
   } = useDashBoardStore();
 
   // Read initial view from URL and sync on change
-  const { readFromUrl, pushToUrl } = useCollectionNavigation(
+  const { pushToUrl } = useCollectionNavigation(
     COLLECTION_TABS_CONFIG
   );
 
@@ -159,8 +152,7 @@ function CollectionReportContent() {
     }
   }, [searchParams, activeTab]);
 
-  // Tab state
-  const [showModal, setShowModal] = useState(false);
+
 
   // Refs for animation and pagination
   const contentRef = useRef<HTMLDivElement>(null);
@@ -232,30 +224,11 @@ function CollectionReportContent() {
   const [monthlyPage, setMonthlyPage] = useState(1);
   const monthlyItemsPerPage = 10;
 
-  // Global locations with machines state
-  const [locationsWithMachines, setLocationsWithMachines] = useState<
-    CollectionReportLocationWithMachines[]
-  >([]);
-
   // Fetch all gaming locations for filter dropdown
   useEffect(() => {
     fetchAllGamingLocations().then((locs) =>
       setLocations(locs.map((l) => ({ _id: l.id, name: l.name })))
     );
-  }, []);
-
-  // Fetch locations with machines globally on page load
-  useEffect(() => {
-    getLocationsWithMachines().then((data) => {
-      setLocationsWithMachines(data);
-      // Also set locations for the select dropdown
-      setLocations(
-        data.map((l: CollectionReportLocationWithMachines) => ({
-          _id: l._id,
-          name: l.name,
-        }))
-      );
-    });
   }, []);
 
   // Fetch collection reports data when collection tab is active
@@ -335,8 +308,6 @@ function CollectionReportContent() {
       showUncollectedOnly,
       locations
     );
-
-
 
     return filtered;
   }, [reports, selectedLocation, showUncollectedOnly, search, locations]);
@@ -570,8 +541,8 @@ function CollectionReportContent() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
@@ -585,6 +556,13 @@ function CollectionReportContent() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                 Collection Report
               </h1>
+              <Image
+                src={IMAGES.creditCardIcon}
+                alt="Collection Report Icon"
+                width={32}
+                height={32}
+                className="w-6 h-6 sm:w-8 sm:h-8"
+              />
             </div>
           </div>
 
@@ -601,17 +579,31 @@ function CollectionReportContent() {
           {/* Date Filters */}
           {/* Desktop Date Filters */}
           <div className="hidden xl:block">
-            <DashboardDateFilters />
+            <DashboardDateFilters
+              disabled={false}
+              onCustomRangeGo={() => {
+                // Trigger data fetch when custom range is applied
+                if (activeTab === "collection") {
+                  setLoading(true);
+                  // The useEffect will handle the data fetching with the updated customDateRange
+                }
+              }}
+            />
           </div>
 
           {/* Mobile Date Filters */}
           <div className="xl:hidden mt-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Date Filters
-              </h3>
-              <DashboardDateFilters />
-            </div>
+            <DashboardDateFilters
+              mode="auto"
+              disabled={false}
+              onCustomRangeGo={() => {
+                // Trigger data fetch when custom range is applied
+                if (activeTab === "collection") {
+                  setLoading(true);
+                  // The useEffect will handle the data fetching with the updated customDateRange
+                }
+              }}
+            />
           </div>
 
           {/* Content Area */}

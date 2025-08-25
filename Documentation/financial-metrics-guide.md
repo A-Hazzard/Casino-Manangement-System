@@ -34,7 +34,21 @@ This document provides a comprehensive overview of key financial metrics used in
 - **Purpose**: Tracks all winnings paid out automatically by the machine
 - **Distinction**: Automatic payouts vs. manual cancelled credits
 
-## Gross Revenue Calculation
+### Games Played
+- **Definition**: The total number of games played on the machine
+- **Data Source**: `movement.gamesPlayed` field in meter readings
+- **Purpose**: Tracks player activity and usage patterns
+- **Usage**: Used for calculating average wager per game and hold percentages
+
+### Games Won
+- **Definition**: The total number of games won by players
+- **Data Source**: `movement.gamesWon` field in meter readings
+- **Purpose**: Tracks winning game frequency
+- **Usage**: Used for calculating win rate and game performance metrics
+
+## Financial Calculations
+
+### Primary Gross Revenue Calculation
 
 Gross revenue represents the machine's net earnings after payouts and is calculated as:
 
@@ -45,6 +59,48 @@ Gross = Drop - Total Cancelled Credits
 Where:
 - **Drop** = Total money physically inserted into the machine (`movement.drop`)
 - **Total Cancelled Credits** = Money removed from the machine via manual payouts (`movement.totalCancelledCredits`)
+
+### Alternative Calculation Methods
+
+#### Handle and Win Analysis (Alternative Method)
+
+Based on betting activity analysis:
+
+```typescript
+// Handle = Total bets placed (equivalent to Coin In)
+const handle = sumOf(movement.coinIn);
+
+// Win = Theoretical winnings (coinIn - coinOut)
+const win = sumOf(movement.coinIn) - sumOf(movement.coinOut);
+
+// Actual Hold Percentage = (win / handle) * 100
+const actualHold = (win / handle) * 100;
+
+// Average Wager Per Game = handle / gamesPlayed
+const avgWagerPerGame = handle / sumOf(movement.gamesPlayed);
+```
+
+#### Key Performance Metrics
+
+```typescript
+// Games-based metrics
+const totalGamesPlayed = sumOf(movement.gamesPlayed);
+const totalGamesWon = sumOf(movement.gamesWon);
+const winRate = (totalGamesWon / totalGamesPlayed) * 100;
+
+// Financial performance
+const jackpotPayouts = sumOf(movement.jackpot);
+const currentCredits = sumOf(movement.currentCredits);
+```
+
+#### Standard Industry Calculations
+
+Our implementation follows standard gaming industry metrics:
+
+- **Handle** = `movement.coinIn` (total bets placed)
+- **Win** = `movement.coinIn - movement.coinOut` (net player loss/machine win)
+- **Hold Percentage** = `(win / handle) * 100` (percentage of bets retained)
+- **Games Analysis** = `movement.gamesPlayed` and `movement.gamesWon` for activity tracking
 
 ### Important Implementation Notes
 
@@ -89,9 +145,27 @@ interface MeterData {
 
 To determine how much money was inserted into a machine over a given period:
 
-1. Sum all recorded `movement.drop` values from the machine's meter readings
-2. Filter by date range as needed
+1. **Filter by date range** using `readAt` field (NOT `createdAt`)
+2. Sum all recorded `movement.drop` values from the machine's meter readings
 3. Aggregate across multiple machines for location totals
+
+#### Critical Date Field Usage
+
+⚠️ **Important**: Always use `readAt` field for date filtering on meter data:
+
+```javascript
+// ✅ CORRECT - Use readAt for meter date queries
+const metersQuery = {
+  machine: machineId,
+  readAt: { $gte: startDate, $lte: endDate }
+};
+
+// ❌ INCORRECT - Do not use createdAt for meter date filtering
+const wrongQuery = {
+  machine: machineId,
+  createdAt: { $gte: startDate, $lte: endDate }  // Wrong field!
+};
+```
 
 ### Movement Log Analysis
 
@@ -133,8 +207,13 @@ const wrongMoneyOut = meterData.movement.coinOut;  // This is automatic payouts
 When aggregating financial data:
 
 ```javascript
-// MongoDB aggregation example
+// MongoDB aggregation example with proper date filtering
 const financialSummary = await Meters.aggregate([
+  {
+    $match: {
+      readAt: { $gte: startDate, $lte: endDate }  // Use readAt for date filtering
+    }
+  },
   {
     $group: {
       _id: "$location",
@@ -144,6 +223,32 @@ const financialSummary = await Meters.aggregate([
         $sum: { 
           $subtract: ["$movement.drop", "$movement.totalCancelledCredits"] 
         }
+      },
+      totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
+      // Alternative industry standard calculations
+      totalHandle: { $sum: "$movement.coinIn" },
+      totalWin: { 
+        $sum: { 
+          $subtract: ["$movement.coinIn", "$movement.coinOut"] 
+        }
+      }
+    }
+  },
+  {
+    $addFields: {
+      actualHold: {
+        $cond: [
+          { $gt: ["$totalHandle", 0] },
+          { $multiply: [{ $divide: ["$totalWin", "$totalHandle"] }, 100] },
+          0
+        ]
+      },
+      avgWagerPerGame: {
+        $cond: [
+          { $gt: ["$totalGamesPlayed", 0] },
+          { $divide: ["$totalHandle", "$totalGamesPlayed"] },
+          0
+        ]
       }
     }
   }

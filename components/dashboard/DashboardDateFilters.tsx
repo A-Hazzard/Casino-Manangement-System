@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { TimePeriod } from "@/app/api/lib/types";
-import { getTimeFilterButtons } from "@/lib/helpers/dashboard";
 import {
   Select,
   SelectContent,
@@ -27,13 +26,31 @@ export default function DashboardDateFilters({
     setCustomDateRange,
     pendingCustomDateRange,
     setPendingCustomDateRange,
+    loadingChartData,
+    loadingTopPerforming,
+    refreshing,
   } = useDashBoardStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const allTimeFilterButtons = getTimeFilterButtons();
-  const timeFilterButtons = hideAllTime 
-    ? allTimeFilterButtons.filter(button => button.value !== "All Time")
-    : allTimeFilterButtons;
+  const timeFilterButtons: { label: string; value: TimePeriod }[] = hideAllTime
+    ? [
+        { label: "Today", value: "Today" as TimePeriod },
+        { label: "Yesterday", value: "Yesterday" as TimePeriod },
+        { label: "Last 7 Days", value: "last7days" as TimePeriod },
+        { label: "Last 30 Days", value: "last30days" as TimePeriod },
+        { label: "Custom", value: "Custom" as TimePeriod },
+      ]
+    : [
+        { label: "Today", value: "Today" as TimePeriod },
+        { label: "Yesterday", value: "Yesterday" as TimePeriod },
+        { label: "Last 7 Days", value: "last7days" as TimePeriod },
+        { label: "Last 30 Days", value: "last30days" as TimePeriod },
+        { label: "Custom", value: "Custom" as TimePeriod },
+        { label: "All Time", value: "All Time" as TimePeriod },
+      ];
+
+  // Check if any loading state is active
+  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
 
   const handleApplyCustomRange = () => {
     if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
@@ -70,43 +87,53 @@ export default function DashboardDateFilters({
     }
   };
 
-  const showMobileSelect = mode === "mobile" || mode === "auto";
   const showDesktopButtons = mode === "desktop" || mode === "auto";
 
   return (
     <div className="flex flex-wrap items-center gap-2 w-full">
-      {showMobileSelect && (
-        <div className={mode === "auto" ? "w-full md:hidden" : "w-full"}>
-          <Select
-            value={activeMetricsFilter}
-            onValueChange={handleFilterClick as (v: string) => void}
+      {/* Mobile: Select dropdown */}
+      <div className={mode === "auto" ? "w-full md:hidden" : "w-full"}>
+        <Select
+          value={activeMetricsFilter}
+          onValueChange={handleFilterClick as (v: string) => void}
+          disabled={isLoading}
+        >
+          <SelectTrigger
+            className={`bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors ${
+              mode === "auto" ? "w-full" : "w-full"
+            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <SelectTrigger className="w-full bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors">
-              <SelectValue placeholder="Select date range" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeFilterButtons.map((filter) => (
-                <SelectItem key={filter.value} value={filter.value as string}>
-                  {filter.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+            <SelectValue placeholder="Select date range" />
+          </SelectTrigger>
+          <SelectContent>
+            {timeFilterButtons.map((filter) => (
+              <SelectItem key={filter.value} value={filter.value as string}>
+                {filter.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
+      {/* md and above: Filter buttons */}
       {showDesktopButtons && (
-        <div className={mode === "auto" ? "hidden md:flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
+        <div
+          className={
+            mode === "auto"
+              ? "hidden md:flex flex-wrap items-center gap-2"
+              : "flex flex-wrap items-center gap-2"
+          }
+        >
           {timeFilterButtons.map((filter) => (
             <Button
               key={filter.value}
-              className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md transition-colors ${
+              onClick={() => handleFilterClick(filter.value)}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 activeMetricsFilter === filter.value
                   ? "bg-buttonActive text-white"
                   : "bg-button text-white hover:bg-button/90"
-              }`}
-              onClick={() => handleFilterClick(filter.value)}
-              disabled={disabled}
+              } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={disabled || isLoading}
             >
               {filter.label}
             </Button>
@@ -114,8 +141,9 @@ export default function DashboardDateFilters({
         </div>
       )}
 
+      {/* Custom Date Picker (both mobile and desktop) */}
       {showCustomPicker && (
-        <div className="w-full sm:w-auto">
+        <div className="mt-4 w-full">
           <ModernDateRangePicker
             value={
               pendingCustomDateRange

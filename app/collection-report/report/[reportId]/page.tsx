@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Layout components
-import Sidebar from "@/components/layout/Sidebar";
+
 import Header from "@/components/layout/Header";
 
 // Skeleton components
@@ -41,7 +41,7 @@ import type { CollectionDocument } from "@/lib/types/collections";
 
 export default function CollectionReportPage() {
   const params = useParams();
-  const pathname = usePathname();
+
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
@@ -110,13 +110,13 @@ export default function CollectionReportPage() {
   };
 
   if (loading) {
-    return <CollectionReportSkeleton pathname={pathname} />;
+    return <CollectionReportSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
-        <Sidebar pathname={pathname} />
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto transition-all duration-300">
+
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             pageTitle=""
@@ -141,8 +141,8 @@ export default function CollectionReportPage() {
 
   if (!reportData) {
     return (
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
-        <Sidebar pathname={pathname} />
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto transition-all duration-300">
+
         <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             pageTitle=""
@@ -857,8 +857,7 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
-      <Sidebar pathname={pathname} />
+    <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
       <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
         <Header
           pageTitle=""
@@ -869,39 +868,46 @@ export default function CollectionReportPage() {
         />
 
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-          <div className="flex items-center justify-between">
-            <Link href="/collection-report" legacyBehavior>
-              <a className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
-            </Link>
-            <Button
-              onClick={handleRefresh}
-              disabled={loading || refreshing}
-              className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 ${
-                loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {refreshing ? (
-                <span className="loader mr-2" />
-              ) : (
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Link href="/collection-report">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
-                  />
-                </svg>
-              )}
-              Refresh
-            </Button>
+                  <ArrowLeft size={18} className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-2xl font-bold">Collection Report Details</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleRefresh}
+                disabled={loading || refreshing}
+                className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 ${
+                  loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {refreshing ? (
+                  <span className="loader mr-2" />
+                ) : (
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
+                    />
+                  </svg>
+                )}
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
 

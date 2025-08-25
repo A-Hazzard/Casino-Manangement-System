@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { Member, MemberSession } from "@/lib/types/members";
+import { Member } from "@/lib/types/members";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import { usePathname } from "next/navigation";
+
+
 import PlayerHeader from "@/components/members/PlayerHeader";
 import PlayerTotalsCard from "@/components/members/PlayerTotalsCard";
 import PlayerSessionTable from "@/components/members/PlayerSessionTable";
@@ -23,7 +23,6 @@ type FilterType = "session" | "day" | "week" | "month";
 
 export default function MemberDetailsPage() {
   const params = useParams();
-  const pathname = usePathname();
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,19 +131,19 @@ export default function MemberDetailsPage() {
 
         const csvContent = [
           headers.join(","),
-          ...sessions.map((session: any) =>
+          ...sessions.map((session: Record<string, unknown>) =>
             [
               session.sessionId || session._id,
               session.machineId || "-",
               session.machineName || "-",
               session.startTime
-                ? new Date(session.startTime).toLocaleString()
+                ? new Date(session.startTime as string).toLocaleString()
                 : "-",
               session.sessionLength || "-",
               session.handle || 0,
               session.cancelledCredits || 0,
               session.jackpot || 0,
-              (session.won || 0) - (session.bet || 0),
+              ((session.won as number) || 0) - ((session.bet as number) || 0),
               session.points || 0,
               session.gamesPlayed || 0,
               session.gamesWon || 0,
@@ -280,7 +279,6 @@ export default function MemberDetailsPage() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
-          memberId={memberId}
         />
       </div>
     );
@@ -288,8 +286,8 @@ export default function MemberDetailsPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto md:pl-36 transition-all duration-300">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}

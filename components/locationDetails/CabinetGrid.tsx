@@ -36,6 +36,7 @@ function CabinetCardMobile({
         tl.kill();
       };
     }
+    return undefined;
   }, [cabinet.isOnline]);
   return (
     <div
@@ -45,7 +46,7 @@ function CabinetCardMobile({
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold truncate max-w-[80%]">
-          {(cabinet as any).serialNumber || (cabinet as any).origSerialNumber || (cabinet as any).machineId || "Unknown"}
+          {(cabinet as Record<string, unknown>).serialNumber as string || (cabinet as Record<string, unknown>).origSerialNumber as string || (cabinet as Record<string, unknown>).machineId as string || "Unknown"}
         </h3>
         <span
           ref={statusRef}
@@ -119,30 +120,6 @@ export default function CabinetGrid({
   const handleDelete = (cabinet: ExtendedCabinetDetail) => {
     setSelectedCabinet(cabinet);
     setShowDeleteModal(true);
-  };
-
-  const handleEditSuccess = () => {
-    setShowEditModal(false);
-    setSelectedCabinet(null);
-    // Optionally refresh the cabinet data
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  };
-
-  const handleDeleteSuccess = () => {
-    setShowDeleteModal(false);
-    setSelectedCabinet(null);
-    // Optionally refresh the cabinet data
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  };
-
-  const handleCloseModals = () => {
-    setShowEditModal(false);
-    setShowDeleteModal(false);
-    setSelectedCabinet(null);
   };
 
   return (

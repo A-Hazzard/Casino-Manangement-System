@@ -1,12 +1,11 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 
 // Layout components
-import Sidebar from "@/components/layout/Sidebar";
+
 import Header from "@/components/layout/Header";
 
 // Store
@@ -24,7 +23,10 @@ import MembersListTab from "@/components/members/tabs/MembersListTab";
 import MembersSummaryTab from "@/components/members/tabs/MembersSummaryTab";
 
 // Constants
-import { MEMBERS_TABS_CONFIG, MEMBERS_ANIMATIONS } from "@/lib/constants/members";
+import {
+  MEMBERS_TABS_CONFIG,
+  MEMBERS_ANIMATIONS,
+} from "@/lib/constants/members";
 
 // Types
 import type { MembersView } from "@/lib/types/members";
@@ -34,22 +36,18 @@ import type { MembersView } from "@/lib/types/members";
  * Handles layout, navigation, and tab rendering
  */
 export default function MembersContent() {
-  const pathname = usePathname();
   const { selectedLicencee } = useDashBoardStore();
   const { isAuthenticated } = useAuth();
 
-  const {
-    activeTab,
-    availableTabs,
-    handleTabClick,
-  } = useMembersNavigation(MEMBERS_TABS_CONFIG);
+  const { activeTab, availableTabs, handleTabClick } =
+    useMembersNavigation(MEMBERS_TABS_CONFIG);
 
   // Access denied if not authenticated or no available tabs
   if (!isAuthenticated || availableTabs.length === 0) {
     return (
       <>
-        <Sidebar pathname={pathname} />
-        <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+
+        <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
           <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
             <Header
               selectedLicencee={selectedLicencee}
@@ -102,15 +100,14 @@ export default function MembersContent() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden xl:w-full xl:mx-auto md:pl-36 transition-all duration-300">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={() => {}}
             disabled={false}
           />
-          
+
           {/* Navigation */}
           <MembersNavigation
             availableTabs={availableTabs}
@@ -123,7 +120,7 @@ export default function MembersContent() {
           {renderTabContent()}
         </main>
       </div>
-      
+
       {/* Toast Notifications */}
       <Toaster richColors />
     </>

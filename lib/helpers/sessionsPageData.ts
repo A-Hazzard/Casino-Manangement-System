@@ -78,7 +78,7 @@ export async function fetchSessionEvents(
 /**
  * Fetch session details
  */
-export async function fetchSessionDetails(sessionId: string): Promise<any> {
+export async function fetchSessionDetails(sessionId: string): Promise<Record<string, unknown>> {
   try {
     const response = await axios.get(`/api/sessions/${sessionId}`);
     return response.data;
@@ -91,7 +91,7 @@ export async function fetchSessionDetails(sessionId: string): Promise<any> {
 /**
  * Fetch machine details
  */
-export async function fetchMachineDetails(machineId: string): Promise<any> {
+export async function fetchMachineDetails(machineId: string): Promise<Record<string, unknown>> {
   try {
     const response = await axios.get(`/api/machines/${machineId}`);
     return response.data;

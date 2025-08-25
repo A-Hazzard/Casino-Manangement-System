@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const dataType = url.searchParams.get("dataType");
     const timePeriod = url.searchParams.get("timePeriod");
 
-    let responseData: any;
+    let responseData: Record<string, unknown>;
 
     // Based on dataType, fetch and return specific data
     if (dataType === "acceptedBills") {

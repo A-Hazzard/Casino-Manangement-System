@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { AggregatedLocation } from "@/lib/types/location";
-import type { LocationFilter } from "@/lib/types/location";
+
 
 /**
  * Fetch locations data with filters and date range

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
 
-    let query: any = { deletedAt: { $exists: false } };
+    const query: Record<string, unknown> = { deletedAt: { $exists: false } };
 
     // If licensee is provided, filter by licensee
     if (licensee) {

@@ -2,11 +2,10 @@ import React, { useState, useMemo } from "react";
 import {
   CheckIcon,
   PlusIcon,
-  ChevronDownIcon,
   MinusIcon,
 } from "@radix-ui/react-icons";
 
-type MachineEvent = {
+export type MachineEvent = {
   _id: string;
   eventType: string;
   description: string;

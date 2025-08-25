@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -27,7 +27,6 @@ export default function LocationDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
-  const pathname = usePathname();
 
   const {
     selectedLicencee,
@@ -101,17 +100,11 @@ export default function LocationDetailsPage() {
 
     const initializePage = async () => {
       try {
-        // Get location name from the formatted locations list
-        const formattedLocations = await fetchAllGamingLocations(
-          selectedLicencee
-        );
 
-        // Find the current location in the list
-        const currentLocation = formattedLocations.find(
-          (loc) => loc.id === slug
-        );
 
-        const locationName = currentLocation ? currentLocation.name : slug;
+
+
+
 
         // Fetch location details and cabinets in parallel
         const [location, cabinets] = await Promise.all([
@@ -166,11 +159,11 @@ export default function LocationDetailsPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
+
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
         <main className="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
           <Header
             selectedLicencee={selectedLicencee}
@@ -203,31 +196,23 @@ export default function LocationDetailsPage() {
 
           {/* Time Period Filter Buttons */}
           <div className="mb-6 overflow-x-auto hide-scrollbar">
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-2 min-w-max">
               {[
                 { label: "Today", value: "Today" as TimePeriod },
                 { label: "Yesterday", value: "Yesterday" as TimePeriod },
                 { label: "Last 7 days", value: "7d" as TimePeriod },
                 { label: "30 days", value: "30d" as TimePeriod },
                 { label: "All Time", value: "All Time" as TimePeriod },
-                { label: "Custom", value: "Custom" as TimePeriod },
               ].map((filter) => (
                 <Button
-                  key={filter.label}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap ${
+                  key={filter.value}
+                  onClick={() => setActiveMetricsFilter(filter.value)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                     activeMetricsFilter === filter.value
                       ? "bg-buttonActive text-white"
-                      : "bg-button text-white hover:bg-buttonActive"
-                  } ${
-                    metricsLoading || refreshing
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
+                      : "bg-button text-white hover:bg-button/90"
                   }`}
-                  disabled={metricsLoading || refreshing}
-                  onClick={() =>
-                    !(metricsLoading || refreshing) &&
-                    setActiveMetricsFilter(filter.value)
-                  }
+                  disabled={metricsLoading}
                 >
                   {filter.label}
                 </Button>

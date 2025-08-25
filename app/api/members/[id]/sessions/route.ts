@@ -17,7 +17,7 @@ export async function GET(
     const filter = searchParams.get("filter") || "session";
 
     // Build query for member sessions
-    let query: any = { memberId: id };
+    const query: Record<string, unknown> = { memberId: id };
 
     // For grouped views, we need to fetch all sessions and group them on the server
     // For individual sessions, we can use pagination
@@ -248,8 +248,8 @@ export async function GET(
 
       // Sort by date (newest first)
       processedSessions.sort(
-        (a: any, b: any) =>
-          new Date(b.time).getTime() - new Date(a.time).getTime()
+        (a: Record<string, unknown>, b: Record<string, unknown>) =>
+          new Date(b.time as string).getTime() - new Date(a.time as string).getTime()
       );
 
       return NextResponse.json({
@@ -478,8 +478,8 @@ export async function GET(
 
       // Sort by date (newest first)
       processedSessions.sort(
-        (a: any, b: any) =>
-          new Date(b.time).getTime() - new Date(a.time).getTime()
+        (a: Record<string, unknown>, b: Record<string, unknown>) =>
+          new Date(b.time as string).getTime() - new Date(a.time as string).getTime()
       );
     }
 

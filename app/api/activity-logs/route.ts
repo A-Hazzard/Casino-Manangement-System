@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { ActivityLog } from "@/app/api/lib/models/activityLog";
 import { apiLogger } from "@/app/api/lib/utils/logger";
+import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 
 export async function POST(request: NextRequest) {
   const context = apiLogger.createContext(request, "/api/activity-logs");
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     // Build query
-    const query: any = {};
+    const query: Record<string, unknown> = {};
 
     if (userId) {
       query.userId = userId;
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        activities,
+        activities: convertResponseToTrinidadTime(activities),
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(totalCount / limit),

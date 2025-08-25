@@ -34,7 +34,7 @@ export function isMachineOffline(
  * 4) _id
  * 5) fallback "Unknown"
  */
-export function getMachineDisplayId(machine: any): string {
+export function getMachineDisplayId(machine: Record<string, unknown>): string {
   if (!machine || typeof machine !== "object") return "Unknown";
   const pick = (...vals: Array<unknown>): string | undefined => {
     for (const v of vals) {

@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import getAllGamingLocations from "@/lib/helpers/locations";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMapCenterByLicensee } from "@/lib/utils/location";
 
@@ -50,7 +50,7 @@ const getValidLongitude = (geo: {
 };
 
 // Helper function to get location stats from locationAggregation data
-const getLocationStats = (location: locations, locationAggregates: any[]) => {
+const getLocationStats = (location: locations, locationAggregates: Record<string, unknown>[]) => {
   // Try to find matching data in locationAggregates
   const stats = Array.isArray(locationAggregates)
     ? locationAggregates.find((d) => d.location === location._id)
@@ -89,13 +89,13 @@ const LocationPopupContent = ({
   onViewDetails,
 }: {
   location: locations;
-  locationAggregates: any[];
+  locationAggregates: Record<string, unknown>[];
   isFinancialDataLoading: boolean;
   onViewDetails: (locationId: string) => void;
 }) => {
   const stats = getLocationStats(location, locationAggregates);
-  const performance = getPerformanceLabel(stats.gross);
-  const performanceColor = getPerformanceColor(stats.gross);
+  const performance = getPerformanceLabel(stats.gross as number);
+  const performanceColor = getPerformanceColor(stats.gross as number);
 
   return (
     <div className="min-w-[280px] p-2">
@@ -129,7 +129,7 @@ const LocationPopupContent = ({
               <Skeleton className="h-4 w-16" />
             ) : (
               <span className="font-medium text-green-600">
-                {stats.gross.toLocaleString()}
+                {(stats.gross as number).toLocaleString()}
               </span>
             )}
           </div>
@@ -143,8 +143,8 @@ const LocationPopupContent = ({
               <Skeleton className="h-4 w-12" />
             ) : (
               <span className="font-medium">
-                {stats.moneyIn > 0
-                  ? ((stats.gross / stats.moneyIn) * 100).toFixed(1)
+                {(stats.moneyIn as number) > 0
+                  ? (((stats.gross as number) / (stats.moneyIn as number)) * 100).toFixed(1)
                   : "0.0"}
                 %
               </span>
@@ -160,7 +160,7 @@ const LocationPopupContent = ({
             <Skeleton className="h-4 w-20" />
           ) : (
             <div className="font-medium text-yellow-600">
-              ${stats.moneyIn.toLocaleString()}
+              ${(stats.moneyIn as number).toLocaleString()}
             </div>
           )}
           <div className="text-xs text-muted-foreground">Money In</div>
@@ -171,7 +171,7 @@ const LocationPopupContent = ({
             <Skeleton className="h-4 w-12" />
           ) : (
             <div className="font-medium">
-              {stats.onlineMachines}/{stats.totalMachines}
+              {(stats.onlineMachines as number)}/{(stats.totalMachines as number)}
             </div>
           )}
           <div className="text-xs text-muted-foreground">Machines Online</div>
@@ -184,7 +184,7 @@ const LocationPopupContent = ({
             <Skeleton className="h-3 w-24" />
           ) : (
             <span className="font-medium text-gray-500">
-              {stats.totalMachines > 0 ? "Active Location" : "No Machines"}
+              {(stats.totalMachines as number) > 0 ? "Active Location" : "No Machines"}
             </span>
           )}
           <button
@@ -203,7 +203,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [locationAggregates, setLocationAggregates] = useState<any[]>(
+  const [locationAggregates, setLocationAggregates] = useState<Record<string, unknown>[]>(
     props.locationAggregates || []
   );
   const [aggLoading, setAggLoading] = useState<boolean>(
@@ -215,7 +215,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
   ]); // Trinidad center as initial fallback
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<Record<string, unknown> | null>(null);
   const router = useRouter();
 
   // Get Zustand state for reactivity
@@ -302,7 +302,7 @@ export default function MapPreview(props: MapPreviewProps) {
           `/api/locationAggregation?${params.toString()}`
         );
         if (!aborted) setLocationAggregates(response.data.data || []);
-      } catch (err) {
+      } catch {
         if (!aborted) setLocationAggregates([]);
       } finally {
         if (!aborted) setAggLoading(false);
@@ -406,7 +406,7 @@ export default function MapPreview(props: MapPreviewProps) {
     const lon = getValidLongitude(location.geoCoords);
 
     if (lat && lon && lat !== 0 && lon !== 0) {
-      mapRef.current.setView([lat, lon], 15);
+      (mapRef.current as { setView: (coords: [number, number], zoom: number) => void }).setView([lat, lon], 15);
       setSearchQuery(location.name || location.locationName || "");
       setShowSearchResults(false);
     } else {
@@ -416,8 +416,10 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Handle map instance
-  const handleMapCreated = (map: any) => {
-    mapRef.current = map;
+  const handleMapCreated = (map: unknown) => {
+    if (map) {
+      mapRef.current = map as { setView: (coords: [number, number], zoom: number) => void };
+    }
   };
 
   // Show skeleton only while map is initializing, not while financial data loads
@@ -427,7 +429,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Debug logging for gaming locations data
   if (process.env.NODE_ENV === "development") {
-    console.log("MapPreview - gamingLocations:", {
+    console.warn(`MapPreview - gamingLocations: ${JSON.stringify({
       count: validLocations.length,
       locations: validLocations.map((loc) => ({
         id: loc._id,
@@ -438,7 +440,7 @@ export default function MapPreview(props: MapPreviewProps) {
           loc.geoCoords.latitude !== 0 &&
           (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0),
       })),
-    });
+    })}`);
   }
 
   // Handle navigation to location details
@@ -508,7 +510,7 @@ export default function MapPreview(props: MapPreviewProps) {
         <MapContainer
           center={userDefaultCenter} // Always use licensee-based center
           zoom={10}
-          className="z-10 mt-2 h-48 w-full rounded-lg"
+          className="z-0 mt-2 h-48 w-full rounded-lg"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -643,7 +645,7 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
               {/* Map */}
-              <div className="flex-1">
+              <div className="flex-1 relative z-0">
                 <MapContainer
                   center={userDefaultCenter} // Always use licensee-based center
                   zoom={10}

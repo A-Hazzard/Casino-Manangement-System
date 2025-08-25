@@ -151,7 +151,7 @@ export const handleDashboardRefresh = async (
     }
 
     // Parallelize metrics + top-performing + a lightweight locations ping to warm caches
-    const [__, topPerformingDataResult] = await Promise.all([
+    const [, topPerformingDataResult] = await Promise.all([
       fetchMetricsData(
         activeMetricsFilter,
         customDateRange,

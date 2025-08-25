@@ -7,13 +7,11 @@ import Image from "next/image";
 import formatCurrency from "@/lib/utils/currency";
 import { formatDistanceToNow } from "date-fns";
 import {
-  CabinetProps,
   CabinetSortOption,
   CabinetTableProps,
 } from "@/lib/types/cabinets";
 import { ClockIcon, Cross1Icon, MobileIcon } from "@radix-ui/react-icons";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import { IMAGES } from "@/lib/constants/images";
 
 export default function CabinetTable({
   cabinets,
@@ -184,7 +182,7 @@ export default function CabinetTable({
                       }}
                       className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
                     >
-                      <Image src={editIcon} alt="Edit" width={20} height={20} />
+                      <Image src={IMAGES.editIcon} alt="Edit" width={20} height={20} />
                     </Button>
                     <Button
                       variant="ghost"
@@ -195,7 +193,7 @@ export default function CabinetTable({
                       className="p-1 hover:bg-destructive/10 text-destructive"
                     >
                       <Image
-                        src={deleteIcon}
+                        src={IMAGES.deleteIcon}
                         alt="Delete"
                         width={20}
                         height={20}

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import type { ReportView, ReportTab } from "@/lib/types/reports";
 
-interface ReportsNavigationProps {
+type ReportsNavigationProps = {
   availableTabs: ReportTab[];
   activeView: ReportView;
   onTabChange: (tabId: ReportView) => void;

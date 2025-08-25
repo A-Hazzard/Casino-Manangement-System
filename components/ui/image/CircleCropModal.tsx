@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,6 @@ export default function CircleCropModal({
   onClose,
   imageSrc,
   onCropped,
-  size = 320,
 }: CircleCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -73,9 +73,8 @@ export default function CircleCropModal({
   const getCroppedImg = useCallback(
     (
       image: HTMLImageElement,
-      crop: PixelCrop,
-      fileName: string
-    ): Promise<{ file: File; url: string }> => {
+      crop: PixelCrop
+    ): Promise<{ url: string }> => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
@@ -128,20 +127,9 @@ export default function CircleCropModal({
       // Draw the cropped image into the circular mask
       circleCtx.drawImage(canvas, 0, 0);
 
-      return new Promise((resolve) => {
-        circleCanvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              throw new Error("Canvas is empty");
-            }
-            const fileUrl = window.URL.createObjectURL(blob);
-            const file = new File([blob], fileName, { type: "image/png" });
-            resolve({ file, url: fileUrl });
-          },
-          "image/png",
-          1
-        );
-      });
+      // Return a persistent Data URL so it can be stored in DB and rendered later
+      const dataUrl = circleCanvas.toDataURL("image/png", 1);
+      return Promise.resolve({ url: dataUrl });
     },
     []
   );
@@ -152,8 +140,7 @@ export default function CircleCropModal({
     try {
       const { url } = await getCroppedImg(
         imgRef.current,
-        completedCrop,
-        "cropped-profile.png"
+        completedCrop
       );
       onCropped(url);
       onClose();
@@ -164,7 +151,12 @@ export default function CircleCropModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full">
+      {/* Elevated overlay above any underlying modal */}
+      {open && typeof window !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[180] bg-black/70" />, document.body
+        )}
+      <DialogContent className="max-w-4xl w-full z-[200]">
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
         </DialogHeader>

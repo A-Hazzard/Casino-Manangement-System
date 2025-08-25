@@ -7,7 +7,7 @@ import type {
 import type { SchedulerTableRow } from "@/lib/types/componentProps";
 import type { CollectorSchedule } from "@/lib/types/components";
 import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
-import type { LocationSelectItem } from "@/lib/types/location";
+
 import { DateRange as RDPDateRange } from "react-day-picker";
 
 /**
@@ -129,8 +129,7 @@ export async function fetchMonthlyReportData(
 export async function fetchManagerScheduleData(
   selectedSchedulerLocation: string,
   selectedCollector: string,
-  selectedStatus: string,
-  locations: LocationSelectItem[]
+  selectedStatus: string
 ): Promise<{ schedulers: SchedulerTableRow[]; collectors: string[] }> {
   try {
     const params = new URLSearchParams();
@@ -149,7 +148,7 @@ export async function fetchManagerScheduleData(
 
     // Extract unique collectors from schedulers
     const collectors = [
-      ...new Set(data.schedulers.map((s: any) => s.collector)),
+      ...new Set(data.schedulers.map((s: { collector: string }) => s.collector)),
     ] as string[];
 
     return {
@@ -193,7 +192,7 @@ export async function fetchCollectorScheduleData(
 
     // Extract unique collectors from schedules
     const collectors = [
-      ...new Set(data.collectorSchedules.map((s: any) => s.collector)),
+      ...new Set(data.collectorSchedules.map((s: { collector: string }) => s.collector)),
     ] as string[];
 
     return {

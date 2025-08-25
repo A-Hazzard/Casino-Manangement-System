@@ -19,7 +19,7 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
 
     // Build query
-    let query: any = { machine: id };
+    const query: Record<string, unknown> = { machine: id };
 
     if (eventType) {
       query.eventType = { $regex: eventType, $options: "i" };

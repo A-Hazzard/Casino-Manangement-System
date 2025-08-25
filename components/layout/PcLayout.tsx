@@ -11,10 +11,11 @@ import StatCardSkeleton, {
 } from "@/components/ui/SkeletonLoader";
 import Chart from "@/components/ui/dashboard/Chart";
 import { RefreshCw, BarChart3 } from "lucide-react";
-import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
 export default function PcLayout(props: PcLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -25,54 +26,8 @@ export default function PcLayout(props: PcLayoutProps) {
   );
 
   // State for aggregated location data
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
+  const [locationAggregates, setLocationAggregates] = useState<Record<string, unknown>[]>([]);
   const [aggLoading, setAggLoading] = useState(true);
-
-  // Machine stats state for online/offline counts
-  const [machineStats, setMachineStats] = useState<{
-    totalMachines: number;
-    onlineMachines: number;
-    offlineMachines: number;
-  } | null>(null);
-  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
-
-  // Fetch machine stats (like reports tab) for online/offline counts
-  useEffect(() => {
-    let aborted = false;
-    const fetchMachineStats = async () => {
-      setMachineStatsLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.append("licensee", "all"); // Get all machines
-
-        const res = await axios.get(
-          `/api/analytics/machines/stats?${params.toString()}`
-        );
-        const data = res.data;
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: data.totalMachines || 0,
-            onlineMachines: data.onlineMachines || 0,
-            offlineMachines: data.offlineMachines || 0,
-          });
-        }
-      } catch {
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-          });
-        }
-      } finally {
-        if (!aborted) setMachineStatsLoading(false);
-      }
-    };
-    fetchMachineStats();
-    return () => {
-      aborted = true;
-    };
-  }, []);
 
   // Only fetch locationAggregation for MapPreview when needed
   useEffect(() => {
@@ -97,10 +52,6 @@ export default function PcLayout(props: PcLayoutProps) {
     };
   }, []);
 
-  // Use machine stats for online/offline counts
-  const onlineCount = machineStats?.onlineMachines || 0;
-  const offlineCount = machineStats?.offlineMachines || 0;
-
   return (
     <div className="hidden xl:block">
       <div className="grid grid-cols-5 gap-6">
@@ -110,6 +61,13 @@ export default function PcLayout(props: PcLayoutProps) {
           <div className="flex items-center gap-3">
             <BarChart3 className="w-8 h-8 text-buttonActive" />
             <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+            <Image
+              src={IMAGES.dashboardIcon}
+              alt="Dashboard Icon"
+              width={32}
+              height={32}
+              className="w-6 h-6 sm:w-8 sm:h-8"
+            />
           </div>
 
           {/* Date Filter Controls */}
@@ -213,17 +171,44 @@ export default function PcLayout(props: PcLayoutProps) {
                 </div>
               )}
             </div>
-            <MapPreview
-              gamingLocations={props.gamingLocations}
-              locationAggregates={locationAggregates}
-              aggLoading={aggLoading}
-            />
+            {aggLoading ? (
+              <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+                <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
+              </div>
+            ) : (
+              <MapPreview
+                gamingLocations={props.gamingLocations}
+                locationAggregates={locationAggregates}
+                aggLoading={aggLoading}
+              />
+            )}
           </div>
 
           {/* Top Performing Section */}
           <div className="bg-container rounded-lg shadow-md p-6">
-            {props.topPerformingData.length === 0 &&
-            !props.loadingTopPerforming ? (
+            {props.loadingTopPerforming ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Top Performing</h2>
+                  <div className="w-32 h-8 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center space-x-2">
+                        <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            ) : props.topPerformingData.length === 0 ? (
               <NoDataMessage message="No top performing data available for the selected period" />
             ) : (
               <div className="space-y-4">

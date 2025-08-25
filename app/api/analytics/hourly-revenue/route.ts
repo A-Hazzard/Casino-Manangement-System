@@ -10,18 +10,24 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     if (!locationId) {
-      return NextResponse.json({ error: "Location ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Location ID is required" },
+        { status: 400 }
+      );
     }
 
     const db = await connectDB();
     if (!db) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
     }
-    
+
     // Calculate date range based on time period
     let start, end;
     const now = new Date();
-    
+
     if (timePeriod === "Custom" && startDate && endDate) {
       start = new Date(startDate);
       end = new Date(endDate);
@@ -50,20 +56,20 @@ export async function GET(request: NextRequest) {
       {
         $match: {
           location: locationId,
-          createdAt: { $gte: start, $lte: end },
-          deletedAt: { $in: [null, new Date(-1)] }
-        }
+          readAt: { $gte: start, $lte: end },
+          deletedAt: { $in: [null, new Date(-1)] },
+        },
       },
       {
         $group: {
           _id: {
             hour: { $hour: "$createdAt" },
-            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           },
           revenue: { $sum: "$gross" },
           drop: { $sum: "$moneyIn" },
-          cancelledCredits: { $sum: "$moneyOut" }
-        }
+          cancelledCredits: { $sum: "$moneyOut" },
+        },
       },
       {
         $group: {
@@ -73,30 +79,36 @@ export async function GET(request: NextRequest) {
           avgDrop: { $avg: "$drop" },
           totalDrop: { $sum: "$drop" },
           avgCancelledCredits: { $avg: "$cancelledCredits" },
-          totalCancelledCredits: { $sum: "$cancelledCredits" }
-        }
+          totalCancelledCredits: { $sum: "$cancelledCredits" },
+        },
       },
       {
-        $sort: { _id: 1 }
-      }
+        $sort: { _id: 1 },
+      },
     ];
 
-    const hourlyData = await db.collection("collectionReports").aggregate(pipeline).toArray();
+    const hourlyData = await db
+      .collection("collectionReports")
+      .aggregate(pipeline)
+      .toArray();
 
     // Create a 24-hour array with zeroes for missing hours
     const hourlyRevenue = Array.from({ length: 24 }, (_, hour) => {
-      const hourData = hourlyData.find(d => d._id === hour);
+      const hourData = hourlyData.find((d) => d._id === hour);
       return {
         hour,
         revenue: hourData ? hourData.avgRevenue : 0,
         drop: hourData ? hourData.avgDrop : 0,
-        cancelledCredits: hourData ? hourData.avgCancelledCredits : 0
+        cancelledCredits: hourData ? hourData.avgCancelledCredits : 0,
       };
     });
 
     return NextResponse.json(hourlyRevenue);
   } catch (error) {
     console.error("Error fetching hourly revenue data:", error);
-    return NextResponse.json({ error: "Failed to fetch hourly revenue data" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch hourly revenue data" },
+      { status: 500 }
+    );
   }
-} 
+}

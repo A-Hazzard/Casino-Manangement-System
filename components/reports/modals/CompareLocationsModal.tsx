@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  X,
   TrendingUp,
   BarChart3,
   Trophy,
@@ -46,9 +45,7 @@ export default function CompareLocationsModal({
     }).format(value);
   };
 
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("en-US").format(value);
-  };
+
 
   const getItemName = (item: AggregatedLocation | TopLocation) => {
     return item.locationName || "Unknown Location";

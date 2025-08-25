@@ -26,8 +26,8 @@ export type ActivityLog = {
   resourceId?: string;
   resourceName?: string;
   details?: string;
-  previousData?: any;
-  newData?: any;
+  previousData?: Record<string, unknown>;
+  newData?: Record<string, unknown>;
   userAgent?: string;
   // Legacy fields for backward compatibility
   actor?: ActivityLogActor;

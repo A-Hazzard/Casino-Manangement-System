@@ -48,6 +48,33 @@ This document is the single source of truth for how this system is structured an
 - React hooks: stable dependency arrays; avoid unnecessary deps
 - Linting/build: `pnpm lint && pnpm build` must pass cleanly
 
+### Timezone Standards
+
+**Critical**: All date handling must follow Trinidad timezone (UTC-4) standards:
+
+- **Database Storage**: All dates stored in UTC format
+- **API Responses**: Use `convertResponseToTrinidadTime()` to convert dates to Trinidad time before sending to frontend
+- **Date Queries**: Use `createTrinidadTimeDateRange()` to convert Trinidad time inputs to UTC for database queries
+- **Frontend Display**: API responses already contain Trinidad time - display directly
+- **Date Inputs**: Convert user-selected Trinidad time to UTC before API calls using `trinidadTimeToUtc()`
+
+**Required Implementation:**
+```typescript
+// API routes - convert responses to Trinidad time
+import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
+return NextResponse.json({ data: convertResponseToTrinidadTime(results) });
+
+// Date range queries - convert Trinidad time to UTC
+import { createTrinidadTimeDateRange } from "@/app/api/lib/utils/timezone";
+const utcRange = createTrinidadTimeDateRange(startDate, endDate);
+
+// Frontend date inputs - convert to UTC for API calls
+import { trinidadTimeToUtc } from "@/app/api/lib/utils/timezone";
+const utcDate = trinidadTimeToUtc(userSelectedDate);
+```
+
+**See [Timezone Documentation](timezone.md) for complete implementation guidelines.**
+
 ### Data flow and typing
 
 1. API route (app/api/*) → validate/transform → returns typed JSON

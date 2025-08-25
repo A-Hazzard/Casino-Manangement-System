@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useReportsStore } from "@/lib/store/reportsStore";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,18 +177,18 @@ export default function DashboardTab() {
     selectedDateRange,
   } = useReportsStore();
 
-  const { selectedLicencee } = useDashBoardStore();
+
 
   const [timePeriod, setTimePeriod] = useState("last7days");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle location selection from map
   const handleLocationSelect = (locationIds: string[]) => {
-    console.log("Selected locations:", locationIds);
+    console.warn(`Selected locations: ${JSON.stringify(locationIds)}`);
     // Here you could navigate to location details or show more info
     // For now, just handle the first selected location if any
     if (locationIds.length > 0) {
-      console.log("Primary selected location:", locationIds[0]);
+      console.warn(`Primary selected location: ${locationIds[0]}`);
     }
   };
 
@@ -292,8 +292,12 @@ export default function DashboardTab() {
                 variant={timePeriod === filter.id ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTimePeriod(filter.id)}
-                className="text-xs"
+                className={`text-xs ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={isLoading}
               >
+                {isLoading && timePeriod === filter.id ? (
+                  <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></span>
+                ) : null}
                 {filter.label}
               </Button>
             ))}

@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, BarChart3 } from "lucide-react";
 import type { MembersView, MembersTab } from "@/lib/types/members";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
-interface MembersNavigationProps {
+type MembersNavigationProps = {
   availableTabs: MembersTab[];
   activeTab: MembersView;
   onTabChange: (tabId: string) => void;
@@ -37,8 +39,15 @@ export default function MembersNavigation({
     <div className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Title and Description */}
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900">Members</h1>
+          <Image
+            src={IMAGES.membersIcon}
+            alt="Members Icon"
+            width={32}
+            height={32}
+            className="w-6 h-6 sm:w-8 sm:h-8"
+          />
           <p className="text-sm text-gray-600 mt-1">
             Manage member profiles, sessions, and analytics
           </p>

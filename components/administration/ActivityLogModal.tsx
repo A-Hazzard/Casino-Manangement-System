@@ -11,36 +11,13 @@ import {
 } from "lucide-react";
 import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
-import { DateRange as RDPDateRange } from "react-day-picker";
+
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+import type { ActivityLogModalProps, ActivityGroup } from "@/lib/types/components";
 import { format } from "date-fns";
 import { ReactNode } from "react";
 import axios from "axios";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-
-type ActivityLogModalProps = {
-  open: boolean;
-  onClose: () => void;
-};
-
-type ActivityGroup = {
-  range: string;
-  entries: ProcessedActivityEntry[];
-};
-
-type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  type: string;
-  icon: ReactNode;
-  iconBg: string;
-  user: {
-    email: string;
-    role: string;
-  };
-  description: ReactNode;
-  originalActivity: ActivityLog;
-};
 
 const getActionIcon = (actionType: string) => {
   switch (actionType.toLowerCase()) {
@@ -204,13 +181,7 @@ export default function ActivityLogModal({
   // Use dashboard store for date filtering
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
-  // Convert dashboard store date format to DateRange format
-  const dateRange: RDPDateRange | undefined = customDateRange
-    ? {
-        from: customDateRange.startDate,
-        to: customDateRange.endDate,
-      }
-    : undefined;
+
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

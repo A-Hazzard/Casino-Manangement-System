@@ -50,8 +50,8 @@ export function getFirmwareVersion(cabinet: CabinetDetail): string {
 export function getCabinetDisplayName(cabinet: CabinetDetail): string {
   return (
     cabinet?.serialNumber ||
-    (cabinet as any)?.origSerialNumber ||
-    (cabinet as any)?.machineId ||
+    (cabinet as { origSerialNumber?: string })?.origSerialNumber ||
+    (cabinet as { machineId?: string })?.machineId ||
     "GMID1"
   );
 }
@@ -137,7 +137,7 @@ export function formatDateTime(date: Date): string {
 /**
  * Debounce function for API calls
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

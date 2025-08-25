@@ -99,8 +99,8 @@ export function formatCurrency(amount: number): string {
 /**
  * Validate collection report data
  */
-export function validateCollectionReportData(data: any): boolean {
-  return (
+export function validateCollectionReportData(data: Record<string, unknown>): boolean {
+  return !!(
     data &&
     typeof data === "object" &&
     data.reportId &&

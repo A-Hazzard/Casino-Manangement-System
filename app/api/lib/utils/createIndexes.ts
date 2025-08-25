@@ -10,7 +10,7 @@ import { MachineEvent } from "@/app/api/lib/models/machineEvents";
 export async function createAggressiveIndexes() {
   try {
     // console.log("Creating aggressive indexes for optimal performance...");
-    const db = await connectDB();
+    await connectDB();
 
     // Member collection indexes
     // console.log("Creating Member indexes...");

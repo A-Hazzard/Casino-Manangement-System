@@ -18,7 +18,7 @@ export default function LicenseeSuccessModal({
 }: LicenseeSuccessModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+useEffect(() => {
     if (open && modalRef.current) {
       gsap.fromTo(
         modalRef.current,

@@ -2,12 +2,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+
 import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
-import { useParams, useRouter, usePathname } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
 import {
@@ -26,7 +26,6 @@ import gsap from "gsap";
 import { RefreshButton } from "@/components/ui/RefreshButton";
 import {
   fetchAllGamingLocations,
-  fetchLocationDetailsById,
 } from "@/lib/helpers/locations";
 import {
   animateTableRows,
@@ -47,7 +46,6 @@ export default function LocationPage() {
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
-  const pathname = usePathname();
 
   const { selectedLicencee, setSelectedLicencee, activeMetricsFilter } =
     useDashBoardStore();
@@ -74,8 +72,6 @@ export default function LocationPage() {
     []
   );
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [selectedLocationId, setSelectedLocationId] =
-    useState<string>(locationId);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   // Add back error state
@@ -138,8 +134,7 @@ export default function LocationPage() {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        // Always set the selectedLocationId to the URL slug immediately
-        setSelectedLocationId(locationId);
+
 
         // Fetch locations for the selected licensee
         const formattedLocations = await fetchAllGamingLocations(
@@ -169,7 +164,6 @@ export default function LocationPage() {
         } else if (formattedLocations.length === 0) {
           // No locations for this licensee, clear selection
           setSelectedLocation("");
-          setSelectedLocationId("");
           setLocationName("");
           setAllCabinets([]);
           setError("No locations found for the selected licensee.");
@@ -192,7 +186,7 @@ export default function LocationPage() {
           const timePeriod = activeMetricsFilter
             ? activeMetricsFilter
             : "today";
-          console.log(`🔍 Using timePeriod:`, timePeriod);
+          console.warn(`🔍 Using timePeriod: ${timePeriod}`);
 
           const cabinetsData = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
@@ -200,7 +194,7 @@ export default function LocationPage() {
             timePeriod, // Pass as timePeriod (3rd parameter)
             undefined // Don't pass searchTerm (4th parameter)
           );
-          console.log(`✅ Cabinets data received:`, cabinetsData);
+          console.warn(`✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`);
           setAllCabinets(cabinetsData);
           setError(null); // Clear any previous errors on successful fetch
         } catch (error) {
@@ -312,8 +306,7 @@ export default function LocationPage() {
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (
-    newLocationId: string,
-    locationName: string
+    newLocationId: string
   ) => {
     // Navigate to the new location URL
     router.push(`/locations/${newLocationId}`);
@@ -322,9 +315,9 @@ export default function LocationPage() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
-        <main className="flex flex-col flex-1 p-6 w-full max-w-full overflow-x-hidden">
+
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
+        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
@@ -334,38 +327,41 @@ export default function LocationPage() {
             disabled={loading || cabinetsLoading || refreshing}
           />
 
-          <div className="flex items-center mb-6">
-            <Link href="/locations" className="mr-4">
-              <Button
-                variant="ghost"
-                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
-              >
-                <ArrowLeftIcon className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold">Location Details</h1>
-
-            {/* Remove Location Dropdown */}
-            <div className="ml-auto">
+          {/* Title Row */}
+          <div className="flex items-center justify-between mt-4 w-full max-w-full">
+            <div className="flex items-center gap-3 w-full">
+              <Link href="/locations" className="mr-2">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Location Details
+              </h1>
               <RefreshButton
                 onClick={handleRefresh}
                 isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
                 label="Refresh"
+                className="ml-auto"
               />
             </div>
           </div>
 
           {/* Financial Metrics Cards */}
-          <FinancialMetricsCards
-            totals={financialTotals}
-            loading={loading || cabinetsLoading}
-            title={`Financial Metrics for ${locationName || "Location"}`}
-            className="mb-6"
-          />
+          <div className="mt-6">
+            <FinancialMetricsCards
+              totals={financialTotals}
+              loading={loading || cabinetsLoading}
+              title={`Financial Metrics for ${locationName || "Location"}`}
+            />
+          </div>
 
-          {/* Date Filters Row - Desktop only */}
-          <div className="hidden lg:flex items-center justify-between mt-4 mb-4 gap-4">
+          {/* Date Filters Row - Desktop and md */}
+          <div className="hidden md:flex items-center justify-between mt-4 mb-0 gap-4">
             <div className="flex-1 min-w-0">
               <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
@@ -373,8 +369,9 @@ export default function LocationPage() {
               />
             </div>
           </div>
-          {/* Mobile/Tablet: Date Filters above Search */}
-          <div className="lg:hidden flex flex-col gap-4 mt-4">
+
+          {/* Mobile/Tablet: Date Filters stacked */}
+          <div className="md:hidden flex flex-col gap-4 mt-4">
             <div className="w-full">
               <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
@@ -383,18 +380,13 @@ export default function LocationPage() {
             </div>
           </div>
 
-          {/* Search bar and controls container */}
-          <div className="mt-6 bg-buttonActive p-4 flex flex-col md:flex-row md:items-center gap-4">
-            {/* Search Input */}
-            <div className="relative md:w-1/2 lg:w-2/5">
+          {/* Search Row - Purple box for md and lg */}
+          <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+            <div className="relative flex-1 max-w-md min-w-0">
               <Input
                 type="text"
                 placeholder="Search machines (Asset, SMID, Serial, Game)..."
-                className={`w-full pr-10 bg-white border-border rounded-md ${
-                  loading || cabinetsLoading || refreshing
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
+                className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
                 value={searchTerm}
                 disabled={loading || cabinetsLoading || refreshing}
                 onChange={(e) => {
@@ -417,19 +409,14 @@ export default function LocationPage() {
                   }
                 }}
               />
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
-                aria-label="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
 
             {/* Locations Dropdown */}
-            <div className="relative md:w-1/3" ref={locationDropdownRef}>
+            <div className="relative flex-shrink-0" ref={locationDropdownRef}>
               <Button
                 variant="outline"
-                className={`w-full md:w-auto flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+                className={`flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
                   loading || cabinetsLoading || refreshing
                     ? "opacity-50 cursor-not-allowed"
                     : ""
@@ -460,7 +447,86 @@ export default function LocationPage() {
                           locationId === loc.id ? "bg-gray-100 font-medium" : ""
                         }`}
                         onClick={() =>
-                          handleLocationChangeInPlace(loc.id, loc.name)
+                          handleLocationChangeInPlace(loc.id)
+                        }
+                      >
+                        {loc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile: Search and Location Dropdown */}
+          <div className="md:hidden flex flex-col gap-4 mt-4">
+            <div className="relative w-full">
+              <Input
+                type="text"
+                placeholder="Search machines (Asset, SMID, Serial, Game)..."
+                className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
+                value={searchTerm}
+                disabled={loading || cabinetsLoading || refreshing}
+                onChange={(e) => {
+                  if (loading || cabinetsLoading || refreshing) return;
+                  setSearchTerm(e.target.value);
+
+                  // Highlight matched items when searching
+                  if (tableRef.current && e.target.value.trim() !== "") {
+                    // Add a subtle highlight pulse animation
+                    gsap.to(tableRef.current, {
+                      backgroundColor: "rgba(59, 130, 246, 0.05)",
+                      duration: 0.2,
+                      onComplete: () => {
+                        gsap.to(tableRef.current, {
+                          backgroundColor: "transparent",
+                          duration: 0.5,
+                        });
+                      },
+                    });
+                  }
+                }}
+              />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            </div>
+
+            {/* Mobile: Location Dropdown */}
+            <div className="relative w-full" ref={locationDropdownRef}>
+              <Button
+                variant="outline"
+                className={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+                  loading || cabinetsLoading || refreshing
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                disabled={loading || cabinetsLoading || refreshing}
+                onClick={() =>
+                  !(loading || cabinetsLoading || refreshing) &&
+                  setIsLocationDropdownOpen(!isLocationDropdownOpen)
+                }
+              >
+                <span className="truncate">
+                  {selectedLocation || locationName || "Select Location"}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${
+                    isLocationDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </Button>
+              {isLocationDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200">
+                  <div className="max-h-60 overflow-y-auto">
+                    {locations.map((loc) => (
+                      <button
+                        key={loc.id}
+                        className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                          locationId === loc.id ? "bg-gray-100 font-medium" : ""
+                        }`}
+                        onClick={() =>
+                          handleLocationChangeInPlace(loc.id)
                         }
                       >
                         {loc.name}
@@ -611,102 +677,107 @@ export default function LocationPage() {
             )}
           </div>
 
-          {loading || cabinetsLoading ? (
-            <>
-              {/* Use CabinetTableSkeleton for lg+ only */}
-              <div className="hidden lg:block">
-                <CabinetTableSkeleton />
-              </div>
-              {/* Use CabinetCardsSkeleton for mobile and tablet (up to md) */}
-              <div className="block lg:hidden">
-                <CabinetCardsSkeleton />
-              </div>
-            </>
-          ) : filteredCabinets.length === 0 ? (
-            <div className="mt-10 text-center text-gray-500">
-              No cabinets found{searchTerm ? " matching your search" : ""}.
-            </div>
-          ) : filteredCabinets == null ? (
-            <div className="mt-10 text-center text-gray-500">
-              Loading cabinets...
-            </div>
-          ) : (
-            <>
-              <div ref={tableRef}>
-                <CabinetGrid
-                  filteredCabinets={
-                    filteredCabinets
-                      .filter((cab) => cab.serialNumber)
-                      .map((cab) => ({
-                        ...cab,
-                        isOnline: cab.online,
-                      })) as ExtendedCabinetDetail[]
-                  }
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  router={router}
-                />
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center space-x-2 mt-6 pb-6">
-                  <Button
-                    onClick={handleFirstPage}
-                    disabled={currentPage === 0}
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={handlePrevPage}
-                    disabled={currentPage === 0}
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-gray-700 text-sm">Page</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={currentPage + 1}
-                    onChange={(e) => {
-                      let val = Number(e.target.value);
-                      if (isNaN(val)) val = 1;
-                      if (val < 1) val = 1;
-                      if (val > totalPages) val = totalPages;
-                      setCurrentPage(val - 1);
-                    }}
-                    className="w-16 px-2 py-1 border rounded text-center text-sm"
-                    aria-label="Page number"
-                  />
-                  <span className="text-gray-700 text-sm">of {totalPages}</span>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={currentPage === totalPages - 1}
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={handleLastPage}
-                    disabled={currentPage === totalPages - 1}
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </Button>
+          {/* Content Section */}
+          <div className="flex-1 w-full">
+            {loading || cabinetsLoading ? (
+              <>
+                {/* Use CabinetTableSkeleton for lg+ only */}
+                <div className="hidden lg:block">
+                  <CabinetTableSkeleton />
                 </div>
-              )}
-            </>
-          )}
+                {/* Use CabinetCardsSkeleton for mobile and tablet (up to md) */}
+                <div className="block lg:hidden">
+                  <CabinetCardsSkeleton />
+                </div>
+              </>
+            ) : filteredCabinets.length === 0 ? (
+              <div className="mt-10 text-center text-gray-500">
+                No cabinets found{searchTerm ? " matching your search" : ""}.
+              </div>
+            ) : filteredCabinets == null ? (
+              <div className="mt-10 text-center text-gray-500">
+                Loading cabinets...
+              </div>
+            ) : (
+              <>
+                <div ref={tableRef}>
+                  <CabinetGrid
+                    filteredCabinets={
+                      filteredCabinets
+                        .filter((cab) => cab.serialNumber)
+                        .map((cab) => ({
+                          ...cab,
+                          isOnline: cab.online,
+                        })) as ExtendedCabinetDetail[]
+                    }
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    router={router}
+                  />
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center space-x-2 mt-6 pb-6">
+                    <Button
+                      onClick={handleFirstPage}
+                      disabled={currentPage === 0}
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 0}
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-gray-700 text-sm">Page</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={currentPage + 1}
+                      onChange={(e) => {
+                        let val = Number(e.target.value);
+                        if (isNaN(val)) val = 1;
+                        if (val < 1) val = 1;
+                        if (val > totalPages) val = totalPages;
+                        setCurrentPage(val - 1);
+                      }}
+                      className="w-16 px-2 py-1 border rounded text-center text-sm"
+                      aria-label="Page number"
+                    />
+                    <span className="text-gray-700 text-sm">
+                      of {totalPages}
+                    </span>
+                    <Button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages - 1}
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={handleLastPage}
+                      disabled={currentPage === totalPages - 1}
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {error && (
             <div className="mt-10 text-center text-red-500">{error}</div>

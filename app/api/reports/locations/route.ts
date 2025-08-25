@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
-import { LocationFilter } from "@/lib/types/location";
+
 // Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
@@ -11,8 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "7d";
     const licencee = searchParams.get("licencee") || undefined;
-    const _machineTypeFilter =
-      (searchParams.get("machineTypeFilter") as LocationFilter) || null;
+
     const showAllLocations = searchParams.get("showAllLocations") === "true";
 
     // Pagination parameters
@@ -20,8 +19,6 @@ export async function GET(req: NextRequest) {
     const requestedLimit = parseInt(searchParams.get("limit") || "10");
     const limit = Math.min(requestedLimit, 10); // Cap at 10 for faster loading
     const skip = (page - 1) * limit;
-
-
 
     let startDate: Date | undefined, endDate: Date | undefined;
 
@@ -60,7 +57,7 @@ export async function GET(req: NextRequest) {
     // Do not auto-create indexes on every request
 
     // Build location filter for the aggregation
-    const locationMatchStage: any = {
+    const locationMatchStage: Record<string, unknown> = {
       deletedAt: { $in: [null, new Date(-1)] },
     };
 
@@ -110,7 +107,7 @@ export async function GET(req: NextRequest) {
             {
               $match: {
                 $expr: { $eq: ["$location", "$$locationId"] },
-                createdAt: { $gte: startDate, $lte: endDate },
+                readAt: { $gte: startDate, $lte: endDate },
               },
             },
             {
@@ -133,7 +130,17 @@ export async function GET(req: NextRequest) {
           hasData: {
             $or: [
               { $gt: [{ $size: "$machines" }, 0] },
-              { $gt: [{ $ifNull: [{ $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] }, 0] }, 0] },
+              {
+                $gt: [
+                  {
+                    $ifNull: [
+                      { $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] },
+                      0,
+                    ],
+                  },
+                  0,
+                ],
+              },
             ],
           },
         },
@@ -265,8 +272,7 @@ export async function GET(req: NextRequest) {
     const endTime = Date.now();
     const duration = endTime - startTime;
 
-
-    // console.log("🔍 API - Request completed in", duration, "ms");
+    console.warn("🔍 API - Request completed in", duration, "ms");
 
     return NextResponse.json({
       data: paginatedData,

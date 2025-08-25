@@ -27,6 +27,10 @@ export type DashboardLayoutProps = {
   totals: dashboardData | null;
   chartData: dashboardData[];
   gamingLocations: locations[];
+  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
+  locationAggregates?: Record<string, unknown>[];
+  /** Optional loading flag when aggregation is being fetched externally */
+  aggLoading?: boolean;
   loadingChartData: boolean;
   loadingTopPerforming?: boolean;
   refreshing: boolean;
@@ -59,7 +63,7 @@ export type ChartProps = {
 export type MapPreviewProps = {
   gamingLocations: locations[];
   /** Optional pre-fetched aggregation data to avoid duplicate API calls */
-  locationAggregates?: any[];
+  locationAggregates?: Record<string, unknown>[];
   /** Optional loading flag when aggregation is being fetched externally */
   aggLoading?: boolean;
 };

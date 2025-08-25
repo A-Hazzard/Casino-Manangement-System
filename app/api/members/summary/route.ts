@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build match conditions - start with basic conditions
-    const matchConditions: any = {};
+    const matchConditions: Record<string, unknown> = {};
 
     // Add date filter only if not "all"
     if (dateFilter !== "all") {
-      let dateQuery: any = {};
+      let dateQuery: Record<string, unknown> = {};
       const dateField = filterBy === "lastLogin" ? "lastLogin" : "createdAt";
 
       if (dateFilter === "custom" && startDate && endDate) {
@@ -260,12 +260,12 @@ export async function GET(request: NextRequest) {
     // Calculate summary statistics
     const summaryStats = {
       totalMembers: totalCount,
-      totalLocations: new Set(memberSummary.map((m: any) => m.gamingLocation))
+      totalLocations: new Set(memberSummary.map((m: Record<string, unknown>) => m.gamingLocation))
         .size,
-      recentMembers: memberSummary.filter((m: any) => {
+      recentMembers: memberSummary.filter((m: Record<string, unknown>) => {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(m.createdAt) >= weekAgo;
+        return new Date(m.createdAt as string) >= weekAgo;
       }).length,
     };
 

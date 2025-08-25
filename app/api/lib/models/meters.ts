@@ -29,9 +29,9 @@ const MetersSchema = new Schema(
 );
 
 // Critical indexes for aggregation performance
-MetersSchema.index({ location: 1, createdAt: 1 }); // For location-based queries with date filtering
+MetersSchema.index({ location: 1, readAt: 1 }); // For location-based queries with date filtering
 MetersSchema.index({ machine: 1, readAt: 1 }); // For machine-based queries
-MetersSchema.index({ createdAt: 1 }); // For date range queries
+MetersSchema.index({ readAt: 1 }); // For date range queries
 MetersSchema.index({ location: 1, machine: 1 }); // For location-machine combinations
 
 /**

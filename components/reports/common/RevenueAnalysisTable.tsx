@@ -44,7 +44,7 @@ export default function RevenueAnalysisTable({
     const q = (searchTerm || "").toLowerCase();
     return locations.filter((location) => {
       const name = location.locationName || "";
-      const id = (location as any)?.location || "";
+      const id = (location as Record<string, unknown>)?.location as string || "";
       return (
         (typeof name === "string" && name.toLowerCase().includes(q)) ||
         (typeof id === "string" && id.toLowerCase().includes(q))

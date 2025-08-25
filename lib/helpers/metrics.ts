@@ -184,7 +184,7 @@ function fillMissingIntervals(
       start.setDate(end.getDate() - 6);
     }
 
-    let current = new Date(start);
+    const current = new Date(start);
     while (current <= end) {
       const dayKey = formatISODate(current);
       const existingData = data.find((item) => item.day === dayKey);

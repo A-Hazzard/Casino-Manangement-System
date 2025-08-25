@@ -6,6 +6,7 @@ import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
 // TODO: Import date utilities when implementing date filtering
 // import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { Meters } from "../lib/models/meters";
+import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 
 export async function GET(request: NextRequest) {
   try {
@@ -275,7 +276,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: machine,
+      data: convertResponseToTrinidadTime(machine),
     });
   } catch (error) {
     console.error("Error fetching machine:", error);
@@ -346,7 +347,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: newMachine,
+      data: convertResponseToTrinidadTime(newMachine),
     });
   } catch (error) {
     console.error("Failed to create new machine:", error);
@@ -391,7 +392,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: updatedMachine,
+      data: convertResponseToTrinidadTime(updatedMachine),
     });
   } catch (error) {
     console.error("Error updating machine:", error);

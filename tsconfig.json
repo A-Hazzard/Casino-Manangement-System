@@ -30,7 +30,12 @@
         "./shared/*"
       ]
     },
-    "target": "ES2017"
+    "target": "ES2017",
+    // Strict unused code detection
+    "noUnusedLocals": true,
+    "noUnusedParameters": false, // Allow unused parameters (common in API routes)
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
     "next-env.d.ts",

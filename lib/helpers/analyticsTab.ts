@@ -179,7 +179,7 @@ export const handleAnalyticsExport = async (
       },
     };
 
-    await exportData(analyticsExportData, "pdf");
+    await exportData(analyticsExportData);
     toast.success("Analytics report exported successfully");
   } catch (error) {
     const errorMessage =

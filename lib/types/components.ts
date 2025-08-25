@@ -1,42 +1,9 @@
 // UI Component types
 import type { ExtendedCabinetDetail } from "./pages";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import type { ButtonProps } from "./componentProps";
-import type { MovementRequest } from "@/lib/types/movementRequests";
 import type { MachineMovementRecord } from "@/lib/types/reports";
-import type { Licensee } from "@/lib/types/licensee";
-import type {
-  Location,
-  Cabinet,
-  Firmware,
-  dateRange as DateRange,
-} from "@/lib/types";
-import type { ICollectionReport as CollectionReport } from "@/lib/types/api";
 import type { AggregatedLocation } from "@/lib/types/location";
-
-// Define missing types locally until they are properly exported
-export type ActivityLog = {
-  _id: string;
-  timestamp: Date;
-  actor: {
-    id: string;
-    email: string;
-    role: string;
-  };
-  actionType: string;
-  entityType: string;
-  entity: {
-    id: string;
-    name: string;
-  };
-  changes: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-  description?: string;
-  ipAddress?: string;
-};
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
 export type SmibConfig = {
   firmwareVersion: string;
@@ -140,14 +107,12 @@ export type NewLocationModalProps = {
 export type EditLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  location: Location | null;
   onLocationUpdated?: () => void;
 };
 
 export type DeleteLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  location: Location | null;
   onDelete: () => void;
 };
 
@@ -270,9 +235,9 @@ export type LocationMapProps = {
   showMetrics?: boolean;
   selectedLocationId?: string;
   // Optional pre-aggregated metrics to avoid duplicate API calls
-  aggregates?: any[];
+  aggregates?: Record<string, unknown>[];
   // Two-phase loading props
-  gamingLocations?: any[]; // Basic location data for immediate display
+  gamingLocations?: Record<string, unknown>[]; // Basic location data for immediate display
   gamingLocationsLoading?: boolean; // Loading state for gaming locations
   financialDataLoading?: boolean; // Loading state for financial data
 };
@@ -403,4 +368,28 @@ export type CabinetGridProps = {
   currentPage: number;
   itemsPerPage: number;
   router: AppRouterInstance;
+};
+
+export type ActivityLogModalProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+export type ActivityGroup = {
+  range: string;
+  entries: ProcessedActivityEntry[];
+};
+
+export type ProcessedActivityEntry = {
+  id: string;
+  time: string;
+  type: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  user: {
+    email: string;
+    role: string;
+  };
+  description: React.ReactNode;
+  originalActivity: ActivityLog;
 };

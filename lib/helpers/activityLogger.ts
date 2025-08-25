@@ -9,14 +9,14 @@ export type ActivityResource =
   | "machine"
   | "session";
 
-export interface ActivityLogData {
-  action: ActivityAction;
+export type ActivityLogData = {
+  action: "create" | "update" | "delete" | "login" | "logout";
   resource: ActivityResource;
   resourceId: string;
   resourceName?: string;
   details?: string;
-  previousData?: any;
-  newData?: any;
+  previousData?: Record<string, unknown>;
+  newData?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -69,7 +69,7 @@ export const createActivityLogger = (resource: ActivityResource) => {
     logCreate: (
       resourceId: string,
       resourceName: string,
-      newData: any,
+      newData: Record<string, unknown>,
       details?: string
     ) =>
       logActivity({
@@ -84,8 +84,8 @@ export const createActivityLogger = (resource: ActivityResource) => {
     logUpdate: (
       resourceId: string,
       resourceName: string,
-      previousData: any,
-      newData: any,
+      previousData: Record<string, unknown>,
+      newData: Record<string, unknown>,
       details?: string
     ) =>
       logActivity({
@@ -101,7 +101,7 @@ export const createActivityLogger = (resource: ActivityResource) => {
     logDelete: (
       resourceId: string,
       resourceName: string,
-      previousData: any,
+      previousData: Record<string, unknown>,
       details?: string
     ) =>
       logActivity({

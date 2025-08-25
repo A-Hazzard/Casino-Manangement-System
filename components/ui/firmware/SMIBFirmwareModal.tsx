@@ -20,8 +20,6 @@ import type { SMIBFirmwareModalProps } from "@/lib/types/components";
 export default function SMIBFirmwareModal({
   isOpen,
   onClose,
-  cabinetId,
-  currentFirmware,
   onUploadComplete,
 }: SMIBFirmwareModalProps) {
   const [product, setProduct] = useState("");

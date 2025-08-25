@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 
 type LocationSingleSelectProps = {
   locations: { id: string; name: string; sasEnabled?: boolean }[];

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import { getTimeFilterButtons } from "@/lib/helpers/dashboard";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useReportsStore } from "@/lib/store/reportsStore";
@@ -20,12 +19,25 @@ export default function ReportsDateFilters() {
     setCustomDateRange,
     pendingCustomDateRange,
     setPendingCustomDateRange,
+    loadingChartData,
+    loadingTopPerforming,
+    refreshing,
   } = useDashBoardStore();
 
   const { setDateRange } = useReportsStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const timeFilterButtons = getTimeFilterButtons();
+  const timeFilterButtons: { label: string; value: TimePeriod }[] = [
+    { label: "Today", value: "Today" as TimePeriod },
+    { label: "Yesterday", value: "Yesterday" as TimePeriod },
+    { label: "Last 7 Days", value: "last7days" as TimePeriod },
+    { label: "Last 30 Days", value: "last30days" as TimePeriod },
+    { label: "Custom", value: "Custom" as TimePeriod },
+    { label: "All Time", value: "All Time" as TimePeriod },
+  ];
+
+  // Check if any loading state is active
+  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
 
   /**
    * Apply custom date range to both stores
@@ -99,30 +111,14 @@ export default function ReportsDateFilters() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Desktop: Button layout */}
-      <div className="hidden md:flex flex-wrap items-center gap-2">
-        {timeFilterButtons.map((filter) => (
-          <Button
-            key={filter.value}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              activeMetricsFilter === filter.value
-                ? "bg-buttonActive text-white"
-                : "bg-button text-white hover:bg-button/90"
-            }`}
-            onClick={() => handleFilterClick(filter.value)}
-          >
-            {filter.label}
-          </Button>
-        ))}
-      </div>
-
+    <div className="flex flex-wrap items-center gap-2 w-full">
       {/* Mobile: Select dropdown */}
-      <div className="md:hidden">
+      <div className="w-full md:hidden">
         <select
           value={activeMetricsFilter}
           onChange={(e) => handleFilterClick(e.target.value as TimePeriod)}
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          disabled={isLoading}
         >
           {timeFilterButtons.map((filter) => (
             <option key={filter.value} value={filter.value}>
@@ -132,9 +128,27 @@ export default function ReportsDateFilters() {
         </select>
       </div>
 
+      {/* md and above: Filter buttons */}
+      <div className="hidden md:flex flex-wrap items-center gap-2">
+        {timeFilterButtons.map((filter) => (
+          <Button
+            key={filter.value}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              activeMetricsFilter === filter.value
+                ? "bg-buttonActive text-white"
+                : "bg-button text-white hover:bg-button/90"
+            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => handleFilterClick(filter.value)}
+            disabled={isLoading}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
       {/* Custom Date Picker (both mobile and desktop) */}
-      {showCustomPicker && activeMetricsFilter === "Custom" && (
-        <div className="mt-4">
+      {showCustomPicker && (
+        <div className="mt-4 w-full">
           <ModernDateRangePicker
             value={
               pendingCustomDateRange
