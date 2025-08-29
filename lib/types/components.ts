@@ -393,3 +393,23 @@ export type ProcessedActivityEntry = {
   description: React.ReactNode;
   originalActivity: ActivityLog;
 };
+
+// StackedChart component types
+export type StackedChartProps = {
+  title: string;
+  icon: React.ReactNode;
+  data: Array<{
+    hour: string;
+    [locationId: string]: {
+      handle: number;
+      winLoss: number;
+      jackpot: number;
+      plays: number;
+    } | string;
+  }>;
+  dataKey: "handle" | "winLoss" | "jackpot" | "plays";
+  machines: string[]; // This will contain location IDs
+  colors: string[];
+  formatter: (value: number) => string;
+  locationNames?: Record<string, string>; // Map of location ID to location name
+};

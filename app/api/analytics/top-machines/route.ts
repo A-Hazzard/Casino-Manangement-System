@@ -51,21 +51,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Aggregate top machines for the location
+    // Aggregate top machines for the location using meters collection
     const pipeline = [
       {
         $match: {
           location: locationId,
           readAt: { $gte: start, $lte: end },
-          deletedAt: { $in: [null, new Date(-1)] },
         },
       },
       {
         $group: {
           _id: "$machine",
-          revenue: { $sum: "$gross" },
-          drop: { $sum: "$moneyIn" },
-          cancelledCredits: { $sum: "$moneyOut" },
+          totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+          totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+          totalGamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
           count: { $sum: 1 },
         },
       },
@@ -86,15 +85,16 @@ export async function GET(request: NextRequest) {
       {
         $project: {
           id: "$_id",
-          name: { $ifNull: ["$machineInfo.name", "Unknown Machine"] },
-          revenue: 1,
-          drop: 1,
-          cancelledCredits: 1,
+          name: { $ifNull: ["$machineInfo.serialNumber", "Unknown Machine"] },
+          revenue: { $subtract: ["$totalDrop", "$totalCancelledCredits"] },
+          drop: "$totalDrop",
+          cancelledCredits: "$totalCancelledCredits",
+          gamesPlayed: "$totalGamesPlayed",
           count: 1,
           hold: {
             $cond: [
-              { $gt: ["$drop", 0] },
-              { $multiply: [{ $divide: ["$revenue", "$drop"] }, 100] },
+              { $gt: ["$totalDrop", 0] },
+              { $multiply: [{ $divide: [{ $subtract: ["$totalDrop", "$totalCancelledCredits"] }, "$totalDrop"] }, 100] },
               0,
             ],
           },
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     ];
 
     const topMachines = await db
-      .collection("collectionReports")
+      .collection("meters")
       .aggregate(pipeline)
       .toArray();
 

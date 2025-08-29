@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw } from "lucide-react";
+import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,12 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useReportsStore } from "@/lib/store/reportsStore";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
+
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  handleMachineSort as handleMachineSortHelper,
+  sortEvaluationData as sortEvaluationDataHelper,
+  handleExportMeters as handleExportMetersHelper
+} from "@/lib/helpers/reportsPage";
 import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
@@ -38,20 +43,52 @@ import type {
   MachineStats,
   MachineStatsApiResponse,
 } from "@/shared/types/machines";
+import type {
+  MachineEvaluationData,
+} from "@/lib/types/reports";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
 
 import StatusIcon from "@/components/ui/common/StatusIcon";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
+
+// Sortable table header component
+const SortableHeader = ({ 
+  children, 
+  sortKey, 
+  currentSort, 
+  onSort 
+}: { 
+  children: React.ReactNode; 
+  sortKey: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; 
+  currentSort: { key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; direction: 'asc' | 'desc' }; 
+  onSort: (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => void; 
+}) => {
+  const isActive = currentSort.key === sortKey;
+  
+  return (
+    <th 
+      className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {isActive ? (
+          currentSort.direction === 'asc' ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )
+        ) : (
+          <div className="w-4 h-4 opacity-30">
+            <ChevronUp className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+    </th>
+  );
+};
+
 
 
 export default function MachinesTab() {
@@ -70,7 +107,7 @@ export default function MachinesTab() {
   // Loading states for each section
   const [statsLoading, setStatsLoading] = useState(true);
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
+
   const [offlineLoading, setOfflineLoading] = useState(false);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,14 +122,16 @@ export default function MachinesTab() {
     hasPrevPage: false,
   });
 
-  // Pagination for performance analysis tab
-  const [analysisPagination, setAnalysisPagination] = useState({
-    page: 1,
-    limit: 10,
-    totalCount: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
+
+
+
+  // Sorting state for machine overview table
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn';
+    direction: 'asc' | 'desc';
+  }>({
+    key: 'netWin',
+    direction: 'desc'
   });
 
   // Pagination for offline machines tab
@@ -105,29 +144,39 @@ export default function MachinesTab() {
     hasPrevPage: false,
   });
 
+  // Sorting function for machine overview table
+  const handleSort = (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => {
+    handleMachineSortHelper(key, setSortConfig);
+  };
+
+
+
+  // Sort function for evaluation data (different structure)
+  const sortEvaluationData = (machines: typeof evaluationData) => {
+    return sortEvaluationDataHelper(machines, sortConfig);
+  };
+
   // Store and filter states
-  const { selectedDateRange, setIsMachineComparisonModalOpen } =
-    useReportsStore();
-  const { setMachineComparisons } = useAnalyticsDataStore();
+  const { selectedDateRange } = useReportsStore();
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // Search states for different tabs
   const [searchTerm, setSearchTerm] = useState("");
-  const [analysisSearchTerm, setAnalysisSearchTerm] = useState("");
+
   const [offlineSearchTerm, setOfflineSearchTerm] = useState("");
   const [evaluationSearchTerm, setEvaluationSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState("all");
+
   const [onlineStatusFilter, setOnlineStatusFilter] = useState("all"); // New filter for online/offline
 
-  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+
   const [activeTab, setActiveTab] = useState("overview");
 
   // Location selection states for each tab (single location selection)
   const [overviewSelectedLocation, setOverviewSelectedLocation] = useState<string>("all");
-  const [comparisonSelectedLocation, setComparisonSelectedLocation] = useState<string>("all");
-  const [evaluationSelectedLocation, setEvaluationSelectedLocation] = useState<string>("all");
+
+  const [evaluationSelectedLocation, setEvaluationSelectedLocation] = useState<string>("");
   const [offlineSelectedLocation, setOfflineSelectedLocation] = useState<string>("all");
 
   // Fetch locations data
@@ -194,7 +243,7 @@ export default function MachinesTab() {
 
   // Fetch overview machines (paginated)
   const fetchOverviewMachines = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, search: string = "") => {
       try {
         setOverviewLoading(true);
         setError(null);
@@ -222,6 +271,11 @@ export default function MachinesTab() {
           params.onlineStatus = onlineStatusFilter;
         }
 
+        // Add search parameter if provided
+        if (search && search.trim()) {
+          params.search = search.trim();
+        }
+
         const response = await axios.get<MachinesApiResponse>(
           "/api/reports/machines",
           { params }
@@ -245,7 +299,7 @@ export default function MachinesTab() {
   // Fetch all machines for performance analysis (loads on tab switch)
   const fetchAllMachines = useCallback(async () => {
     try {
-      setAnalysisLoading(true);
+
       const params: Record<string, string> = {
         type: "all",
       };
@@ -255,9 +309,7 @@ export default function MachinesTab() {
       }
 
       // Apply location filter based on active tab
-      if (activeTab === "comparison" && comparisonSelectedLocation && comparisonSelectedLocation !== "all") {
-        params.locationId = comparisonSelectedLocation;
-      } else if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "all") {
+      if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "all" && evaluationSelectedLocation !== "") {
         params.locationId = evaluationSelectedLocation;
       }
 
@@ -281,9 +333,9 @@ export default function MachinesTab() {
       console.error("Failed to fetch all machines:", error);
       toast.error("Failed to load performance analysis data");
     } finally {
-      setAnalysisLoading(false);
+
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, comparisonSelectedLocation, evaluationSelectedLocation]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, evaluationSelectedLocation]);
 
   // Fetch offline machines (loads on tab switch)
   const fetchOfflineMachines = useCallback(async () => {
@@ -306,9 +358,10 @@ export default function MachinesTab() {
         params.endDate = selectedDateRange.end.toISOString();
       }
 
-      if (onlineStatusFilter !== "all") {
-        params.onlineStatus = onlineStatusFilter;
-      }
+      // Don't pass onlineStatus for offline machines - the API handles offline filtering internally
+      // if (onlineStatusFilter !== "all") {
+      //   params.onlineStatus = onlineStatusFilter;
+      // }
 
       console.warn(`🔍 Fetching offline machines with params: ${JSON.stringify(params)}`);
 
@@ -325,68 +378,9 @@ export default function MachinesTab() {
     } finally {
       setOfflineLoading(false);
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, offlineSelectedLocation]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, offlineSelectedLocation]);
 
-  // Backend search fallback when frontend search finds no results
-  const performBackendSearch = useCallback(
-    async (searchTerm: string, type: string = "overview") => {
-      try {
-        const params: Record<string, string> = {
-          type,
-          page: "1",
-          limit: "10",
-          search: searchTerm,
-        };
 
-        if (selectedLicencee && selectedLicencee !== "all") {
-          params.licencee = selectedLicencee;
-        }
-
-        if (selectedDateRange?.start && selectedDateRange?.end) {
-          params.startDate = selectedDateRange.start.toISOString();
-          params.endDate = selectedDateRange.end.toISOString();
-        }
-
-        if (onlineStatusFilter !== "all") {
-          params.onlineStatus = onlineStatusFilter;
-        }
-
-        const response = await axios.get<MachinesApiResponse>(
-          "/api/reports/machines",
-          { params }
-        );
-        const { data: machinesData, pagination: paginationData } =
-          response.data;
-
-        if (type === "overview") {
-          setOverviewMachines(machinesData);
-          setPagination(paginationData);
-        } else if (type === "all") {
-          setAllMachines(machinesData);
-          setAnalysisPagination((prev) => ({
-            ...prev,
-            totalCount: paginationData.totalCount,
-            totalPages: paginationData.totalPages,
-            hasNextPage: paginationData.hasNextPage,
-            hasPrevPage: paginationData.hasPrevPage,
-          }));
-        } else if (type === "offline") {
-          setOfflineMachines(machinesData);
-          setOfflinePagination((prev) => ({
-            ...prev,
-            totalCount: paginationData.totalCount,
-            totalPages: paginationData.totalPages,
-            hasNextPage: paginationData.hasNextPage,
-            hasPrevPage: paginationData.hasPrevPage,
-          }));
-        }
-      } catch (error) {
-        console.error("Failed to perform backend search:", error);
-        toast.error("Backend search failed");
-      }
-    },
-    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter]
-  );
 
   // Handle search with backend fallback for overview tab
   const handleSearchChange = useCallback(
@@ -399,43 +393,16 @@ export default function MachinesTab() {
         return;
       }
 
-      // Perform frontend search first
-      const frontendFiltered = overviewMachines.filter((machine) => {
-        const matchesSearch =
-          (machine.machineName || "")
-            .toLowerCase()
-            .includes(value.toLowerCase()) ||
-          (machine.gameTitle || "")
-            .toLowerCase()
-            .includes(value.toLowerCase()) ||
-          (machine.manufacturer || "")
-            .toLowerCase()
-            .includes(value.toLowerCase());
-        return matchesSearch;
-      });
-
-      // If frontend search finds results, use them
-      if (frontendFiltered.length > 0) {
-        return;
-      }
-
-      // If frontend search finds no results and search term is long enough, try backend search
-      if (value.length > 2) {
-        await performBackendSearch(value, "overview");
-      }
+      // Use backend search directly for better results
+      await fetchOverviewMachines(1, value.trim());
     },
-    [overviewMachines, fetchOverviewMachines, performBackendSearch]
+    [fetchOverviewMachines]
   );
 
-  // Handle analysis search change
-  const handleAnalysisSearchChange = useCallback((value: string) => {
-    setAnalysisSearchTerm(value);
-  }, []);
+
 
   // Handle evaluation search change
-  const handleEvaluationSearchChange = useCallback((value: string) => {
-    setEvaluationSearchTerm(value);
-  }, []);
+
 
   // Handle offline search change
   const handleOfflineSearchChange = useCallback((value: string) => {
@@ -444,18 +411,10 @@ export default function MachinesTab() {
 
   // Handle pagination for overview tab
   const handlePageChange = (newPage: number) => {
-    fetchOverviewMachines(newPage);
+    fetchOverviewMachines(newPage, searchTerm);
   };
 
-  // Handle pagination for analysis tab
-  const handleAnalysisPageChange = (newPage: number) => {
-    setAnalysisPagination((prev) => ({
-      ...prev,
-      page: newPage,
-      hasNextPage: newPage < prev.totalPages,
-      hasPrevPage: newPage > 1,
-    }));
-  };
+
 
   // Handle pagination for offline tab
   const handleOfflinePageChange = (newPage: number) => {
@@ -467,242 +426,25 @@ export default function MachinesTab() {
     }));
   };
 
-  const handleMachineSelect = (machineId: string) => {
-    setSelectedMachineIds((prev) =>
-      prev.includes(machineId)
-        ? prev.filter((id) => id !== machineId)
-        : [...prev, machineId]
-    );
-  };
+
 
   const handleExportMeters = async () => {
-    try {
-      // Ensure we have data to export
-      let machinesToExport: MachineData[] = [];
-      
-      if (activeTab === "overview") {
-        if (overviewMachines.length === 0) {
-          toast.error("No overview data available to export. Please wait for data to load.");
-          return;
-        }
-        machinesToExport = overviewMachines;
-      } else if (activeTab === "comparison") {
-        if (allMachines.length === 0) {
-          toast.error("No comparison data available to export. Please wait for data to load.");
-          return;
-        }
-        machinesToExport = allMachines;
-      } else if (activeTab === "offline") {
-        if (offlineMachines.length === 0) {
-          toast.error("No offline data available to export. Please wait for data to load.");
-          return;
-        }
-        machinesToExport = offlineMachines;
-      } else {
-        // Default to overview data
-        if (overviewMachines.length === 0) {
-          toast.error("No data available to export. Please wait for data to load.");
-          return;
-        }
-        machinesToExport = overviewMachines;
-      }
-
-      const metersData = {
-        title: "Machines Export Report",
-        subtitle: `Machine performance data - ${
-          activeMetricsFilter === "Custom" &&
-          customDateRange?.startDate &&
-          customDateRange?.endDate
-            ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
-            : activeMetricsFilter
-        }`,
-        headers: [
-          "Machine ID",
-          "Machine Name",
-          "Game Title",
-          "Location",
-          "Manufacturer",
-          "Type",
-          "Net Win",
-          "Drop",
-          "Cancelled Credits",
-          "Jackpot",
-          "Games Played",
-          "Hold %",
-          "Status",
-          "SAS Enabled",
-        ],
-        data: machinesToExport.map((machine) => [
-          machine.machineId,
-          machine.machineName,
-          machine.gameTitle,
-          machine.locationName,
-          machine.manufacturer,
-          "Slot", // Default type since it's not in the data
-          machine.netWin.toLocaleString(),
-          machine.drop.toLocaleString(),
-          machine.totalCancelledCredits.toLocaleString(),
-          "0", // Jackpot not available in current data
-          machine.gamesPlayed.toLocaleString(),
-          machine.theoreticalHold?.toFixed(1) + "%" || "0.0%",
-          machine.isOnline ? "Online" : "Offline",
-          machine.isSasEnabled ? "Yes" : "No",
-        ]),
-        summary: [
-          {
-            label: "Total Machines",
-            value: machinesToExport.length.toString(),
-          },
-          {
-            label: "Online Machines",
-            value: machinesToExport.filter((m) => m.isOnline).length.toString(),
-          },
-          {
-            label: "Offline Machines",
-            value: machinesToExport
-              .filter((m) => !m.isOnline)
-              .length.toString(),
-          },
-          {
-            label: "Total Net Win",
-            value: `$${machinesToExport
-              .reduce((sum, m) => sum + (m.netWin || 0), 0)
-              .toLocaleString()}`,
-          },
-          {
-            label: "Total Drop",
-            value: `$${machinesToExport
-              .reduce((sum, m) => sum + (m.drop || 0), 0)
-              .toLocaleString()}`,
-          },
-        ],
-        metadata: {
-          generatedBy: "Evolution1 CMS - Machines Export",
-          generatedAt: new Date().toISOString(),
-          dateRange:
-            activeMetricsFilter === "Custom" &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
-              ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
-              : activeMetricsFilter,
-        },
-      };
-
-      await exportData(metersData);
-      toast.success("Machines data exported successfully");
-    } catch (error) {
-      console.error("Export failed:", error);
-      toast.error("Failed to export machines data");
-    }
-  };
-
-  const handleCompareSelected = () => {
-    if (selectedMachineIds.length < 2) {
-      toast.error("Please select at least 2 machines to compare");
-      return;
-    }
-
-    const selectedMachines = overviewMachines.filter((machine) =>
-      selectedMachineIds.includes(machine.machineId)
+    await handleExportMetersHelper(
+      activeTab,
+      overviewMachines,
+      offlineMachines,
+      activeMetricsFilter,
+      customDateRange,
+      exportData,
+      toast
     );
-
-    // Transform MachineData to GamingMachine format
-    const gamingMachines = selectedMachines.map((machine) => ({
-      id: machine.machineId,
-      gameTitle: machine.gameTitle,
-      manufacturer: machine.manufacturer,
-      locationId: machine.locationId,
-      locationName: machine.locationName,
-      totalHandle: machine.coinIn,
-      totalWin: machine.netWin,
-      actualHold: machine.actualHold || 0,
-      gamesPlayed: machine.gamesPlayed,
-      isActive: machine.isOnline,
-      installDate: machine.installDate || "",
-      lastActivity: machine.lastActivity,
-      avgBet: machine.avgBet,
-      averageWager: machine.averageWager,
-      coinIn: machine.coinIn,
-      coinOut: machine.coinOut,
-      totalCancelledCredits: machine.totalCancelledCredits,
-      totalHandPaidCancelledCredits: machine.totalHandPaidCancelledCredits || 0,
-      totalWonCredits: machine.totalWonCredits || 0,
-      drop: machine.drop,
-      jackpot: machine.jackpot,
-      currentCredits: machine.currentCredits || 0,
-      gamesWon: machine.gamesWon || 0,
-    }));
-
-    setMachineComparisons(gamingMachines);
-    setIsMachineComparisonModalOpen(true);
-    toast.success(`Comparing ${selectedMachineIds.length} selected machines`);
   };
 
-  // Filter machines based on search and filters (for overview tab)
-  const filteredMachines = useMemo(() => {
-    const filtered = overviewMachines
-      .filter((machine) => {
-        const matchesSearch =
-          (machine.machineName || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (machine.gameTitle || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (machine.manufacturer || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
 
-                const matchesLocation =
-          overviewSelectedLocation === "all" ||
-          overviewSelectedLocation === machine.locationId;
 
-        return matchesSearch && matchesLocation;
-      })
-      .map((machine) => ({
-        ...machine,
-        // Calculate derived fields on frontend for better performance
-        actualHold:
-          machine.coinIn > 0
-            ? ((machine.coinIn - machine.coinOut) / machine.coinIn) * 100
-            : 0,
-        totalWonCredits: machine.coinOut || 0,
-        currentCredits: 0, // Default value since not provided by API
-        gamesWon: 0, // Default value since not provided by API
-      }));
 
-    return filtered;
-  }, [overviewMachines, searchTerm, overviewSelectedLocation]);
 
-  // Filter analysis data based on search
-  const filteredAnalysisData = useMemo(() => {
-    const filtered = allMachines.filter((machine) => {
-      const matchesSearch =
-        (machine.machineName || "")
-          .toLowerCase()
-          .includes(analysisSearchTerm.toLowerCase()) ||
-        (machine.serialNumber || "")
-          .toLowerCase()
-          .includes(analysisSearchTerm.toLowerCase()) ||
-        (machine.machineId || "")
-          .toLowerCase()
-          .includes(analysisSearchTerm.toLowerCase()) ||
-        (machine.gameTitle || "")
-          .toLowerCase()
-          .includes(analysisSearchTerm.toLowerCase()) ||
-        (machine.manufacturer || "")
-          .toLowerCase()
-          .includes(analysisSearchTerm.toLowerCase());
 
-            const matchesLocation =
-        comparisonSelectedLocation === "all" ||
-        comparisonSelectedLocation === machine.locationId;
-
-      return matchesSearch && matchesLocation;
-    });
-
-    return filtered;
-  }, [allMachines, analysisSearchTerm, comparisonSelectedLocation]);
 
   // Filter offline data based on search
   const filteredOfflineData = useMemo(() => {
@@ -739,14 +481,7 @@ export default function MachinesTab() {
     return "poor";
   };
 
-  const getPerformanceColor = (holdDifference: number) => {
-    if (holdDifference >= 1)
-      return "bg-green-100 text-green-800 border-green-200";
-    if (holdDifference >= 0) return "bg-blue-100 text-blue-800 border-blue-200";
-    if (holdDifference >= -1)
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    return "bg-red-100 text-red-800 border-red-200";
-  };
+
 
   const formatOfflineDuration = (hours: number) => {
     if (hours === 0) return "Less than 1 hour";
@@ -778,10 +513,10 @@ export default function MachinesTab() {
   };
 
   // Real evaluation data from allMachines
-  const evaluationData = useMemo(() => {
+  const evaluationData = useMemo((): MachineEvaluationData[] => {
     return allMachines.map((machine) => {
-      const theoreticalHold = machine.theoreticalHold || 85;
-      const actualHold = machine.actualHold || 87.5;
+      const theoreticalHold = machine.theoreticalHold || 0;
+      const actualHold = machine.actualHold || 0;
       const holdDifference = actualHold - theoreticalHold;
 
       return {
@@ -789,6 +524,9 @@ export default function MachinesTab() {
         serialNumber:
           (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
           (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+          (typeof (machine as Record<string, unknown>).custom === "object" && 
+           typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
+           (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
           machine.machineId,
         machineName: machine.machineName,
         locationName: machine.locationName,
@@ -800,6 +538,9 @@ export default function MachinesTab() {
         holdDifference,
         performanceRating: getPerformanceRating(holdDifference),
         netWin: machine.netWin || 0,
+        gross: machine.gross || 0,
+        drop: machine.drop || 0,
+        coinIn: machine.coinIn || 0,
         gamesPlayed: machine.gamesPlayed || 0,
         avgBet: machine.avgBet || 0,
       };
@@ -831,86 +572,9 @@ export default function MachinesTab() {
     });
   }, [evaluationData, evaluationSearchTerm, evaluationSelectedLocation]);
 
-  // Generate real chart data from evaluation data
-  const evaluationChartData = useMemo(() => {
-    if (filteredEvaluationData.length === 0) return [];
 
-    // Group by manufacturer
-    const manufacturerData = filteredEvaluationData.reduce((acc, machine) => {
-      const manufacturer = machine.manufacturer || "Unknown";
-      if (!acc[manufacturer]) {
-        acc[manufacturer] = {
-          name: manufacturer,
-          machines: 0,
-          totalNetWin: 0,
-          totalGamesPlayed: 0,
-          avgHold: 0,
-          holdValues: [],
-        };
-      }
-      (acc[manufacturer] as Record<string, unknown>).machines = ((acc[manufacturer] as Record<string, unknown>).machines as number) + 1;
-      (acc[manufacturer] as Record<string, unknown>).totalNetWin = ((acc[manufacturer] as Record<string, unknown>).totalNetWin as number) + (machine.netWin as number);
-      (acc[manufacturer] as Record<string, unknown>).totalGamesPlayed = ((acc[manufacturer] as Record<string, unknown>).totalGamesPlayed as number) + (machine.gamesPlayed as number);
-      ((acc[manufacturer] as Record<string, unknown>).holdValues as number[]).push(machine.actualHold as number);
-      return acc;
-    }, {} as Record<string, unknown>);
 
-    // Calculate averages and format data
-    return Object.values(manufacturerData).map((data) => {
-      const typedData = data as Record<string, unknown>;
-      return {
-      name: typedData.name,
-      machines: typedData.machines,
-      totalNetWin: typedData.totalNetWin,
-      totalGamesPlayed: typedData.totalGamesPlayed,
-      avgHold: (typedData.holdValues as number[]).length > 0 
-        ? (typedData.holdValues as number[]).reduce((sum: number, val: number) => sum + val, 0) / (typedData.holdValues as number[]).length 
-        : 0,
-    };
-    });
-  }, [filteredEvaluationData]);
 
-  // Generate games performance chart data
-  const gamesPerformanceData = useMemo(() => {
-    if (filteredEvaluationData.length === 0) return [];
-
-    // Group by game title
-    const gameData = filteredEvaluationData.reduce((acc, machine) => {
-      const gameTitle = machine.gameTitle || "Unknown";
-      if (!acc[gameTitle]) {
-        acc[gameTitle] = {
-          name: gameTitle,
-          machines: 0,
-          totalNetWin: 0,
-          totalGamesPlayed: 0,
-          avgHold: 0,
-          holdValues: [],
-        };
-      }
-      (acc[gameTitle] as Record<string, unknown>).machines = ((acc[gameTitle] as Record<string, unknown>).machines as number) + 1;
-      (acc[gameTitle] as Record<string, unknown>).totalNetWin = ((acc[gameTitle] as Record<string, unknown>).totalNetWin as number) + (machine.netWin as number);
-      (acc[gameTitle] as Record<string, unknown>).totalGamesPlayed = ((acc[gameTitle] as Record<string, unknown>).totalGamesPlayed as number) + (machine.gamesPlayed as number);
-      ((acc[gameTitle] as Record<string, unknown>).holdValues as number[]).push(machine.actualHold as number);
-      return acc;
-    }, {} as Record<string, unknown>);
-
-    // Calculate averages and format data, limit to top 5 games
-    return Object.values(gameData)
-      .map((data) => {
-        const typedData = data as Record<string, unknown>;
-        return {
-        name: typedData.name,
-        machines: typedData.machines,
-        totalNetWin: typedData.totalNetWin,
-        totalGamesPlayed: typedData.totalGamesPlayed,
-        avgHold: (typedData.holdValues as number[]).length > 0 
-          ? (typedData.holdValues as number[]).reduce((sum: number, val: number) => sum + val, 0) / (typedData.holdValues as number[]).length 
-          : 0,
-        };
-      })
-      .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.totalNetWin as number) - (a.totalNetWin as number))
-      .slice(0, 5);
-  }, [filteredEvaluationData]);
 
   // Load data on component mount and when dependencies change
   useEffect(() => {
@@ -918,7 +582,7 @@ export default function MachinesTab() {
       // Set loading states for all tabs
       setStatsLoading(true);
       setOverviewLoading(true);
-      setAnalysisLoading(true);
+
       setOfflineLoading(true);
       setEvaluationLoading(true);
 
@@ -938,7 +602,7 @@ export default function MachinesTab() {
         // Clear loading states
         setStatsLoading(false);
         setOverviewLoading(false);
-        setAnalysisLoading(false);
+  
         setOfflineLoading(false);
         setEvaluationLoading(false);
       }
@@ -959,8 +623,7 @@ export default function MachinesTab() {
   useEffect(() => {
     if (activeTab === "overview") {
       setOverviewLoading(true);
-    } else if (activeTab === "comparison") {
-      setAnalysisLoading(true);
+
     } else if (activeTab === "evaluation") {
       setEvaluationLoading(true);
     } else if (activeTab === "offline") {
@@ -971,15 +634,15 @@ export default function MachinesTab() {
   // Effects to trigger data refetch when location selections change
   useEffect(() => {
     if (activeTab === "overview" && overviewSelectedLocation) {
-      fetchOverviewMachines(1);
+      fetchOverviewMachines(1, searchTerm);
     }
-  }, [overviewSelectedLocation, activeTab, fetchOverviewMachines]);
+  }, [overviewSelectedLocation, activeTab, fetchOverviewMachines, searchTerm]);
 
   useEffect(() => {
-    if ((activeTab === "comparison" || activeTab === "evaluation") && (comparisonSelectedLocation || evaluationSelectedLocation)) {
+    if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "") {
       fetchAllMachines();
     }
-  }, [comparisonSelectedLocation, evaluationSelectedLocation, activeTab, fetchAllMachines]);
+  }, [evaluationSelectedLocation, activeTab, fetchAllMachines]);
 
   useEffect(() => {
     if (activeTab === "offline" && offlineSelectedLocation) {
@@ -992,9 +655,9 @@ export default function MachinesTab() {
     async (value: string) => {
       setOnlineStatusFilter(value);
       setOverviewLoading(true);
-      await fetchOverviewMachines(1);
+      await fetchOverviewMachines(1, searchTerm);
     },
-    [fetchOverviewMachines]
+    [fetchOverviewMachines, searchTerm]
   );
 
   // Handle machine edit
@@ -1074,17 +737,11 @@ export default function MachinesTab() {
       if (tab === "overview") {
         setOverviewLoading(true);
         try {
-          await fetchOverviewMachines(1);
+          await fetchOverviewMachines(1, searchTerm);
         } finally {
           setOverviewLoading(false);
         }
-      } else if (tab === "comparison") {
-        setAnalysisLoading(true);
-        try {
-          await fetchAllMachines();
-        } finally {
-          setAnalysisLoading(false);
-        }
+
       } else if (tab === "evaluation") {
         setEvaluationLoading(true);
         try {
@@ -1101,7 +758,7 @@ export default function MachinesTab() {
         }
       }
     },
-    [fetchOverviewMachines, fetchAllMachines, fetchOfflineMachines, router, pathname, searchParams]
+    [fetchOverviewMachines, fetchAllMachines, fetchOfflineMachines, router, pathname, searchParams, searchTerm]
   );
 
   // Initialize activeTab from URL
@@ -1115,46 +772,7 @@ export default function MachinesTab() {
 
 
 
-  // Performance analysis data with pagination
-  const comparisonData = useMemo(() => {
-    const allComparisonData = filteredAnalysisData
-      .map((machine) => {
-        const actualHold =
-          machine.coinIn > 0
-            ? ((machine.coinIn - machine.coinOut) / machine.coinIn) * 100
-            : 0;
-        const theoreticalHold = machine.theoreticalHold || 0;
-        const holdDifference = actualHold - theoreticalHold;
 
-        return {
-          ...machine,
-          actualHold,
-          theoreticalHold,
-          holdDifference,
-          performanceRating: getPerformanceRating(holdDifference),
-          performanceColor: getPerformanceColor(holdDifference),
-        };
-      })
-      .sort((a, b) => b.holdDifference - a.holdDifference);
-
-    // Update pagination info
-    const totalCount = allComparisonData.length;
-    const totalPages = Math.ceil(totalCount / analysisPagination.limit);
-    const hasNextPage = analysisPagination.page < totalPages;
-    const hasPrevPage = analysisPagination.page > 1;
-    setAnalysisPagination((prev) => ({
-      ...prev,
-      totalCount,
-      totalPages,
-      hasNextPage,
-      hasPrevPage,
-    }));
-
-    // Return paginated data
-    const startIndex = (analysisPagination.page - 1) * analysisPagination.limit;
-    const endIndex = startIndex + analysisPagination.limit;
-    return allComparisonData.slice(startIndex, endIndex);
-  }, [filteredAnalysisData, analysisPagination.page, analysisPagination.limit]);
 
   // Offline machines with duration calculation and pagination
   const offlineMachinesWithDuration = useMemo(() => {
@@ -1195,6 +813,21 @@ export default function MachinesTab() {
     return allOfflineMachines.slice(startIndex, endIndex);
   }, [filteredOfflineData, offlinePagination.page, offlinePagination.limit]);
 
+  // Calculate derived fields for overview machines (backend handles filtering)
+  const processedOverviewMachines = useMemo(() => {
+    return overviewMachines.map((machine) => ({
+      ...machine,
+      // Calculate derived fields on frontend for better performance
+      actualHold:
+        machine.coinIn > 0
+          ? ((machine.coinIn - machine.coinOut) / machine.coinIn) * 100
+          : 0,
+      totalWonCredits: machine.coinOut || 0,
+      currentCredits: 0, // Default value since not provided by API
+      gamesWon: 0, // Default value since not provided by API
+    }));
+  }, [overviewMachines]);
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -1207,7 +840,7 @@ export default function MachinesTab() {
           </h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button
-            onClick={() => fetchOverviewMachines(1)}
+            onClick={() => fetchOverviewMachines(1, searchTerm)}
             className="bg-buttonActive hover:bg-buttonActive/90"
           >
             Try Again
@@ -1256,7 +889,7 @@ export default function MachinesTab() {
           <>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words leading-tight">
+                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalGross)}`}>
                   ${machineStats.totalGross.toLocaleString()}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
@@ -1266,7 +899,7 @@ export default function MachinesTab() {
             </Card>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words leading-tight">
+                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalDrop)}`}>
                   ${machineStats.totalDrop.toLocaleString()}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
@@ -1276,7 +909,7 @@ export default function MachinesTab() {
             </Card>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words leading-tight">
+                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalCancelledCredits)}`}>
                   ${machineStats.totalCancelledCredits.toLocaleString()}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
@@ -1305,28 +938,22 @@ export default function MachinesTab() {
         className="space-y-4"
       >
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        <TabsList className="hidden md:grid w-full grid-cols-3 mb-10 bg-gray-100 p-3 rounded-xl shadow-sm">
           <TabsTrigger
             value="overview"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 bg-white rounded-lg px-6 py-4 text-sm font-semibold transition-all duration-200 hover:bg-gray-50 hover:shadow-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
-            value="comparison"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
-          >
-            Performance Analysis
-          </TabsTrigger>
-          <TabsTrigger
             value="evaluation"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 bg-white rounded-lg px-6 py-4 text-sm font-semibold transition-all duration-200 hover:bg-gray-50 hover:shadow-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105"
           >
             Evaluation
           </TabsTrigger>
           <TabsTrigger
             value="offline"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 bg-white rounded-lg px-6 py-4 text-sm font-semibold transition-all duration-200 hover:bg-gray-50 hover:shadow-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105"
           >
             Offline Machines
           </TabsTrigger>
@@ -1340,7 +967,7 @@ export default function MachinesTab() {
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
           >
             <option value="overview">Overview</option>
-            <option value="comparison">Performance Analysis</option>
+            {/* <option value="comparison">Performance Analysis</option> */}
             <option value="evaluation">Evaluation</option>
             <option value="offline">Offline Machines</option>
           </select>
@@ -1382,7 +1009,7 @@ export default function MachinesTab() {
               </SelectContent>
             </Select>
             <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={() => fetchOverviewMachines(1)}>
+              <Button variant="outline" size="sm" onClick={() => fetchOverviewMachines(1, searchTerm)}>
                 <RefreshCw className="h-4 w-4 mr-2" /> Refresh
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportMeters}>
@@ -1397,38 +1024,6 @@ export default function MachinesTab() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <CardTitle>Machine Performance</CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCompareSelected}
-                    disabled={selectedMachineIds.length < 2}
-                    className="flex-shrink-0"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Compare Selected</span>
-                    <span className="sm:hidden">Compare</span>
-                    <span className="ml-1">({selectedMachineIds.length})</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportMeters}
-                    className="flex-shrink-0"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Export Data</span>
-                    <span className="sm:hidden">Export</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchOverviewMachines(1)}
-                    className="flex-shrink-0"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Refresh</span>
-                    <span className="sm:hidden">Refresh</span>
-                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -1448,9 +1043,7 @@ export default function MachinesTab() {
                       <table className="w-full">
                           <thead className="border-b bg-muted/50">
                             <tr>
-                              <th className="text-left p-3 font-medium">
-                                Select
-                              </th>
+                              {/* Select column removed */}
                               <th className="text-left p-3 font-medium">
                                 Machine
                               </th>
@@ -1461,7 +1054,7 @@ export default function MachinesTab() {
                                 Type
                               </th>
                               <th className="text-left p-3 font-medium">
-                                Net Win
+                                Gross
                               </th>
                               <th className="text-left p-3 font-medium">
                                 Drop
@@ -1481,22 +1074,13 @@ export default function MachinesTab() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredMachines.length > 0 ? (
-                              filteredMachines.map((machine) => (
+                            {processedOverviewMachines.length > 0 ? (
+                              processedOverviewMachines.map((machine) => (
                                 <tr
                                   key={machine.machineId}
                                   className="border-b hover:bg-muted/30"
                                 >
-                                  <td className="p-3">
-                                    <Checkbox
-                                      checked={selectedMachineIds.includes(
-                                        machine.machineId
-                                      )}
-                                      onCheckedChange={() =>
-                                        handleMachineSelect(machine.machineId)
-                                      }
-                                    />
-                                  </td>
+                                  {/* Select column data removed */}
                                   <td className="p-3">
                                     <div>
                                       <div className="font-medium">
@@ -1507,6 +1091,9 @@ export default function MachinesTab() {
                                         {
                                           (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
                                             (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+                                            (typeof (machine as Record<string, unknown>).custom === "object" && 
+                                             typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
+                                             (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
                                             machine.machineId
                                         }
                                       </div>
@@ -1577,20 +1164,11 @@ export default function MachinesTab() {
 
                   {/* Mobile Card View */}
                   <div className="md:hidden space-y-4">
-                    {filteredMachines.length > 0 ? (
-                      filteredMachines.map((machine) => (
+                    {processedOverviewMachines.length > 0 ? (
+                      processedOverviewMachines.map((machine) => (
                         <Card key={machine.machineId} className="p-4">
                           <div className="flex items-start justify-between mb-3 min-w-0">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <Checkbox
-                                checked={selectedMachineIds.includes(
-                                  machine.machineId
-                                )}
-                                onCheckedChange={() =>
-                                  handleMachineSelect(machine.machineId)
-                                }
-                                className="flex-shrink-0"
-                              />
                               <div className="min-w-0 flex-1">
                                 <h4 className="font-medium text-sm truncate">
                                   {machine.machineName || "Unknown"}
@@ -1600,6 +1178,9 @@ export default function MachinesTab() {
                                   {
                                     (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
                                       (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+                                      (typeof (machine as Record<string, unknown>).custom === "object" && 
+                                       typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
+                                       (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
                                       machine.machineId
                                   }
                                 </p>
@@ -1637,11 +1218,11 @@ export default function MachinesTab() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Net Win:</span>
-                              <span className="font-medium text-green-600">${(machine.netWin || 0).toLocaleString()}</span>
+                              <span className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>${(machine.netWin || 0).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Drop:</span>
-                              <span className="font-medium text-yellow-600">${(machine.drop || 0).toLocaleString()}</span>
+                              <span className={`font-medium ${getFinancialColorClass(machine.drop)}`}>${(machine.drop || 0).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Hold %:</span>
@@ -1670,7 +1251,7 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Net Win:
                               </span>
-                              <p className="text-green-600 font-medium">
+                              <p className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
                                 ${(machine.netWin || 0).toLocaleString()}
                               </p>
                             </div>
@@ -1678,7 +1259,7 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Drop:
                               </span>
-                              <p className="text-yellow-600 font-medium">
+                              <p className={`font-medium ${getFinancialColorClass(machine.drop)}`}>
                                 ${(machine.drop || 0).toLocaleString()}
                               </p>
                             </div>
@@ -1706,37 +1287,139 @@ export default function MachinesTab() {
                     )}
                   </div>
 
-                  {/* Pagination */}
+                  {/* Pagination - Mobile Responsive */}
                   {pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="text-sm text-muted-foreground">
-                        Showing {(pagination.page - 1) * pagination.limit + 1}{" "}
-                        to{" "}
-                        {Math.min(
-                          pagination.page * pagination.limit,
-                          pagination.totalCount
-                        )}{" "}
-                        of {pagination.totalCount} machines
+                    <>
+                      {/* Mobile Pagination */}
+                      <div className="flex flex-col space-y-3 mt-6 sm:hidden">
+                        <div className="text-xs text-gray-600 text-center">
+                          Page {pagination.page} of {pagination.totalPages} ({pagination.totalCount} machines)
+                        </div>
+                        <div className="flex items-center justify-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(1)}
+                            disabled={pagination.page === 1}
+                            className="px-2 py-1 text-xs"
+                          >
+                            ««
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={!pagination.hasPrevPage}
+                            className="px-2 py-1 text-xs"
+                          >
+                            ‹
+                          </Button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-600">Page</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={pagination.totalPages}
+                              value={pagination.page}
+                              onChange={(e) => {
+                                let val = Number(e.target.value);
+                                if (isNaN(val)) val = 1;
+                                if (val < 1) val = 1;
+                                if (val > pagination.totalPages) val = pagination.totalPages;
+                                handlePageChange(val);
+                              }}
+                              className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                              aria-label="Page number"
+                            />
+                            <span className="text-xs text-gray-600">of {pagination.totalPages}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={!pagination.hasNextPage}
+                            className="px-2 py-1 text-xs"
+                          >
+                            ›
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.totalPages)}
+                            disabled={pagination.page === pagination.totalPages}
+                            className="px-2 py-1 text-xs"
+                          >
+                            »»
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(pagination.page - 1)}
-                          disabled={!pagination.hasPrevPage}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(pagination.page + 1)}
-                          disabled={!pagination.hasNextPage}
-                        >
-                          Next
-                        </Button>
+
+                      {/* Desktop Pagination */}
+                      <div className="hidden sm:flex items-center justify-between mt-6">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {(pagination.page - 1) * pagination.limit + 1}{" "}
+                          to{" "}
+                          {Math.min(
+                            pagination.page * pagination.limit,
+                            pagination.totalCount
+                          )}{" "}
+                          of {pagination.totalCount} machines
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(1)}
+                            disabled={pagination.page === 1}
+                          >
+                            First
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={!pagination.hasPrevPage}
+                          >
+                            Previous
+                          </Button>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Page</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={pagination.totalPages}
+                              value={pagination.page}
+                              onChange={(e) => {
+                                let val = Number(e.target.value);
+                                if (isNaN(val)) val = 1;
+                                if (val < 1) val = 1;
+                                if (val > pagination.totalPages) val = pagination.totalPages;
+                                handlePageChange(val);
+                              }}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                              aria-label="Page number"
+                            />
+                            <span className="text-sm text-gray-600">of {pagination.totalPages}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={!pagination.hasNextPage}
+                          >
+                            Next
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(pagination.totalPages)}
+                            disabled={pagination.page === pagination.totalPages}
+                          >
+                            Last
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </>
               )}
@@ -1744,327 +1427,9 @@ export default function MachinesTab() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="comparison" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Machine Performance Comparison</CardTitle>
-                  <CardDescription>
-                    Compare actual machine performance against theoretical expectations
-                  </CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={fetchAllMachines}>
-                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {analysisLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                  <span>Loading performance analysis data...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search machines..."
-                        value={analysisSearchTerm}
-                        onChange={(e) =>
-                          handleAnalysisSearchChange(e.target.value)
-                        }
-                        className="w-full text-gray-900 placeholder:text-gray-600 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="w-full md:w-[420px]">
-                      <LocationSingleSelect
-                        locations={locations}
-                        selectedLocation={comparisonSelectedLocation}
-                        onSelectionChange={setComparisonSelectedLocation}
-                        placeholder="Select Location"
-                      />
-                    </div>
-                  </div>
 
-                  {/* Desktop Table View */}
-                  <div className="hidden md:block rounded-md border">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="border-b bg-muted/50">
-                          <tr>
-                            <th className="text-left p-3 font-medium">
-                              Machine
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Theoretical Hold
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Actual Hold
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Difference
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Performance
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Revenue
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {comparisonData.map((machine) => (
-                            <tr
-                              key={machine.machineId}
-                              className="border-b hover:bg-muted/30"
-                            >
-                              <td className="p-3">
-                                <div>
-                                  <div className="font-medium">
-                                    {machine.machineName}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {
-                                      (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-                                        (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
-                                        machine.machineId
-                                    }
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-3 text-sm">
-                                {machine.theoreticalHold.toFixed(1)}%
-                              </td>
-                              <td className="p-3 text-sm">
-                                {machine.actualHold.toFixed(1)}%
-                              </td>
-                              <td className="p-3">
-                                <span
-                                  className={`text-sm font-medium ${
-                                    machine.holdDifference >= 0
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {machine.holdDifference >= 0 ? "+" : ""}
-                                  {machine.holdDifference.toFixed(1)}%
-                                </span>
-                              </td>
-                              <td className="p-3">
-                                <Badge
-                                  variant={
-                                    machine.performanceRating === "excellent" ||
-                                    machine.performanceRating === "good"
-                                      ? "default"
-                                      : "destructive"
-                                  }
-                                  className={
-                                    machine.performanceRating === "excellent"
-                                      ? "bg-green-100 text-green-800 border-green-200"
-                                      : machine.performanceRating === "good"
-                                      ? "bg-blue-100 text-blue-800 border-blue-200"
-                                      : machine.performanceRating === "average"
-                                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                      : "bg-red-100 text-red-800 border-red-200"
-                                  }
-                                >
-                                  {machine.performanceRating
-                                    .charAt(0)
-                                    .toUpperCase() +
-                                    machine.performanceRating.slice(1)}
-                                </Badge>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {machine.performanceRating === "excellent" &&
-                                    "Outperforming theoretical by 1%+"}
-                                  {machine.performanceRating === "good" &&
-                                    "Meeting or slightly above theoretical"}
-                                  {machine.performanceRating === "average" &&
-                                    "Slightly below theoretical (-1% to 0%)"}
-                                  {machine.performanceRating === "poor" &&
-                                    "Significantly below theoretical (-1% or more)"}
-                                </div>
-                              </td>
-                              <td className="p-3 text-sm font-medium text-green-600">
-                                ${machine.netWin.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
 
-                  {/* Mobile Card View for Performance Analysis */}
-                  <div className="md:hidden space-y-4">
-                    {comparisonData.map((machine) => (
-                      <Card key={machine.machineId} className="p-4">
-                        <div className="mb-3">
-                          <h4 className="font-medium text-sm">
-                            {machine.machineName}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {
-                              (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-                                (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
-                                machine.machineId
-                            }
-                          </p>
-                        </div>
-                        
-                        {/* Tiny screen layout (< 425px) - Single column */}
-                        <div className="block sm:hidden space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Theoretical Hold:</span>
-                            <span className="font-medium">{machine.theoreticalHold.toFixed(1)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Actual Hold:</span>
-                            <span className="font-medium">{machine.actualHold.toFixed(1)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Difference:</span>
-                            <span className={`font-medium ${machine.holdDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {machine.holdDifference >= 0 ? "+" : ""}{machine.holdDifference.toFixed(1)}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Revenue:</span>
-                            <span className="font-medium text-green-600">${machine.netWin.toLocaleString()}</span>
-                          </div>
-                          <div className="mt-2">
-                            <Badge
-                              variant={
-                                machine.performanceRating === "excellent" ||
-                                machine.performanceRating === "good"
-                                  ? "default"
-                                  : "destructive"
-                              }
-                              className={`text-xs ${
-                                machine.performanceRating === "excellent"
-                                  ? "bg-green-100 text-green-800 border-green-200"
-                                  : machine.performanceRating === "good"
-                                  ? "bg-blue-100 text-blue-800 border-blue-200"
-                                  : machine.performanceRating === "average"
-                                  ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                  : "bg-red-100 text-red-800 border-red-200"
-                              }`}
-                            >
-                              {machine.performanceRating
-                                .charAt(0)
-                                .toUpperCase() +
-                                machine.performanceRating.slice(1)}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        {/* Small screen layout (425px+) - Two columns */}
-                        <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Theoretical Hold:</span>
-                            <p>{machine.theoreticalHold.toFixed(1)}%</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Actual Hold:</span>
-                            <p>{machine.actualHold.toFixed(1)}%</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Difference:</span>
-                            <p className={`font-medium ${machine.holdDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {machine.holdDifference >= 0 ? "+" : ""}{machine.holdDifference.toFixed(1)}%
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Revenue:</span>
-                            <p className="text-green-600 font-medium">${machine.netWin.toLocaleString()}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Performance:</span>
-                            <div className="mt-1">
-                              <Badge
-                                variant={
-                                  machine.performanceRating === "excellent" ||
-                                  machine.performanceRating === "good"
-                                    ? "default"
-                                    : "destructive"
-                                }
-                                className={
-                                  machine.performanceRating === "excellent"
-                                    ? "bg-green-100 text-green-800 border-green-200"
-                                    : machine.performanceRating === "good"
-                                    ? "bg-blue-100 text-blue-800 border-blue-200"
-                                    : machine.performanceRating === "average"
-                                    ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                    : "bg-red-100 text-red-800 border-red-200"
-                                }
-                              >
-                                {machine.performanceRating
-                                  .charAt(0)
-                                  .toUpperCase() +
-                                  machine.performanceRating.slice(1)}
-                              </Badge>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {machine.performanceRating === "excellent" &&
-                                  "Outperforming theoretical by 1%+"}
-                                {machine.performanceRating === "good" &&
-                                  "Meeting or slightly above theoretical"}
-                                {machine.performanceRating === "average" &&
-                                  "Slightly below theoretical (-1% to 0%)"}
-                                {machine.performanceRating === "poor" &&
-                                  "Significantly below theoretical (-1% or more)"}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* Performance Analysis Pagination Info */}
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="text-sm text-muted-foreground">
-                      Showing{" "}
-                      {(analysisPagination.page - 1) *
-                        analysisPagination.limit +
-                        1}{" "}
-                      to{" "}
-                      {Math.min(
-                        analysisPagination.page * analysisPagination.limit,
-                        analysisPagination.totalCount
-                      )}{" "}
-                      of {analysisPagination.totalCount} machines
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleAnalysisPageChange(analysisPagination.page - 1)
-                        }
-                        disabled={!analysisPagination.hasPrevPage}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleAnalysisPageChange(analysisPagination.page + 1)
-                        }
-                        disabled={!analysisPagination.hasNextPage}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="evaluation" className="space-y-6">
+        <TabsContent value="evaluation" className="space-y-6 mt-2">
           {/* Filters for Evaluation Tab */}
           <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
             <div className="flex-1">
@@ -2103,251 +1468,26 @@ export default function MachinesTab() {
               <RefreshCw className="w-6 h-6 animate-spin mr-2" />
               <span>Loading evaluation data...</span>
             </div>
+          ) : !evaluationSelectedLocation || evaluationSelectedLocation === "" ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Monitor className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Select a Location
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Choose a specific location to view machine evaluation data and performance metrics.
+                </p>
+                <p className="text-sm text-gray-500">
+                  Use the location selector above to get started
+                </p>
+              </CardContent>
+            </Card>
           ) : (
             <>
-              {/* Charts Section */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Manufacturers Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  Manufacturers Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by manufacturer
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {evaluationChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={evaluationChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(v: number) => {
-                        const abs = Math.abs(v);
-                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
-                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
-                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-                        return `${v}`;
-                      }} />
-                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
-                      <Legend />
-                      <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
-                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              
 
-            {/* Games Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-green-600" />
-                  Top Games Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by game type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {gamesPerformanceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={gamesPerformanceData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(v: number) => {
-                        const abs = Math.abs(v);
-                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
-                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
-                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-                        return `${v}`;
-                      }} />
-                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
-                      <Legend />
-                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
-                      <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Hold Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
-                  Hold Performance
-                </CardTitle>
-                <CardDescription>
-                  Actual vs Theoretical Hold by manufacturer
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {evaluationChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={evaluationChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(v: number) => {
-                        const abs = Math.abs(v);
-                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
-                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
-                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-                        return `${v}`;
-                      }} />
-                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
-                      <Legend />
-                      <Bar dataKey="avgHold" fill="#8b5cf6" name="Avg Hold (%)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Manufacturers Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  Manufacturers Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by manufacturer
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {evaluationChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={evaluationChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(v: number) => {
-                        const abs = Math.abs(v);
-                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
-                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
-                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-                        return `${v}`;
-                      }} />
-                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
-                      <Legend />
-                      <Bar dataKey="machines" fill="#3b82f6" name="Machines" />
-                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Games Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-green-600" />
-                  Top Games Performance
-                </CardTitle>
-                <CardDescription>
-                  Performance metrics by game type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {gamesPerformanceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={gamesPerformanceData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(v: number) => {
-                        const abs = Math.abs(v);
-                        if (abs >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}b`;
-                        if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}m`;
-                        if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-                        return `${v}`;
-                      }} />
-                      <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? value.toLocaleString() : String(value))} />
-                      <Legend />
-                      <Bar dataKey="totalNetWin" fill="#10b981" name="Net Win ($)" />
-                      <Bar dataKey="totalGamesPlayed" fill="#f59e0b" name="Games Played" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Hold Performance Chart */}
-            <Card className="h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
-                  Hold Performance
-                </CardTitle>
-                <CardDescription>
-                  Actual vs Theoretical Hold by manufacturer
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {evaluationChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart
-                      data={evaluationChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="avgHold" fill="#8b5cf6" name="Avg Hold (%)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-gray-500">No data available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Top 5 Machines Table */}
           <Card>
@@ -2361,87 +1501,92 @@ export default function MachinesTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Search and Filter Controls */}
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search machines..."
-                    value={evaluationSearchTerm}
-                    onChange={(e) =>
-                      handleEvaluationSearchChange(e.target.value)
-                    }
-                    className="w-full"
-                  />
-                </div>
-                <Select
-                  value={locationFilter}
-                  onValueChange={setLocationFilter}
-                >
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="All Locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEvaluationSearchTerm("");
-                    setLocationFilter("all");
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </div>
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      <SortableHeader 
+                        sortKey="locationName" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Location
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="machineId" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Machine ID
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="gameTitle" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Game
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="manufacturer" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Manufacturer
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
-                        Handle
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="moneyIn" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
+                        Money In
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="netWin" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Win/Loss
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="jackpot" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Jackpot
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="avgWagerPerGame" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Avg. Wag. per Game
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="actualHold" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Actual Hold
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="theoreticalHold" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Theoretical Hold
-                      </th>
-                      <th className="text-left p-3 font-medium text-gray-700">
+                      </SortableHeader>
+                      <SortableHeader 
+                        sortKey="gamesPlayed" 
+                        currentSort={sortConfig} 
+                        onSort={handleSort}
+                      >
                         Games Played
-                      </th>
+                      </SortableHeader>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEvaluationData
-                      .sort((a, b) => b.netWin - a.netWin)
+                    {sortEvaluationData(filteredEvaluationData)
                       .slice(0, 5)
                       .map((machine) => (
                         <tr
@@ -2455,6 +1600,9 @@ export default function MachinesTab() {
                             {
                               (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
                                 (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+                                (typeof (machine as Record<string, unknown>).custom === "object" && 
+                                 typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
+                                 (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
                                 machine.machineId
                             }
                           </td>
@@ -2463,11 +1611,7 @@ export default function MachinesTab() {
                             {machine.manufacturer}
                           </td>
                           <td className="p-3 text-sm font-medium">
-                            $
-                            {(
-                              machine.netWin +
-                              (machine.actualHold * machine.netWin) / 100
-                            ).toLocaleString()}
+                            ${(machine.drop || 0).toLocaleString()}
                           </td>
                           <td
                             className={`p-3 text-sm font-medium ${
@@ -2487,15 +1631,15 @@ export default function MachinesTab() {
                           </td>
                           <td
                             className={`p-3 text-sm font-medium ${
-                              machine.actualHold >= 0
+                              (machine.actualHold || 0) >= 0
                                 ? "text-green-600"
                                 : "text-red-600"
                             }`}
                           >
-                            {machine.actualHold.toFixed(3)}%
+                            {(machine.actualHold || 0).toFixed(2)}%
                           </td>
                           <td className="p-3 text-sm text-green-600">
-                            {machine.theoreticalHold.toFixed(3)}%
+                            {machine.theoreticalHold.toFixed(2)}%
                           </td>
                           <td className="p-3 text-sm">
                             {machine.gamesPlayed.toLocaleString()}
@@ -2508,8 +1652,7 @@ export default function MachinesTab() {
 
               {/* Mobile Card View for Evaluation */}
               <div className="md:hidden space-y-4">
-                {filteredEvaluationData
-                  .sort((a, b) => b.netWin - a.netWin)
+                {sortEvaluationData(filteredEvaluationData)
                   .slice(0, 5)
                   .map((machine) => (
                     <Card key={machine.machineId} className="p-4">
@@ -2529,12 +1672,12 @@ export default function MachinesTab() {
                           <span className="font-medium">{machine.manufacturer}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Handle:</span>
-                          <span className="font-medium">${(machine.netWin + (machine.actualHold * machine.netWin) / 100).toLocaleString()}</span>
+                          <span className="text-muted-foreground">Money In:</span>
+                          <span className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Win/Loss:</span>
-                          <span className={`font-medium ${machine.netWin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
                             ${machine.netWin.toLocaleString()}
                           </span>
                         </div>
@@ -2544,13 +1687,13 @@ export default function MachinesTab() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Actual Hold:</span>
-                          <span className={`font-medium ${machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {machine.actualHold.toFixed(3)}%
+                          <span className={`font-medium ${(machine.actualHold || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {(machine.actualHold || 0).toFixed(2)}%
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Theoretical Hold:</span>
-                          <span className="font-medium text-green-600">{machine.theoreticalHold.toFixed(3)}%</span>
+                          <span className="font-medium text-green-600">{machine.theoreticalHold.toFixed(2)}%</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Games Played:</span>
@@ -2565,12 +1708,12 @@ export default function MachinesTab() {
                           <p>{machine.manufacturer}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Handle:</span>
-                          <p className="font-medium">${(machine.netWin + (machine.actualHold * machine.netWin) / 100).toLocaleString()}</p>
+                          <span className="text-muted-foreground">Money In:</span>
+                          <p className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Win/Loss:</span>
-                          <p className={`font-medium ${machine.netWin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
                             ${machine.netWin.toLocaleString()}
                           </p>
                         </div>
@@ -2581,12 +1724,12 @@ export default function MachinesTab() {
                         <div>
                           <span className="text-muted-foreground">Actual Hold:</span>
                           <p className={`font-medium ${machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {machine.actualHold.toFixed(3)}%
+                            {machine.actualHold.toFixed(2)}%
                           </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Theoretical Hold:</span>
-                          <p className="text-green-600">{machine.theoreticalHold.toFixed(3)}%</p>
+                          <p className="text-green-600">{machine.theoreticalHold.toFixed(2)}%</p>
                         </div>
                         <div className="col-span-2">
                           <span className="text-muted-foreground">Games Played:</span>
@@ -2670,7 +1813,7 @@ export default function MachinesTab() {
                               Offline Duration
                             </th>
                             <th className="text-left p-3 font-medium">
-                              Current Values
+                              Actions
                             </th>
                           </tr>
                         </thead>
@@ -2701,18 +1844,24 @@ export default function MachinesTab() {
                               <td className="p-3 text-sm">
                                 {machine.offlineDurationFormatted}
                               </td>
-                              <td className="p-3 text-sm">
-                                <div className="space-y-1">
-                                  <div>
-                                    Net Win: ${machine.netWin.toLocaleString()}
-                                  </div>
-                                  <div>
-                                    Drop: ${machine.drop.toLocaleString()}
-                                  </div>
-                                  <div>
-                                    Games:{" "}
-                                    {machine.gamesPlayed.toLocaleString()}
-                                  </div>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleMachineEdit(machine)}
+                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  >
+                                    <Pencil2Icon className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleMachineDelete(machine)}
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               </td>
                             </tr>
@@ -2727,12 +1876,34 @@ export default function MachinesTab() {
                     {offlineMachinesWithDuration.map((machine) => (
                       <Card key={machine.machineId} className="p-4">
                         <div className="mb-3">
-                          <h4 className="font-medium text-sm">
-                            {machine.machineName}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {machine.machineId}
-                          </p>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium text-sm">
+                                {machine.machineName}
+                              </h4>
+                              <p className="text-xs text-muted-foreground">
+                                {machine.machineId}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMachineEdit(machine)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex-shrink-0"
+                              >
+                                <Pencil2Icon className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMachineDelete(machine)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 flex-shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                         
                         {/* Tiny screen layout (< 425px) - Single column */}
@@ -2749,18 +1920,7 @@ export default function MachinesTab() {
                             <span className="text-muted-foreground">Offline Duration:</span>
                             <span className="font-medium">{machine.offlineDurationFormatted}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Net Win:</span>
-                            <span className="font-medium">${machine.netWin.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Drop:</span>
-                            <span className="font-medium">${machine.drop.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Games:</span>
-                            <span className="font-medium">{machine.gamesPlayed.toLocaleString()}</span>
-                          </div>
+
                         </div>
                         
                         {/* Small screen layout (425px+) - Two columns */}
@@ -2777,59 +1937,156 @@ export default function MachinesTab() {
                             <span className="text-muted-foreground">Offline Duration:</span>
                             <p>{machine.offlineDurationFormatted}</p>
                           </div>
-                          <div>
-                            <span className="text-muted-foreground">Net Win:</span>
-                            <p className="font-medium">${machine.netWin.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Drop:</span>
-                            <p className="font-medium">${machine.drop.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Games:</span>
-                            <p>{machine.gamesPlayed.toLocaleString()}</p>
-                          </div>
+
                         </div>
                       </Card>
                     ))}
                   </div>
+                </>
+              )}
 
-                  {/* Offline Machines Pagination */}
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="text-sm text-muted-foreground">
-                      Showing{" "}
-                      {(offlinePagination.page - 1) * offlinePagination.limit +
-                        1}{" "}
-                      to{" "}
-                      {Math.min(
-                        offlinePagination.page * offlinePagination.limit,
-                        offlinePagination.totalCount
-                      )}{" "}
-                      of {offlinePagination.totalCount} offline machines
+              {/* Offline Machines Pagination */}
+              {offlinePagination.totalPages > 1 && (
+                <>
+                  {/* Mobile Pagination */}
+                    <div className="flex flex-col space-y-3 mt-6 sm:hidden">
+                      <div className="text-xs text-gray-600 text-center">
+                        Page {offlinePagination.page} of {offlinePagination.totalPages} ({offlinePagination.totalCount} offline machines)
+                      </div>
+                      <div className="flex items-center justify-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOfflinePageChange(1)}
+                          disabled={offlinePagination.page === 1}
+                          className="px-2 py-1 text-xs"
+                        >
+                          ««
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOfflinePageChange(offlinePagination.page - 1)
+                          }
+                          disabled={!offlinePagination.hasPrevPage}
+                          className="px-2 py-1 text-xs"
+                        >
+                          ‹
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-600">Page</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={offlinePagination.totalPages}
+                            value={offlinePagination.page}
+                            onChange={(e) => {
+                              let val = Number(e.target.value);
+                              if (isNaN(val)) val = 1;
+                              if (val < 1) val = 1;
+                              if (val > offlinePagination.totalPages) val = offlinePagination.totalPages;
+                              handleOfflinePageChange(val);
+                            }}
+                            className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                            aria-label="Page number"
+                          />
+                          <span className="text-xs text-gray-600">of {offlinePagination.totalPages}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOfflinePageChange(offlinePagination.page + 1)
+                          }
+                          disabled={!offlinePagination.hasNextPage}
+                          className="px-2 py-1 text-xs"
+                        >
+                          ›
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOfflinePageChange(offlinePagination.totalPages)}
+                          disabled={offlinePagination.page === offlinePagination.totalPages}
+                          className="px-2 py-1 text-xs"
+                        >
+                          »»
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page - 1)
-                        }
-                        disabled={!offlinePagination.hasPrevPage}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page + 1)
-                        }
-                        disabled={!offlinePagination.hasNextPage}
-                      >
-                        Next
-                      </Button>
+
+                    {/* Desktop Pagination */}
+                    <div className="hidden sm:flex items-center justify-between mt-6">
+                      <div className="text-sm text-muted-foreground">
+                        Showing{" "}
+                        {(offlinePagination.page - 1) * offlinePagination.limit +
+                          1}{" "}
+                        to{" "}
+                        {Math.min(
+                          offlinePagination.page * offlinePagination.limit,
+                          offlinePagination.totalCount
+                        )}{" "}
+                        of {offlinePagination.totalCount} offline machines
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOfflinePageChange(1)}
+                          disabled={offlinePagination.page === 1}
+                        >
+                          First
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOfflinePageChange(offlinePagination.page - 1)
+                          }
+                          disabled={!offlinePagination.hasPrevPage}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">Page</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={offlinePagination.totalPages}
+                            value={offlinePagination.page}
+                            onChange={(e) => {
+                              let val = Number(e.target.value);
+                              if (isNaN(val)) val = 1;
+                              if (val < 1) val = 1;
+                              if (val > offlinePagination.totalPages) val = offlinePagination.totalPages;
+                              handleOfflinePageChange(val);
+                            }}
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                            aria-label="Page number"
+                          />
+                          <span className="text-sm text-gray-600">of {offlinePagination.totalPages}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOfflinePageChange(offlinePagination.page + 1)
+                          }
+                          disabled={!offlinePagination.hasNextPage}
+                        >
+                          Next
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOfflinePageChange(offlinePagination.totalPages)}
+                          disabled={offlinePagination.page === offlinePagination.totalPages}
+                        >
+                          Last
+                        </Button>
+                      </div>
                     </div>
-                  </div>
                 </>
               )}
             </CardContent>

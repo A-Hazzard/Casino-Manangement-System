@@ -6,7 +6,7 @@ import axios from "axios";
 import "leaflet/dist/leaflet.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
+import { MapPin, TrendingUp, Search } from "lucide-react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import type { LocationMapProps } from "@/lib/types/components";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,7 +131,6 @@ const LocationPopupContent = ({
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="space-y-2">
           <div className="flex items-center gap-1">
-            <DollarSign className="h-3 w-3 text-green-600" />
             {isFinancialDataLoading ? (
               <Skeleton className="h-4 w-16" />
             ) : (
@@ -626,33 +625,7 @@ export default function LocationMap({
           </div>
           {/* Map */}
           <div className="flex-1 min-h-[400px] lg:min-h-[32rem] relative z-0">
-            <MapContainer
-              center={mapCenter}
-              zoom={6}
-              scrollWheelZoom={true}
-              style={{ height: "100%", width: "100%", minHeight: "400px" }}
-              ref={handleMapCreated}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                className="grayscale"
-              />
-              {validLocations.map((location) => {
-                const locationName =
-                  (location.name as string) || (location.locationName as string) || "Unknown Location";
-                const geoCoords = location.geoCoords as Record<string, unknown>;
-                return renderMarker(
-                  geoCoords.latitude as number,
-                  geoCoords,
-                  locationName,
-                  location._id as string,
-                  location
-                );
-              })}
-            </MapContainer>
-            {/* Map Legend with tooltips */}
-            <TooltipProvider>
+          <TooltipProvider>
               <div className="mt-4 flex flex-wrap gap-2 lg:gap-4 text-xs text-muted-foreground">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -714,6 +687,33 @@ export default function LocationMap({
                 </Tooltip>
               </div>
             </TooltipProvider>
+            <MapContainer
+              center={mapCenter}
+              zoom={6}
+              scrollWheelZoom={true}
+              style={{ height: "100%", width: "100%", minHeight: "400px" }}
+              ref={handleMapCreated}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                className="grayscale"
+              />
+              {validLocations.map((location) => {
+                const locationName =
+                  (location.name as string) || (location.locationName as string) || "Unknown Location";
+                const geoCoords = location.geoCoords as Record<string, unknown>;
+                return renderMarker(
+                  geoCoords.latitude as number,
+                  geoCoords,
+                  locationName,
+                  location._id as string,
+                  location
+                );
+              })}
+            </MapContainer>
+            {/* Map Legend with tooltips */}
+           
           </div>
         </div>
       </CardContent>

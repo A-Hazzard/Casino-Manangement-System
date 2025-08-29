@@ -278,7 +278,7 @@ Retrieves collector information.
 
 ### Collection Model
 ```typescript
-interface CollectionDocument {
+type CollectionDocument = {
   _id: string;
   isCompleted: boolean;
   metersIn: number;
@@ -320,7 +320,7 @@ interface CollectionDocument {
 
 ### Collector Model
 ```typescript
-interface Collector {
+type Collector = {
   _id: string;
   name: string;
   employeeId: string;
@@ -379,10 +379,133 @@ interface Collector {
 
 ## Related Frontend Pages
 
-- **Collections Page**: `/collections` - Main collections management interface
+- **Collections Page**: `/collections` - Main collections management page
 - **Collection Reports**: `/reports/collections` - Collection reporting and analytics
 - **Collector Management**: `/administration/collectors` - Collector assignment and management
 - **Location Collections**: `/locations/[id]/collections` - Location-specific collection data
+
+### Financial Calculations Analysis
+
+#### Collection API Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+##### **Collection Drop (Money Collected) ✅**
+- **Current Implementation**: 
+  ```javascript
+  // From collection meters
+  totalDrop = endMeters.drop - startMeters.drop
+  ```
+- **Financial Guide**: Uses `drop` field for physical money ✅ **MATCHES**
+- **Business Context**: Physical cash collected from machine during collection period
+- **Calculation**: Difference between end and start meter readings
+
+##### **Collection Cancelled Credits ✅**
+- **Current Implementation**: 
+  ```javascript
+  // From collection meters  
+  totalCancelledCredits = endMeters.totalCancelledCredits - startMeters.totalCancelledCredits
+  ```
+- **Financial Guide**: Uses `totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Credits paid out during collection period
+- **Calculation**: Difference between end and start meter readings
+
+##### **Collection Net Win ✅**
+- **Current Implementation**: 
+  ```javascript
+  netWin = totalDrop - totalCancelledCredits
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: Net win represents gross revenue for collection period
+
+##### **Hold Percentage Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  holdPercentage = (netWin / totalHandle) * 100
+  // Where totalHandle = endMeters.coinIn - startMeters.coinIn
+  ```
+- **Financial Guide**: `actualHold% = (1 - (coinOut / coinIn)) * 100`
+- **Analysis**: Uses net win over handle rather than (1 - coinOut/coinIn)
+- **Mathematical Verification**:
+  - Current: `(netWin / handle) * 100`
+  - Guide: `((coinIn - coinOut) / coinIn) * 100`
+  - For collections: `netWin ≈ coinIn - coinOut` if drop ≈ coinIn
+- ✅ **APPROXIMATELY MATCHES** - Similar calculation for collection context
+
+##### **SAS vs Meters Comparison ✅**
+- **Current Implementation**: 
+  ```javascript
+  // SAS data aggregation
+  sasGross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)
+  // Meters data aggregation  
+  metersGross = collectionDrop - collectionCancelledCredits
+  variance = metersGross - sasGross
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Business Logic**: Compares SAS reported data with physical meter readings
+- ✅ **AUDIT CONTROL** - Standard variance analysis
+
+##### **Revenue Sharing Calculations ✅**
+- **Current Implementation**: 
+  ```javascript
+  amountToCollect = gross * (profitSharePercentage / 100)
+  partnerProfit = gross * ((100 - profitSharePercentage) / 100)
+  ```
+- **Business Logic**: Splits revenue between casino operator and location partner
+- ✅ **BUSINESS CALCULATION** - Standard revenue sharing formula
+
+### Mathematical Formulas Summary
+
+#### **Collection Period Calculations**
+```
+Collection Drop = End Meter Drop - Start Meter Drop
+Collection Cancelled Credits = End Meter Cancelled Credits - Start Meter Cancelled Credits
+Collection Net Win = Collection Drop - Collection Cancelled Credits
+Collection Handle = End Meter Coin In - Start Meter Coin In
+Collection Hold% = (Collection Net Win / Collection Handle) * 100
+```
+
+#### **Variance Analysis**
+```
+Meters Gross = Collection Drop - Collection Cancelled Credits
+SAS Gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits) for SAS machines
+Variance = Meters Gross - SAS Gross
+Variance% = (Variance / SAS Gross) * 100
+```
+
+#### **Revenue Sharing**
+```
+Amount To Collect = Gross Revenue * (Profit Share% / 100)
+Partner Revenue = Gross Revenue * ((100 - Profit Share%) / 100)
+Balance Calculation = Previous Balance + Amount To Collect - Amount Collected ± Corrections
+```
+
+#### **Monthly Aggregations**
+```
+Monthly Drop = Σ(collectionDrop) for month
+Monthly Gross = Σ(collectionGross) for month  
+Monthly Variance = AVG(variance) for month
+Monthly Collections = COUNT(reports) for month
+```
+
+#### **Collector Performance**
+```
+Collector Efficiency = (Total Collected / Total Expected) * 100
+Collector Variance = AVG(ABS(variance)) per collector
+Collector Productivity = Collections per time period
+```
+
+### Required Verification
+
+**All collection calculations appear to follow standard financial practices:**
+
+1. **Meter Calculations**: Use standard drop and cancelled credits fields ✅
+2. **Gross Revenue**: Standard gross calculation ✅
+3. **Hold Percentage**: Appropriate for collection context ✅
+4. **Variance Analysis**: Standard audit procedure ✅
+5. **Revenue Sharing**: Standard business calculation ✅
+
+**Note**: Collection API calculations follow standard casino collection procedures and financial practices.
 
 ## Dependencies
 

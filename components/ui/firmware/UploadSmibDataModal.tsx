@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
 import type { UploadSmibDataModalProps } from "@/lib/types/components";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
@@ -20,6 +21,9 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comments, setComments] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Create activity logger for firmware operations
+  const firmwareLogger = createActivityLogger("machine");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -39,11 +43,22 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       formData.append("file", selectedFile);
       formData.append("comments", comments);
 
-      await axios.post(
+      const response = await axios.post(
         "/api/firmware/upload-smib-data",
         formData
       );
 
+      // Log the SMIB data upload activity
+      await firmwareLogger.logCreate(
+        response.data?.id || "unknown",
+        `SMIB Data Upload: ${selectedFile.name}`,
+        {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          comments: comments,
+        },
+        `Uploaded SMIB data file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`
+      );
 
       // Close modal and clear form on success
       onClose();

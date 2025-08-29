@@ -15,7 +15,7 @@ Aggregates location-level metrics including machine counts, SAS status, and fina
 
 #### Query Parameters
 ```typescript
-interface LocationAggregationParams {
+type LocationAggregationParams = {
   timePeriod?: TimePeriod;           // "Today", "Yesterday", "7d", "30d", "All Time"
   startDate?: string;                // ISO date string for custom range
   endDate?: string;                  // ISO date string for custom range
@@ -33,7 +33,7 @@ interface LocationAggregationParams {
 
 #### Response Structure
 ```typescript
-interface LocationAggregationResponse {
+type LocationAggregationResponse = {
   data: AggregatedLocation[];
   totalCount: number;
   page: number;
@@ -44,7 +44,7 @@ interface LocationAggregationResponse {
 
 #### Aggregated Location Data
 ```typescript
-interface AggregatedLocation {
+type AggregatedLocation = {
   location: string;                  // Location ID
   locationName: string;              // Location name
   moneyIn: number;                   // Total drop amount
@@ -94,7 +94,7 @@ if (selectedLocations && selectedLocations.length > 0) {
 Each machine in the database has an `isSasMachine` field that determines its SAS status:
 
 ```typescript
-interface Machine {
+type Machine = {
   _id: string;
   gamingLocation: string;            // Reference to location
   isSasMachine: boolean;             // true = SAS machine, false = non-SAS machine
@@ -479,7 +479,7 @@ console.error("❌ LocationAggregation API Error:", {
 
 #### Machine Model
 ```typescript
-interface Machine {
+type Machine = {
   _id: string;
   gamingLocation: string;            // Reference to location
   isSasMachine: boolean;             // SAS status flag
@@ -493,7 +493,7 @@ interface Machine {
 
 #### Location Model
 ```typescript
-interface GamingLocation {
+type GamingLocation = {
   _id: string;
   name: string;                      // Location name
   deletedAt: Date | null;            // Soft delete flag
@@ -507,7 +507,7 @@ interface GamingLocation {
 
 #### Meter Model
 ```typescript
-interface Meter {
+type Meter = {
   _id: string;
   location: string;                  // Location reference
   createdAt: Date;                   // Meter reading timestamp
@@ -573,9 +573,196 @@ interface Meter {
 - **Performance Tests**: Load testing for large datasets
 - **Error Testing**: Error condition validation
 
+### 14. Meters Report API
+
+**Endpoint:** `GET /api/reports/meters`
+
+#### Purpose
+Provides detailed machine-level meter readings and performance data with specific field mappings that differ from other financial reports.
+
+#### Query Parameters
+```typescript
+type MetersReportParams = {
+  locations: string;              // Required: Comma-separated location IDs
+  startDate?: string;             // ISO date string for date filtering
+  endDate?: string;               // ISO date string for date filtering
+  page?: number;                  // Pagination page number (default: 1)
+  limit?: number;                 // Items per page (default: 10, max: 10)
+  search?: string;                // Search term for machine ID or location name
+  licencee?: string;              // Filter by licensee ID
+}
+```
+
+#### Response Structure
+```typescript
+type MetersReportResponse = {
+  data: MetersReportData[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  locations: string[];
+  dateRange: {
+    start: string;
+    end: string;
+  };
+}
+
+type MetersReportData = {
+  machineId: string;              // Machine identifier
+  metersIn: number;               // Coin In (total bets placed)
+  metersOut: number;              // Coin Out (automatic payouts)
+  jackpot: number;                // Jackpot payouts
+  billIn: number;                 // Drop (physical money inserted)
+  voucherOut: number;             // Net cancelled credits
+  attPaidCredits: number;         // Hand paid cancelled credits
+  gamesPlayed: number;            // Total games played
+  location: string;               // Location name
+  createdAt: string;              // Last activity timestamp
+}
+```
+
+#### Field Mapping (Meters Report Specific)
+
+⚠️ **Important**: The meters report uses **different field mappings** than other financial reports:
+
+| Field | Data Source | Context |
+|-------|-------------|---------|
+| **metersIn** | `machine.sasMeters.coinIn` | Total bets placed by players |
+| **metersOut** | `machine.sasMeters.coinOut` | Automatic winnings paid to players |
+| **billIn** | `machine.sasMeters.drop` | Physical cash inserted into machine |
+| **voucherOut** | `machine.sasMeters.totalCancelledCredits - machine.sasMeters.totalHandPaidCancelledCredits` | Net cancelled credits (voucher-only) |
+| **attPaidCredits** | `machine.sasMeters.totalHandPaidCancelledCredits` | Manual attendant payouts |
+| **jackpot** | `machine.sasMeters.jackpot` | Special jackpot payouts |
+| **gamesPlayed** | `machine.sasMeters.gamesPlayed` | Total games played |
+
+#### Implementation Details
+- **Data Sources**: All meter fields come from `machines` collection (`sasMeters` field)
+- **Validation**: All numeric values validated for non-negative numbers
+- **Machine Data**: Uses machine document with embedded `sasMeters` object
+- **Location Resolution**: Gaming location name lookup via `gamingLocation` field
+
+### 15. Financial Calculations Analysis
+
+#### Machine Reports API (`/api/reports/machines`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Money In (Drop) Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  drop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **MongoDB Pipeline**: Aggregates all meter readings within date range for each machine
+- **Business Logic**: Sums all physical money inserted into each machine
+
+##### **Handle (Coin In) Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.coinIn` field ✅ **MATCHES**
+- **Business Logic**: Sums all betting activity for each machine
+
+##### **Actual Hold Percentage Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  holdPct: {
+    $cond: [
+      { $gt: [{ $ifNull: ["$meterData.coinIn", 0] }, 0] },
+      { $multiply: [
+        { $divide: [
+          { $subtract: [
+            { $ifNull: ["$meterData.coinIn", 0] }, 
+            { $ifNull: ["$meterData.coinOut", 0] }
+          ] }, 
+          { $ifNull: ["$meterData.coinIn", 0] }
+        ] }, 
+        100
+      ] },
+      0
+    ]
+  }
+  ```
+- **Mathematical Formula**: `((coinIn - coinOut) / coinIn) * 100`
+- **Financial Guide Formula**: `actualHold% = (1 - (coinOut / coinIn)) * 100`
+- **Verification**: 
+  - Current: `((coinIn - coinOut) / coinIn) * 100`
+  - Guide: `(1 - (coinOut / coinIn)) * 100 = ((coinIn - coinOut) / coinIn) * 100`
+  - ✅ **MATCHES** (algebraically equivalent)
+
+##### **Theoretical Hold Percentage Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  theoreticalHold: (1 - Number(gameConfig.theoreticalRtp)) * 100
+  ```
+- **Financial Guide**: `theoreticalHoldPercent = (1 - gameConfig.theoreticalRtp) * 100`
+- ✅ **MATCHES**
+
+##### **Average Bet Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  avgBet: gamesPlayed > 0 ? coinIn / gamesPlayed : 0
+  ```
+- **Financial Guide**: `avgWagerPerGame = handle / gamesPlayed`
+- ✅ **MATCHES** (handle = coinIn)
+
+##### **Gross/Net Win Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  netWin: {
+    $subtract: [
+      { $ifNull: ["$meterData.drop", 0] },
+      { $ifNull: ["$meterData.moneyOut", 0] }
+    ]
+  }
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits`
+- ✅ **MATCHES**
+
+#### Meters Report API (`/api/reports/meters`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Data Source Selection ✅**
+- **Current Implementation**: Uses `machine.sasMeters` for recent data
+- **Financial Guide**: "For Recent Data (Today/Yesterday): Use `machine.sasMeters`" ✅ **MATCHES**
+- **Business Logic**: Direct access to current meter readings without aggregation
+
+##### **Field Mappings ✅**
+- **Meters In**: `machine.sasMeters.coinIn` ✅ **MATCHES** guide specification
+- **Money Won**: `machine.sasMeters.totalWonCredits` ✅ **MATCHES** guide specification  
+- **Bill In**: `machine.sasMeters.drop` ✅ **MATCHES** guide specification
+- **Voucher Out**: `totalCancelledCredits - totalHandPaidCancelledCredits` ✅ **MATCHES** guide calculation
+- **Hand Paid Credits**: `machine.sasMeters.totalHandPaidCancelledCredits` ✅ **MATCHES** guide specification
+- **Jackpot**: `machine.sasMeters.jackpot` ✅ **MATCHES** guide specification
+- **Games Played**: `machine.sasMeters.gamesPlayed` ✅ **MATCHES** guide specification
+
+#### Location Aggregation API (`/api/locationAggregation`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Location Financial Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Aggregates meter data by location
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+  totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Business Logic**: Sums all machine movements within date range for each location
+
+##### **Gross Revenue Calculation ✅**
+- **Current Implementation**: `gross: { $subtract: ["$moneyIn", "$moneyOut"] }`
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Aggregation Level**: Calculated at location level after machine data aggregation
+
 ## Related Documentation
 
-- [Reports Frontend](frontend/reports.md)
+- [Meters Report API](meters-report-api.md) - Detailed meters endpoint documentation
+- [Financial Metrics Guide](../financial-metrics-guide.md) - Field mapping explanations
+- [Reports Frontend](../frontend/reports.md)
 - [Location Aggregation Helper](../api/lib/helpers/locationAggregation.ts)
 - [Machine Model](../api/lib/models/machines.ts)
 - [Analytics API](analytics-api.md)

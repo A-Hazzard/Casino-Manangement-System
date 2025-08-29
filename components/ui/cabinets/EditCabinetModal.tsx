@@ -9,6 +9,7 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { CabinetFormData } from "@/lib/types/cabinets";
 import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
 import { Trash2 } from "lucide-react";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export const EditCabinetModal = () => {
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
@@ -17,6 +18,9 @@ export const EditCabinetModal = () => {
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
+
+  // Create activity logger for cabinet operations
+  const cabinetLogger = createActivityLogger("machine");
 
   const [formData, setFormData] = useState<CabinetFormData>({
     id: "",
@@ -127,9 +131,21 @@ export const EditCabinetModal = () => {
     if (!selectedCabinet) return;
     try {
       setLoading(true);
+      
+      const previousData = { ...selectedCabinet };
+      
       // Pass the entire formData object with id included
       const success = await updateCabinet(formData);
       if (success) {
+        // Log the cabinet update activity
+        await cabinetLogger.logUpdate(
+          selectedCabinet._id,
+          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"}`,
+          previousData,
+          formData,
+          `Updated cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"})`
+        );
+
         handleClose();
         // You can add a toast notification here
       }

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import { Member } from "@/lib/types/members";
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 
 import PlayerHeader from "@/components/members/PlayerHeader";
@@ -287,15 +287,16 @@ export default function MemberDetailsPage() {
   return (
     <>
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-          />
-          <div className="w-full mt-8">{renderContent()}</div>
-        </main>
-      </div>
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        mainClassName="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full"
+        showToaster={false}
+      >
+        <div className="w-full mt-8">{renderContent()}</div>
+      </PageLayout>
     </>
   );
 }

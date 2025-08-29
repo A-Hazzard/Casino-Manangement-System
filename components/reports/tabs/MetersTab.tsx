@@ -23,6 +23,7 @@ import {
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import { Input } from "@/components/ui/input";
 import type {
@@ -237,7 +238,7 @@ export default function MetersTab() {
           "Jackpot",
           "Bill In",
           "Voucher Out",
-          "Att. Paid Credits",
+          "Hand Paid Cancelled Credits",
           "Games Played",
           "Date",
         ],
@@ -363,39 +364,31 @@ export default function MetersTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Export Buttons */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900">
-            Meters Report Dashboard
-          </h3>
-          <p className="text-sm text-gray-600">
-            Monitor meter readings and financial data by location with
-            comprehensive filtering
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Date Range: {selectedDateRange.start.toLocaleDateString()} -{" "}
-            {selectedDateRange.end.toLocaleDateString()}
-          </p>
-        </div>
+      {/* Header with Export Buttons - Mobile Responsive */}
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+       
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => fetchMetersData(currentPage, searchTerm)}
             disabled={loading || selectedLocations.length === 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
+            size="sm"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+            <span className="sm:hidden">↻</span>
           </Button>
           <Button
             variant="outline"
             onClick={handleExport}
             disabled={metersData.length === 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
+            size="sm"
           >
-            <Download className="h-4 w-4" />
-            Export
+            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Export</span>
+            <span className="sm:hidden">↓</span>
           </Button>
         </div>
       </div>
@@ -487,41 +480,30 @@ export default function MetersTab() {
             <p className="text-gray-600">{error}</p>
           </CardContent>
         </Card>
-      ) : !hasData ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Data Found
-            </h3>
-            <p className="text-gray-600">
-              No meters data found for the selected locations and date range.
-            </p>
-          </CardContent>
-        </Card>
       ) : (
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Meters Data Table
+            <div className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+                Meters Export Report
               </CardTitle>
-              <Badge variant="secondary">{metersData.length} records</Badge>
+              <Badge variant="secondary" className="self-start sm:self-auto text-xs">
+                {metersData.length} records
+              </Badge>
             </div>
-            <CardDescription>
-              Comprehensive meter readings with financial data and machine
-              performance metrics
+            <CardDescription className="text-sm">
+              Monitor meter readings and financial data by location with comprehensive filtering
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Search bar for table */}
+            {/* Search bar for table - Always visible */}
             <div className="mb-4">
               <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search by Machine ID or Location..."
+                  placeholder="Search by Serial Number, Custom Name, or Location..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
@@ -532,6 +514,20 @@ export default function MetersTab() {
                 {searchTerm && ` (filtered by "${searchTerm}")`}
               </p>
             </div>
+
+            {!hasData ? (
+              <div className="p-8 text-center">
+                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Data Found
+                </h3>
+                <p className="text-gray-600">
+                  No meters data found for the selected locations and date range.
+                  {searchTerm && " Try adjusting your search criteria."}
+                </p>
+              </div>
+            ) : (
+              <>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
@@ -559,7 +555,7 @@ export default function MetersTab() {
                       Voucher Out
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Att. Paid Credits
+                      Hand Paid Cancelled Credits
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Games Played
@@ -574,7 +570,18 @@ export default function MetersTab() {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">
-                          {(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}
+                          {(() => {
+                            const serialNumber = (item as Record<string, unknown>).serialNumber as string;
+                            const customName = ((item as Record<string, unknown>).custom as Record<string, unknown>)?.name as string;
+                            
+                            if (serialNumber && serialNumber.trim()) {
+                              return serialNumber.trim();
+                            } else if (customName && customName.trim()) {
+                              return customName.trim();
+                            } else {
+                              return item.machineId;
+                            }
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -583,32 +590,32 @@ export default function MetersTab() {
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.metersIn)}`}>
                           {item.metersIn.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.metersOut)}`}>
                           {item.metersOut.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.jackpot)}`}>
                           {item.jackpot.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.billIn)}`}>
                           {item.billIn.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}>
                           {item.voucherOut.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}>
                           {item.attPaidCredits.toLocaleString()}
                         </div>
                       </td>
@@ -639,7 +646,18 @@ export default function MetersTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-sm font-mono font-medium text-gray-900 truncate">
-                        {(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}
+                        {(() => {
+                          const serialNumber = (item as Record<string, unknown>).serialNumber as string;
+                          const customName = ((item as Record<string, unknown>).custom as Record<string, unknown>)?.name as string;
+                          
+                          if (serialNumber && serialNumber.trim()) {
+                            return serialNumber.trim();
+                          } else if (customName && customName.trim()) {
+                            return customName.trim();
+                          } else {
+                            return item.machineId;
+                          }
+                        })()}
                       </h3>
                       <p className="text-xs text-gray-500 truncate">
                         {item.location}
@@ -654,37 +672,37 @@ export default function MetersTab() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-gray-500">Meters In</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.metersIn)}`}>
                         {item.metersIn.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Money Won</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.metersOut)}`}>
                         {item.metersOut.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Jackpot</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.jackpot)}`}>
                         {item.jackpot.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Bill In</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.billIn)}`}>
                         {item.billIn.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Voucher Out</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.voucherOut)}`}>
                         {item.voucherOut.toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Att. Paid Credits</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-xs text-gray-500">Hand Paid Cancelled Credits</p>
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.attPaidCredits)}`}>
                         {item.attPaidCredits.toLocaleString()}
                       </p>
                     </div>
@@ -699,51 +717,137 @@ export default function MetersTab() {
               ))}
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls - Mobile Responsive */}
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages} ({totalCount} total
-                  records)
+              <>
+                {/* Mobile Pagination */}
+                <div className="mt-4 flex flex-col space-y-3 sm:hidden">
+                  <div className="text-xs text-gray-600 text-center">
+                    Page {currentPage} of {totalPages} ({totalCount} total records)
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ««
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ‹
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600">Page</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          let val = Number(e.target.value);
+                          if (isNaN(val)) val = 1;
+                          if (val < 1) val = 1;
+                          if (val > totalPages) val = totalPages;
+                          handlePageChange(val);
+                        }}
+                        className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                        aria-label="Page number"
+                        disabled={paginationLoading}
+                      />
+                      <span className="text-xs text-gray-600">of {totalPages}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ›
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      »»
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(1)}
-                    disabled={currentPage === 1 || paginationLoading}
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1 || paginationLoading}
-                  >
-                    Previous
-                  </Button>
-                  <span className="px-3 py-1 text-sm bg-gray-100 rounded">
-                    {currentPage}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages || paginationLoading}
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={currentPage === totalPages || paginationLoading}
-                  >
-                    Last
-                  </Button>
+
+                {/* Desktop Pagination */}
+                <div className="mt-4 hidden sm:flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages} ({totalCount} total records)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                    >
+                      First
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Page</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          let val = Number(e.target.value);
+                          if (isNaN(val)) val = 1;
+                          if (val < 1) val = 1;
+                          if (val > totalPages) val = totalPages;
+                          handlePageChange(val);
+                        }}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                        aria-label="Page number"
+                        disabled={paginationLoading}
+                      />
+                      <span className="text-sm text-gray-600">of {totalPages}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                    >
+                      Next
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                    >
+                      Last
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </>
+            )}
+              </>
             )}
           </CardContent>
         </Card>

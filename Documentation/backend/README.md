@@ -7,15 +7,17 @@ This directory contains comprehensive documentation for all backend API routes i
 
 ### Core API Documentation
 - **[API Overview](api-overview.md)** - Comprehensive overview of all API routes
-- **[Authentication API](auth-api.md)** - User authentication and security endpoints
+- **[Reports API](reports-api.md)** - Backend reporting and aggregation endpoints
+- **[Meters Report API](meters-report-api.md)** - Machine-level meter readings and performance data
+- **[Analytics API](analytics-api.md)** - Dashboard analytics and metrics endpoints
+- **[Collections API](collections-api.md)** - Collection reports and financial data management
 - **[Members API](members-api.md)** - Member management and session tracking
 - **[Sessions API](sessions-api.md)** - Gaming session management and analytics
 - **[Locations & Machines API](locations-machines-api.md)** - Location and machine management
-- **[Analytics API](analytics-api.md)** - Data analytics and reporting endpoints
+- **[Authentication API](auth-api.md)** - User authentication and security endpoints
 - **[Administration API](administration-api.md)** - User management and system administration
-- **[Collections API](collections-api.md)** - Collection reports and meter data management
-- **[System Configuration API](system-config-api.md)** - System configuration and settings
 - **[Operations API](operations-api.md)** - Operations management and metrics tracking
+- **[System Configuration API](system-config-api.md)** - System configuration and settings
 
 ### API Categories
 
@@ -50,16 +52,18 @@ This directory contains comprehensive documentation for all backend API routes i
 - Geographic data
 
 #### 6. Analytics & Reporting
-- Dashboard metrics
-- Trend analysis
-- Performance reports
-- Data visualization
+- Dashboard metrics and KPIs
+- Location aggregation and performance analysis
+- Machine-level meter readings and calculations
+- Trend analysis and data visualization
+- Comprehensive financial calculations with mathematical formulas
 
 #### 7. Collections & Financial
-- Collection reports
-- Meter data synchronization
-- Financial reporting
-- Collector management
+- Collection reports with SAS vs meters comparison
+- Meter data synchronization and validation
+- Financial reporting with variance analysis
+- Revenue sharing calculations
+- Collector management and tracking
 
 #### 8. System Configuration
 - Country and regional settings
@@ -113,31 +117,42 @@ const response = await axios.post('/api/auth/login', {
 - `POST /api/auth/logout` - User logout
 - `GET /api/auth/token` - Token validation
 
-### Members
-- `GET /api/members` - List members
+### Reports & Analytics
+- `GET /api/locationAggregation` - Location aggregation with financial metrics
+- `GET /api/reports/meters` - Machine-level meter readings
+- `GET /api/reports/machines` - Machine evaluation and performance reports
+- `GET /api/analytics/dashboard` - Dashboard metrics and KPIs
+- `POST /api/analytics/reports` - Generate custom reports
+- `GET /api/analytics/charts` - Chart data for visualizations
+
+### Members & Sessions
+- `GET /api/members` - List members with win/loss calculations
+- `GET /api/members/summary` - Member summary with financial data
 - `POST /api/members` - Create member
 - `GET /api/members/[id]` - Get member details
-- `GET /api/members/[id]/sessions` - Member sessions
-
-### Sessions
-- `GET /api/sessions` - List sessions
+- `GET /api/members/[id]/sessions` - Member session history
+- `GET /api/sessions` - List gaming sessions
 - `GET /api/sessions/[sessionId]/[machineId]/events` - Session events
 
 ### Locations & Machines
-- `GET /api/locations` - List locations
+- `GET /api/locations` - List gaming locations
 - `POST /api/locations` - Create location
-- `GET /api/machines` - Get machine details
+- `GET /api/machines` - Get machine details with meter data
 - `POST /api/machines` - Create machine
+- `GET /api/machines/aggregation` - Aggregated machine data
 
-### Analytics
-- `GET /api/analytics/dashboard` - Dashboard metrics
-- `POST /api/analytics/reports` - Generate reports
-- `GET /api/analytics/charts` - Chart data
+### Collections & Financial
+- `GET /api/collection-report` - Collection reports
+- `GET /api/collection-report/[reportId]` - Specific report details
+- `GET /api/collectionReport` - Collection report data
+- `GET /api/collections` - Collection management
 
-### Administration
+### Administration & System
 - `GET /api/users` - List users
 - `POST /api/users` - Create user
 - `GET /api/activity-logs` - Activity logs
+- `GET /api/licensees` - List licensees
+- `GET /api/collectors` - List collectors
 
 ## Common Query Parameters
 
@@ -220,7 +235,7 @@ const response = await axios.post('/api/auth/login', {
 
 - [Frontend Documentation](../frontend/) - Frontend page documentation
 - [Database Models](../frontend/database-relationships.md) - Database schema documentation
-- [Type Safety Rules](../frontend/typescript-type-safety-rules.md) - TypeScript guidelines
+- [Type Safety Rules](../typescript-type-safety-rules.md) - TypeScript guidelines
 
 ## Support
 

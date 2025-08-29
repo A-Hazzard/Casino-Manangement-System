@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import {
@@ -28,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
 import RefreshButton from "@/components/ui/RefreshButton";
 
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
 import EditLocationModal from "@/components/ui/locations/EditLocationModal";
@@ -41,23 +40,9 @@ import Image from "next/image";
 import ClientOnly from "@/components/ui/common/ClientOnly";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import { IMAGES } from "@/lib/constants/images";
-
-// Debounce hook for search optimization
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { calculateLocationFinancialTotals } from "@/lib/utils/financial";
+import { useDebounce } from "@/lib/utils/hooks";
+import { fetchMachineStats } from "@/lib/helpers/machineStats";
 
 export default function LocationsPage() {
   const {
@@ -110,30 +95,7 @@ export default function LocationsPage() {
   const [isNewLocationModalOpen, setIsNewLocationModalOpen] = useState(false);
 
   // Calculate financial totals from location data
-  const calculateFinancialTotals = () => {
-    if (!locationData || locationData.length === 0) {
-      return null;
-    }
-
-    const totals = locationData.reduce(
-      (acc, location) => {
-        const moneyIn = location.moneyIn || 0;
-        const moneyOut = location.moneyOut || 0;
-        const gross = location.gross || moneyIn - moneyOut;
-
-        return {
-          moneyIn: acc.moneyIn + moneyIn,
-          moneyOut: acc.moneyOut + moneyOut,
-          gross: acc.gross + gross,
-        };
-      },
-      { moneyIn: 0, moneyOut: 0, gross: 0 }
-    );
-
-    return totals;
-  };
-
-  const financialTotals = calculateFinancialTotals();
+  const financialTotals = calculateLocationFinancialTotals(locationData);
 
   // Replace openLocationModal with our local state handler
   const openLocationModalLocal = () => setIsNewLocationModalOpen(true);
@@ -149,22 +111,12 @@ export default function LocationsPage() {
   // Fetch machine stats (like dashboard) for online/offline counts
   useEffect(() => {
     let aborted = false;
-    const fetchMachineStats = async () => {
+    const loadMachineStats = async () => {
       setMachineStatsLoading(true);
       try {
-        const params = new URLSearchParams();
-        params.append("licensee", "all"); // Get all machines
-
-        const res = await axios.get(
-          `/api/analytics/machines/stats?${params.toString()}`
-        );
-        const data = res.data;
+        const stats = await fetchMachineStats("all");
         if (!aborted) {
-          setMachineStats({
-            totalMachines: data.totalMachines || 0,
-            onlineMachines: data.onlineMachines || 0,
-            offlineMachines: data.offlineMachines || 0,
-          });
+          setMachineStats(stats);
         }
       } catch {
         if (!aborted) {
@@ -178,7 +130,7 @@ export default function LocationsPage() {
         if (!aborted) setMachineStatsLoading(false);
       }
     };
-    fetchMachineStats();
+    loadMachineStats();
     return () => {
       aborted = true;
     };
@@ -347,13 +299,14 @@ export default function LocationsPage() {
 
   return (
     <>
-
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
 
           {/* Title Row */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
@@ -373,7 +326,7 @@ export default function LocationsPage() {
                 isSyncing={refreshing}
                 disabled={isLoading}
                 label="Refresh"
-                className="ml-auto"
+                className="ml-auto mr-2"
               />
             </div>
             {/* Desktop: New Location button */}
@@ -550,44 +503,68 @@ export default function LocationsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-4">
-              <Button
-                onClick={handleFirstPage}
-                disabled={currentPage === 0}
-                variant="ghost"
-              >
-                <DoubleArrowLeftIcon />
-              </Button>
-              <Button
-                onClick={handlePrevPage}
-                disabled={currentPage === 0}
-                variant="ghost"
-              >
-                <ChevronLeftIcon />
-              </Button>
-              <span className="text-sm">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <Button
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages - 1}
-                variant="ghost"
-              >
-                <ChevronRightIcon />
-              </Button>
-              <Button
-                onClick={handleLastPage}
-                disabled={currentPage === totalPages - 1}
-                variant="ghost"
-              >
-                <DoubleArrowRightIcon />
-              </Button>
-            </div>
+            <>
+              {/* Mobile Pagination */}
+              <div className="flex flex-col space-y-3 mt-4 sm:hidden">
+                <div className="text-xs text-gray-600 text-center">
+                  Page {currentPage + 1} of {totalPages} ({sortedData.length} locations)
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={handleFirstPage} disabled={currentPage === 0} className="px-2 py-1 text-xs">««</Button>
+                  <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage === 0} className="px-2 py-1 text-xs">‹</Button>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-600">Page</span>
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={totalPages} 
+                      value={currentPage + 1} 
+                      onChange={(e) => { 
+                        let val = Number(e.target.value); 
+                        if (isNaN(val)) val = 1; 
+                        if (val < 1) val = 1; 
+                        if (val > totalPages) val = totalPages; 
+                        setCurrentPage(val - 1); 
+                      }} 
+                      className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive" 
+                      aria-label="Page number" 
+                    />
+                    <span className="text-xs text-gray-600">of {totalPages}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages - 1} className="px-2 py-1 text-xs">›</Button>
+                  <Button variant="outline" size="sm" onClick={handleLastPage} disabled={currentPage === totalPages - 1} className="px-2 py-1 text-xs">»»</Button>
+                </div>
+              </div>
+              {/* Desktop Pagination */}
+              <div className="hidden sm:flex justify-center items-center space-x-2 mt-4">
+                <Button onClick={handleFirstPage} disabled={currentPage === 0} variant="ghost"><DoubleArrowLeftIcon /></Button>
+                <Button onClick={handlePrevPage} disabled={currentPage === 0} variant="ghost"><ChevronLeftIcon /></Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Page</span>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={totalPages} 
+                    value={currentPage + 1} 
+                    onChange={(e) => { 
+                      let val = Number(e.target.value); 
+                      if (isNaN(val)) val = 1; 
+                      if (val < 1) val = 1; 
+                      if (val > totalPages) val = totalPages; 
+                      setCurrentPage(val - 1); 
+                    }} 
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive" 
+                    aria-label="Page number" 
+                  />
+                  <span className="text-sm text-gray-600">of {totalPages}</span>
+                </div>
+                <Button onClick={handleNextPage} disabled={currentPage === totalPages - 1} variant="ghost"><ChevronRightIcon /></Button>
+                <Button onClick={handleLastPage} disabled={currentPage === totalPages - 1} variant="ghost"><DoubleArrowRightIcon /></Button>
+              </div>
+            </>
           )}
 
-          <Toaster richColors />
-        </main>
-      </div>
+      </PageLayout>
       <EditLocationModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
@@ -602,6 +579,7 @@ export default function LocationsPage() {
         isOpen={isNewLocationModalOpen}
         onClose={closeLocationModal}
       />
+      <Toaster richColors />
     </>
   );
 }

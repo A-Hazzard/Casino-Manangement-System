@@ -157,13 +157,10 @@ All contributors should adhere to the following rules, which are enforced throug
 
 ## 9. Testing Best Practices
 
-- Testing framework setup is planned for future implementation.
 - Focus on manual testing of critical user flows during development.
 - Implement proper error handling and logging for debugging.
 - Use TypeScript for compile-time error catching.
-
-**Reference:**  
-- `package.json` - Jest configuration for future testing setup
+- Use the Go-based MongoDB query tool in `test/` directory for database validation and testing.
 
 ---
 

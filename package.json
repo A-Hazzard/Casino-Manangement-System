@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
     "type-check": "tsc --noEmit",
     "perf-test": "node scripts/performance-test.js",
     "create-indexes": "node scripts/create-indexes.js"

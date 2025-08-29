@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useReportsStore } from "@/lib/store/reportsStore";
+import { 
+  handleLocationSelect as handleLocationSelectHelper,
+  handleRefresh as handleRefreshHelper,
+  createTimeFilterButtons,
+  loadDashboardData 
+} from "@/lib/helpers/reportsPage";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -183,56 +189,18 @@ export default function DashboardTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle location selection from map
-  const handleLocationSelect = (locationIds: string[]) => {
-    console.warn(`Selected locations: ${JSON.stringify(locationIds)}`);
-    // Here you could navigate to location details or show more info
-    // For now, just handle the first selected location if any
-    if (locationIds.length > 0) {
-      console.warn(`Primary selected location: ${locationIds[0]}`);
-    }
-  };
+  const handleLocationSelect = handleLocationSelectHelper;
 
   useEffect(() => {
     // Load dashboard data when component mounts
-    setLoading(true);
-    setTimeout(() => {
-      updateRealTimeMetrics({
-        currentPlayers: 1847,
-        activeTerminals: 234,
-        totalRevenue: 2450000,
-        averageHold: 8.7,
-        topPerformingMachine: {
-          id: "MAC001",
-          name: "Lucky Stars Deluxe",
-          revenue: 45678,
-        },
-        alerts: [
-          {
-            type: "performance",
-            message: "Machine MAC003 performance below threshold",
-            timestamp: new Date().toISOString(),
-            severity: "medium",
-            acknowledged: false,
-          },
-        ],
-        lastUpdated: new Date().toISOString(),
-      });
-      setLoading(false);
-    }, 1000);
+    loadDashboardData(setLoading, updateRealTimeMetrics, selectedDateRange);
   }, [setLoading, updateRealTimeMetrics, selectedDateRange]);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsRefreshing(false);
+    await handleRefreshHelper(setIsRefreshing);
   };
 
-  const timeFilterButtons = [
-    { id: "Today", label: "Today" },
-    { id: "last7days", label: "Last 7 Days" },
-    { id: "last30days", label: "Last 30 Days" },
-    { id: "Custom", label: "Custom Range" },
-  ];
+  const timeFilterButtons = createTimeFilterButtons();
 
   if (isLoading) {
     return (

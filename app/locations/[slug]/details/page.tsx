@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import Link from "next/link";
 import LocationInfoSkeleton from "@/components/location/LocationInfoSkeleton";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
@@ -163,16 +164,18 @@ export default function LocationDetailsPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={false}
-            disabled={metricsLoading || refreshing}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: metricsLoading || refreshing,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={false}
+        mainClassName="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden"
+        showToaster={false}
+      >
 
           <div className="flex items-center mb-6">
             <Link href="/locations" className="mr-4">
@@ -254,13 +257,13 @@ export default function LocationDetailsPage() {
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-sm text-gray-500">Money In</p>
-                      <p className="text-lg font-semibold">
+                      <p className={`text-lg font-semibold ${getFinancialColorClass(locationInfo.moneyIn)}`}>
                         {formatCurrency(locationInfo.moneyIn || 0)}
                       </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-sm text-gray-500">Money Out</p>
-                      <p className="text-lg font-semibold">
+                      <p className={`text-lg font-semibold ${getFinancialColorClass(locationInfo.moneyOut)}`}>
                         {formatCurrency(locationInfo.moneyOut || 0)}
                       </p>
                     </div>
@@ -272,13 +275,13 @@ export default function LocationDetailsPage() {
                   <div className="grid grid-cols-1 gap-2">
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-sm text-gray-500">Gross</p>
-                      <p className="text-lg font-semibold">
+                      <p className={`text-lg font-semibold ${getFinancialColorClass(locationInfo.gross)}`}>
                         {formatCurrency(locationInfo.gross || 0)}
                       </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-sm text-gray-500">Net</p>
-                      <p className="text-lg font-semibold">
+                      <p className={`text-lg font-semibold ${getFinancialColorClass(locationInfo.net)}`}>
                         {formatCurrency(locationInfo.net || 0)}
                       </p>
                     </div>
@@ -338,8 +341,7 @@ export default function LocationDetailsPage() {
               activeMetricsFilter="All Time"
             />
           )}
-        </main>
-      </div>
+      </PageLayout>
     </>
   );
 }

@@ -19,6 +19,74 @@ import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
 
 /**
+ * Administration page helper functions for managing section changes and transitions
+ */
+
+import type { AdministrationSection } from "@/lib/constants/administration";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
+/**
+ * Handles section changes with smooth transitions and URL updates
+ * @param section - The new section to switch to
+ * @param setActiveSection - Function to update active section state
+ * @param setCurrentPage - Function to reset pagination
+ * @param pathname - Current pathname
+ * @param searchParams - Current search parameters
+ * @param router - Next.js router instance
+ */
+export function handleSectionChange(
+  section: AdministrationSection,
+  setActiveSection: (section: AdministrationSection) => void,
+  setCurrentPage: (page: number) => void,
+  pathname: string,
+  searchParams: URLSearchParams,
+  router: AppRouterInstance
+) {
+  // Add smooth transition class to the content area
+  const contentElement = document.querySelector("[data-section-content]");
+  if (contentElement) {
+    contentElement.classList.add(
+      "opacity-0",
+      "transform",
+      "translate-y-2",
+      "transition-all",
+      "duration-300",
+      "ease-in-out"
+    );
+  }
+
+  // Delay the section change to allow for smooth transition
+  setTimeout(() => {
+    setActiveSection(section);
+    setCurrentPage(0); // Reset pagination when switching sections
+
+    // Update URL based on section
+    const params = new URLSearchParams(searchParams.toString());
+    if (section === "users") {
+      params.delete("section"); // Default section, no param needed
+    } else if (section === "licensees") {
+      params.set("section", "licensees");
+    }
+
+    const newURL = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    router.push(newURL, { scroll: false });
+
+    // Remove transition class after content updates
+    setTimeout(() => {
+      if (contentElement) {
+        contentElement.classList.remove(
+          "opacity-0",
+          "transform",
+          "translate-y-2"
+        );
+      }
+    }, 50);
+  }, 150);
+}
+
+/**
  * Handles user management operations
  */
 export const userManagement = {

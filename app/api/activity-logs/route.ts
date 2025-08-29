@@ -4,6 +4,49 @@ import { ActivityLog } from "@/app/api/lib/models/activityLog";
 import { apiLogger } from "@/app/api/lib/utils/logger";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 
+/**
+ * Extract client IP address from request headers with comprehensive fallback
+ * This function tries multiple headers to get the real client IP address
+ */
+function extractClientIP(request: NextRequest, fallbackIP?: string): string {
+  // Try various headers that might contain the real client IP
+  const possibleHeaders = [
+    "x-forwarded-for",
+    "x-real-ip",
+    "x-client-ip",
+    "x-forwarded",
+    "x-cluster-client-ip",
+    "forwarded-for",
+    "forwarded",
+    "cf-connecting-ip", // Cloudflare
+    "true-client-ip", // Akamai and Cloudflare
+  ];
+
+  for (const header of possibleHeaders) {
+    const value = request.headers.get(header);
+    if (value) {
+      // Handle comma-separated values (take the first one)
+      const firstIP = value.split(",")[0].trim();
+      if (firstIP && firstIP !== "unknown" && firstIP !== "::1") {
+        return firstIP;
+      }
+    }
+  }
+
+  // Fallback to the IP provided in the request body
+  if (fallbackIP && fallbackIP !== "client-side" && fallbackIP !== "unknown") {
+    return fallbackIP;
+  }
+
+  // Last resort - try to get from connection
+  const connection = (request as { connection?: { remoteAddress?: string } }).connection;
+  if (connection?.remoteAddress) {
+    return connection.remoteAddress;
+  }
+
+  return "unknown";
+}
+
 export async function POST(request: NextRequest) {
   const context = apiLogger.createContext(request, "/api/activity-logs");
   apiLogger.startLogging();
@@ -24,17 +67,12 @@ export async function POST(request: NextRequest) {
       userAgent,
     } = body;
 
-    // Get user information from session/token if available
-    // For now, we'll use a placeholder - in a real app, you'd extract this from JWT
-    const userId = "current-user-id"; // This should come from authentication
-    const username = "current-user"; // This should come from authentication
+    // Get user information from request body or extract from JWT token
+    const userId = body.userId || "unknown";
+    const username = body.username || "unknown";
 
-    // Get client IP from headers
-    const clientIP =
-      request.headers.get("x-forwarded-for") ||
-      request.headers.get("x-real-ip") ||
-      ipAddress ||
-      "unknown";
+    // Get client IP from headers with comprehensive fallback
+    const clientIP = extractClientIP(request, ipAddress);
 
     // Create activity log entry
     const activityLog = new ActivityLog({
@@ -94,6 +132,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId");
     const resource = searchParams.get("resource");
     const action = searchParams.get("action");
+    const ipAddress = searchParams.get("ipAddress");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
@@ -110,6 +149,10 @@ export async function GET(request: NextRequest) {
 
     if (action) {
       query.action = action;
+    }
+
+    if (ipAddress) {
+      query.ipAddress = ipAddress;
     }
 
     if (startDate && endDate) {

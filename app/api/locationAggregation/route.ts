@@ -4,25 +4,7 @@ import { TimePeriod } from "@/app/api/lib/types";
 import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { LocationFilter } from "@/lib/types/location";
-
-
-// Simple in-memory cache for performance
-const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-function getCacheKey(params: Record<string, unknown>): string {
-  return JSON.stringify(params);
-}
-
-function isCacheValid(timestamp: number): boolean {
-  return Date.now() - timestamp < CACHE_TTL;
-}
-
-// Function to clear cache (useful for testing)
-function clearCache() {
-  cache.clear();
-  // Location aggregation cache cleared
-}
+import { getCacheKey, getCachedData, setCachedData, clearCache } from "@/app/api/lib/helpers/cacheUtils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -84,14 +66,13 @@ export async function GET(req: NextRequest) {
     });
 
     const skipCacheForSelected = Boolean(selectedLocations);
-    const cached = cache.get(cacheKey);
-    if (
-      cached &&
-      isCacheValid(cached.timestamp) &&
-      !clearCacheParam &&
-      !skipCacheForSelected
-    ) {
-      return NextResponse.json(cached.data);
+    
+    // Check cache first
+    if (!clearCacheParam && !skipCacheForSelected) {
+      const cachedResult = getCachedData(cacheKey);
+      if (cachedResult) {
+        return NextResponse.json(cachedResult);
+      }
     }
 
     const db = await connectDB();
@@ -155,18 +136,7 @@ export async function GET(req: NextRequest) {
 
     // Cache the result (unless cache was cleared)
     if (!clearCacheParam && !skipCacheForSelected) {
-      cache.set(cacheKey, {
-        data: result,
-        timestamp: Date.now(),
-      });
-
-      // Clean up old cache entries (keep only last 100 entries)
-      if (cache.size > 100) {
-        const entries = Array.from(cache.entries());
-        entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
-        const toDelete = entries.slice(100);
-        toDelete.forEach(([key]) => cache.delete(key));
-      }
+      setCachedData(cacheKey, result);
     }
 
     return NextResponse.json(result);

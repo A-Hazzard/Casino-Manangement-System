@@ -528,7 +528,7 @@ Retrieves specific movement request details.
 
 ### Metrics Model
 ```typescript
-interface Metrics {
+type Metrics = {
   _id: string;
   timestamp: Date;
   locationId: string;
@@ -549,7 +549,7 @@ interface Metrics {
 
 ### Scheduler Model
 ```typescript
-interface Scheduler {
+type Scheduler = {
   _id: string;
   name: string;
   type: string;
@@ -577,7 +577,7 @@ interface Scheduler {
 
 ### MovementRequest Model
 ```typescript
-interface MovementRequest {
+type MovementRequest = {
   _id: string;
   machineId: string;
   fromLocation: {
@@ -657,9 +657,9 @@ interface MovementRequest {
 
 ## Related Frontend Pages
 
-- **Operations Dashboard**: `/operations` - Main operations interface
+- **Operations Dashboard**: `/operations` - Main operations page
 - **Metrics Dashboard**: `/metrics` - Real-time metrics and analytics
-- **Reports Center**: `/reports` - Comprehensive reporting interface
+- **Reports Center**: `/reports` - Comprehensive reporting page
 - **Scheduler Management**: `/administration/schedulers` - Schedule management
 - **Movement Requests**: `/operations/movements` - Movement request management
 

@@ -403,26 +403,67 @@ export default function MembersSummaryTab() {
 
     return (
       <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-        <div className="flex items-center justify-between flex-1 sm:hidden">
-          <Button
-            onClick={handlePrevPage}
-            disabled={!pagination.hasPrevPage}
-            variant="outline"
-            size="sm"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-gray-700">
+        <div className="flex flex-col space-y-2 sm:hidden">
+          <div className="text-xs text-gray-600 text-center">
             Page {currentPage} of {pagination.totalPages}
-          </span>
-          <Button
-            onClick={handleNextPage}
-            disabled={!pagination.hasNextPage}
-            variant="outline"
-            size="sm"
-          >
-            Next
-          </Button>
+          </div>
+          <div className="flex items-center justify-center space-x-2">
+            <Button
+              onClick={handleFirstPage}
+              disabled={currentPage === 1}
+              variant="outline"
+              size="sm"
+              className="px-2 py-1 text-xs"
+            >
+              ««
+            </Button>
+            <Button
+              onClick={handlePrevPage}
+              disabled={!pagination.hasPrevPage}
+              variant="outline"
+              size="sm"
+              className="px-2 py-1 text-xs"
+            >
+              ‹
+            </Button>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-600">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={pagination.totalPages}
+                value={currentPage}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > pagination.totalPages) val = pagination.totalPages;
+                  setCurrentPage(val);
+                }}
+                className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                aria-label="Page number"
+              />
+              <span className="text-xs text-gray-600">of {pagination.totalPages}</span>
+            </div>
+            <Button
+              onClick={handleNextPage}
+              disabled={!pagination.hasNextPage}
+              variant="outline"
+              size="sm"
+              className="px-2 py-1 text-xs"
+            >
+              ›
+            </Button>
+            <Button
+              onClick={handleLastPage}
+              disabled={currentPage === pagination.totalPages}
+              variant="outline"
+              size="sm"
+              className="px-2 py-1 text-xs"
+            >
+              »»
+            </Button>
+          </div>
         </div>
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
@@ -465,6 +506,27 @@ export default function MembersSummaryTab() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
+
+              {/* Page Input for Quick Navigation */}
+              <div className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium">
+                <span className="text-xs text-gray-600 mr-1">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pagination.totalPages}
+                  value={currentPage}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (isNaN(val)) val = 1;
+                    if (val < 1) val = 1;
+                    if (val > pagination.totalPages) val = pagination.totalPages;
+                    setCurrentPage(val);
+                  }}
+                  className="w-12 px-1 py-0 border-0 text-center text-xs text-gray-700 focus:ring-0 focus:border-0 bg-transparent"
+                  aria-label="Page number"
+                />
+                <span className="text-xs text-gray-600 ml-1">of {pagination.totalPages}</span>
+              </div>
 
               {Array.from({ length: endPage - startPage + 1 }, (_, i) => {
                 const pageNum = startPage + i;

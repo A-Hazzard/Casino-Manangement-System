@@ -135,7 +135,7 @@ Retrieves detailed events for a specific session on a specific machine.
 
 ### Machine Session Model
 ```typescript
-interface MachineSession {
+type MachineSession = {
   _id: string;
   sessionId: string;
   machineId: string;
@@ -172,7 +172,7 @@ interface MachineSession {
 
 ### Session Event Model
 ```typescript
-interface SessionEvent {
+type SessionEvent = {
   _id: string;
   sessionId: string;
   machineId: string;
@@ -248,10 +248,140 @@ interface SessionEvent {
 
 ## Related Frontend Pages
 
-- **Sessions List** (`/sessions`): Session management interface
+- **Sessions List** (`/sessions`): Session management page
 - **Session Events** (`/sessions/[sessionId]/[machineId]/events`): Detailed session events
 - **Member Sessions** (`/members/[id]`): Member-specific session history
 - **Analytics Dashboard**: Session analytics and reporting
+
+### Financial Calculations Analysis
+
+#### Sessions API Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+##### **Session Financial Data Structure ❌**
+- **Current Implementation**: 
+  ```javascript
+  // Session financial fields from machinesessions collection
+  {
+    handle: Number,           // Total betting activity
+    cancelledCredits: Number, // Credits cancelled during session
+    jackpot: Number,          // Jackpots during session
+    won: Number,              // Total winnings
+    bet: Number,              // Total bets placed
+    points: Number,           // Points earned
+    gamesPlayed: Number,      // Games played count
+    gamesWon: Number,         // Games won count
+    startMeters: { ... },     // Meter readings at session start
+    endMeters: { ... }        // Meter readings at session end
+  }
+  ```
+- **Financial Guide**: No specific guidance for session-level financial calculations
+- ❌ **NOT IN GUIDE** - Session financial structure not defined in financial metrics guide
+
+##### **Session Duration Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  duration = endTime - startTime (calculated in minutes)
+  ```
+- **Business Logic**: Actual playing time calculation
+- ✅ **CONSISTENT** - Standard duration calculation
+
+##### **Session Performance Metrics ❌**
+- **Current Implementation**: 
+  ```javascript
+  // Performance calculations (if implemented)
+  winRate = gamesWon / gamesPlayed * 100
+  averageBet = bet / gamesPlayed
+  pointsPerGame = points / gamesPlayed
+  netWin = won - bet
+  ```
+- **Financial Guide**: No guidance for session-level performance metrics
+- ❌ **NOT IN GUIDE** - Session performance calculations not defined in financial metrics guide
+
+##### **Session Event Tracking ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Links sessions to machine events
+  { $match: { 
+    currentSession: sessionId,
+    machine: machineId 
+  }}
+  ```
+- **Business Logic**: Associates events with specific sessions and machines
+- ✅ **CONSISTENT** - Standard session-event association
+
+##### **Session Search and Filtering ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Multi-field search
+  $or: [
+    { sessionId: { $regex: searchTerm, $options: 'i' } },
+    { machineId: { $regex: searchTerm, $options: 'i' } },
+    { memberId: { $regex: searchTerm, $options: 'i' } }
+  ]
+  ```
+- **Business Logic**: Comprehensive search across session identifiers
+- ✅ **COMPREHENSIVE** - Standard search pattern
+
+##### **Session Date Filtering ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Date range filtering
+  { startTime: { $gte: startDate, $lte: endDate } }
+  ```
+- **Business Logic**: Filters sessions by start time within date range
+- ✅ **CONSISTENT** - Standard date filtering
+
+### Mathematical Formulas Summary
+
+#### **Session Financial Metrics (Requires Verification)**
+```
+Session Handle = Total betting activity during session
+Session Cancelled Credits = Credits refunded during session
+Session Jackpot = Jackpot amounts won during session
+Session Won = Total winnings paid to player
+Session Bet = Total amount wagered by player
+Session Net Win = won - bet (from player perspective)
+Session House Edge = bet - won (from casino perspective)
+```
+
+#### **Session Performance Calculations (Requires Verification)**
+```
+Session Duration = endTime - startTime (in minutes)
+Win Rate = (gamesWon / gamesPlayed) * 100
+Average Bet = bet / gamesPlayed  
+Points Per Game = points / gamesPlayed
+Handle Per Minute = handle / duration
+Games Per Minute = gamesPlayed / duration
+```
+
+#### **Session Aggregation Patterns**
+```
+Sessions by Member = GROUP BY memberId
+Sessions by Machine = GROUP BY machineId
+Sessions by Location = GROUP BY machine.gamingLocation
+Sessions by Date = GROUP BY DATE(startTime)
+```
+
+#### **Session Event Association**
+```
+Session Events = FIND(machineevents WHERE 
+  currentSession = sessionId AND
+  machine = machineId
+) ORDER BY timestamp ASC
+```
+
+### Required Verification
+
+**The following calculations need to be verified against the financial metrics guide:**
+
+1. **Session Data Structure**: Confirm session financial fields align with standard meter calculations
+2. **Performance Metrics**: Verify session-level calculations represent accurate gaming outcomes
+3. **Financial Accuracy**: Confirm session data accurately reflects machine meter changes
+4. **Event Correlation**: Verify session events accurately represent machine activity during sessions
+
+**Note**: Session API calculations use session-level data structures not explicitly defined in the financial metrics guide and require verification for accuracy.
 
 ## Performance Considerations
 

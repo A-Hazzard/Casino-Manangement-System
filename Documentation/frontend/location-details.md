@@ -178,6 +178,133 @@ LocationDetailsPage (app/locations/[slug]/details/page.tsx)
 - Handles loading, filtering, and pagination states
 - Provides real-time metrics updates and cabinet management
 
+## Financial Calculations Analysis
+
+### Location Details Metrics vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Location Aggregate Financial Metrics ✅**
+- **Current Implementation**: Aggregates all cabinet data at location level
+- **Data Source**: Meter readings from all cabinets at specific location
+- **Time Period Filtering**: Today, Yesterday, Last 7 days, 30 days, Custom
+- **Financial Guide**: Uses standard aggregation methodology ✅ **MATCHES**
+
+#### **Location Total Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  locationMoneyIn = Σ(movement.drop) WHERE gamingLocation = locationId AND readAt BETWEEN startDate AND endDate
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash collected from all cabinets at location
+- **Display**: Summary cards show formatted total money in
+
+#### **Location Total Money Out (Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  locationMoneyOut = Σ(movement.totalCancelledCredits) WHERE gamingLocation = locationId AND readAt BETWEEN startDate AND endDate
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits cancelled/paid out from all cabinets at location
+- **Display**: Summary cards show formatted total money out
+
+#### **Location Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  locationGross = locationMoneyIn - locationMoneyOut
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: Standard gross calculation aggregated for entire location
+
+#### **Location Net Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  locationNetRevenue = locationGross * (profitSharePercentage / 100)
+  ```
+- **Business Logic**: Location's share of revenue based on profit sharing agreement
+- **Calculation**: Net revenue after profit sharing with location partner
+- ✅ **BUSINESS CALCULATION** - Standard revenue sharing formula
+
+#### **Cabinet Status by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalCabinets = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
+  onlineCabinets = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= recentThreshold)
+  offlineCabinets = totalCabinets - onlineCabinets
+  ```
+- **Business Logic**: Cabinet status aggregation at location level
+- ✅ **CONSISTENT** - Standard machine status calculation
+
+#### **Cabinet Performance Ranking at Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Sort cabinets by performance within location
+  ORDER BY gross DESC     // By gross revenue
+  ORDER BY moneyIn DESC   // By money in (drop)
+  ORDER BY gamesPlayed DESC // By activity level
+  ```
+- **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
+- **Business Logic**: Ranks cabinets within location by performance
+
+### Mathematical Formulas Summary
+
+#### **Location Aggregate Metrics**
+```
+Location Total Money In = Σ(movement.drop) across all cabinets at location
+Location Total Money Out = Σ(movement.totalCancelledCredits) across all cabinets at location
+Location Gross Revenue = Location Total Money In - Location Total Money Out
+Location Net Revenue = Location Gross Revenue * (Profit Share% / 100)
+```
+
+#### **Cabinet Status at Location**
+```
+Total Cabinets = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
+Online Cabinets = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
+Offline Cabinets = Total Cabinets - Online Cabinets
+Cabinet Utilization% = (Online Cabinets / Total Cabinets) * 100
+```
+
+#### **Cabinet Performance within Location**
+```
+Cabinet Ranking = ORDER BY gross DESC per location
+Top Cabinet by Revenue = MAX(gross) WHERE gamingLocation = locationId
+Average Cabinet Revenue = AVG(gross) WHERE gamingLocation = locationId
+Location Revenue Distribution = gross per cabinet / location total gross
+```
+
+#### **Time-based Location Analysis**
+```
+Location Performance by Period = GROUP BY time period, SUM(gross) per location
+Location Trend Analysis = COMPARE gross across time periods
+Location Growth Rate = ((current period gross - previous period gross) / previous period gross) * 100
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Location ID**: Validates MongoDB ObjectId format
+- **Time Period**: Validates date range selections
+- **Cabinet Filters**: Validates cabinet search and filter parameters
+- **Pagination**: Validates numeric page and limit parameters
+
+#### **Data Integrity ✅**
+- **Null Handling**: Uses fallback values for missing cabinet data
+- **Aggregation Accuracy**: Ensures location totals accurately reflect cabinet data
+- **Real-time Sync**: Maintains consistency between location and cabinet metrics
+- **Historical Data**: Preserves data integrity across time periods
+
+### Required Verification
+
+**Location details calculations align with the financial metrics guide:**
+
+1. **Location Aggregations**: Use standard drop and cancelled credits fields ✅
+2. **Gross Revenue**: Standard calculation (drop - cancelled credits) ✅
+3. **Cabinet Status**: Standard machine status calculation ✅
+4. **Performance Ranking**: Use appropriate financial metrics ✅
+5. **Revenue Sharing**: Standard business calculation ✅
+
+**Note**: Location details calculations correctly implement the financial metrics guide for location-level analysis and cabinet aggregation.
+
 ## UI
 - Clean, modern design with Tailwind CSS
 - Card-based layout for easy information scanning

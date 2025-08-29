@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 import { LocationStore } from "@/lib/types/location";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 // Define a no-op version for SSR
 const dummyState: LocationStore = {
@@ -18,7 +19,9 @@ const createStore = () => {
     closeLocationModal: () => set({ isLocationModalOpen: false }),
     createLocation: async (location) => {
       try {
-        await axios.post("/api/locations", {
+        const locationLogger = createActivityLogger("location");
+        
+        const response = await axios.post("/api/locations", {
           name: location.name,
           address: {
             street: location.address,
@@ -28,6 +31,19 @@ const createStore = () => {
             longitude: location.longitude,
           },
         });
+
+        // Log the location creation activity
+        await locationLogger.logCreate(
+          response.data?.data?._id || location.name,
+          location.name,
+          {
+            name: location.name,
+            address: location.address,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          `Created new location: ${location.name} at ${location.address}`
+        );
       } catch (error) {
         console.error("Error creating location:", error);
         throw error;

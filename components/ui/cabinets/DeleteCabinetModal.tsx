@@ -8,12 +8,16 @@ import Image from "next/image";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { deleteCabinet } from "@/lib/helpers/cabinets";
 import { IMAGES } from "@/lib/constants/images";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export const DeleteCabinetModal = () => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
     useCabinetActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Create activity logger for cabinet operations
+  const cabinetLogger = createActivityLogger("machine");
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -57,8 +61,18 @@ export const DeleteCabinetModal = () => {
   const handleDelete = async () => {
     if (!selectedCabinet) return;
     try {
+      const cabinetData = { ...selectedCabinet };
+      
       const success = await deleteCabinet(selectedCabinet._id);
       if (success) {
+        // Log the cabinet deletion activity
+        await cabinetLogger.logDelete(
+          selectedCabinet._id,
+          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"}`,
+          cabinetData,
+          `Deleted cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"})`
+        );
+
         handleClose();
         // You could add a toast notification here
       }

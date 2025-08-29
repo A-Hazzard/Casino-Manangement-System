@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 import { gsap } from "gsap";
@@ -20,8 +20,10 @@ import { gsap } from "gsap";
 
 
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
+import { getLocationsWithMachines } from "@/lib/helpers/collectionReport";
 import type { LocationSelectItem } from "@/lib/types/location";
 import type { SchedulerTableRow } from "@/lib/types/componentProps";
+import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 import {
   fetchMonthlyReportSummaryAndDetails,
   fetchAllLocationNames,
@@ -44,6 +46,13 @@ import {
   setLastMonthDateRange,
 } from "@/lib/helpers/collectionReportPage";
 import { fetchAndFormatCollectorSchedules } from "@/lib/helpers/collectorSchedules";
+import { 
+  handleTabChange, 
+  syncStateWithURL, 
+  handlePaginationWithAnimation,
+  resetSchedulerFilters,
+  resetCollectorFilters 
+} from "@/lib/helpers/collectionReportPage";
 
 import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
 import CollectionDesktopUI from "@/components/collectionReport/CollectionDesktopUI";
@@ -54,6 +63,7 @@ import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
 import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
 
 import type { CollectorSchedule } from "@/lib/types/components";
 
@@ -127,29 +137,16 @@ function CollectionReportContent() {
   });
 
   // Update URL when tab changes
-  const handleTabChange = useCallback(
+  const handleTabChangeLocal = useCallback(
     (value: string) => {
-      const newTab = value as CollectionView;
-      setActiveTab(newTab);
-      pushToUrl(newTab);
+      handleTabChange(value, setActiveTab, pushToUrl);
     },
     [pushToUrl]
   );
 
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
-    const section = searchParams?.get("section");
-    if (section === "monthly" && activeTab !== "monthly") {
-      setActiveTab("monthly");
-    } else if (section === "manager" && activeTab !== "manager") {
-      setActiveTab("manager");
-    } else if (section === "collector" && activeTab !== "collector") {
-      setActiveTab("collector");
-    } else if (section === "collection" && activeTab !== "collection") {
-      setActiveTab("collection");
-    } else if (!section && activeTab !== "collection") {
-      setActiveTab("collection");
-    }
+    syncStateWithURL(searchParams, activeTab, setActiveTab);
   }, [searchParams, activeTab]);
 
 
@@ -171,9 +168,13 @@ function CollectionReportContent() {
   const [reports, setReports] = useState<CollectionReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // New Collection Modal state
+  const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
 
   // Filter state for collection reports
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
+  const [locationsWithMachines, setLocationsWithMachines] = useState<CollectionReportLocationWithMachines[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [search, setSearch] = useState<string>("");
@@ -229,6 +230,11 @@ function CollectionReportContent() {
     fetchAllGamingLocations().then((locs) =>
       setLocations(locs.map((l) => ({ _id: l.id, name: l.name })))
     );
+  }, []);
+
+  // Fetch locations with machines for the modal
+  useEffect(() => {
+    getLocationsWithMachines().then(setLocationsWithMachines);
   }, []);
 
   // Fetch collection reports data when collection tab is active
@@ -352,17 +358,11 @@ function CollectionReportContent() {
 
   // Pagination handlers with animation
   const paginateMobile = (pageNumber: number) => {
-    setMobilePage(pageNumber);
-    if (activeTab === "collection") {
-      animatePagination(mobilePaginationRef);
-    }
+    handlePaginationWithAnimation(pageNumber, setMobilePage, activeTab, mobilePaginationRef, animatePagination);
   };
 
   const paginateDesktop = (pageNumber: number) => {
-    setDesktopPage(pageNumber);
-    if (activeTab === "collection") {
-      animatePagination(desktopPaginationRef);
-    }
+    handlePaginationWithAnimation(pageNumber, setDesktopPage, activeTab, desktopPaginationRef, animatePagination);
   };
 
   // Fetch manager schedules and collectors when manager tab is active or filters change
@@ -395,9 +395,7 @@ function CollectionReportContent() {
 
   // Reset all manager schedule filters
   const handleResetSchedulerFilters = () => {
-    setSelectedSchedulerLocation("all");
-    setSelectedCollector("all");
-    setSelectedStatus("all");
+    resetSchedulerFilters(setSelectedSchedulerLocation, setSelectedCollector, setSelectedStatus);
   };
 
   // Fetch collector schedules when collector tab is active or filters change
@@ -430,9 +428,7 @@ function CollectionReportContent() {
 
   // Reset all collector schedule filters
   const handleResetCollectorFilters = () => {
-    setSelectedCollectorLocation("all");
-    setSelectedCollectorFilter("all");
-    setSelectedCollectorStatus("all");
+    resetCollectorFilters(setSelectedCollectorLocation, setSelectedCollectorFilter, setSelectedCollectorStatus);
   };
 
   // Fetch all location names and monthly data when monthly tab is active
@@ -542,17 +538,19 @@ function CollectionReportContent() {
   return (
     <>
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            disabled={false}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: false,
+        }}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
 
           {/* Title Row */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
-            <div className="flex items-center gap-3 w-full">
+            <div className="flex items-center gap-3">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                 Collection Report
               </h1>
@@ -564,6 +562,29 @@ function CollectionReportContent() {
                 className="w-6 h-6 sm:w-8 sm:h-8"
               />
             </div>
+            
+            {/* Create Collection Report Button - Only show on collection tab */}
+            {activeTab === "collection" && (
+              <button
+                onClick={() => setShowNewCollectionModal(true)}
+                className="bg-buttonActive text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Create Collection Report
+              </button>
+            )}
           </div>
 
           {/* Section Navigation */}
@@ -571,7 +592,7 @@ function CollectionReportContent() {
             <CollectionNavigation
               tabs={COLLECTION_TABS_CONFIG}
               activeView={activeTab}
-              onChange={(v) => handleTabChange(v)}
+              onChange={(v) => handleTabChangeLocal(v)}
               isLoading={false}
             />
           </div>
@@ -776,9 +797,15 @@ function CollectionReportContent() {
               </motion.div>
             </AnimatePresence>
           </div>
-          <Toaster richColors />
-        </main>
-      </div>
+      </PageLayout>
+      
+      {/* New Collection Modal */}
+      <NewCollectionModal
+        show={showNewCollectionModal}
+        onClose={() => setShowNewCollectionModal(false)}
+        locations={locationsWithMachines}
+      />
+      <Toaster richColors />
     </>
   );
 }

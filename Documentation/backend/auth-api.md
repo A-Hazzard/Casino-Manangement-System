@@ -183,7 +183,7 @@ Manually clears the authentication token (admin function).
 
 ### User Model
 ```typescript
-interface User {
+type User = {
   _id: string;
   emailAddress: string;
   password: string; // Hashed
@@ -229,7 +229,7 @@ interface User {
 
 ## Related Frontend Pages
 
-- **Login Page** (`/login`): Main authentication interface
+- **Login Page** (`/login`): Main authentication page
 - **Protected Routes**: All pages requiring authentication
 - **Header Component**: Logout functionality
 - **Global Auth Context**: Session state management

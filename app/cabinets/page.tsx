@@ -1,6 +1,6 @@
 "use client";
 
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
 import CabinetCard from "@/components/ui/cabinets/CabinetCard";
@@ -14,6 +14,13 @@ import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { Input } from "@/components/ui/input";
 import { fetchCabinets, fetchCabinetLocations } from "@/lib/helpers/cabinets";
+import { mapToCabinetProps } from "@/lib/utils/cabinet";
+import { 
+  getActiveSectionFromURL, 
+  handleSectionChange as handleSectionChangeHelper,
+  filterCabinets as filterCabinetsHelper 
+} from "@/lib/helpers/cabinetsPage";
+import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
@@ -104,77 +111,30 @@ function CabinetsPageContent() {
 
 
   // Get active section from URL search params, default to "cabinets"
-  const getActiveSectionFromURL = useCallback((): CabinetSection => {
-    const section = searchParams.get("section");
-    if (section === "movement-requests") return "movement";
-    if (section === "smib-firmware") return "firmware";
-    if (section === "smib") return "smib";
-    return "cabinets";
+  const getActiveSectionFromURLLocal = useCallback((): CabinetSection => {
+    return getActiveSectionFromURL(searchParams);
   }, [searchParams]);
 
   const [activeSection, setActiveSection] = useState<CabinetSection>(
-    getActiveSectionFromURL()
+    getActiveSectionFromURLLocal()
   );
 
   // Handle section changes with URL updates
   const handleSectionChange = (section: CabinetSection) => {
     setActiveSection(section);
-
-    // Update URL based on section
-    const params = new URLSearchParams(searchParams.toString());
-    if (section === "cabinets") {
-      params.delete("section"); // Default section, no param needed
-    } else if (section === "movement") {
-      params.set("section", "movement-requests");
-    } else if (section === "firmware") {
-      params.set("section", "smib-firmware");
-    } else if (section === "smib") {
-      params.set("section", "smib");
-    }
-
-    const newURL = params.toString()
-      ? `${pathname}?${params.toString()}`
-      : pathname;
-    router.push(newURL, { scroll: false });
+    handleSectionChangeHelper(section, searchParams, pathname, router);
   };
 
   // Sync state with URL changes
   useEffect(() => {
-    const newSection = getActiveSectionFromURL();
+    const newSection = getActiveSectionFromURLLocal();
     if (newSection !== activeSection) {
       setActiveSection(newSection);
     }
-  }, [searchParams, activeSection, getActiveSectionFromURL]);
+  }, [searchParams, activeSection, getActiveSectionFromURLLocal]);
 
   // Calculate financial totals from cabinet data
-  const calculateFinancialTotals = () => {
-    if (!allCabinets || allCabinets.length === 0) {
-      return null;
-    }
-
-    const totals = allCabinets.reduce(
-      (acc, cabinet) => {
-        // Use calculatedMetrics if available, otherwise fall back to direct properties
-        const moneyIn =
-          cabinet.calculatedMetrics?.moneyIn || cabinet.moneyIn || 0;
-        const moneyOut =
-          cabinet.calculatedMetrics?.moneyOut || cabinet.moneyOut || 0;
-        // Calculate gross as moneyIn - moneyOut, or use direct gross property if available
-        const gross = cabinet.gross || moneyIn - moneyOut;
-
-        return {
-          moneyIn: acc.moneyIn + moneyIn,
-          moneyOut: acc.moneyOut + moneyOut,
-          gross: acc.gross + gross,
-        };
-      },
-      { moneyIn: 0, moneyOut: 0, gross: 0 }
-    );
-
-    return totals;
-  };
-
-  const financialTotals = calculateFinancialTotals();
+  const financialTotals = calculateCabinetFinancialTotals(allCabinets);
 
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
@@ -195,27 +155,7 @@ function CabinetsPageContent() {
   // Filter cabinets based on search term and selected location
   const filterCabinets = useCallback(
     (cabinets: Cabinet[], search: string) => {
-      let filtered = [...cabinets];
-
-      // Filter by location if a specific location is selected
-      if (selectedLocation !== "all") {
-        filtered = filtered.filter(
-          (cab) => cab.locationId === selectedLocation
-        );
-      }
-
-      // Filter by search term
-      if (search.trim()) {
-        const searchLower = search.toLowerCase();
-        filtered = filtered.filter(
-          (cab) =>
-            cab.assetNumber?.toLowerCase().includes(searchLower) ||
-            cab.smbId?.toLowerCase().includes(searchLower) ||
-            cab.locationName?.toLowerCase().includes(searchLower) ||
-            cab.serialNumber?.toLowerCase().includes(searchLower)
-        );
-      }
-
+      const filtered = filterCabinetsHelper(cabinets, search, selectedLocation);
       setFilteredCabinets(filtered);
     },
     [selectedLocation]
@@ -317,40 +257,12 @@ function CabinetsPageContent() {
     [openDeleteModal]
   );
 
-  const mapToCabinetProps = useMemo(() => {
+  const transformCabinet = useMemo(() => {
     return (cabinet: Cabinet): CabinetProps => {
-      return {
-        _id: cabinet._id,
-        locationId: cabinet.locationId || "",
-        locationName: cabinet.locationName || "",
-        assetNumber: cabinet.assetNumber || "",
-        smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
-        moneyIn: cabinet.moneyIn || cabinet.sasMeters?.drop || 0,
-        moneyOut:
-          cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0,
-        gross:
-          cabinet.gross ||
-          (cabinet.moneyIn || cabinet.sasMeters?.drop || 0) -
-            (cabinet.moneyOut || cabinet.sasMeters?.totalCancelledCredits || 0),
-        jackpot: cabinet.jackpot || cabinet.sasMeters?.jackpot || 0,
-        lastOnline: cabinet.lastOnline
-          ? cabinet.lastOnline.toString()
-          : cabinet.lastActivity
-          ? cabinet.lastActivity.toString()
-          : "",
-        installedGame: cabinet.installedGame || cabinet.game || "",
-        accountingDenomination:
-          cabinet.accountingDenomination ||
-          cabinet.gameConfig?.accountingDenomination?.toString() ||
-          "",
-        collectionMultiplier: cabinet.collectionMultiplier || "",
-        status: cabinet.status || cabinet.assetStatus || "",
-        gameType: cabinet.gameType,
-        isCronosMachine: cabinet.isCronosMachine,
-        cabinetType: cabinet.cabinetType,
-        onEdit: () => handleEdit(cabinet),
-        onDelete: () => handleDelete(cabinet),
-      };
+      return mapToCabinetProps(cabinet, {
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+      });
     };
   }, [handleEdit, handleDelete]);
 
@@ -370,7 +282,7 @@ function CabinetsPageContent() {
   // Handle location change
   const handleLocationChange = (locationId: string) => {
     setSelectedLocation(locationId);
-    // Filter cabinets based on selected location
+    // Filter cabinets basedallow the user to enter multiple links and let it download the videos symultniously if they want on selected location
     if (locationId === "all") {
       // When switching to "all", reload locations to get all available locations
       loadLocations();
@@ -402,16 +314,15 @@ function CabinetsPageContent() {
         onClose={closeUploadSmibDataModal}
       />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
-            hideOptions={false}
-            hideLicenceeFilter={false}
-            disabled={loading}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: loading,
+        }}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
 
           {/* Title and icon layout */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
@@ -617,7 +528,7 @@ function CabinetsPageContent() {
                   {/* Desktop Table View with green header and border styling */}
                   <div className="hidden md:block" ref={tableRef}>
                     <CabinetTable
-                      cabinets={paginatedCabinets.map(mapToCabinetProps)}
+                      cabinets={paginatedCabinets.map(transformCabinet)}
                       sortOption={sortOption}
                       sortOrder={sortOrder}
                       onColumnSort={handleColumnSort}
@@ -666,7 +577,7 @@ function CabinetsPageContent() {
                           locationName={cabinet.locationName || ""}
                           moneyIn={cabinet.moneyIn || 0}
                           moneyOut={cabinet.moneyOut || 0}
-                          cancelledCredits={cabinet.cancelledCredits || 0}
+                                                     cancelledCredits={cabinet.moneyOut || 0}
                           jackpot={cabinet.jackpot || 0}
                           gross={cabinet.gross || 0}
                           lastOnline={
@@ -762,8 +673,7 @@ function CabinetsPageContent() {
           ) : (
             <SMIBManagement />
           )}
-        </main>
-      </div>
+      </PageLayout>
       <Toaster position="top-right" richColors />
     </>
   );

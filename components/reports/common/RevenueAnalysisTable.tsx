@@ -442,54 +442,7 @@ export default function RevenueAnalysisTable({
           </div>
         )}
 
-        {/* Summary Stats */}
-        {filteredLocations.length > 0 && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-semibold text-gray-900 mb-3">Summary</h4>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-              <div>
-                <div className="text-gray-600">Total Locations</div>
-                <div className="font-semibold">{filteredLocations.length}</div>
-              </div>
-              <div>
-                <div className="text-gray-600">Total Machines</div>
-                <div className="font-semibold">
-                  {filteredLocations.reduce(
-                    (sum, loc) => sum + loc.totalMachines,
-                    0
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-600">Total Drop</div>
-                <div className="font-semibold">
-                  $
-                  {filteredLocations
-                    .reduce((sum, loc) => sum + loc.moneyIn, 0)
-                    .toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-600">Total Cancelled Credits</div>
-                <div className="font-semibold">
-                  $
-                  {filteredLocations
-                    .reduce((sum, loc) => sum + loc.moneyOut, 0)
-                    .toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-600">Total Gross Revenue</div>
-                <div className="font-semibold text-green-600">
-                  $
-                  {filteredLocations
-                    .reduce((sum, loc) => sum + loc.gross, 0)
-                    .toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   );

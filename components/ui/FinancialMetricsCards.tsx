@@ -2,6 +2,7 @@
 
 import { formatNumber } from "@/lib/utils/metrics";
 import StatCardSkeleton from "@/components/ui/SkeletonLoader";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 type FinancialMetricsCardsProps = {
   totals: {
@@ -45,7 +46,7 @@ export default function FinancialMetricsCards({
             Money In
           </p>
           <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-          <p className="font-bold text-lg md:text-xl">
+          <p className={`font-bold text-lg md:text-xl ${getFinancialColorClass(totals?.moneyIn)}`}>
             {totals ? formatNumber(totals.moneyIn) : "--"}
           </p>
         </div>
@@ -56,7 +57,7 @@ export default function FinancialMetricsCards({
             Money Out
           </p>
           <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-          <p className="font-bold text-lg md:text-xl">
+          <p className={`font-bold text-lg md:text-xl ${getFinancialColorClass(totals?.moneyOut)}`}>
             {totals ? formatNumber(totals.moneyOut) : "--"}
           </p>
         </div>
@@ -65,7 +66,7 @@ export default function FinancialMetricsCards({
         <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
           <p className="text-gray-500 text-sm md:text-base lg:text-lg font-medium">Gross</p>
           <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-          <p className="font-bold text-lg md:text-xl">
+          <p className={`font-bold text-lg md:text-xl ${getFinancialColorClass(totals?.gross)}`}>
             {totals ? formatNumber(totals.gross) : "--"}
           </p>
         </div>

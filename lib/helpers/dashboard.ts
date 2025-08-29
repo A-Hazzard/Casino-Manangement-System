@@ -5,8 +5,7 @@ import {
   TopPerformingData,
   ActiveTab,
 } from "@/lib/types";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import { RADIAN } from "@/lib/constants/uiConstants";
+
 import { switchFilter } from "@/lib/utils/metrics";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
@@ -18,23 +17,7 @@ import axios from "axios";
  * @param props - Customized label properties
  * @returns Object with calculated position and styling data
  */
-export const calculatePieChartLabelData = (props: CustomizedLabelProps) => {
-  const radius =
-    props.innerRadius + (props.outerRadius - props.innerRadius) * 0.7;
-  const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-  const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
 
-  return {
-    x,
-    y,
-    textAnchor: "middle" as const,
-    dominantBaseline: "central" as const,
-    fontSize: props.percent < 0.1 ? "12px" : "14px",
-    fontWeight: "bold" as const,
-    fill: "white",
-    text: `${(props.percent * 100).toFixed(0)}%`,
-  };
-};
 
 /**
  * Fetches and sets gaming locations data

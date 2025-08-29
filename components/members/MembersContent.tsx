@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 
 // Layout components
-
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 // Store
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -47,25 +46,25 @@ export default function MembersContent() {
     return (
       <>
 
-        <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-          <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
-            <Header
-              selectedLicencee={selectedLicencee}
-              setSelectedLicencee={() => {}}
-              disabled={false}
-            />
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  Access Restricted
-                </h2>
-                <p className="text-gray-600">
-                  You don&apos;t have permission to access member data.
-                </p>
-              </div>
+        <PageLayout
+          headerProps={{
+            selectedLicencee,
+            setSelectedLicencee: () => {},
+            disabled: false,
+          }}
+          showToaster={false}
+        >
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600">
+                You don&apos;t have permission to access member data.
+              </p>
             </div>
-          </main>
-        </div>
+          </div>
+        </PageLayout>
       </>
     );
   }
@@ -100,26 +99,25 @@ export default function MembersContent() {
 
   return (
     <>
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={() => {}}
-            disabled={false}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee: () => {},
+          disabled: false,
+        }}
+        showToaster={false}
+      >
+        {/* Navigation */}
+        <MembersNavigation
+          availableTabs={availableTabs}
+          activeTab={activeTab}
+          onTabChange={handleTabClick}
+          selectedLicencee={selectedLicencee}
+        />
 
-          {/* Navigation */}
-          <MembersNavigation
-            availableTabs={availableTabs}
-            activeTab={activeTab}
-            onTabChange={handleTabClick}
-            selectedLicencee={selectedLicencee}
-          />
-
-          {/* Main Content */}
-          {renderTabContent()}
-        </main>
-      </div>
+        {/* Main Content */}
+        {renderTabContent()}
+      </PageLayout>
 
       {/* Toast Notifications */}
       <Toaster richColors />

@@ -1,5 +1,7 @@
 ## Evolution One CMS - Engineering Guidelines
 
+**Author:** Aaron Hazzard - Senior Software Engineer
+
 This document is the single source of truth for how this system is structured and the standards contributors must follow. Newcomers should read this first.
 
 ### Folder purposes
@@ -23,7 +25,7 @@ This document is the single source of truth for how this system is structured an
 
 - `lib/types/`
   - Frontend-specific type aliases only
-  - No interfaces; use `type` consistently
+  - No TypeScript interfaces; use `type` consistently
 
 - `shared/types/`
   - Shared type aliases used by both frontend and backend
@@ -40,7 +42,7 @@ This document is the single source of truth for how this system is structured an
 ### Standards
 
 - HTTP client: axios everywhere (no `fetch()` in source files)
-- TypeScript: prefer `type` over `interface`; no `any`
+- TypeScript: prefer `type` over `interface` declarations; no `any`
 - Types location: only in `shared/types`, `lib/types`, or `app/api/lib/types`
 - Separation of concerns: UI in components, logic in helpers/utils
 - Error handling: try/catch with actionable messages; no silent failures
@@ -83,40 +85,12 @@ const utcDate = trinidadTimeToUtc(userSelectedDate);
 
 ### Security
 
-- No secrets in client code
-- Validate and sanitize all input on the server
-- Use middleware for route protection where required
-
-### Auditing and Logging
-
-**Critical Importance:** Comprehensive auditing and logging are essential for casino management systems due to regulatory compliance requirements, security monitoring, and operational transparency.
-
-#### API Logging Standards
-- **Use `APILogger` utility** (`app/api/lib/utils/logger.ts`) for all API endpoints
-- **Log all CRUD operations** with success/failure status, duration, and context
-- **Include user identification** when available for audit trail
-- **Log security-relevant events** (login attempts, permission changes, data access)
-- **Format:** `[timestamp] [level] (duration) METHOD endpoint: message [context]`
-
-#### Activity Logging Requirements
-- **Track all user actions** that modify system data or access sensitive information
-- **Record before/after values** for data changes to enable rollback and audit
-- **Include IP addresses and user agents** for security investigation
-- **Store logs in dedicated collections** with proper indexing for performance
-- **Implement log retention policies** according to regulatory requirements
-
-#### Compliance Considerations
-- **Gaming regulations** require detailed audit trails for all financial transactions
-- **Data protection laws** mandate logging of personal data access and modifications
-- **Security standards** require monitoring of privileged operations and access patterns
-- **Operational transparency** enables troubleshooting and performance optimization
-
-#### Implementation Guidelines
-- **Use structured logging** with consistent field names and data types
-- **Implement log levels** (INFO, WARNING, ERROR) for appropriate filtering
-- **Include correlation IDs** to trace related operations across systems
-- **Ensure log data integrity** with proper validation and sanitization
-- **Monitor log performance** to prevent system impact during high-volume operations
+- **No secrets in client code** - All sensitive configuration in environment variables
+- **Input validation and sanitization** - Validate and sanitize all input on the server side
+- **Route protection** - Use middleware for authentication and authorization on all protected routes
+- **HTTPS enforcement** - All communications must use secure protocols
+- **Session management** - Secure JWT token handling with proper expiration
+- **Audit logging** - Comprehensive logging for regulatory compliance (see [Auditing and Logging](auditing-and-logging.md))
 
 ### Performance
 
@@ -128,3 +102,7 @@ const utcDate = trinidadTimeToUtc(userSelectedDate);
 
 - Manual testing of critical flows during development
 - Treat TypeScript errors as build failures
+
+---
+
+**Last Updated:** August 29th, 2025

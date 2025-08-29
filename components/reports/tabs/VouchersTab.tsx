@@ -36,6 +36,7 @@ import { useReportsStore } from "@/lib/store/reportsStore";
 
 // Utils
 import { exportData } from "@/lib/utils/exportUtils";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
 import type { VoucherMetrics } from "@/lib/types/reports";
@@ -676,7 +677,7 @@ export default function VouchersTab() {
                               {redemptionRate.toFixed(1)}%
                             </Badge>
                           </td>
-                          <td className="p-3 text-right font-semibold">
+                          <td className={`p-3 text-right font-semibold ${getFinancialColorClass(location.value)}`}>
                             ${location.value.toLocaleString()}
                           </td>
                         </tr>

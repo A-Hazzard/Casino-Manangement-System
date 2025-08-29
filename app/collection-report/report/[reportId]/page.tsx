@@ -11,10 +11,11 @@ import {
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import { SyncButton } from "@/components/ui/RefreshButton";
 
 // Layout components
 
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 // Skeleton components
 import {
@@ -26,6 +27,7 @@ import {
 // Helper functions
 import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
 import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
+import { syncMetersForReport } from "@/lib/helpers/collectionReportDetailPageData";
 import { validateCollectionReportData } from "@/lib/utils/validation";
 import {
   animateDesktopTabTransition,
@@ -34,6 +36,7 @@ import {
   calculateSasMetricsTotals,
 } from "@/lib/helpers/collectionReportDetailPage";
 import { formatCurrency } from "@/lib/utils/currency";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
 import type { CollectionReportData } from "@/lib/types/index";
@@ -85,11 +88,14 @@ export default function CollectionReportPage() {
     animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
 
-  const handleRefresh = async () => {
+  const handleSync = async () => {
     setRefreshing(true);
-    setLoading(true);
     setError(null);
     try {
+      // First sync the meters
+      await syncMetersForReport(reportId);
+      
+      // Then refresh the data
       const data = await fetchCollectionReportById(reportId);
       if (!validateCollectionReportData(data)) {
         setError("Report not found. Please use a valid report ID.");
@@ -101,10 +107,10 @@ export default function CollectionReportPage() {
         reportId
       );
       setCollections(collectionsData);
-    } catch {
-      setError("Failed to refresh report data.");
+    } catch (error) {
+      console.error("Error syncing meters:", error);
+      setError("Failed to sync meter data.");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
@@ -115,17 +121,18 @@ export default function CollectionReportPage() {
 
   if (error) {
     return (
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto transition-all duration-300">
-
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={true}
-            containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-            disabled={loading}
-          />
-          <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
+      <PageLayout
+        headerProps={{
+          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          disabled: loading,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-red-600 mb-4">Error: {error}</p>
             <Link href="/collection-report" legacyBehavior>
               <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
@@ -134,24 +141,24 @@ export default function CollectionReportPage() {
               </a>
             </Link>
           </div>
-        </main>
-      </div>
+      </PageLayout>
     );
   }
 
   if (!reportData) {
     return (
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden lg:w-full lg:mx-auto transition-all duration-300">
-
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={true}
-            containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-            disabled={loading}
-          />
-          <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
+      <PageLayout
+        headerProps={{
+          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          disabled: loading,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
             <p className="text-xl text-gray-700 mb-4">Report not found.</p>
             <Link href="/collection-report" legacyBehavior>
               <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
@@ -160,8 +167,7 @@ export default function CollectionReportPage() {
               </a>
             </Link>
           </div>
-        </main>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -416,21 +422,21 @@ export default function CollectionReportPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Meters Gross</span>
-                <span className="font-medium text-green-700">
+                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.metersGross)}`}>
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Variation</span>
-                <span className="font-medium text-yellow-700">
+                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.variation)}`}>
                   {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross</span>
-                <span className="font-medium text-green-700">
+                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.sasGross)}`}>
                   {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </span>
@@ -443,7 +449,7 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variance</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.variance) || 0)}`}>
                     {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
                       reportData?.locationMetrics?.variance ||
                       0}
@@ -457,7 +463,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount To Collect</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountToCollect) || 0)}`}>
                     {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
                       reportData?.locationMetrics?.amountToCollect ||
                       0}
@@ -465,7 +471,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Collected Amount</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.collectedAmount) || 0)}`}>
                     {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
                       reportData?.locationMetrics?.collectedAmount ||
                       0}
@@ -477,7 +483,7 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Location Revenue</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.locationRevenue) || 0)}`}>
                     {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
                       reportData?.locationMetrics?.locationRevenue ||
                       0}
@@ -485,7 +491,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Uncollected</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountUncollected) || 0)}`}>
                     {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
                       reportData?.locationMetrics?.amountUncollected ||
                       0}
@@ -509,7 +515,7 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Taxes</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.taxes) || 0)}`}>
                     {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
                       reportData?.locationMetrics?.taxes ||
                       0}
@@ -517,7 +523,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Advance</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.advance) || 0)}`}>
                     {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
                       reportData?.locationMetrics?.advance ||
                       0}
@@ -525,7 +531,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Previous Balance Owed</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.previousBalanceOwed) || 0)}`}>
                     {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
                       reportData?.locationMetrics?.previousBalanceOwed ||
                       0}
@@ -533,7 +539,7 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Balance Owed</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.currentBalanceOwed) || 0)}`}>
                     {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
                       reportData?.locationMetrics?.currentBalanceOwed ||
                       0}
@@ -545,7 +551,7 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Balance Correction</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.balanceCorrection) || 0)}`}>
                     {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
                       reportData?.locationMetrics?.balanceCorrection ||
                       0}
@@ -580,21 +586,21 @@ export default function CollectionReportPage() {
               </tr>
               <tr className="border-b border-gray-200">
                 <td className="p-3 font-medium text-gray-700">Meters Gross</td>
-                <td className="p-3 text-right text-green-700">
+                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.metersGross)}`}>
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
                 <td className="p-3 font-medium text-gray-700">Variation</td>
-                <td className="p-3 text-right text-yellow-700">
+                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.variation)}`}>
                   {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </td>
               </tr>
               <tr>
                 <td className="p-3 font-medium text-gray-700">SAS Gross</td>
-                <td className="p-3 text-right text-green-700">
+                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.sasGross)}`}>
                   {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </td>
@@ -609,7 +615,7 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Variance</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.variance) || 0)}`}>
                       {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
                         reportData?.locationMetrics?.variance ||
                         0}
@@ -623,7 +629,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Amount To Collect</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountToCollect) || 0)}`}>
                       {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
                         reportData?.locationMetrics?.amountToCollect ||
                         0}
@@ -631,7 +637,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr>
                     <td className="p-3 text-gray-700">Collected Amount</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.collectedAmount) || 0)}`}>
                       {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
                         reportData?.locationMetrics?.collectedAmount ||
                         0}
@@ -645,7 +651,7 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Location Revenue</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.locationRevenue) || 0)}`}>
                       {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
                         reportData?.locationMetrics?.locationRevenue ||
                         0}
@@ -653,7 +659,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Amount Uncollected</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountUncollected) || 0)}`}>
                       {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
                         reportData?.locationMetrics?.amountUncollected ||
                         0}
@@ -679,7 +685,7 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Taxes</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.taxes) || 0)}`}>
                       {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
                         reportData?.locationMetrics?.taxes ||
                         0}
@@ -687,7 +693,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Advance</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.advance) || 0)}`}>
                       {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
                         reportData?.locationMetrics?.advance ||
                         0}
@@ -695,7 +701,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Previous Balance Owed</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.previousBalanceOwed) || 0)}`}>
                       {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
                         reportData?.locationMetrics?.previousBalanceOwed ||
                         0}
@@ -703,7 +709,7 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr>
                     <td className="p-3 text-gray-700">Current Balance Owed</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.currentBalanceOwed) || 0)}`}>
                       {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
                         reportData?.locationMetrics?.currentBalanceOwed ||
                         0}
@@ -717,7 +723,7 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Balance Correction</td>
-                    <td className="p-3 text-right">
+                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.balanceCorrection) || 0)}`}>
                       {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
                         reportData?.locationMetrics?.balanceCorrection ||
                         0}
@@ -780,19 +786,19 @@ export default function CollectionReportPage() {
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Drop Total</span>
-                <span className="font-medium text-gray-800">
+                <span className={`font-medium ${getFinancialColorClass(totalSasDrop)}`}>
                   {totalSasDrop.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Cancelled Total</span>
-                <span className="font-medium text-gray-800">
+                <span className={`font-medium ${getFinancialColorClass(totalSasCancelled)}`}>
                   {totalSasCancelled.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross Total</span>
-                <span className="font-medium text-gray-800">
+                <span className={`font-medium ${getFinancialColorClass(totalSasGross)}`}>
                   {totalSasGross.toLocaleString()}
                 </span>
               </div>
@@ -816,7 +822,7 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Drop Total
                 </td>
-                <td className="p-3 whitespace-nowrap">
+                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasDrop)}`}>
                   {totalSasDrop.toLocaleString()}
                 </td>
               </tr>
@@ -824,7 +830,7 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Cancelled Total
                 </td>
-                <td className="p-3 whitespace-nowrap">
+                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasCancelled)}`}>
                   {totalSasCancelled.toLocaleString()}
                 </td>
               </tr>
@@ -832,7 +838,7 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Gross Total
                 </td>
-                <td className="p-3 whitespace-nowrap">
+                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasGross)}`}>
                   {totalSasGross.toLocaleString()}
                 </td>
               </tr>
@@ -857,15 +863,17 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-      <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-        <Header
-          pageTitle=""
-          hideOptions={true}
-          hideLicenceeFilter={true}
-          containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-          disabled={loading || refreshing}
-        />
+    <PageLayout
+      headerProps={{
+        containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+        disabled: loading || refreshing,
+      }}
+      pageTitle=""
+      hideOptions={true}
+      hideLicenceeFilter={true}
+      mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+      showToaster={false}
+    >
 
         <div className="px-2 lg:px-6 pt-6 hidden lg:block">
           <div className="flex items-center justify-between mb-6">
@@ -881,32 +889,12 @@ export default function CollectionReportPage() {
               <h1 className="text-2xl font-bold">Collection Report Details</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                onClick={handleRefresh}
+              <SyncButton
+                onClick={handleSync}
+                isSyncing={refreshing}
+                label="Sync Meters"
                 disabled={loading || refreshing}
-                className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 ${
-                  loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                {refreshing ? (
-                  <span className="loader mr-2" />
-                ) : (
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
-                    />
-                  </svg>
-                )}
-                Refresh
-              </Button>
+              />
             </div>
           </div>
         </div>
@@ -923,37 +911,23 @@ export default function CollectionReportPage() {
               <p className="text-sm lg:text-base text-gray-600 mb-4">
                 Report ID: {reportData.reportId}
               </p>
-              <p className="text-lg font-semibold text-gray-700">
-                Location Total: $
-                {formatCurrency(calculateLocationTotal(collections))}
-              </p>
+              {(() => {
+                const locationTotal = calculateLocationTotal(collections);
+                const textColorClass = locationTotal < 0 ? "text-red-600" : "text-green-600";
+                return (
+                  <p className={`text-lg font-semibold`}>
+                    Location Total: <span className={textColorClass}>{formatCurrency(locationTotal)}</span>
+                  </p>
+                );
+              })()}
               <div className="lg:hidden mt-4">
-                <Button
-                  onClick={handleRefresh}
+                <SyncButton
+                  onClick={handleSync}
+                  isSyncing={refreshing}
+                  label="Sync Meters"
                   disabled={loading || refreshing}
-                  className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 w-full justify-center ${
-                    loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {refreshing ? (
-                    <span className="loader mr-2" />
-                  ) : (
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
-                      />
-                    </svg>
-                  )}
-                  Refresh
-                </Button>
+                  className="w-full justify-center"
+                />
               </div>
             </div>
           </div>
@@ -981,7 +955,6 @@ export default function CollectionReportPage() {
           <LocationMetricsContent loading={false} />
           <SASMetricsCompareContent loading={false} />
         </div>
-      </main>
-    </div>
+    </PageLayout>
   );
 }

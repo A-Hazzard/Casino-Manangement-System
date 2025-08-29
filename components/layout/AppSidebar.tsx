@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SidebarContainer, useSidebar } from "@/components/ui/sidebar";
 import {
-  SquareTerminal,
-  Settings,
-  Boxes,
-  BookOpenText,
+  BarChart3,
+  UserCog,
+  MonitorSpeaker,
+  FileText,
   Users,
   MapPin,
-  ClipboardList,
+  Clock,
 } from "lucide-react";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,17 +30,18 @@ type Item = {
 };
 
 const items: Item[] = [
-  { label: "Dashboard", href: "/", icon: SquareTerminal },
+  { label: "Dashboard", href: "/", icon: BarChart3 },
   { label: "Locations", href: "/locations", icon: MapPin },
-  { label: "Cabinets", href: "/cabinets", icon: Boxes },
+  { label: "Cabinets", href: "/cabinets", icon: MonitorSpeaker },
   {
     label: "Collection Report",
     href: "/collection-report",
-    icon: ClipboardList,
+    icon: FileText,
   },
+  { label: "Sessions", href: "/sessions", icon: Clock },
   { label: "Members", href: "/members", icon: Users },
-  { label: "Reports", href: "/reports", icon: BookOpenText },
-  { label: "Administration", href: "/administration", icon: Settings },
+  { label: "Reports", href: "/reports", icon: FileText },
+  { label: "Administration", href: "/administration", icon: UserCog },
 ];
 
 export default function AppSidebar() {
@@ -54,6 +55,9 @@ export default function AppSidebar() {
   const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
   const [displayName, setDisplayName] = useState<string>("User");
   const [email, setEmail] = useState<string>("");
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     // Seed with store info
@@ -137,7 +141,25 @@ export default function AppSidebar() {
     };
   }, [user?.emailAddress]);
 
+  // Handle click outside to close dropdown when collapsed on desktop
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuOpen && collapsed && typeof window !== 'undefined' && window.innerWidth >= 768 && triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+        setDropdownPosition(null);
+      }
+    };
+
+    if (menuOpen && collapsed && typeof window !== 'undefined' && window.innerWidth >= 768) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {}; // Return empty cleanup function when not adding listener
+  }, [menuOpen, collapsed]);
+
   return (
+    <>
     <SidebarContainer>
       <div className="relative flex h-full w-full flex-col">
         <div className="px-3 py-5 border-b border-border/50 flex items-center gap-3">
@@ -170,38 +192,64 @@ export default function AppSidebar() {
             </div>
           )}
         </div>
-        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1 relative">
           {items.map((item) => {
             const Icon = item.icon;
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  active
-                    ? "bg-buttonActive text-white font-medium"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-                style={{
-                  color: active ? "white" : "black",
-                }}
-              >
-                <Icon className={collapsed ? "h-7 w-7" : "h-5 w-5"} />
-                {/* Show text on mobile when sidebar is open, hide on desktop when collapsed */}
-                <span className={cn("truncate", collapsed ? "hidden" : "")}>
-                  {item.label}
-                </span>
-              </Link>
+              <div key={item.href} className="relative">
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative",
+                    active
+                      ? "bg-buttonActive text-white font-medium"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white"
+                  )}
+                  onMouseEnter={(e) => {
+                    if (collapsed) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipPosition({
+                        top: rect.top + rect.height / 2,
+                        left: rect.right + 8
+                      });
+                      setHoveredItem(item.href);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredItem(null);
+                    setTooltipPosition(null);
+                  }}
+                >
+                  <Icon className={collapsed ? "h-7 w-7" : "h-5 w-5"} />
+                  {/* Show text on mobile when sidebar is open, hide on desktop when collapsed */}
+                  <span className={cn("truncate", collapsed ? "md:hidden" : "")}>
+                    {item.label}
+                  </span>
+                </Link>
+                
+
+              </div>
             );
           })}
         </nav>
         <div className="mt-auto px-3 py-3 border-t border-border/50 relative">
           <button
             ref={triggerRef}
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={(e) => {
+              // Only position outside on desktop (md+) when collapsed
+              if (collapsed && typeof window !== 'undefined' && window.innerWidth >= 768) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDropdownPosition({
+                  top: rect.top - 100, // Raise it up by 100px
+                  left: rect.right + 8
+                });
+              } else {
+                setDropdownPosition(null);
+              }
+              setMenuOpen((v) => !v);
+            }}
             className="w-full flex items-center gap-3 rounded-md px-2 py-2 bg-accent/30 hover:bg-accent/50 transition-colors text-left"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
@@ -216,28 +264,24 @@ export default function AppSidebar() {
                 onError={() => setAvatarUrl(DEFAULT_AVATAR)}
               />
             </div>
-            {/* Hide user info when collapsed */}
+            {/* Hide user info when collapsed on desktop only */}
             <div
-              className={cn("min-w-0 max-w-[8rem]", collapsed ? "hidden" : "")}
+              className={cn("min-w-0 max-w-[8rem]", collapsed ? "md:hidden" : "")}
             >
-              <div
-                className="text-sm font-medium truncate"
-                style={{ color: "black" }}
-              >
+              <div className="text-sm font-medium truncate text-gray-900">
                 {displayName}
               </div>
-              <div className="text-xs truncate" style={{ color: "#374151" }}>
+              <div className="text-xs truncate text-gray-600">
                 {email}
               </div>
             </div>
             <span
-              className={cn("ml-auto", collapsed ? "hidden" : "")}
-              style={{ color: "#374151" }}
+              className={cn("ml-auto text-gray-600", collapsed ? "md:hidden" : "")}
             >
               ▾
             </span>
           </button>
-          {menuOpen && (
+          {menuOpen && (!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
             <div
               role="menu"
               className="absolute left-3 right-3 bottom-14 z-[60] rounded-md border bg-background p-1 shadow-md"
@@ -292,5 +336,75 @@ export default function AppSidebar() {
         />
       </div>
     </SidebarContainer>
+    
+    {/* Tooltip for collapsed sidebar - positioned outside sidebar */}
+    {collapsed && hoveredItem && tooltipPosition && (
+      <div 
+        className="fixed px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl z-[99999] whitespace-nowrap pointer-events-none border border-gray-700 -translate-y-1/2"
+        style={{
+          top: `${tooltipPosition.top}px`,
+          left: `${tooltipPosition.left}px`
+        }}
+      >
+        {items.find(item => item.href === hoveredItem)?.label}
+        <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-gray-900"></div>
+      </div>
+    )}
+    
+    {/* Profile dropdown for collapsed sidebar - positioned outside sidebar on desktop only */}
+    {collapsed && menuOpen && dropdownPosition && typeof window !== 'undefined' && window.innerWidth >= 768 && (
+      <div
+        role="menu"
+        className="fixed w-64 rounded-md border bg-background p-1 shadow-xl z-[99999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`
+        }}
+      >
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="h-8 w-8 rounded-full overflow-hidden bg-muted shrink-0">
+            <Image
+              src={avatarUrl || DEFAULT_AVATAR}
+              alt="avatar"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-cover rounded-full"
+              onError={() => setAvatarUrl(DEFAULT_AVATAR)}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium truncate">
+              {displayName}
+            </div>
+            <div className="text-xs text-muted-foreground truncate">
+              {email}
+            </div>
+          </div>
+        </div>
+        <div className="my-1 h-px bg-border" />
+        <button
+          role="menuitem"
+          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+          onClick={() => {
+            setMenuOpen(false);
+            setProfileOpen(true);
+          }}
+        >
+          Account
+        </button>
+        <button
+          role="menuitem"
+          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+          onClick={() => {
+            setMenuOpen(false);
+            logoutUser();
+          }}
+        >
+          Log out
+        </button>
+        <div className="absolute right-full top-4 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-border"></div>
+      </div>
+    )}
+  </>
   );
 }

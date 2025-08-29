@@ -3,6 +3,7 @@
 import MapPreview from "@/components/ui/MapPreview";
 import { MobileLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import StatCardSkeleton, {
   ChartSkeleton,
@@ -86,7 +87,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
       {/* Title */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg">Total for all Locations and Machines</h2>
+          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
           <Image
             src={IMAGES.dashboardIcon}
             alt="Dashboard Icon"
@@ -140,7 +141,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                 Money In
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-              <p className="font-bold">
+              <p className={`font-bold ${getFinancialColorClass(props.totals?.moneyIn)}`}>
                 {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
               </p>
             </div>
@@ -149,7 +150,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                 Money Out
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-              <p className="font-bold">
+              <p className={`font-bold ${getFinancialColorClass(props.totals?.moneyOut)}`}>
                 {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
               </p>
             </div>
@@ -158,7 +159,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                 Gross
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-              <p className="font-bold">
+              <p className={`font-bold ${getFinancialColorClass(props.totals?.gross)}`}>
                 {props.totals ? formatNumber(props.totals.gross) : "--"}
               </p>
             </div>

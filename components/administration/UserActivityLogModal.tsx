@@ -521,31 +521,126 @@ export default function UserActivityLogModal({
                   </div>
                 )}
 
-                {/* Pagination Controls */}
+                {/* Pagination Controls - Mobile Responsive */}
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
-                      disabled={currentPage === 1 || loading}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="px-3 py-1 text-sm">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                      }
-                      disabled={currentPage === totalPages || loading}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <>
+                    {/* Mobile Pagination */}
+                    <div className="flex flex-col space-y-2 sm:hidden">
+                      <div className="text-xs text-gray-600 text-center">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1 || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ««
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                          }
+                          disabled={currentPage === 1 || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ‹
+                        </button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-600">Page</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalPages}
+                            value={currentPage}
+                            onChange={(e) => {
+                              let val = Number(e.target.value);
+                              if (isNaN(val)) val = 1;
+                              if (val < 1) val = 1;
+                              if (val > totalPages) val = totalPages;
+                              setCurrentPage(val);
+                            }}
+                            className="w-10 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                            aria-label="Page number"
+                            disabled={loading}
+                          />
+                          <span className="text-xs text-gray-600">of {totalPages}</span>
+                        </div>
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                          }
+                          disabled={currentPage === totalPages || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ›
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          »»
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Pagination */}
+                    <div className="hidden sm:flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1 || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        First
+                      </button>
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(1, prev - 1))
+                        }
+                        disabled={currentPage === 1 || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Page</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={totalPages}
+                          value={currentPage}
+                          onChange={(e) => {
+                            let val = Number(e.target.value);
+                            if (isNaN(val)) val = 1;
+                            if (val < 1) val = 1;
+                            if (val > totalPages) val = totalPages;
+                            setCurrentPage(val);
+                          }}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                          aria-label="Page number"
+                          disabled={loading}
+                        />
+                        <span className="text-sm text-gray-600">of {totalPages}</span>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                        }
+                        disabled={currentPage === totalPages || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Last
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 {/* Save Button */}

@@ -81,7 +81,7 @@ This page provides secure authentication for users accessing the casino manageme
 
 #### Type Definitions
 - **Shared Types:** `@shared/types/auth.ts` - Authentication-related types
-  - `LoginFormProps` - Form component props interface
+  - `LoginFormProps` - Form component props type
 - **API Types:** `app/api/lib/types/index.ts` - Backend type definitions
   - `LoginRequestBody`, `AuthResult`, `UserData`
 

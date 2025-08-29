@@ -53,11 +53,12 @@ Licencee (licencee.ts)
 - **Relationship**: Many-to-One (Multiple MachineSessions can belong to one Machine)
 - **Purpose**: Linking gaming sessions to specific slot machines/cabinets
 
-### 5. **MachineSession → MachineEvent**
-- **Field**: `machine` in `machineEvents.ts` (linked via `machineId` in sessions)
-- **Type**: `string` (references `machines._id`)
+### 5. **MachineSession ↔ MachineEvent**
+- **Field**: `currentSession` in `machineEvents.ts` and `_id` in `machineSessions.ts`
+- **Type**: `string` (references `machineSessions._id`)
 - **Relationship**: One-to-Many (One MachineSession can have multiple MachineEvents)
 - **Purpose**: Detailed event logging for each gaming session
+- **Note**: MachineEvents are linked to sessions via the `currentSession` field, which contains the session ID
 
 ### 6. **Member → AcceptedBill**
 - **Field**: `member` in `acceptedBills.ts`
@@ -82,6 +83,7 @@ Licencee (licencee.ts)
 - **Type**: `string` (references `machines._id`)
 - **Relationship**: One-to-Many (One Machine can have multiple MachineEvents)
 - **Purpose**: Logging of machine events, commands, and communication
+- **Note**: MachineEvents are linked to both machines (via `machine` field) and sessions (via `currentSession` field)
 
 ### 10. **Machine → AcceptedBill**
 - **Field**: `machine` in `acceptedBills.ts`
@@ -150,9 +152,39 @@ Licencee (licencee.ts)
 Member (members.ts)
 ├── MachineSession (machineSessions.ts) - Links member to machine during gaming
 │   ├── Machine (machines.ts) - The physical slot machine being used
-│   └── MachineEvent (machineEvents.ts) - Detailed events during the session
+│   └── MachineEvent (machineEvents.ts) - Detailed events during the session (linked via currentSession)
 └── AcceptedBill (acceptedBills.ts) - Bills accepted by the member
 ```
+
+### **Detailed Session-Event Relationship**
+```
+MachineSession (_id: "session123")
+├── memberId: "member456" (references members._id)
+├── machineId: "machine789" (references machines._id)
+└── MachineEvent (currentSession: "session123")
+    ├── machine: "machine789" (references machines._id)
+    ├── currentSession: "session123" (references machineSessions._id)
+    └── sequence: [...] (detailed event data)
+```
+
+### **Complex Relationship Explanation**
+
+#### **Member → Machine → Session → Events Flow**
+1. **Member** starts a gaming session on a **Machine**
+2. **MachineSession** is created with:
+   - `memberId`: Links to the member
+   - `machineId`: Links to the machine
+   - `_id`: Unique session identifier
+3. **MachineEvents** are created during the session with:
+   - `machine`: Links to the machine (for machine-based queries)
+   - `currentSession`: Links to the session (for session-based queries)
+   - `sequence`: Detailed event data
+
+#### **Query Patterns for Events**
+- **By Session**: `MachineEvent.find({ currentSession: sessionId })`
+- **By Machine**: `MachineEvent.find({ machine: machineId })`
+- **By Session and Machine**: `MachineEvent.find({ currentSession: sessionId, machine: machineId })`
+- **By Date Range**: `MachineEvent.find({ date: { $gte: startDate, $lte: endDate } })`
 
 ### **Machine Financial Tracking Flow: Machine → Meters → Collections**
 ```
@@ -302,15 +334,16 @@ Member → Machine → AcceptedBill → Financial Tracking
 - **Primary Key**: `_id`
 - **Member Relationship**: `memberId` → `members._id`
 - **Machine Relationship**: `machineId` → `machines._id`
-- **Event Relationship**: `machineId` → `machineEvents.machine`
+- **Event Relationship**: `_id` ← `machineEvents.currentSession`
 - **Meter Data**: Embedded `startMeters`, `endMeters`, `intermediateMeters`
 - **Bill Data**: Embedded `startBillMeters`, `endBillMeters`
 
 ### **MachineEvents Model (`machineEvents.ts`)**
 - **Primary Key**: `_id`
 - **Machine Relationship**: `machine` → `machines._id`
-- **Session Relationship**: Linked via `machineId` in sessions
+- **Session Relationship**: `currentSession` → `machineSessions._id`
 - **Event Details**: `sequence` array for detailed event logging
+- **Dual Linking**: Events are linked to both machines and sessions for comprehensive tracking
 
 ### **Meters Model (`meters.ts`)**
 - **Primary Key**: `_id`

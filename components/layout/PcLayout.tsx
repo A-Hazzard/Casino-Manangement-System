@@ -4,13 +4,14 @@ import MapPreview from "@/components/ui/MapPreview";
 import { timeFrames } from "@/lib/constants/uiConstants";
 import { PcLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import CustomSelect from "../ui/CustomSelect";
 import StatCardSkeleton, {
   ChartSkeleton,
 } from "@/components/ui/SkeletonLoader";
 import Chart from "@/components/ui/dashboard/Chart";
-import { RefreshCw, BarChart3 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
@@ -59,7 +60,6 @@ export default function PcLayout(props: PcLayoutProps) {
         <div className="col-span-3 space-y-6">
           {/* Dashboard Title Section */}
           <div className="flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-buttonActive" />
             <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
             <Image
               src={IMAGES.dashboardIcon}
@@ -116,7 +116,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     Money In
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-                  <p className="font-bold text-lg">
+                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.moneyIn)}`}>
                     {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
                   </p>
                 </div>
@@ -126,7 +126,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     Money Out
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-                  <p className="font-bold text-lg">
+                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.moneyOut)}`}>
                     {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
                   </p>
                 </div>
@@ -136,7 +136,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     Gross
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-                  <p className="font-bold text-lg">
+                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.gross)}`}>
                     {props.totals ? formatNumber(props.totals.gross) : "--"}
                   </p>
                 </div>

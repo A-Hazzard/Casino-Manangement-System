@@ -6,6 +6,7 @@ import {
 import mongoose from "mongoose";
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 import type { CabinetDetails, CabinetMetrics } from "@/lib/types/cabinets";
 
@@ -120,6 +121,8 @@ export const createCabinet = async (
   data: NewCabinetFormData | CabinetFormData
 ) => {
   try {
+    const cabinetLogger = createActivityLogger("machine");
+    
     let apiData;
     let endpoint = "/api/machines";
 
@@ -157,6 +160,14 @@ export const createCabinet = async (
     const response = await axios.post(endpoint, apiData);
 
     if (response.data && response.data.success) {
+      // Log the cabinet creation activity
+      await cabinetLogger.logCreate(
+        response.data.data._id || apiData.serialNumber || "unknown",
+        `${apiData.game || apiData.serialNumber || "Unknown"} - ${apiData.serialNumber || "Unknown"}`,
+        apiData,
+        `Created new cabinet: ${apiData.game || apiData.serialNumber || "Unknown"} (${apiData.serialNumber || "Unknown"})`
+      );
+      
       return response.data.data;
     }
 
@@ -175,9 +186,20 @@ export const createCabinet = async (
  */
 export const updateCabinet = async (data: CabinetFormData) => {
   try {
+    const cabinetLogger = createActivityLogger("machine");
+    
     const response = await axios.put("/api/machines", data);
 
     if (response.data && response.data.success) {
+      // Log the cabinet update activity
+      await cabinetLogger.logUpdate(
+        data.id,
+        `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}`,
+        data,
+        data,
+        `Updated cabinet: ${data.installedGame || "Unknown"} (${data.assetNumber || "Unknown"})`
+      );
+      
       return response.data.data;
     }
 
@@ -196,11 +218,21 @@ export const updateCabinet = async (data: CabinetFormData) => {
  */
 export const deleteCabinet = async (cabinetId: string) => {
   try {
+    const cabinetLogger = createActivityLogger("machine");
+    
     const response = await axios.delete("/api/machines", {
       params: { id: cabinetId },
     });
 
     if (response.data && response.data.success) {
+      // Log the cabinet deletion activity
+      await cabinetLogger.logDelete(
+        cabinetId,
+        "Cabinet",
+        { id: cabinetId },
+        `Deleted cabinet with ID: ${cabinetId}`
+      );
+      
       return true;
     }
 

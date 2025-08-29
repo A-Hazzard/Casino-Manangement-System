@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
 import { toast } from "sonner";
 import deleteIcon from "@/public/deleteIcon.svg";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export const DeleteFirmwareModal = ({
   onDeleteComplete,
@@ -18,6 +19,9 @@ export const DeleteFirmwareModal = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // Create activity logger for firmware operations
+  const firmwareLogger = createActivityLogger("machine");
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -35,7 +39,17 @@ export const DeleteFirmwareModal = ({
     try {
       setLoading(true);
 
+      const firmwareData = { ...selectedFirmware };
+
       await axios.delete(`/api/firmwares/${selectedFirmware._id}`);
+
+      // Log the firmware deletion activity
+      await firmwareLogger.logDelete(
+        selectedFirmware._id,
+        `${selectedFirmware.product} ${selectedFirmware.version}`,
+        firmwareData,
+        `Deleted firmware: ${selectedFirmware.product} ${selectedFirmware.version}`
+      );
 
       toast.success("Firmware deleted successfully!");
       handleClose();

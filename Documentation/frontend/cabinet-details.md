@@ -187,6 +187,121 @@ CabinetDetailPage (app/cabinets/[slug]/page.tsx)
 - Provides comprehensive SMIB configuration management
 - Supports time-based metrics filtering and analysis
 
+## Financial Calculations Analysis
+
+### Cabinet Details Metrics vs Financial Metrics Guide
+
+**Current Implementation Analysis (via AccountingDetails.tsx):**
+
+#### **Cabinet Financial Metrics ✅**
+- **Current Implementation**: Uses `AccountingDetails` component with meter data
+- **Data Source**: Individual cabinet meter readings from `meters` collection
+- **Time Period Filtering**: Today, Yesterday, Last 7 days, 30 days, Custom
+- **Financial Guide**: Uses standard meter fields ✅ **MATCHES**
+
+#### **Cabinet Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyIn = Σ(movement.drop) for cabinet within time period
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash inserted into specific cabinet
+- **Display**: AccountingDetails shows formatted money in values
+
+#### **Cabinet Money Out (Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyOut = Σ(movement.totalCancelledCredits) for cabinet within time period
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits cancelled/paid out from specific cabinet
+- **Display**: AccountingDetails shows formatted money out values
+
+#### **Cabinet Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  gross = moneyIn - moneyOut
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: Standard gross calculation for individual cabinet
+
+#### **Cabinet Live Metrics ✅**
+- **Current Implementation**: Real-time SAS meter data from `machine.sasMeters`
+- **Data Source**: Live meter readings from machine's SAS connection
+- **Fields**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`, `jackpot`, `gamesPlayed`
+- **Financial Guide**: Uses standard SAS meter fields ✅ **MATCHES**
+
+#### **Cabinet Collection History ✅**
+- **Current Implementation**: Historical collection data from `collectionMetersHistory`
+- **Data Source**: Collection-to-collection meter changes
+- **Calculation**: Shows meter deltas between collection periods
+- **Financial Guide**: Uses standard collection methodology ✅ **MATCHES**
+
+#### **Cabinet Activity Log ✅**
+- **Current Implementation**: Machine events from `machineevents` collection
+- **Data Source**: Event logs for specific cabinet
+- **Business Logic**: Detailed audit trail of cabinet activity
+- ✅ **OPERATIONAL** - Standard event logging (not financial calculation)
+
+### Mathematical Formulas Summary
+
+#### **Cabinet Time-Period Metrics**
+```
+Cabinet Money In = Σ(movement.drop) WHERE machine = cabinetId AND readAt BETWEEN startDate AND endDate
+Cabinet Money Out = Σ(movement.totalCancelledCredits) WHERE machine = cabinetId AND readAt BETWEEN startDate AND endDate
+Cabinet Gross Revenue = Cabinet Money In - Cabinet Money Out
+```
+
+#### **Cabinet Live Metrics**
+```
+Live Money In = machine.sasMeters.drop (current reading)
+Live Money Out = machine.sasMeters.totalCancelledCredits (current reading)
+Live Coin In = machine.sasMeters.coinIn (current reading)
+Live Coin Out = machine.sasMeters.coinOut (current reading)
+Live Games Played = machine.sasMeters.gamesPlayed (current reading)
+Live Jackpot = machine.sasMeters.jackpot (current reading)
+```
+
+#### **Cabinet Collection Calculations**
+```
+Collection Period Drop = End Collection Drop - Start Collection Drop
+Collection Period Cancelled = End Collection Cancelled - Start Collection Cancelled
+Collection Net Win = Collection Period Drop - Collection Period Cancelled
+```
+
+#### **Cabinet Status Calculation**
+```
+Cabinet Online = lastActivity >= (currentTime - 3 minutes)
+Cabinet Status = assetStatus field value
+Cabinet Last Activity = lastActivity timestamp
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Cabinet ID**: Validates MongoDB ObjectId format
+- **Time Period**: Validates date range selections
+- **Meter Data**: Validates numeric meter values
+- **Configuration**: Validates SMIB configuration parameters
+
+#### **Data Integrity ✅**
+- **Null Handling**: Uses fallback values for missing meter data
+- **Historical Data**: Maintains meter reading history integrity
+- **Real-time Sync**: Ensures live metrics reflect current cabinet state
+- **Collection Validation**: Validates collection period calculations
+
+### Required Verification
+
+**Cabinet details calculations align with the financial metrics guide:**
+
+1. **Meter Aggregations**: Use standard drop and cancelled credits fields ✅
+2. **Gross Revenue**: Standard calculation (drop - cancelled credits) ✅
+3. **Live Metrics**: Use standard SAS meter fields ✅
+4. **Collection History**: Standard collection methodology ✅
+5. **Time Period Filtering**: Standard date range aggregation ✅
+
+**Note**: Cabinet details calculations correctly implement the financial metrics guide for individual cabinet analysis.
+
 ## UI
 - Clean, modern design with Tailwind CSS
 - Expandable configuration sections for detailed management

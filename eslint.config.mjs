@@ -12,7 +12,13 @@ export default [
       "prefer-const": "error",
       
       // No console.log in production
-      "no-console": ["warn", { "allow": ["warn", "error"] }]
+      "no-console": ["warn", { "allow": ["warn", "error"] }],
+      
+      // Catch unused variables
+      "@typescript-eslint/no-unused-vars": ["error", { 
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }]
     }
   }
 ]

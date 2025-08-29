@@ -59,34 +59,111 @@ export function getClientIP(request: NextRequest): string | null {
 }
 
 /**
- * Validates if a string is a valid IP address (IPv4 or IPv6)
- *
- * @param ip - The IP address string to validate
- * @returns True if valid IP address, false otherwise
+ * Utility functions for IP address validation and formatting
  */
-function isValidIP(ip: string): boolean {
+
+/**
+ * Validates if a string is a valid IPv4 address
+ */
+export function isValidIPv4(ip: string): boolean {
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return ipv4Regex.test(ip);
+}
+
+/**
+ * Validates if a string is a valid IPv6 address
+ */
+export function isValidIPv6(ip: string): boolean {
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+  return ipv6Regex.test(ip);
+}
+
+/**
+ * Validates if a string is a valid IP address (IPv4 or IPv6)
+ */
+export function isValidIP(ip: string): boolean {
+  return isValidIPv4(ip) || isValidIPv6(ip);
+}
+
+/**
+ * Formats an IP address for display
+ */
+export function formatIPAddress(ip: string): string {
+  if (!ip || ip === "unknown" || ip === "client-side") {
+    return "Unknown";
+  }
+  
   // Remove any port numbers
   const cleanIP = ip.split(":")[0];
+  
+  // Validate the IP
+  if (!isValidIP(cleanIP)) {
+    return "Invalid IP";
+  }
+  
+  return cleanIP;
+}
 
-  // IPv4 regex
-  const ipv4Regex =
-    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-
-  // IPv6 regex (simplified)
-  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
-
-  // Check for private/local IPs that we want to exclude in production
-  const isPrivateIP =
-    /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|169\.254\.|::1|fc00:|fe80:)/;
-
-  if (ipv4Regex.test(cleanIP) || ipv6Regex.test(cleanIP)) {
-    // In production, we might want to exclude private IPs
-    // In development, we accept them
-    if (process.env.NODE_ENV === "development" || !isPrivateIP.test(cleanIP)) {
-      return true;
+/**
+ * Masks an IP address for privacy (shows only first and last octet for IPv4)
+ */
+export function maskIPAddress(ip: string): string {
+  if (!ip || ip === "unknown" || ip === "client-side") {
+    return "Unknown";
+  }
+  
+  const cleanIP = ip.split(":")[0];
+  
+  if (isValidIPv4(cleanIP)) {
+    const parts = cleanIP.split(".");
+    if (parts.length === 4) {
+      return `${parts[0]}.***.***.${parts[3]}`;
     }
   }
+  
+  if (isValidIPv6(cleanIP)) {
+    // For IPv6, mask the middle part
+    const parts = cleanIP.split(":");
+    if (parts.length >= 4) {
+      return `${parts[0]}:${parts[1]}:***:***:${parts[parts.length - 2]}:${parts[parts.length - 1]}`;
+    }
+  }
+  
+  return "Invalid IP";
+}
 
+/**
+ * Checks if an IP address is a private/local address
+ */
+export function isPrivateIP(ip: string): boolean {
+  if (!ip || !isValidIP(ip)) {
+    return false;
+  }
+  
+  const cleanIP = ip.split(":")[0];
+  
+  if (isValidIPv4(cleanIP)) {
+    const parts = cleanIP.split(".").map(Number);
+    
+    // Private IPv4 ranges
+    return (
+      (parts[0] === 10) ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      (parts[0] === 127) // localhost
+    );
+  }
+  
+  if (isValidIPv6(cleanIP)) {
+    // Private IPv6 ranges
+    return (
+      cleanIP.startsWith("fe80:") || // link-local
+      cleanIP.startsWith("fc00:") || // unique local
+      cleanIP.startsWith("fd00:") || // unique local
+      cleanIP === "::1" // localhost
+    );
+  }
+  
   return false;
 }
 

@@ -62,11 +62,11 @@ export default function CabinetTable({
             <th
               className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
               onClick={() =>
-                onColumnSort("cancelledCredits" as CabinetSortOption)
+                onColumnSort("moneyOut" as CabinetSortOption)
               }
             >
               <span>CANCELLED CREDITS</span>
-              {sortOption === "cancelledCredits" && (
+              {sortOption === "moneyOut" && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
@@ -157,7 +157,7 @@ export default function CabinetTable({
                   ${formatCurrency(cab.moneyIn)}
                 </td>
                 <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.cancelledCredits)}
+                  ${formatCurrency(cab.moneyOut)}
                 </td>
                 <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
                   ${formatCurrency(cab.jackpot)}

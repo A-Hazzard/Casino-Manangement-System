@@ -4,7 +4,7 @@ import PaginationControls from "@/components/ui/PaginationControls";
 import MovementRequestsTable from "@/components/ui/movements/MovementRequestsTable";
 import MovementRequestCard from "@/components/ui/movements/MovementRequestCard";
 import { MovementRequest } from "@/lib/types/movementRequests";
-import { fetchMovementRequests } from "@/lib/helpers/movementRequests";
+import { fetchMovementRequests, filterMovementRequests, paginateMovementRequests } from "@/lib/helpers/movementRequests";
 import {
   MovementRequestsTableSkeleton,
   MovementRequestCardSkeleton,
@@ -63,27 +63,8 @@ export default function MovementRequests({
     loadRequests();
   }, [loadRequests]);
 
-  const filteredRequests = requests.filter((req) => {
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      req.createdBy.toLowerCase().includes(searchLower) ||
-      req.locationFrom.toLowerCase().includes(searchLower) ||
-      req.locationTo.toLowerCase().includes(searchLower) ||
-      req.cabinetIn.toLowerCase().includes(searchLower) ||
-      req.status.toLowerCase().includes(searchLower);
-    const locationData = locations.find((l) => l._id === selectedLocation);
-    const matchesLocation =
-      selectedLocation === "all" ||
-      req.locationFrom === locationData?.name ||
-      req.locationTo === locationData?.name;
-    return matchesSearch && matchesLocation;
-  });
-
-  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
-  const paginatedRequests = filteredRequests.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
-  );
+  const filteredRequests = filterMovementRequests(requests, searchTerm, selectedLocation, locations);
+  const { paginatedRequests, totalPages } = paginateMovementRequests(filteredRequests, currentPage, ITEMS_PER_PAGE);
 
   const handleEdit = (req: MovementRequest) => {
     openEditModal(req);

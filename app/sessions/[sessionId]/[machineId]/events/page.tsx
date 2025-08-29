@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
-import Header from "@/components/layout/Header";
-
+import PageLayout from "@/components/layout/PageLayout";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
-
 
 import type {
   MachineEvent,
@@ -25,14 +25,11 @@ export default function SessionEventsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
 
-
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedLicencee, setSelectedLicencee] = useState("All Licensees");
 
-
-
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // Get date filtering from dashboard store
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
   const sessionId = params.sessionId as string;
   const machineId = params.machineId as string;
@@ -53,7 +50,49 @@ export default function SessionEventsPage() {
         limit: "10",
       });
 
+      // Add date filtering based on activeMetricsFilter
+      if (activeMetricsFilter === "Custom" && customDateRange) {
+        const sd =
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate as unknown as string);
+        const ed =
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate as unknown as string);
+        params.append("startDate", sd.toISOString());
+        params.append("endDate", ed.toISOString());
+      } else if (activeMetricsFilter && activeMetricsFilter !== "All Time") {
+        // Add date filtering based on activeMetricsFilter
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date;
 
+        switch (activeMetricsFilter) {
+          case "Today":
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            break;
+          case "Yesterday":
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+            break;
+          case "last7days":
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            endDate = now;
+            break;
+          case "last30days":
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            endDate = now;
+            break;
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            endDate = now;
+        }
+
+        params.append("startDate", startDate.toISOString());
+        params.append("endDate", endDate.toISOString());
+      }
 
 
 
@@ -76,6 +115,8 @@ export default function SessionEventsPage() {
     currentPage,
     sessionId,
     machineId,
+    activeMetricsFilter,
+    customDateRange,
   ]);
 
   useEffect(() => {
@@ -451,13 +492,15 @@ export default function SessionEventsPage() {
   return (
     <>
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-          />
-          <div className="w-full mt-8">
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        mainClassName="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4"
+        showToaster={false}
+      >
+        <div className="w-full mt-8">
             <div className="mb-6">
               <Button variant="outline" size="sm" onClick={() => router.back()}>
                 Back to Sessions
@@ -478,38 +521,11 @@ export default function SessionEventsPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Filter Events by Date
               </h3>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    onClick={handleFilter}
-                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    Filter
-                  </Button>
-                </div>
-              </div>
+              <DashboardDateFilters 
+                onCustomRangeGo={handleFilter}
+                hideAllTime={false}
+                mode="auto"
+              />
             </div>
 
             {error && (
@@ -525,9 +541,8 @@ export default function SessionEventsPage() {
             {/* Mobile: Card view */}
             <div className="block lg:hidden">{renderEventsCards()}</div>
             {renderPagination()}
-          </div>
-        </main>
-      </div>
+        </div>
+      </PageLayout>
     </>
   );
 }

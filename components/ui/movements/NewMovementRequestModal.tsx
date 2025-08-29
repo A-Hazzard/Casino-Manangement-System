@@ -17,6 +17,7 @@ import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { createMovementRequest } from "@/lib/helpers/movementRequests";
 import { validateEmail } from "@/lib/utils/validation";
 import type { MovementRequest } from "@/lib/types/movementRequests";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import type { Cabinet } from "@/lib/types/cabinets";
 import type { NewMovementModalProps } from "@/lib/types/components";
 
@@ -40,6 +41,9 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Create activity logger for movement request operations
+  const movementLogger = createActivityLogger("session");
 
   // Use prop locations or fetch if not provided
   useEffect(() => {
@@ -160,9 +164,18 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
         timestamp: new Date(),
         // Add other required fields as needed
       };
-      await createMovementRequest(
+      const createdRequest = await createMovementRequest(
         payload as Omit<MovementRequest, "_id" | "createdAt" | "updatedAt">
       );
+      
+      // Log the movement request creation activity
+      await movementLogger.logCreate(
+        createdRequest._id || "unknown",
+        `Movement Request: ${fromLocation} to ${toLocation}`,
+        payload,
+        `Created movement request from ${fromLocation} to ${toLocation} for ${selectedCabinets.length} machines`
+      );
+      
       onClose();
     } catch {
       setErrors({ submit: "Failed to create movement request." });

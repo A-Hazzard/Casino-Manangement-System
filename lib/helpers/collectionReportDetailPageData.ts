@@ -34,6 +34,12 @@ export async function fetchCollectionsByLocationReportId(
 
 /**
  * Sync meters for a collection report
+ * Triggers the complete sync flow:
+ * 1. Find collection report by locationReportId
+ * 2. Find all collections for this report
+ * 3. For each collection: get machine data, determine SAS period, fetch meters, calculate movement, update collection
+ * 4. Update collection report totals
+ * 5. Return success with statistics
  */
 export async function syncMetersForReport(reportId: string): Promise<void> {
   try {

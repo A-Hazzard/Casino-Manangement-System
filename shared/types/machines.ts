@@ -21,6 +21,7 @@ export type MachineData = {
   gamesPlayed: number;
   theoreticalHold: number;
   netWin: number;
+  gross: number;
   lastActivity: string;
   installDate?: string;
   avgBet?: number;

@@ -139,17 +139,17 @@ This page provides comprehensive member management for the casino system, includ
 - **Validation Utils:** Form validation for member data
 
 ### Tabbed Interface Architecture
-The members page now features a tabbed interface with two main views:
+The members page now features a tabbed layout with two main views:
 
 #### **Members List Tab**
-- **Purpose**: Primary member management interface
+- **Purpose**: Primary member management view
 - **Columns**: Location, Full Name, Win/Loss, Joined, Details, Actions
 - **Features**: Search, sort, pagination, CRUD operations
 - **Win/Loss Display**: Color-coded (green for house profit, red for member profit)
 - **Financial Breakdown**: Shows Money In/Out details on hover or secondary display
 
 #### **Members Summary Tab**
-- **Purpose**: Analytics and reporting interface  
+- **Purpose**: Analytics and reporting view  
 - **Columns**: Full Name, Address, Phone, Last Login, Joined, Location, Win/Loss, Actions
 - **Features**: Date filtering, location filtering, CSV export
 - **Analytics**: Summary cards showing total members, locations, recent members
@@ -491,4 +491,154 @@ The machine events should work exactly like the Activity Log in `AccountingDetai
 6. Click plus buttons to expand sequence details
 7. See detailed step-by-step machine activity logs for that specific session
 
-The machine events functionality should provide the same level of detail and filtering capabilities as the cabinet activity log, but focused on the specific machine associated with the member's session. 
+The machine events functionality should provide the same level of detail and filtering capabilities as the cabinet activity log, but focused on the specific machine associated with the member's session.
+
+## Financial Calculations Analysis
+
+### Member Win/Loss Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Member Total Money In ❌**
+- **Current Implementation**: 
+  ```javascript
+  totalMoneyIn: {
+    $reduce: {
+      input: "$sessions",
+      initialValue: 0,
+      in: {
+        $add: [
+          "$$value",
+          { $ifNull: ["$$this.endMeters.movement.drop", 0] }
+        ]
+      }
+    }
+  }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES** field usage
+- **Analysis**: Uses `endMeters.movement.drop` from session data
+- **Business Context**: Total money member inserted across all their sessions
+- ❌ **NEEDS VERIFICATION** - Should confirm this represents total money inserted by member
+
+#### **Member Total Money Out ❌**
+- **Current Implementation**: 
+  ```javascript
+  totalMoneyOut: {
+    $reduce: {
+      input: "$sessions",
+      initialValue: 0,
+      in: {
+        $add: [
+          "$$value", 
+          { $ifNull: ["$$this.endMeters.movement.totalCancelledCredits", 0] }
+        ]
+      }
+    }
+  }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES** field usage
+- **Analysis**: Uses `endMeters.movement.totalCancelledCredits` from session data
+- **Business Context**: Total credits cancelled/paid out to member
+- ❌ **NEEDS VERIFICATION** - Should confirm this represents total payouts to member
+
+#### **Member Win/Loss Calculation ❌**
+- **Current Implementation**: 
+  ```javascript
+  winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] }
+  ```
+- **Mathematical Formula**: `winLoss = totalMoneyIn - totalMoneyOut`
+- **Financial Guide**: No direct equivalent for member-level win/loss
+- **Business Logic**: 
+  - **Positive Value**: Member lost money (house profit) - shown in green
+  - **Negative Value**: Member won money (house loss) - shown in red
+- ❌ **NOT IN GUIDE** - Member win/loss calculation not defined in financial metrics guide
+
+#### **Session Financial Data Source ❌**
+- **Current Implementation**: Uses `endMeters.movement` from `machinesessions` collection
+- **Data Source**: 
+  ```javascript
+  endMeters: {
+    movement: {
+      drop: Number,              // Money inserted during session
+      totalCancelledCredits: Number,  // Credits paid out during session
+      coinIn: Number,            // Handle during session
+      coinOut: Number,           // Coin out during session
+      gamesPlayed: Number,       // Games played during session
+      jackpot: Number           // Jackpots during session
+    }
+  }
+  ```
+- **Financial Guide**: No specific guidance for session-level meter data
+- ❌ **NOT IN GUIDE** - Session meter data structure not defined in financial metrics guide
+
+#### **Member Location Association ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Lookup gaming location
+  { $lookup: {
+    from: "gaminglocations",
+    localField: "gamingLocation", 
+    foreignField: "_id",
+    as: "locationInfo"
+  }},
+  locationName: { $arrayElemAt: ["$locationInfo.name", 0] }
+  ```
+- **Business Logic**: Associates members with their primary gaming location
+- ✅ **CONSISTENT** - Standard location lookup pattern
+
+### Mathematical Formulas Summary
+
+#### **Member Financial Metrics (Needs Review)**
+```
+Member Total Money In = Σ(session.endMeters.movement.drop) across all member sessions
+Member Total Money Out = Σ(session.endMeters.movement.totalCancelledCredits) across all member sessions
+Member Win/Loss = Member Total Money In - Member Total Money Out
+```
+
+#### **Session Financial Metrics (Needs Review)**
+```
+Session Money In = session.endMeters.movement.drop
+Session Money Out = session.endMeters.movement.totalCancelledCredits
+Session Handle = session.endMeters.movement.coinIn
+Session Coin Out = session.endMeters.movement.coinOut
+Session Jackpot = session.endMeters.movement.jackpot
+Session Games Played = session.endMeters.movement.gamesPlayed
+```
+
+#### **Member Performance Analysis**
+```
+Member Profitability = winLoss > 0 ? "Profitable" : "Losing"
+Member Value Ranking = ORDER BY ABS(winLoss) DESC
+Member Activity Level = COUNT(sessions) per time period
+```
+
+#### **Win/Loss Display Logic**
+```
+Display Color = winLoss > 0 ? "green" : "red"
+Display Text = winLoss > 0 ? "House Profit" : "Member Profit"
+Absolute Value = ABS(winLoss) for magnitude display
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Member ID**: Validates MongoDB ObjectId format
+- **Search Terms**: Sanitizes input to prevent injection attacks
+- **Date Ranges**: Validates ISO date format for session filtering
+- **Pagination**: Validates numeric page and limit parameters
+
+#### **Data Integrity ❌**
+- **Session Data**: Uses `endMeters.movement` which may not align with standard meter calculations
+- **Null Handling**: Uses `$ifNull` operators but session meter structure needs verification
+- **Financial Validation**: Member win/loss calculations need verification against actual gaming outcomes
+
+### Required Verification
+
+**The following calculations need to be verified against the financial metrics guide:**
+
+1. **Session Meter Data Structure**: Confirm `endMeters.movement` fields match guide specifications
+2. **Member Win/Loss Logic**: Verify calculation represents actual member gambling outcomes  
+3. **Money In/Out Definitions**: Confirm these represent actual member financial activity
+4. **Data Source Accuracy**: Verify session data accurately reflects member gambling activity
+
+**Note**: Member financial calculations appear to use session-level data not explicitly defined in the financial metrics guide and require verification for accuracy. 

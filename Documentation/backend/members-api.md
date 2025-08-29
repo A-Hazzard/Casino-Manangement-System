@@ -356,7 +356,7 @@ Retrieves detailed events for a specific member session on a specific machine.
 
 ### Member Model
 ```typescript
-interface Member {
+type Member = {
   _id: string; // Username
   profile: {
     firstName: string;
@@ -392,7 +392,7 @@ interface Member {
 
 ### Machine Session Model
 ```typescript
-interface MachineSession {
+type MachineSession = {
   _id: string;
   sessionId: string;
   machineId: string;
@@ -531,9 +531,160 @@ Member location information is populated via MongoDB `$lookup` operations:
 - **Middleware**: Database connection middleware
 - **Authentication**: JWT token validation
 
+### Financial Calculations Analysis
+
+#### Member API Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+##### **Member Total Money In (Session Data) ❌**
+- **Current Implementation**: 
+  ```javascript
+  totalMoneyIn: {
+    $reduce: {
+      input: "$sessions",
+      initialValue: 0,
+      in: {
+        $add: [
+          "$$value",
+          { $ifNull: [{ $toDouble: "$$this.endMeters.movement.drop" }, 0] }
+        ]
+      }
+    }
+  }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES** field usage
+- **Data Source**: `machinesessions.endMeters.movement.drop`
+- **Business Context**: Total money member inserted across all sessions
+- ❌ **NOT IN GUIDE** - Session-level meter data structure not defined in financial metrics guide
+
+##### **Member Total Money Out (Session Data) ❌**
+- **Current Implementation**: 
+  ```javascript
+  totalMoneyOut: {
+    $reduce: {
+      input: "$sessions",
+      initialValue: 0,
+      in: {
+        $add: [
+          "$$value",
+          { $ifNull: [{ $toDouble: "$$this.endMeters.movement.totalCancelledCredits" }, 0] }
+        ]
+      }
+    }
+  }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES** field usage
+- **Data Source**: `machinesessions.endMeters.movement.totalCancelledCredits`
+- **Business Context**: Total credits cancelled/paid out to member
+- ❌ **NOT IN GUIDE** - Session-level meter data structure not defined in financial metrics guide
+
+##### **Member Win/Loss Calculation ❌**
+- **Current Implementation**: 
+  ```javascript
+  winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] }
+  ```
+- **Mathematical Formula**: `winLoss = totalMoneyIn - totalMoneyOut`
+- **Financial Guide**: No direct equivalent for member-level win/loss
+- **Business Logic**: 
+  - **Positive Value**: Member lost money (house profit)
+  - **Negative Value**: Member won money (house loss)
+- ❌ **NOT IN GUIDE** - Member win/loss calculation not defined in financial metrics guide
+
+##### **Session Data Aggregation ❌**
+- **Current Implementation**: 
+  ```javascript
+  // Lookup sessions for each member
+  { $lookup: {
+    from: "machinesessions",
+    localField: "_id",
+    foreignField: "memberId",
+    as: "sessions"
+  }}
+  ```
+- **Data Source**: `machinesessions` collection with `endMeters.movement` structure
+- **Financial Guide**: No guidance for session-level aggregations
+- ❌ **NOT IN GUIDE** - Session aggregation pattern not defined in financial metrics guide
+
+##### **Member Location Association ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Lookup gaming location
+  { $lookup: {
+    from: "gaminglocations",
+    localField: "gamingLocation",
+    foreignField: "_id", 
+    as: "locationInfo"
+  }},
+  locationName: { $arrayElemAt: ["$locationInfo.name", 0] }
+  ```
+- **Business Logic**: Associates members with gaming locations
+- ✅ **CONSISTENT** - Standard location lookup pattern
+
+### Mathematical Formulas Summary
+
+#### **Member Financial Metrics (Requires Verification)**
+```
+Member Total Money In = Σ(session.endMeters.movement.drop) across all member sessions
+Member Total Money Out = Σ(session.endMeters.movement.totalCancelledCredits) across all member sessions  
+Member Win/Loss = Member Total Money In - Member Total Money Out
+```
+
+#### **Session Financial Structure (Not in Guide)**
+```
+Session Start Meters = session.startMeters.movement.*
+Session End Meters = session.endMeters.movement.*
+Session Financial Delta = endMeters - startMeters
+```
+
+#### **Member Performance Analysis**
+```
+Member Activity Level = COUNT(sessions) per time period
+Member Average Session Value = totalMoneyIn / sessionCount
+Member Win Rate = (sessions with positive winLoss) / total sessions
+Member Location Preference = PRIMARY gamingLocation
+```
+
+#### **Search and Filter Logic**
+```
+Member Search = FIND(members WHERE 
+  profile.firstName CONTAINS searchTerm OR
+  profile.lastName CONTAINS searchTerm OR
+  _id CONTAINS searchTerm
+) CASE_INSENSITIVE
+
+Location Filter = FIND(members WHERE gamingLocation = locationId)
+Date Filter = FIND(sessions WHERE startTime BETWEEN startDate AND endDate)
+```
+
+### Required Verification
+
+**The following calculations need to be verified against the financial metrics guide:**
+
+1. **Session Meter Data**: Confirm `endMeters.movement` structure aligns with standard meter calculations
+2. **Member Win/Loss Logic**: Verify this represents actual member gambling outcomes vs house edge
+3. **Data Source Accuracy**: Confirm session data accurately reflects member financial activity
+4. **Aggregation Method**: Verify session-based aggregation vs direct meter aggregation
+
+**Note**: Member API calculations use session-level data (`endMeters.movement`) which is not explicitly defined in the financial metrics guide and requires verification for accuracy.
+
+## Performance Considerations
+
+### Query Optimization
+- **Indexed Fields**: Proper indexing on frequently queried fields
+- **Projection**: Selective field retrieval to reduce data transfer
+- **Aggregation Pipeline**: Efficient data processing and joining
+- **Pagination**: Limit result sets for better performance
+
+### Caching Strategy
+- **Session Data**: Cache frequently accessed session data
+- **Machine Names**: Cache machine name lookups
+- **Location Data**: Cache location and licensee information
+- **Pagination Results**: Cache paginated results for better UX
+
 ## Related Frontend Pages
 
-- **Members List** (`/members`): Member management interface
+- **Members List** (`/members`): Member management page
 - **Member Details** (`/members/[id]`): Individual member view
 - **Session History** (`/members/[id]`): Member session tracking
 - **Session Events** (`/members/[id]/sessions/[sessionId]/[machineId]/events`): Detailed session events

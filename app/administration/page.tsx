@@ -6,7 +6,7 @@ import UserCard from "@/components/administration/UserCard";
 import UserCardSkeleton from "@/components/administration/UserCardSkeleton";
 import UserTable from "@/components/administration/UserTable";
 import UserTableSkeleton from "@/components/administration/UserTableSkeleton";
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
 import PaginationControls from "@/components/ui/PaginationControls";
@@ -16,7 +16,6 @@ import type { AdministrationSection } from "@/lib/constants/administration";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import {
   fetchUsers,
-  filterAndSortUsers,
   updateUser,
   createUser,
 } from "@/lib/helpers/administration";
@@ -34,6 +33,7 @@ import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal
 import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import LicenseeTable from "@/components/administration/LicenseeTable";
+import { handleSectionChange, administrationUtils } from "@/lib/helpers/administrationPage";
 import LicenseeCard from "@/components/administration/LicenseeCard";
 import AddLicenseeModal from "@/components/administration/AddLicenseeModal";
 import EditLicenseeModal from "@/components/administration/EditLicenseeModal";
@@ -53,7 +53,7 @@ import LicenseeSuccessModal from "@/components/administration/LicenseeSuccessMod
 import PaymentStatusConfirmModal from "@/components/administration/PaymentStatusConfirmModal";
 import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
-import { Toaster } from "sonner";
+
 import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import axios from "axios";
@@ -151,49 +151,15 @@ function AdministrationPageContent() {
   const itemsPerPage = 5;
 
   // Handle section changes with URL updates
-  const handleSectionChange = (section: AdministrationSection) => {
-    // Add smooth transition class to the content area
-    const contentElement = document.querySelector("[data-section-content]");
-    if (contentElement) {
-      contentElement.classList.add(
-        "opacity-0",
-        "transform",
-        "translate-y-2",
-        "transition-all",
-        "duration-300",
-        "ease-in-out"
-      );
-    }
-
-    // Delay the section change to allow for smooth transition
-    setTimeout(() => {
-      setActiveSection(section);
-      setCurrentPage(0); // Reset pagination when switching sections
-
-      // Update URL based on section
-      const params = new URLSearchParams(searchParams.toString());
-      if (section === "users") {
-        params.delete("section"); // Default section, no param needed
-      } else if (section === "licensees") {
-        params.set("section", "licensees");
-      }
-
-      const newURL = params.toString()
-        ? `${pathname}?${params.toString()}`
-        : pathname;
-      router.push(newURL, { scroll: false });
-
-      // Remove transition class after content updates
-      setTimeout(() => {
-        if (contentElement) {
-          contentElement.classList.remove(
-            "opacity-0",
-            "transform",
-            "translate-y-2"
-          );
-        }
-      }, 50);
-    }, 150);
+  const handleSectionChangeLocal = (section: AdministrationSection) => {
+    handleSectionChange(
+      section,
+      setActiveSection,
+      setCurrentPage,
+      pathname,
+      searchParams,
+      router
+    );
   };
 
   // Sync state with URL changes
@@ -234,32 +200,14 @@ function AdministrationPageContent() {
   }, [selectedLicencee]);
 
   const processedUsers = useMemo(() => {
-    return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
+    return administrationUtils.processUsers(allUsers, searchValue, searchMode, sortConfig);
   }, [allUsers, searchValue, searchMode, sortConfig]);
 
-  const paginatedUsers = useMemo(() => {
-    return processedUsers.slice(
-      currentPage * itemsPerPage,
-      (currentPage + 1) * itemsPerPage
-    );
+  const { paginatedItems: paginatedUsers, totalPages } = useMemo(() => {
+    return administrationUtils.paginate(processedUsers, currentPage, itemsPerPage);
   }, [processedUsers, currentPage, itemsPerPage]);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(processedUsers.length / itemsPerPage);
-  }, [processedUsers, itemsPerPage]);
-
-  const requestSort = (key: SortKey) => {
-    let direction: "ascending" | "descending" = "ascending";
-    if (
-      sortConfig &&
-      sortConfig.key === key &&
-      sortConfig.direction === "ascending"
-    ) {
-      direction = "descending";
-    }
-    setSortConfig({ key, direction });
-    setCurrentPage(0);
-  };
+  const requestSort = administrationUtils.createSortHandler(sortConfig, setSortConfig, setCurrentPage);
 
   const handleEditUser = (user: User) => {
     // Open full user details editing by default
@@ -958,22 +906,21 @@ function AdministrationPageContent() {
 
   if (!__mounted) return null;
   return (
-    <>
-
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full">
-          <Header />
-          {/* Admin icon and title layout, matching original design */}
-          <div className={`flex items-center ${"mt-6 justify-between"}`}>
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold mr-4">Administration</h1>
-              <Image
-                src={IMAGES.adminIcon}
-                alt="Admin Icon"
-                width={32}
-                height={32}
-              />
-            </div>
+    <PageLayout
+      mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
+      showToaster={false}
+    >
+      {/* Admin icon and title layout, matching original design */}
+      <div className={`flex items-center ${"mt-6 justify-between"}`}>
+        <div className="flex items-center">
+          <h1 className="text-3xl font-bold mr-4">Administration</h1>
+          <Image
+            src={IMAGES.adminIcon}
+            alt="Admin Icon"
+            width={32}
+            height={32}
+          />
+        </div>
             {activeSection === "users" ? (
               <Button
                 onClick={openAddUserModal}
@@ -1008,7 +955,7 @@ function AdministrationPageContent() {
             <AdministrationNavigation
               tabs={ADMINISTRATION_TABS_CONFIG}
               activeSection={activeSection}
-              onChange={handleSectionChange}
+              onChange={handleSectionChangeLocal}
               isLoading={isLoading || isLicenseesLoading}
             />
           </div>
@@ -1020,10 +967,7 @@ function AdministrationPageContent() {
           >
             {renderSectionContent()}
           </div>
-        </main>
-      </div>
-      <Toaster position="top-right" richColors />
-    </>
+    </PageLayout>
   );
 }
 

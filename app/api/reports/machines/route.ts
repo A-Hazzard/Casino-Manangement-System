@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
       (searchParams.get("timePeriod") as TimePeriod) || "Today";
     const licencee = searchParams.get("licencee") || undefined;
     const onlineStatus = searchParams.get("onlineStatus") || "all"; // New parameter for online/offline filtering
+    const searchTerm = searchParams.get("search"); // Extract search parameter
+    const locationId = searchParams.get("locationId"); // Extract locationId parameter
 
     // Pagination parameters for overview
     const page = parseInt(searchParams.get("page") || "1");
@@ -75,7 +77,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Add search filter if specified
-    const searchTerm = searchParams.get("search");
     if (searchTerm && searchTerm.trim()) {
       machineMatchStage.$or = [
         { serialNumber: { $regex: searchTerm, $options: "i" } },
@@ -84,6 +85,11 @@ export async function GET(req: NextRequest) {
         { manuf: { $regex: searchTerm, $options: "i" } },
         { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
+    }
+
+    // Add location filter if specified
+    if (locationId && locationId !== "all") {
+      machineMatchStage.gamingLocation = locationId;
     }
 
     // Build location filter for licensee
@@ -196,31 +202,29 @@ const getMachineStats = async (
     });
   }
 
-  // Get total machines count
+  // Get total machines count (only machines with lastActivity field)
   const totalCountResult = await db
     .collection("machines")
     .aggregate([
       ...aggregationPipeline,
-
+      { $match: { lastActivity: { $exists: true } } },
       { $count: "total" }
     ] as Document[])
     .toArray();
   const totalCount = totalCountResult[0]?.total || 0;
 
-  // Get online machines count
+  // Get online machines count (machines with lastActivity >= 3 minutes ago)
   const onlineCountResult = await db
     .collection("machines")
     .aggregate([
       ...aggregationPipeline,
-
-      { $match: { lastActivity: { $gte: threeMinutesAgo } } },
-
+      { $match: { lastActivity: { $exists: true, $gte: threeMinutesAgo } } },
       { $count: "total" },
     ] as Document[])
     .toArray();
   const onlineCount = onlineCountResult[0]?.total || 0;
 
-  // Calculate financial totals from machines within the date filter
+  // Calculate financial totals from meters collection within the date filter
   const financialTotals = await db
     .collection("machines")
     .aggregate([
@@ -249,22 +253,60 @@ const getMachineStats = async (
             },
           ]
         : []),
-      // Add date filter for financial data (only include machines with activity in the date range)
-      { $match: { lastActivity: { $gte: startDate, $lte: endDate } } },
+      // Add meters lookup with proper aggregation
+      {
+        $lookup: {
+          from: "meters",
+          let: { machineId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$machine", "$$machineId"] },
+                    // Only include meters within the date range if dates are provided
+                    ...(startDate && endDate ? [
+                      { $gte: ["$readAt", startDate] },
+                      { $lte: ["$readAt", endDate] }
+                    ] : [])
+                  ],
+                },
+              },
+            },
+            // Sum up the movement data
+            {
+              $group: {
+                _id: null,
+                drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                moneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+                coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
+                coinOut: { $sum: { $ifNull: ["$movement.coinOut", 0] } },
+              },
+            },
+          ],
+          as: "meterData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$meterData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       {
         $group: {
           _id: null,
           totalGross: {
             $sum: {
               $subtract: [
-                { $ifNull: ["$sasMeters.drop", 0] },
-                { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+                { $ifNull: ["$meterData.drop", 0] },
+                { $ifNull: ["$meterData.moneyOut", 0] },
               ],
             },
           },
-          totalDrop: { $sum: { $ifNull: ["$sasMeters.drop", 0] } },
+          totalDrop: { $sum: { $ifNull: ["$meterData.drop", 0] } },
           totalCancelledCredits: {
-            $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+            $sum: { $ifNull: ["$meterData.moneyOut", 0] },
           },
         },
       },
@@ -300,7 +342,7 @@ const getOverviewMachines = async (
 ) => {
   // console.log("🚀 Getting overview machines with pagination...");
 
-  // Step 1: Get machines with minimal data (paginated) using aggregation
+  // Step 1: Get machines with proper meters aggregation using the working pattern
   const aggregationPipeline = [
     { $match: machineMatchStage },
     {
@@ -323,31 +365,99 @@ const getOverviewMachines = async (
     });
   }
 
-  // Add projection, sort, skip, and limit
+  // Add meters lookup with proper aggregation (following the working pattern)
   (aggregationPipeline as unknown[]).push(
+    {
+      $lookup: {
+        from: "meters",
+        let: { machineId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$machine", "$$machineId"] },
+                  // Only include meters within the date range if dates are provided
+                  ...(startDate && endDate ? [
+                    { $gte: ["$readAt", startDate] },
+                    { $lte: ["$readAt", endDate] }
+                  ] : [])
+                ],
+              },
+            },
+          },
+          // Sum up the movement data
+          {
+            $group: {
+              _id: null,
+              drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+              moneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+              coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
+              coinOut: { $sum: { $ifNull: ["$movement.coinOut", 0] } },
+              gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+              jackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } },
+            },
+          },
+        ],
+        as: "meterData",
+      },
+    },
+    {
+      $unwind: {
+        path: "$meterData",
+        preserveNullAndEmptyArrays: true,
+      },
+    }
+  );
 
+  // Add projection with calculated fields
+  (aggregationPipeline as unknown[]).push(
     {
       $project: {
         _id: 1,
         serialNumber: 1,
+        origSerialNumber: 1,
         "Custom.name": 1,
+        gamingLocation: 1,
         game: 1,
         manuf: 1,
-        gameType: 1,
-        gamingLocation: 1,
         lastActivity: 1,
         isSasMachine: 1,
-        sasMeters: 1,
         gameConfig: 1,
         locationName: "$locationDetails.name",
+        // Financial metrics from meters aggregation
+        drop: { $ifNull: ["$meterData.drop", 0] },
+        moneyOut: { $ifNull: ["$meterData.moneyOut", 0] },
+        coinIn: { $ifNull: ["$meterData.coinIn", 0] },
+        coinOut: { $ifNull: ["$meterData.coinOut", 0] },
+        gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
+        jackpot: { $ifNull: ["$meterData.jackpot", 0] },
+        // Calculate netWin and gross
+        netWin: {
+          $subtract: [
+            { $ifNull: ["$meterData.drop", 0] },
+            { $ifNull: ["$meterData.moneyOut", 0] }
+          ]
+        },
+        gross: {
+          $subtract: [
+            { $ifNull: ["$meterData.drop", 0] },
+            { $ifNull: ["$meterData.moneyOut", 0] }
+          ]
+        },
+        // Calculate actual hold percentage: (win / handle) * 100 where win = coinIn - coinOut, handle = coinIn
+        holdPct: {
+          $cond: [
+            { $gt: [{ $ifNull: ["$meterData.coinIn", 0] }, 0] },
+            { $multiply: [{ $divide: [{ $subtract: [{ $ifNull: ["$meterData.coinIn", 0] }, { $ifNull: ["$meterData.coinOut", 0] }] }, { $ifNull: ["$meterData.coinIn", 0] }] }, 100] },
+            0
+          ]
+        }
       },
-
     },
-
-    { $sort: { "sasMeters.coinIn": -1 } },
-
+    // Sort by netWin descending (highest first) as default
+    { $sort: { netWin: -1 } },
     { $skip: skip },
-
     { $limit: limit }
   );
 
@@ -358,16 +468,8 @@ const getOverviewMachines = async (
 
   // console.log(`🔍 Found ${machines.length} machines for overview`);
 
-  // Transform machines data using locationName from aggregation
+  // Transform machines data using the new structure
   const transformedMachines = machines.map((machine: Record<string, unknown>) => {
-    // Check if machine has activity in the date range for financial data
-    const hasActivityInRange =
-      machine.lastActivity &&
-      startDate &&
-      endDate &&
-      new Date(machine.lastActivity as string) >= startDate &&
-      new Date(machine.lastActivity as string) <= endDate;
-
     return {
       machineId: (machine._id as string).toString(),
       machineName:
@@ -382,19 +484,22 @@ const getOverviewMachines = async (
       ),
       lastActivity: machine.lastActivity,
       isSasEnabled: machine.isSasMachine || false,
-      coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
-      coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
-      netWin: hasActivityInRange
-        ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
-          ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
+      // Use the aggregated financial data
+      drop: machine.drop || 0,
+      totalCancelledCredits: machine.moneyOut || 0,
+      netWin: machine.netWin || 0,
+      gross: machine.gross || 0,
+      theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp 
+        ? (1 - Number((machine.gameConfig as Record<string, unknown>).theoreticalRtp)) * 100
         : 0,
-      theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
-      gamesPlayed: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0 : 0,
-      avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
-      drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
-      cancelledCredits: hasActivityInRange
-        ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
-        : 0,
+      gamesPlayed: machine.gamesPlayed || 0,
+      jackpot: machine.jackpot || 0,
+      // Calculate derived fields properly
+      coinIn: machine.coinIn || 0, // Handle (betting activity)
+      coinOut: machine.coinOut || 0, // Automatic payouts
+      avgBet: (machine.gamesPlayed as number || 0) > 0 ? (machine.coinIn as number || 0) / (machine.gamesPlayed as number || 1) : 0,
+      // Use calculated hold percentage from aggregation
+      actualHold: machine.holdPct || 0,
     };
   });
 
@@ -422,7 +527,6 @@ const getOverviewMachines = async (
   }
 
   (countPipeline as unknown[]).push(
-
     { $count: "total" }
   );
 
@@ -464,7 +568,7 @@ const getAllMachines = async (
     };
 
     // Note: We don't filter by lastActivity date here to include all machines
-    // Date filtering will be applied to financial data in the transformation
+    // Date filtering will be applied to financial data in the aggregation
 
     // Add search filter if specified
     if (searchTerm && searchTerm.trim()) {
@@ -501,9 +605,53 @@ const getAllMachines = async (
       });
     }
 
+    // Add meters lookup with proper aggregation
+    (aggregationPipeline as unknown[]).push(
+      {
+        $lookup: {
+          from: "meters",
+          let: { machineId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$machine", "$$machineId"] },
+                    // Only include meters within the date range if dates are provided
+                    ...(startDate && endDate ? [
+                      { $gte: ["$readAt", startDate] },
+                      { $lte: ["$readAt", endDate] }
+                    ] : [])
+                  ],
+                },
+              },
+            },
+            // Sum up the movement data
+            {
+              $group: {
+                _id: null,
+                drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                moneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+                coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
+                coinOut: { $sum: { $ifNull: ["$movement.coinOut", 0] } },
+                gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+                jackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } },
+              },
+            },
+          ],
+          as: "meterData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$meterData",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+
     // Add projection
     (aggregationPipeline as unknown[]).push(
-
       {
         $project: {
           _id: 1,
@@ -515,11 +663,35 @@ const getAllMachines = async (
           manuf: 1,
           lastActivity: 1,
           isSasMachine: 1,
-          sasMeters: 1,
           gameConfig: 1,
           locationName: "$locationDetails.name",
+          // Financial metrics from meters aggregation
+          drop: { $ifNull: ["$meterData.drop", 0] },
+          moneyOut: { $ifNull: ["$meterData.moneyOut", 0] },
+          gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
+          jackpot: { $ifNull: ["$meterData.jackpot", 0] },
+          // Calculate netWin and gross
+          netWin: {
+            $subtract: [
+              { $ifNull: ["$meterData.drop", 0] },
+              { $ifNull: ["$meterData.moneyOut", 0] }
+            ]
+          },
+          gross: {
+            $subtract: [
+              { $ifNull: ["$meterData.drop", 0] },
+              { $ifNull: ["$meterData.moneyOut", 0] }
+            ]
+          },
+          // Calculate actual hold percentage: (win / handle) * 100 where win = coinIn - coinOut, handle = coinIn
+          holdPct: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$meterData.coinIn", 0] }, 0] },
+              { $multiply: [{ $divide: [{ $subtract: [{ $ifNull: ["$meterData.coinIn", 0] }, { $ifNull: ["$meterData.coinOut", 0] }] }, { $ifNull: ["$meterData.coinIn", 0] }] }, 100] },
+              0
+            ]
+          },
         },
-
       }
     );
 
@@ -531,16 +703,8 @@ const getAllMachines = async (
 
     // console.log(`🔍 Found ${machines.length} machines for analysis`);
 
-    // Transform machines data using locationName from aggregation
+    // Transform machines data using the new structure
     const transformedMachines = machines.map((machine: Record<string, unknown>) => {
-      // Check if machine has activity in the date range for financial data
-      const hasActivityInRange =
-        machine.lastActivity &&
-        startDate &&
-        endDate &&
-        new Date(machine.lastActivity as string) >= startDate &&
-        new Date(machine.lastActivity as string) <= endDate;
-
       return {
         machineId: (machine._id as string).toString(),
         serialNumber:
@@ -559,21 +723,22 @@ const getAllMachines = async (
         ),
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
-        coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
-        netWin: hasActivityInRange
-          ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
-            ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
+        // Use the aggregated financial data
+        drop: machine.drop || 0,
+        totalCancelledCredits: machine.moneyOut || 0,
+        netWin: machine.netWin || 0,
+        gross: machine.gross || 0,
+        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp 
+          ? (1 - Number((machine.gameConfig as Record<string, unknown>).theoreticalRtp)) * 100
           : 0,
-        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
-        gamesPlayed: hasActivityInRange
-          ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0
-          : 0,
-        avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
-        drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
-        cancelledCredits: hasActivityInRange
-          ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
-          : 0,
+        gamesPlayed: machine.gamesPlayed || 0,
+        jackpot: machine.jackpot || 0,
+        // Calculate derived fields properly
+        coinIn: machine.coinIn || 0, // Handle (betting activity)
+        coinOut: machine.coinOut || 0, // Automatic payouts
+        avgBet: (machine.gamesPlayed as number || 0) > 0 ? (machine.coinIn as number || 0) / (machine.gamesPlayed as number || 1) : 0,
+        // Use calculated hold percentage from aggregation
+        actualHold: machine.holdPct || 0,
       };
     });
 
@@ -657,9 +822,53 @@ const getOfflineMachines = async (
       );
     }
 
+    // Add meters lookup with proper aggregation - For offline machines, aggregate all meter data within date range
+    (aggregationPipeline as unknown[]).push(
+      {
+        $lookup: {
+          from: "meters",
+          let: { machineId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$machine", "$$machineId"] },
+                    // Only include meters within the date range if dates are provided
+                    ...(startDate && endDate ? [
+                      { $gte: ["$readAt", startDate] },
+                      { $lte: ["$readAt", endDate] }
+                    ] : [])
+                  ],
+                },
+              },
+            },
+            // Sum up all movement data within the date range
+            {
+              $group: {
+                _id: null,
+                drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                moneyOut: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+                coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
+                coinOut: { $sum: { $ifNull: ["$movement.coinOut", 0] } },
+                gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+                jackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } },
+              },
+            },
+          ],
+          as: "meterData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$meterData",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+
     // Add projection
     (aggregationPipeline as unknown[]).push(
-
       {
         $project: {
           _id: 1,
@@ -670,12 +879,38 @@ const getOfflineMachines = async (
           manuf: 1,
           lastActivity: 1,
           isSasMachine: 1,
-          sasMeters: 1,
           gameConfig: 1,
           locationName: "$locationDetails.name",
+          // Financial metrics from meters aggregation
+          drop: { $ifNull: ["$meterData.drop", 0] },
+          moneyOut: { $ifNull: ["$meterData.moneyOut", 0] },
+          gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
+          jackpot: { $ifNull: ["$meterData.jackpot", 0] },
+          // Calculate netWin and gross
+          netWin: {
+            $subtract: [
+              { $ifNull: ["$meterData.drop", 0] },
+              { $ifNull: ["$meterData.moneyOut", 0] }
+            ]
+          },
+          gross: {
+            $subtract: [
+              { $ifNull: ["$meterData.drop", 0] },
+              { $ifNull: ["$meterData.moneyOut", 0] }
+            ]
+          },
+          // Calculate actual hold percentage: (win / handle) * 100 where win = coinIn - coinOut, handle = coinIn
+          holdPct: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$meterData.coinIn", 0] }, 0] },
+              { $multiply: [{ $divide: [{ $subtract: [{ $ifNull: ["$meterData.coinIn", 0] }, { $ifNull: ["$meterData.coinOut", 0] }] }, { $ifNull: ["$meterData.coinIn", 0] }] }, 100] },
+              0
+            ]
+          },
         },
-
-      }
+      },
+      // Sort by netWin descending (highest first)
+      { $sort: { netWin: -1 } }
     );
 
     // Get offline machines
@@ -686,16 +921,8 @@ const getOfflineMachines = async (
 
     // console.log(`🔍 Found ${machines.length} offline machines`);
 
-    // Transform machines data using locationName from aggregation
+    // Transform machines data using the new structure
     const transformedMachines = machines.map((machine: Record<string, unknown>) => {
-      // Check if machine has activity in the date range for financial data
-      const hasActivityInRange =
-        machine.lastActivity &&
-        startDate &&
-        endDate &&
-        new Date(machine.lastActivity as string) >= startDate &&
-        new Date(machine.lastActivity as string) <= endDate;
-
       return {
         machineId: (machine._id as string).toString(),
         machineName:
@@ -707,21 +934,22 @@ const getOfflineMachines = async (
         isOnline: false, // All machines in this query are offline
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        coinIn: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinIn || 0 : 0,
-        coinOut: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.coinOut || 0 : 0,
-        netWin: hasActivityInRange
-          ? ((machine.sasMeters as Record<string, unknown>)?.drop as number || 0) -
-            ((machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits as number || 0)
+        // Use the aggregated financial data
+        drop: machine.drop || 0,
+        totalCancelledCredits: machine.moneyOut || 0,
+        netWin: machine.netWin || 0,
+        gross: machine.gross || 0,
+        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp 
+          ? (1 - Number((machine.gameConfig as Record<string, unknown>).theoreticalRtp)) * 100
           : 0,
-        theoreticalHold: (machine.gameConfig as Record<string, unknown>)?.theoreticalRtp || 0,
-        gamesPlayed: hasActivityInRange
-          ? (machine.sasMeters as Record<string, unknown>)?.gamesPlayed || 0
-          : 0,
-        avgBet: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.avgBet || 0 : 0,
-        drop: hasActivityInRange ? (machine.sasMeters as Record<string, unknown>)?.drop || 0 : 0,
-        cancelledCredits: hasActivityInRange
-          ? (machine.sasMeters as Record<string, unknown>)?.totalCancelledCredits || 0
-          : 0,
+        gamesPlayed: machine.gamesPlayed || 0,
+        jackpot: machine.jackpot || 0,
+        // Calculate derived fields properly
+        coinIn: machine.coinIn || 0, // Handle (betting activity)
+        coinOut: machine.coinOut || 0, // Automatic payouts
+        avgBet: (machine.gamesPlayed as number || 0) > 0 ? (machine.coinIn as number || 0) / (machine.gamesPlayed as number || 1) : 0,
+        // Use calculated hold percentage from aggregation
+        actualHold: machine.holdPct || 0,
       };
     });
 

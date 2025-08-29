@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
@@ -269,15 +269,17 @@ export default function CabinetDetailPage() {
       <EditCabinetModal />
       <DeleteCabinetModal />
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={false}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={false}
+        mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+        showToaster={false}
+      >
 
           {/* Back button */}
           {hasMounted ? (
@@ -923,8 +925,7 @@ export default function CabinetDetailPage() {
               activeMetricsFilter={activeMetricsFilter}
             />
           ) : null}
-        </main>
-      </div>
+      </PageLayout>
     </>
   );
 }

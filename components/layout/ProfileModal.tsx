@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Pencil } from "lucide-react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
@@ -193,11 +194,12 @@ export default function ProfileModal({
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[100] grid w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
-          <div className="flex justify-between items-center">
-            <Dialog.Title className="text-2xl font-bold text-center">
-              My Profile
-            </Dialog.Title>
+        <Dialog.Content className="fixed inset-0 z-[100] flex flex-col w-full bg-background shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:grid sm:gap-4 sm:border sm:p-6 sm:overflow-visible data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+          <div className="p-4 space-y-4 sm:p-0 sm:space-y-0 sm:gap-4 sm:grid">
+            <div className="flex justify-between items-center">
+              <Dialog.Title className="text-2xl font-bold text-center">
+                My Profile
+              </Dialog.Title>
             {!isEditMode && (
               <Button
                 variant="ghost"
@@ -219,8 +221,109 @@ export default function ProfileModal({
           </Dialog.Close>
 
           {isLoading ? (
-            <div className="flex justify-center items-center h-96">
-              <div className="loader" />
+            <div className="max-h-[80vh] overflow-y-auto pr-4">
+              <div className="flex flex-col lg:flex-row gap-8 items-start">
+                {/* Left section skeleton */}
+                <div className="w-full lg:w-1/3 flex flex-col items-center">
+                  <Skeleton className="w-40 h-40 rounded-full" />
+                  <Skeleton className="h-6 w-32 mt-4" />
+                  <Skeleton className="h-4 w-48 mt-2" />
+                </div>
+
+                {/* Right section skeleton */}
+                <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Skeleton className="h-6 w-48 mb-4" />
+                  </div>
+                  
+                  {/* Personal Information Fields */}
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-24 mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-18 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-36 mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-32 mb-4" />
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-28 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-36 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             userData && (
@@ -619,6 +722,7 @@ export default function ProfileModal({
               </div>
             )
           )}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
 

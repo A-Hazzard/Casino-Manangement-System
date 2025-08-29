@@ -1,7 +1,7 @@
 # Casino Management System: Financial Metrics Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Date:** February 26, 2025
+**Date:** August 29, 2025
 
 ## Introduction
 
@@ -11,12 +11,11 @@ This document provides a comprehensive overview of key financial metrics used in
 
 ### Drop (Money In)
 - **Definition**: The total amount of money physically inserted into a slot machine by players
-- **Alternative Names**: "Money In", "Handle", or "Wager"
 - **Data Source**: `movement.drop` field in meter readings
 - **Purpose**: Tracks the actual cash flow into machines
 
 ### Total Cancelled Credits (Money Out)
-- **Definition**: The amount of money removed from the machine through manual payouts
+- **Definition**: The amount of money removed from the machine through handpay/ticket out
 - **Alternative Names**: "Money Out" or "Cancelled Credits"
 - **Data Source**: `movement.totalCancelledCredits` field in meter readings
 - **Purpose**: Tracks manual payouts processed by casino staff
@@ -24,12 +23,14 @@ This document provides a comprehensive overview of key financial metrics used in
 
 ### Coin In
 - **Definition**: The total value of bets placed in the machine
+- **Alternative Names**: "Handle" and "Wager"
 - **Data Source**: `movement.coinIn` field in meter readings
 - **Purpose**: Represents the total amount players have wagered
 - **Distinction**: Different from Drop as it tracks betting activity rather than physical money insertion
 
 ### Coin Out
 - **Definition**: The total amount won by players from the machine
+- **Alternative Names**: 'Money Won'
 - **Data Source**: `movement.coinOut` field in meter readings
 - **Purpose**: Tracks all winnings paid out automatically by the machine
 - **Distinction**: Automatic payouts vs. manual cancelled credits
@@ -45,6 +46,24 @@ This document provides a comprehensive overview of key financial metrics used in
 - **Data Source**: `movement.gamesWon` field in meter readings
 - **Purpose**: Tracks winning game frequency
 - **Usage**: Used for calculating win rate and game performance metrics
+
+### Total Won Credits
+- **Definition**: The total amount of money won by players
+- **Data Source**: `movement.totalWonCredits` field in meter readings and is calculated from coinOut + jackpot
+- **Purpose**: Shows the cumulative payout the machine has awarded to players
+- **Usage**: Used in financial calculations such as voucher out on meters export report
+
+### Theoretical Hold
+- **Definition**: The total amount of money a machine holds over its lifetime
+- **Calculated in Machines Collection**: 1 - `gameConfig.theoreticalRtp`
+- **Usage**: Used in Machines Evaluation
+
+### Theoretical Hold %
+- **Definition**: The percentage of the theoreticalHold
+- **Calculated in Machines Collection**: 1 - `gameConfig.theoreticalRtp`
+- **Usage**: Used in Machines Evaluation
+
+
 
 ## Financial Calculations
 
@@ -70,11 +89,20 @@ Based on betting activity analysis:
 // Handle = Total bets placed (equivalent to Coin In)
 const handle = sumOf(movement.coinIn);
 
-// Win = Theoretical winnings (coinIn - coinOut)
-const win = sumOf(movement.coinIn) - sumOf(movement.coinOut);
+// Win (used for hold calculation which = win/handle * 100) = Theoretical winnings (coinIn - coinOut)
+const win = sumOf(movement.coinOut)
+const total win = sumOf(movement.coinOut) + sumOf(movement.jackpot)
+const win/lose = sumOf(movement.coinOut) - sumOf(movement.coinIn) ;
 
 // Actual Hold Percentage = (win / handle) * 100
-const actualHold = (win / handle) * 100;
+const actualRtp = win / handle;
+const actualRtp% = actualRtp * 100%;
+
+const actualHold = 1 - actualRtp
+const actualHold% = actualHold * 100%;
+
+const theoreticalHold = 1 - `gameConfig.theoreticalRtp`
+const theoreticalHoldPercent = (1 - `gameConfig.theoreticalRtp`) * 100
 
 // Average Wager Per Game = handle / gamesPlayed
 const avgWagerPerGame = handle / sumOf(movement.gamesPlayed);
@@ -93,21 +121,39 @@ const jackpotPayouts = sumOf(movement.jackpot);
 const currentCredits = sumOf(movement.currentCredits);
 ```
 
-#### Standard Industry Calculations
+#### Meters Report Specific Mappings:
 
-Our implementation follows standard gaming industry metrics:
+The meters report uses **different data sources** based on date range:
 
-- **Handle** = `movement.coinIn` (total bets placed)
-- **Win** = `movement.coinIn - movement.coinOut` (net player loss/machine win)
-- **Hold Percentage** = `(win / handle) * 100` (percentage of bets retained)
-- **Games Analysis** = `movement.gamesPlayed` and `movement.gamesWon` for activity tracking
+**For Recent Data (Today/Yesterday):**
+- **Meters In** = `machine.sasMeters.coinIn` (total bets placed)
+- **Money Won** = `machine.sasMeters.totalWonCredits` (total winnings paid to players)
+- **Bill In** = `machine.sasMeters.drop` (physical cash inserted)
+- **Voucher Out** = `machine.sasMeters.totalCancelledCredits - machine.sasMeters.totalHandPaidCancelledCredits`
+- **Hand Paid Cancelled Credits** = `machine.sasMeters.totalHandPaidCancelledCredits`
+- **Jackpot** = `machine.sasMeters.jackpot` (jackpot payouts)
+- **Games Played** = `machine.sasMeters.gamesPlayed` (total games played)
 
-### Important Implementation Notes
+**For Historical Data (7 days, 30 days, custom ranges):**
+- **Movement Calculation**: Uses first and last meter readings within time period to calculate movement
+- **Movement Logic**: `lastMeter.field - firstMeter.field` (if multiple readings), or `lastMeter.field` (if single reading)
+- **Fallback Logic**: If movement is 0 or unavailable, falls back to `machine.sasMeters` values
+- **Field Mappings** (after movement calculation or fallback):
+  - **Meters In** = movement in `coinIn` OR fallback to `machine.sasMeters.coinIn`
+  - **Money Won** = movement in `totalWonCredits` OR fallback to `machine.sasMeters.totalWonCredits`
+  - **Bill In** = movement in `drop` OR fallback to `machine.sasMeters.drop`
+  - **Voucher Out** = movement calculation: `totalCancelledCredits - totalHandPaidCancelledCredits`
+  - **Hand Paid Cancelled Credits** = movement in `totalHandPaidCancelledCredits` OR fallback to `machine.sasMeters.totalHandPaidCancelledCredits`
+  - **Jackpot** = movement in `jackpot` OR fallback to `machine.sasMeters.jackpot`
+  - **Games Played** = movement in `gamesPlayed` OR fallback to `machine.sasMeters.gamesPlayed`
 
-⚠️ **Critical**: In our system, financial calculations should use:
-- **Money In**: `movement.drop` (NOT `movement.coinIn`)
-- **Money Out**: `movement.totalCancelledCredits` (NOT `movement.coinOut`)
-- **Gross**: `movement.drop - movement.totalCancelledCredits`
+**Important**: Historical data calculates movement from meters collection, with fallback to `machine.sasMeters` when movement is zero
+
+#### Casino Machine Context:
+4. **Hand Paid Cancelled Credits**: Manual payouts by casino attendants for large wins or malfunctions
+5. **Voucher Out**: Automatic ticket/voucher dispensing (excludes manual payouts)
+
+This distinction is critical because the Meters Report shows **raw meter data** while other reports show **financial movement calculations**.
 
 ## Data Sources and Structure
 
@@ -115,23 +161,32 @@ Our implementation follows standard gaming industry metrics:
 The primary data source for financial metrics is the `Meters` collection with the following structure:
 
 ```typescript
-interface MeterData {
+type MeterData = {
   machine: string;
   location: string;
+  // Top-level fields (used in Meters Report)
+  coinIn: number;                    // Total bets placed
+  coinOut: number;                   // Automatic winnings paid
+  totalCancelledCredits: number;     // All cancelled credits (vouchers + hand-paid)
+  totalHandPaidCancelledCredits: number; // Manual attendant payouts
+  drop: number;                      // Physical money inserted (Bill In)
+  jackpot: number;                   // Jackpot payouts
+  currentCredits: number;            // Current machine credits
+  gamesPlayed: number;               // Total games played
+  gamesWon: number;                  // Total games won
+  // Movement fields (used in other financial calculations)
   movement: {
-    coinIn: number;           // Total bets placed
-    coinOut: number;          // Automatic winnings paid
-    totalCancelledCredits: number; // Manual payouts (Money Out)
-    drop: number;             // Physical money inserted (Money In)
-    jackpot: number;          // Jackpot payouts
-    currentCredits: number;   // Current machine credits
-    gamesPlayed: number;      // Total games played
-    gamesWon: number;         // Total games won
-    metersIn: number;         // Meter reading in
-    metersOut: number;        // Meter reading out
-    billIn: number;           // Bill acceptor input
-    voucherOut: number;       // Voucher dispenser output
-    attPaidCredits: number;   // Attendant paid credits
+    coinIn: number;                  // Total bets placed
+    coinOut: number;                 // Automatic winnings paid
+    totalCancelledCredits: number;   // Manual payouts (Money Out)
+    drop: number;                    // Physical money inserted (Money In)
+    jackpot: number;                 // Jackpot payouts
+    currentCredits: number;          // Current machine credits
+    gamesPlayed: number;             // Total games played
+    gamesWon: number;                // Total games won
+    billIn: number;                  // Bill acceptor input
+    voucherOut: number;              // Voucher dispenser output
+    attPaidCredits: number;          // Attendant paid credits
   };
   createdAt: Date;
   readAt: Date;
@@ -192,81 +247,37 @@ const movementDrop = currentReading.movement.drop - previousReading.movement.dro
 When implementing financial metrics in API endpoints:
 
 ```typescript
-// ✅ CORRECT - Use these fields for financial calculations
+// ✅ CORRECT - Use these fields for MOST financial calculations
 const moneyIn = meterData.movement.drop;
 const moneyOut = meterData.movement.totalCancelledCredits;
 const gross = moneyIn - moneyOut;
 
-// ❌ INCORRECT - Do not use these for financial metrics
+// ❌ INCORRECT - Do not use these for general financial metrics
 const wrongMoneyIn = meterData.movement.coinIn;    // This is betting activity
 const wrongMoneyOut = meterData.movement.coinOut;  // This is automatic payouts
-```
 
-### Database Queries
+// ⚠️ EXCEPTION - Meters Report uses different mappings based on date range:
+// For /api/reports/meters endpoint ONLY:
 
-When aggregating financial data:
+// Recent data (Today/Yesterday) - use machine.sasMeters:
+const metersIn = machineData.sasMeters.coinIn;                    // Total bets placed
+const moneyWon = machineData.sasMeters.totalWonCredits;           // Total winnings paid
+const billIn = machineData.sasMeters.drop;                       // Physical cash inserted
+const voucherOut = machineData.sasMeters.totalCancelledCredits - // Net cancelled credits
+                   machineData.sasMeters.totalHandPaidCancelledCredits;
+const handPaidCredits = machineData.sasMeters.totalHandPaidCancelledCredits; // Manual payouts
+const jackpot = machineData.sasMeters.jackpot;                   // Jackpot payouts
+const gamesPlayed = machineData.sasMeters.gamesPlayed;           // Total games played
 
-```javascript
-// MongoDB aggregation example with proper date filtering
-const financialSummary = await Meters.aggregate([
-  {
-    $match: {
-      readAt: { $gte: startDate, $lte: endDate }  // Use readAt for date filtering
-    }
-  },
-  {
-    $group: {
-      _id: "$location",
-      totalMoneyIn: { $sum: "$movement.drop" },
-      totalMoneyOut: { $sum: "$movement.totalCancelledCredits" },
-      totalGross: { 
-        $sum: { 
-          $subtract: ["$movement.drop", "$movement.totalCancelledCredits"] 
-        }
-      },
-      totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
-      // Alternative industry standard calculations
-      totalHandle: { $sum: "$movement.coinIn" },
-      totalWin: { 
-        $sum: { 
-          $subtract: ["$movement.coinIn", "$movement.coinOut"] 
-        }
-      }
-    }
-  },
-  {
-    $addFields: {
-      actualHold: {
-        $cond: [
-          { $gt: ["$totalHandle", 0] },
-          { $multiply: [{ $divide: ["$totalWin", "$totalHandle"] }, 100] },
-          0
-        ]
-      },
-      avgWagerPerGame: {
-        $cond: [
-          { $gt: ["$totalGamesPlayed", 0] },
-          { $divide: ["$totalHandle", "$totalGamesPlayed"] },
-          0
-        ]
-      }
-    }
-  }
-]);
-```
-
-## Frontend Display Standards
-
-### Component Implementation
-
-Financial metrics components should display:
-
-```typescript
-interface FinancialMetrics {
-  moneyIn: number;    // From movement.drop
-  moneyOut: number;   // From movement.totalCancelledCredits  
-  gross: number;      // Calculated as moneyIn - moneyOut
-}
+// Historical data (7 days, 30 days, custom) - use meters collection top-level fields:
+const metersIn = latestMeterData.coinIn;                         // Total bets placed
+const moneyWon = latestMeterData.totalWonCredits;                // Total winnings paid
+const billIn = latestMeterData.drop;                             // Physical cash inserted
+const voucherOut = latestMeterData.totalCancelledCredits -       // Net cancelled credits
+                   latestMeterData.totalHandPaidCancelledCredits;
+const handPaidCredits = latestMeterData.totalHandPaidCancelledCredits; // Manual payouts
+const jackpot = latestMeterData.jackpot;                         // Jackpot payouts
+const gamesPlayed = latestMeterData.gamesPlayed;                 // Total games played
 ```
 
 ### Formatting and Display
@@ -294,26 +305,11 @@ The system maintains audit trails through:
 
 ## Common Pitfalls and Best Practices
 
-### ❌ Common Mistakes
-
-1. **Using Coin In/Out for financial metrics**: These track betting activity, not cash flow
-2. **Inconsistent gross calculations**: Always use Drop - Total Cancelled Credits
-3. **Missing fallback values**: Always provide default values for missing data
-4. **Incorrect aggregations**: Ensure proper field mapping in database queries
-
-### ✅ Best Practices
-
-1. **Use movement.drop for Money In**: This represents actual cash inserted
-2. **Use movement.totalCancelledCredits for Money Out**: This represents manual payouts
-3. **Implement proper type safety**: Use TypeScript interfaces for meter data
-4. **Validate data integrity**: Check that financial calculations are logical
-5. **Provide clear documentation**: Label metrics clearly in UI components
-
-## Related Documentation
-
+- [Meters Report API](backend/meters-report-api.md) - Meters report endpoint documentation
 - [API Overview](backend/api-overview.md) - Complete API documentation
 - [Analytics API](backend/analytics-api.md) - Analytics and reporting endpoints
 - [Collections API](backend/collections-api.md) - Collection and meter data management
+- [Reports API](backend/reports-api.md) - Reports backend API documentation
 - [Engineering Guidelines](ENGINEERING_GUIDELINES.md) - Development standards and practices
 
 ## Support and Maintenance
@@ -326,6 +322,6 @@ For questions about financial metrics implementation:
 
 ---
 
-**Last Updated**: February 26, 2025  
-**Version**: 1.0  
-**Maintained By**: Evolution One CMS Development Team
+**Last Updated**: August 28, 2025  
+**Version**: 2.0  
+**Maintained By**: Aaron Hazzard - Senior Software Engineer

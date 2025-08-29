@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -158,7 +158,7 @@ export default function HandleChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
@@ -183,15 +183,12 @@ export default function HandleChart({
                   boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="handle"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
+                fill="#3b82f6"
+                radius={[4, 4, 0, 0]}
               />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

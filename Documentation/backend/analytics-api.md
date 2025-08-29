@@ -97,7 +97,7 @@ Generates comprehensive reports based on configuration parameters.
 ```
 
 **Used By:**
-- `/reports` page - Report generation interface
+- `/reports` page - Report generation page
 - Export functionality (CSV/Excel)
 - Dashboard widgets
 
@@ -219,7 +219,7 @@ Retrieves machine-specific analytics and performance data.
 ```
 
 **Used By:**
-- Machine management interface
+- Machine management page
 - Machine performance reports
 - Maintenance scheduling
 
@@ -392,6 +392,118 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
 - **Reports** (`/reports`): Report generation and management
 - **Locations** (`/locations`): Location-based analytics
 - **Machines** (`/machines`): Machine performance analytics
+
+### Financial Calculations Analysis
+
+#### Dashboard Analytics Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+##### **Total Drop (Money In) ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Aggregate physical cash inserted across all machines
+- **Aggregation Level**: Global sum across all licensee locations
+
+##### **Total Cancelled Credits (Money Out) ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: All credits paid out to players (vouchers + hand-paid)
+- **Aggregation Level**: Global sum across all licensee locations
+
+##### **Total Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalGross = totalDrop - totalCancelledCredits
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: `totalGross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)`
+
+##### **Machine Status Calculations ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Online machines
+  lastActivity: { $gte: new Date(Date.now() - 3 * 60 * 1000) }
+  // Total machines  
+  deletedAt: { $exists: false }
+  // SAS machines
+  isSasMachine: true
+  ```
+- **Business Logic**: 
+  - **Online**: `lastActivity >= (currentTime - 3 minutes)`
+  - **Total**: Count of non-deleted machines
+  - **SAS**: Count of SAS-enabled machines
+- ✅ **CONSISTENT** - Standard machine status calculation
+
+##### **Handle/Win-Loss Calculation ❌**
+- **Current Implementation**: 
+  ```javascript
+  handle: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
+  winLoss: { 
+    $subtract: [
+      { $ifNull: ["$movement.coinIn", 0] },
+      { $ifNull: ["$movement.coinOut", 0] }
+    ]
+  }
+  ```
+- **Financial Guide**: No direct equivalent for `winLoss = coinIn - coinOut`
+- **Analysis**: This represents house advantage from betting activity
+- ❌ **NOT IN GUIDE** - Custom calculation not defined in financial metrics guide
+
+##### **Top Performing Analytics ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Ranked by totalDrop descending
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+  totalGamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+  totalJackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop`, `movement.gamesPlayed`, `movement.jackpot` ✅ **MATCHES**
+- **Business Logic**: Performance ranking based on money inserted (drop)
+
+#### Mathematical Formulas Summary
+
+##### **Core Dashboard Metrics**
+```
+Total Drop = Σ(movement.drop) across all machines/locations/time
+Total Cancelled Credits = Σ(movement.totalCancelledCredits) across all machines/locations/time
+Total Gross = Total Drop - Total Cancelled Credits
+```
+
+##### **Machine Status Counts**
+```
+Online Machines = COUNT(machines WHERE lastActivity >= currentTime - 3min AND deletedAt IS NULL)
+Total Machines = COUNT(machines WHERE deletedAt IS NULL)
+SAS Machines = COUNT(machines WHERE isSasMachine = true AND deletedAt IS NULL)
+```
+
+##### **Performance Rankings**
+```
+Top Locations = ORDER BY Σ(movement.drop) DESC LIMIT 5
+Top Machines = ORDER BY Σ(movement.drop) DESC LIMIT 5
+```
+
+##### **Hourly/Daily Aggregations**
+```
+Hourly (Today/Yesterday):
+  GROUP BY year, month, day, hour OF readAt
+  
+Daily (7d/30d/Custom):
+  GROUP BY year, month, day OF readAt
+```
+
+##### **Custom Calculations (Not in Guide)**
+```
+Handle = Σ(movement.coinIn) across time period
+Win/Loss = Handle - Coin Out = Σ(movement.coinIn) - Σ(movement.coinOut)
+```
+**Note**: These calculations are not defined in the financial metrics guide and may need review.
 
 ## Performance Considerations
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useReportsStore } from "@/lib/store/reportsStore";
@@ -24,17 +25,37 @@ export default function ReportsDateFilters() {
     refreshing,
   } = useDashBoardStore();
 
-  const { setDateRange } = useReportsStore();
+  const { setDateRange, activeView } = useReportsStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const timeFilterButtons: { label: string; value: TimePeriod }[] = [
-    { label: "Today", value: "Today" as TimePeriod },
-    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-    { label: "Last 7 Days", value: "last7days" as TimePeriod },
-    { label: "Last 30 Days", value: "last30days" as TimePeriod },
-    { label: "Custom", value: "Custom" as TimePeriod },
-    { label: "All Time", value: "All Time" as TimePeriod },
-  ];
+  const [selectedSingleDate, setSelectedSingleDate] = useState<Date | undefined>(undefined);
+  
+  // Conditional filter buttons based on active tab
+  const getTimeFilterButtons = () => {
+    const baseButtons = [
+      { label: "Today", value: "Today" as TimePeriod },
+      { label: "Yesterday", value: "Yesterday" as TimePeriod },
+    ];
+
+    // Only show 7/30 day filters for non-meters tabs
+    if (activeView !== "meters") {
+      baseButtons.push(
+        { label: "Last 7 Days", value: "last7days" as TimePeriod },
+        { label: "Last 30 Days", value: "last30days" as TimePeriod }
+      );
+    }
+
+    baseButtons.push({ label: "Custom", value: "Custom" as TimePeriod });
+
+    // Show "All Time" for non-meters tabs
+    if (activeView !== "meters") {
+      baseButtons.push({ label: "All Time", value: "All Time" as TimePeriod });
+    }
+
+    return baseButtons;
+  };
+
+  const timeFilterButtons = getTimeFilterButtons();
 
   // Check if any loading state is active
   const isLoading = loadingChartData || loadingTopPerforming || refreshing;
@@ -53,6 +74,28 @@ export default function ReportsDateFilters() {
         pendingCustomDateRange.startDate,
         pendingCustomDateRange.endDate
       );
+      setActiveMetricsFilter("Custom");
+      setShowCustomPicker(false);
+    }
+  };
+
+  /**
+   * Apply single date selection for meters tab
+   */
+  const handleApplySingleDate = () => {
+    if (selectedSingleDate) {
+      // For single date, set both start and end to the same date
+      const startDate = new Date(selectedSingleDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(selectedSingleDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Update both stores
+      setCustomDateRange({
+        startDate: startDate,
+        endDate: endDate,
+      });
+      setDateRange(startDate, endDate);
       setActiveMetricsFilter("Custom");
       setShowCustomPicker(false);
     }
@@ -100,6 +143,7 @@ export default function ReportsDateFilters() {
           startDate = new Date(now.setDate(now.getDate() - 30));
           endDate = new Date();
           break;
+
         default:
           startDate = new Date(now.setHours(0, 0, 0, 0));
           endDate = new Date(now.setHours(23, 59, 59, 999));
@@ -149,29 +193,60 @@ export default function ReportsDateFilters() {
       {/* Custom Date Picker (both mobile and desktop) */}
       {showCustomPicker && (
         <div className="mt-4 w-full">
-          <ModernDateRangePicker
-            value={
-              pendingCustomDateRange
-                ? {
-                    from: pendingCustomDateRange.startDate,
-                    to: pendingCustomDateRange.endDate,
-                  }
-                : undefined
-            }
-            onChange={(range) =>
-              setPendingCustomDateRange(
-                range && range.from && range.to
-                  ? { startDate: range.from, endDate: range.to }
+          {activeView === "meters" ? (
+            // Single date picker for meters tab
+            <div className="flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-b-lg bg-gray-50">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700">Select Date:</span>
+                <DatePicker
+                  date={selectedSingleDate}
+                  setDate={setSelectedSingleDate}
+                />
+              </div>
+              <Button
+                className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+                onClick={handleApplySingleDate}
+                disabled={!selectedSingleDate}
+              >
+                Go
+              </Button>
+              <Button
+                variant="outline"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                onClick={() => {
+                  setShowCustomPicker(false);
+                  setSelectedSingleDate(undefined);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            // Date range picker for other tabs
+            <ModernDateRangePicker
+              value={
+                pendingCustomDateRange
+                  ? {
+                      from: pendingCustomDateRange.startDate,
+                      to: pendingCustomDateRange.endDate,
+                    }
                   : undefined
-              )
-            }
-            onGo={handleApplyCustomRange}
-            onCancel={() => {
-              setShowCustomPicker(false);
-              setPendingCustomDateRange(undefined);
-            }}
-            onSetLastMonth={handleSetLastMonth}
-          />
+              }
+              onChange={(range) =>
+                setPendingCustomDateRange(
+                  range && range.from && range.to
+                    ? { startDate: range.from, endDate: range.to }
+                    : undefined
+                )
+              }
+              onGo={handleApplyCustomRange}
+              onCancel={() => {
+                setShowCustomPicker(false);
+                setPendingCustomDateRange(undefined);
+              }}
+              onSetLastMonth={handleSetLastMonth}
+            />
+          )}
         </div>
       )}
     </div>

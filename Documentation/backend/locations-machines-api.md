@@ -48,7 +48,7 @@ Retrieves all gaming locations with optional licensee filtering.
 ```
 
 **Used By:**
-- `/locations` page - Location management interface
+- `/locations` page - Location management page
 - Location selection components
 - Geographic mapping features
 
@@ -107,7 +107,7 @@ Creates a new gaming location.
 
 **Used By:**
 - Location creation forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -147,7 +147,7 @@ Updates an existing gaming location.
 
 **Used By:**
 - Location editing forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -166,7 +166,7 @@ Soft deletes a gaming location.
 ```
 
 **Used By:**
-- Location management interface
+- Location management page
 - Administrative cleanup
 
 ## Machines API
@@ -217,7 +217,7 @@ Retrieves detailed information for a specific machine with optional meter data.
 
 **Used By:**
 - `/cabinets/[slug]` page - Machine details view
-- Machine management interface
+- Machine management page
 - Performance monitoring
 
 ---
@@ -275,7 +275,7 @@ Creates a new gaming machine.
 
 **Used By:**
 - Machine registration forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -337,7 +337,7 @@ Soft deletes a gaming machine.
 ```
 
 **Used By:**
-- Machine management interface
+- Machine management page
 - Administrative cleanup
 
 ## Additional Machine Endpoints
@@ -420,11 +420,207 @@ Retrieves aggregated machine data across locations.
 - Performance dashboards
 - Location comparison reports
 
+## How the Machines Aggregation Works (Simple Explanation)
+
+### **What This API Does**
+The machines aggregation API is like a **financial calculator for your slot machines**. It takes raw meter readings from each machine and calculates useful business metrics.
+
+### **Database Collections Used**
+
+#### **1. Machines Collection (`machines`)**
+**What it contains:**
+- Basic machine information (serial number, game type, location)
+- Machine status and configuration
+- SMIB settings and firmware information
+
+**Key fields:**
+- `_id`: Unique machine identifier
+- `serialNumber`: Machine's serial number
+- `gamingLocation`: Which casino location the machine is at
+- `game`: What game is installed on the machine
+- `assetStatus`: Whether the machine is active, maintenance, etc.
+- `smibBoard`: SMIB controller identifier
+
+#### **2. Meters Collection (`meters`)**
+**What it contains:**
+- Raw meter readings from each machine
+- Financial data recorded at specific times
+- Historical performance data
+
+**Key fields:**
+- `machine`: Which machine this reading is from (references `machines._id`)
+- `readAt`: When this reading was taken
+- `movement.totalCancelledCredits`: Money that was cancelled/refunded
+- `movement.coinIn`: Money players put into the machine
+- `movement.drop`: Money collected from the machine
+- `movement.jackpot`: Jackpot amounts
+
+### **How the Aggregation Process Works**
+
+#### **Step 1: Find the Right Machines**
+```javascript
+// What the system does:
+// 1. Looks up all machines in the database
+// 2. Filters by: which company owns them, which location they're at
+// 3. Only includes machines that aren't deleted
+// 4. Gets basic machine information (name, location, status)
+```
+
+#### **Step 2: Get Financial Data from Meters**
+```javascript
+// What the system does:
+// 1. For each machine, finds all meter readings within the time period
+// 2. Adds up all the money data:
+//    - Total money put in (coinIn + drop)
+//    - Total cancelled credits (totalCancelledCredits)
+//    - Total jackpot amounts
+// 3. Calculates the gross profit (money in minus cancelled credits)
+```
+
+#### **Step 3: Combine and Format the Data**
+```javascript
+// What the system does:
+// 1. Combines machine info with financial calculations
+// 2. Formats the data for easy display
+// 3. Returns a list of machines with their performance metrics
+```
+
+### **Financial Calculations Explained**
+
+#### **Money In Calculation**
+```javascript
+// Formula: coinIn + drop
+// Example: If players put in $1000 and $500 was collected from the machine
+// Money In = $1000 + $500 = $1500
+```
+
+#### **Money Out (Cancelled Credits) Calculation**
+```javascript
+// Formula: sum of all totalCancelledCredits readings
+// Example: If $50 was cancelled on Monday and $75 on Tuesday
+// Money Out = $50 + $75 = $125
+```
+
+#### **Gross Revenue Calculation**
+```javascript
+// Formula: Money In - Money Out
+// Example: $1500 - $125 = $1375 gross revenue
+```
+
+### **Recent Fix: Cancelled Credits Display**
+
+#### **The Problem**
+- **Before**: The frontend was looking for a field called `cancelledCredits` that didn't exist in the API response
+- **Result**: Cancelled credits always showed as $0, even when there were actual cancelled credits
+
+#### **The Solution**
+- **After**: The frontend now correctly uses the `moneyOut` field from the API response
+- **Result**: Cancelled credits now display correctly, showing the actual amount of money that was refunded
+
+#### **Why This Matters**
+- **Accurate Financial Reporting**: You can see the real profit after refunds
+- **Operational Insights**: High cancelled credits might indicate machine problems
+- **Compliance**: Accurate financial tracking is required for casino regulations
+- **Business Decisions**: Helps identify which machines need attention
+
+### **Database Query in Plain English**
+
+#### **What the MongoDB Query Does**
+```javascript
+// 1. Start with all machines
+db.machines.find({})
+
+// 2. Filter by company and location (if specified)
+// 3. Only include machines that aren't deleted
+
+// 4. For each machine, look up its meter readings
+db.meters.find({
+  machine: "machine_id",
+  readAt: { $gte: startDate, $lte: endDate }
+})
+
+// 5. Add up all the financial data
+// 6. Calculate totals and return the results
+```
+
+#### **Performance Considerations**
+- **Indexing**: The system uses database indexes to make queries fast
+- **Time Periods**: Queries are limited to specific time periods to avoid processing too much data
+- **Aggregation**: Uses MongoDB's aggregation pipeline for efficient calculations
+- **Caching**: Results can be cached for frequently accessed data
+
+### **API Response Structure**
+
+#### **Individual Machine Data**
+```json
+{
+  "_id": "machine_id",
+  "locationId": "location_id",
+  "locationName": "Main Casino",
+  "assetNumber": "12345",
+  "smbId": "smib_controller_id",
+  "lastOnline": "2024-01-01T12:00:00.000Z",
+  "moneyIn": 15000.00,        // Total money put into machine
+  "moneyOut": 125.00,         // Total cancelled credits
+  "jackpot": 500.00,          // Total jackpot amounts
+  "gross": 14875.00,          // Actual profit (moneyIn - moneyOut)
+  "timePeriod": "last7days"   // What time period this data covers
+}
+```
+
+#### **What Each Field Means**
+- **moneyIn**: Total amount of money players put into the machine
+- **moneyOut**: Total amount of money that was cancelled/refunded
+- **jackpot**: Total jackpot amounts paid out
+- **gross**: The actual profit (money in minus cancelled credits)
+- **lastOnline**: When the machine last sent data to the system
+
+### **Common Use Cases**
+
+#### **1. Daily Performance Review**
+- **Query**: Get data for the last 24 hours
+- **Use**: See which machines performed best yesterday
+- **Business Value**: Identify top-performing machines and potential issues
+
+#### **2. Weekly Financial Reports**
+- **Query**: Get data for the last 7 days
+- **Use**: Generate weekly profit reports
+- **Business Value**: Track weekly performance trends
+
+#### **3. Monthly Analysis**
+- **Query**: Get data for the last 30 days
+- **Use**: Monthly financial analysis and planning
+- **Business Value**: Long-term performance tracking and budgeting
+
+#### **4. Location Comparison**
+- **Query**: Get data for specific locations
+- **Use**: Compare performance between different casino locations
+- **Business Value**: Identify which locations are most profitable
+
+### **Error Handling and Edge Cases**
+
+#### **Missing Data**
+- **Scenario**: A machine hasn't sent meter readings recently
+- **Handling**: Shows $0 for financial fields, but still displays machine info
+- **User Impact**: You can see the machine exists but know it needs attention
+
+#### **Invalid Data**
+- **Scenario**: Meter readings have negative values or impossible amounts
+- **Handling**: System validates data and flags suspicious readings
+- **User Impact**: You get warnings about potentially incorrect data
+
+#### **Network Issues**
+- **Scenario**: Database connection problems
+- **Handling**: Returns error message with retry options
+- **User Impact**: Clear error messages help you understand what went wrong
+
+This aggregation system essentially **turns raw meter data into business intelligence** that helps you understand how your slot machines are performing and where to focus your attention.
+
 ## Database Models
 
 ### Gaming Location Model
 ```typescript
-interface GamingLocation {
+type GamingLocation = {
   _id: string;
   name: string;
   country: string;
@@ -449,7 +645,7 @@ interface GamingLocation {
 
 ### Machine Model
 ```typescript
-interface Machine {
+type Machine = {
   _id: string;
   serialNumber: string;
   game: string;
@@ -523,10 +719,144 @@ interface Machine {
 
 ## Related Frontend Pages
 
-- **Locations** (`/locations`): Location management interface
+- **Locations** (`/locations`): Location management page
 - **Location Details** (`/locations/[slug]`): Individual location view
-- **Cabinets** (`/cabinets`): Machine listing interface
+- **Cabinets** (`/cabinets`): Machine listing page
 - **Cabinet Details** (`/cabinets/[slug]`): Individual machine view
+
+### Financial Calculations Analysis
+
+#### Location Aggregation Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+##### **Location Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyIn: { $sum: "$movement.drop" }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash collected across all machines at location
+- **Aggregation**: Groups by `gamingLocation`, sums across time period
+
+##### **Location Money Out (Total Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits refunded/cancelled at location
+- **Aggregation**: Groups by `gamingLocation`, sums across time period
+
+##### **Location Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per location
+
+##### **Machine Status by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Online machines per location
+  totalOnlineMachines: {
+    $sum: {
+      $cond: [
+        { $gte: ["$lastActivity", recentThreshold] },
+        1, 0
+      ]
+    }
+  }
+  // Total machines per location
+  totalMachines: { $sum: 1 }
+  ```
+- **Business Logic**: 
+  - **Online**: Machines with `lastActivity >= (currentTime - 3 minutes)`
+  - **Total**: Count of all non-deleted machines at location
+- ✅ **CONSISTENT** - Standard machine status calculation
+
+##### **Machine Aggregation Pipeline ✅**
+- **Current Implementation**: 
+  ```javascript
+  // MongoDB aggregation pipeline
+  [
+    { $match: { gamingLocation: { $in: locationIds }, deletedAt: { $exists: false } } },
+    { $lookup: { from: "meters", localField: "_id", foreignField: "machine" } },
+    { $unwind: "$metersData" },
+    { $match: { "metersData.readAt": { $gte: startDate, $lte: endDate } } },
+    { $group: {
+      _id: "$gamingLocation",
+      totalDrop: { $sum: "$metersData.movement.drop" },
+      totalCancelledCredits: { $sum: "$metersData.movement.totalCancelledCredits" },
+      totalMachines: { $sum: 1 }
+    }},
+    { $addFields: { gross: { $subtract: ["$totalDrop", "$totalCancelledCredits"] } } }
+  ]
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Aggregation Strategy**: Groups machines by location, aggregates financial data
+
+#### Machine Individual Calculations vs Financial Metrics Guide
+
+##### **Individual Machine Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Per machine aggregation
+  machineDrop: { $sum: "$movement.drop" },
+  machineCancelledCredits: { $sum: "$movement.totalCancelledCredits" },
+  machineGross: { $subtract: ["$machineDrop", "$machineCancelledCredits"] }
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Business Logic**: Individual machine performance within location context
+
+##### **Machine Collection Meters ❌**
+- **Current Implementation**: 
+  ```javascript
+  collectionMeters: {
+    metersIn: Number,  // Not clearly defined in current docs
+    metersOut: Number  // Not clearly defined in current docs
+  }
+  ```
+- **Financial Guide**: No specific definition for `collectionMeters.metersIn/metersOut`
+- ❌ **NOT IN GUIDE** - Collection meters calculation not defined in financial metrics guide
+
+### Mathematical Formulas Summary
+
+#### **Location-Level Aggregations**
+```
+Location Total Drop = Σ(movement.drop) WHERE gamingLocation = locationId
+Location Total Cancelled Credits = Σ(movement.totalCancelledCredits) WHERE gamingLocation = locationId
+Location Gross Revenue = Location Total Drop - Location Total Cancelled Credits
+```
+
+#### **Machine Status by Location**
+```
+Location Online Machines = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
+Location Total Machines = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
+Location Offline Machines = Location Total Machines - Location Online Machines
+```
+
+#### **Machine Performance within Location**
+```
+Machine Revenue at Location = Σ(movement.drop) WHERE machine = machineId AND gamingLocation = locationId
+Machine Cancelled Credits = Σ(movement.totalCancelledCredits) WHERE machine = machineId AND gamingLocation = locationId  
+Machine Gross = Machine Revenue - Machine Cancelled Credits
+```
+
+#### **Location Performance Ranking**
+```
+Top Locations by Revenue = ORDER BY Σ(movement.drop) DESC
+Top Locations by Gross = ORDER BY gross DESC
+Top Locations by Machine Count = ORDER BY totalMachines DESC
+```
+
+#### **Collection Meters (Not in Guide)**
+```
+Collection Meters In = collectionMeters.metersIn  // Definition unclear
+Collection Meters Out = collectionMeters.metersOut // Definition unclear
+```
+**Note**: Collection meters calculations are not defined in the financial metrics guide and may need review.
 
 ## Performance Considerations
 

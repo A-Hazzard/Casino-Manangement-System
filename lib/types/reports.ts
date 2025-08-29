@@ -4,6 +4,7 @@ import type {
   ReportsLocationsResponse,
 } from "@shared/types/reports";
 import type { KpiMetric, ChartDataPoint } from "@shared/types/analytics";
+import type { MachinePerformanceRating } from "@shared/types/machines";
 
 // Re-export shared types for convenience
 export type {
@@ -12,6 +13,38 @@ export type {
   ReportsLocationsResponse,
   KpiMetric,
   ChartDataPoint,
+  MachinePerformanceRating,
+};
+
+// Machine evaluation data type (subset of MachineData with evaluation-specific properties)
+export type MachineEvaluationData = {
+  locationName: string;
+  machineId: string;
+  machineName: string;
+  gameTitle: string;
+  manufacturer: string;
+  locationId: string;
+  serialNumber: string;
+  coinIn: number;
+  drop: number;
+  netWin: number;
+  gross: number;
+  avgBet: number;
+  actualHold: number;
+  theoreticalHold: number;
+  holdDifference: number;
+  performanceRating: string;
+  gamesPlayed: number;
+};
+
+// Manufacturer aggregation data for evaluation charts
+export type ManufacturerAggregationData = {
+  name: string;
+  machines: number;
+  totalGross: number;
+  totalGamesPlayed: number;
+  avgHold: number;
+  holdValues: number[];
 };
 
 // Frontend-specific report types
@@ -724,4 +757,44 @@ export type ScheduledReport = {
   status: "active" | "paused" | "error";
   createdBy: string;
   createdAt: string;
+};
+
+export type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+};
+
+export type MachineExportData = {
+  machineId: string;
+  machineName: string;
+  gameTitle: string;
+  locationName: string;
+  manufacturer: string;
+  netWin: number;
+  drop: number;
+  totalCancelledCredits: number;
+  gamesPlayed: number;
+  theoreticalHold?: number;
+  isOnline: boolean;
+  isSasEnabled: boolean;
+};
+
+export type LocationExportData = {
+  location: string;
+  locationName: string;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
+  nonSasMachines: number;
+  hasSasMachines: boolean;
+  hasNonSasMachines: boolean;
+  isLocalServer: boolean;
+};
+
+export type TopLocationData = {
+  locationId: string;
+  locationName: string;
 };

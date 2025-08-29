@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 // Layout components
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 
 // Store
@@ -61,12 +61,13 @@ export default function SessionsPage() {
   return (
     <>
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        showToaster={false}
+      >
 
           <motion.div
             className="w-full mt-8"
@@ -133,8 +134,7 @@ export default function SessionsPage() {
               </>
             )}
           </motion.div>
-        </main>
-      </div>
+      </PageLayout>
     </>
   );
 }

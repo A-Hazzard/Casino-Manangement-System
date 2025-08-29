@@ -3,12 +3,112 @@ import type {
   CollectionReportRow,
   SchedulerTableRow,
 } from "@/lib/types/componentProps";
+import type { CollectionView } from "@/lib/types/collection";
 import type { CollectionDocument } from "@/lib/types/collections";
 import { formatDateString } from "@/lib/utils/dateUtils";
 import { fetchSchedulersWithFilters } from "@/lib/helpers/schedulers";
 import type { LocationSelectItem } from "@/lib/types/location";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 import { parse } from 'date-fns';
+
+/**
+ * Collection report page helper functions for managing tab changes and state synchronization
+ */
+
+/**
+ * Handles tab changes and URL updates
+ * @param value - The new tab value
+ * @param setActiveTab - Function to update active tab state
+ * @param pushToUrl - Function to update URL
+ * @returns void
+ */
+export function handleTabChange(
+  value: string,
+  setActiveTab: (tab: CollectionView) => void,
+  pushToUrl: (tab: CollectionView) => void
+) {
+  const newTab = value as CollectionView;
+  setActiveTab(newTab);
+  pushToUrl(newTab);
+}
+
+/**
+ * Synchronizes state with URL changes for browser back/forward navigation
+ * @param searchParams - Current search parameters
+ * @param activeTab - Current active tab
+ * @param setActiveTab - Function to update active tab state
+ */
+export function syncStateWithURL(
+  searchParams: URLSearchParams | null,
+  activeTab: CollectionView,
+  setActiveTab: (tab: CollectionView) => void
+) {
+  const section = searchParams?.get("section");
+  if (section === "monthly" && activeTab !== "monthly") {
+    setActiveTab("monthly");
+  } else if (section === "manager" && activeTab !== "manager") {
+    setActiveTab("manager");
+  } else if (section === "collector" && activeTab !== "collector") {
+    setActiveTab("collector");
+  } else if (section === "collection" && activeTab !== "collection") {
+    setActiveTab("collection");
+  } else if (!section && activeTab !== "collection") {
+    setActiveTab("collection");
+  }
+}
+
+/**
+ * Handles pagination with animation
+ * @param pageNumber - New page number
+ * @param setPage - Function to update page state
+ * @param activeTab - Current active tab
+ * @param paginationRef - Reference to pagination element
+ * @param animatePagination - Animation function
+ */
+export function handlePaginationWithAnimation(
+  pageNumber: number,
+  setPage: (page: number) => void,
+  activeTab: CollectionView,
+  paginationRef: React.RefObject<HTMLDivElement | null>,
+  animatePagination: (ref: React.RefObject<HTMLDivElement | null>) => void
+) {
+  setPage(pageNumber);
+  if (activeTab === "collection") {
+    animatePagination(paginationRef);
+  }
+}
+
+/**
+ * Resets all scheduler filters to default values
+ * @param setSelectedSchedulerLocation - Function to update scheduler location
+ * @param setSelectedCollector - Function to update collector
+ * @param setSelectedStatus - Function to update status
+ */
+export function resetSchedulerFilters(
+  setSelectedSchedulerLocation: (location: string) => void,
+  setSelectedCollector: (collector: string) => void,
+  setSelectedStatus: (status: string) => void
+) {
+  setSelectedSchedulerLocation("all");
+  setSelectedCollector("all");
+  setSelectedStatus("all");
+}
+
+/**
+ * Resets all collector filters to default values
+ * @param setSelectedCollectorLocation - Function to update collector location
+ * @param setSelectedCollectorFilter - Function to update collector filter
+ * @param setSelectedCollectorStatus - Function to update collector status
+ */
+export function resetCollectorFilters(
+  setSelectedCollectorLocation: (location: string) => void,
+  setSelectedCollectorFilter: (filter: string) => void,
+  setSelectedCollectorStatus: (status: string) => void
+) {
+  setSelectedCollectorLocation("all");
+  setSelectedCollectorFilter("all");
+  setSelectedCollectorStatus("all");
+}
 
 /**
  * Applies GSAP animation to pagination controls

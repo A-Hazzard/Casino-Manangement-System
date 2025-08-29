@@ -334,41 +334,124 @@ export default function MembersListTab() {
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Mobile Responsive */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-4">
-          <Button
-            onClick={handleFirstPage}
-            disabled={currentPage === 0}
-            variant="ghost"
-          >
-            <DoubleArrowLeftIcon />
-          </Button>
-          <Button
-            onClick={handlePrevPage}
-            disabled={currentPage === 0}
-            variant="ghost"
-          >
-            <ChevronLeftIcon />
-          </Button>
-          <span className="text-sm">
-            Page {currentPage + 1} of {totalPages}
-          </span>
-          <Button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages - 1}
-            variant="ghost"
-          >
-            <ChevronRightIcon />
-          </Button>
-          <Button
-            onClick={handleLastPage}
-            disabled={currentPage === totalPages - 1}
-            variant="ghost"
-          >
-            <DoubleArrowRightIcon />
-          </Button>
-        </div>
+        <>
+          {/* Mobile Pagination */}
+          <div className="flex flex-col space-y-3 mt-4 sm:hidden">
+            <div className="text-xs text-gray-600 text-center">
+              Page {currentPage + 1} of {totalPages}
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                onClick={handleFirstPage}
+                disabled={currentPage === 0}
+                variant="outline"
+                size="sm"
+                className="px-2 py-1 text-xs"
+              >
+                ««
+              </Button>
+              <Button
+                onClick={handlePrevPage}
+                disabled={currentPage === 0}
+                variant="outline"
+                size="sm"
+                className="px-2 py-1 text-xs"
+              >
+                ‹
+              </Button>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-600">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={currentPage + 1}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (isNaN(val)) val = 1;
+                    if (val < 1) val = 1;
+                    if (val > totalPages) val = totalPages;
+                    setCurrentPage(val - 1);
+                  }}
+                  className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                  aria-label="Page number"
+                />
+                <span className="text-xs text-gray-600">of {totalPages}</span>
+              </div>
+              <Button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages - 1}
+                variant="outline"
+                size="sm"
+                className="px-2 py-1 text-xs"
+              >
+                ›
+              </Button>
+              <Button
+                onClick={handleLastPage}
+                disabled={currentPage === totalPages - 1}
+                variant="outline"
+                size="sm"
+                className="px-2 py-1 text-xs"
+              >
+                »»
+              </Button>
+            </div>
+          </div>
+
+          {/* Desktop Pagination */}
+          <div className="hidden sm:flex justify-center items-center space-x-2 mt-4">
+            <Button
+              onClick={handleFirstPage}
+              disabled={currentPage === 0}
+              variant="ghost"
+            >
+              <DoubleArrowLeftIcon />
+            </Button>
+            <Button
+              onClick={handlePrevPage}
+              disabled={currentPage === 0}
+              variant="ghost"
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={currentPage + 1}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > totalPages) val = totalPages;
+                  setCurrentPage(val - 1);
+                }}
+                className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                aria-label="Page number"
+              />
+              <span className="text-sm text-gray-600">of {totalPages}</span>
+            </div>
+            <Button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages - 1}
+              variant="ghost"
+            >
+              <ChevronRightIcon />
+            </Button>
+            <Button
+              onClick={handleLastPage}
+              disabled={currentPage === totalPages - 1}
+              variant="ghost"
+            >
+              <DoubleArrowRightIcon />
+            </Button>
+          </div>
+        </>
       )}
 
       {/* Modals */}

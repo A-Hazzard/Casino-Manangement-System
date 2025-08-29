@@ -315,3 +315,129 @@ The sessions page essentially **monitors all gaming activity** in your casino, p
 7. Navigate back to sessions or continue to member/machine details
 
 The sessions page provides comprehensive gaming session monitoring with detailed machine event tracking, essential for casino operations, security, and regulatory compliance.
+
+## Financial Calculations Analysis
+
+### Session Financial Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Session Financial Metrics ❌**
+- **Current Implementation**: Uses session-level meter data from `machinesessions` collection
+- **Data Source**: 
+  ```javascript
+  // Session financial fields
+  handle: Number,           // Total betting activity during session
+  cancelledCredits: Number, // Credits cancelled during session
+  jackpot: Number,          // Jackpots won during session
+  won: Number,              // Total winnings during session
+  bet: Number,              // Total bets placed during session
+  points: Number,           // Points earned during session
+  gamesPlayed: Number,      // Games played during session
+  gamesWon: Number          // Games won during session
+  ```
+- **Financial Guide**: No specific guidance for session-level financial calculations
+- ❌ **NOT IN GUIDE** - Session financial structure not defined in financial metrics guide
+
+#### **Session Duration Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  duration = endTime - startTime (in minutes)
+  ```
+- **Business Logic**: Calculates actual playing time for each session
+- ✅ **CONSISTENT** - Standard time calculation
+
+#### **Session Performance Metrics ❌**
+- **Current Implementation**: 
+  ```javascript
+  // Calculated session metrics
+  winRate = gamesWon / gamesPlayed * 100
+  averageBet = bet / gamesPlayed
+  pointsPerGame = points / gamesPlayed
+  handlePerMinute = handle / duration
+  ```
+- **Financial Guide**: No guidance for session-level performance metrics
+- ❌ **NOT IN GUIDE** - Session performance calculations not defined in financial metrics guide
+
+#### **Session Event Association ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Links sessions to machine events
+  { $match: { 
+    currentSession: sessionId, 
+    machine: machineId 
+  }}
+  ```
+- **Business Logic**: Associates events with specific machine sessions
+- ✅ **CONSISTENT** - Standard session-event linking pattern
+
+#### **Session Search Logic ✅**
+- **Current Implementation**: 
+  ```javascript
+  $or: [
+    { sessionId: { $regex: searchTerm, $options: 'i' } },
+    { machineId: { $regex: searchTerm, $options: 'i' } },
+    { memberId: { $regex: searchTerm, $options: 'i' } }
+  ]
+  ```
+- **Business Logic**: Case-insensitive search across session identifiers
+- ✅ **COMPREHENSIVE** - Covers all relevant searchable session fields
+
+### Mathematical Formulas Summary
+
+#### **Session Financial Metrics (Requires Verification)**
+```
+Session Handle = Total betting activity during session
+Session Cancelled Credits = Credits refunded during session
+Session Jackpot = Jackpot amounts won during session
+Session Net Win = won - bet (player perspective)
+Session House Edge = bet - won (casino perspective)
+```
+
+#### **Session Performance Calculations**
+```
+Session Duration = endTime - startTime (in minutes)
+Win Rate = (gamesWon / gamesPlayed) * 100
+Average Bet = bet / gamesPlayed
+Points Per Game = points / gamesPlayed
+Handle Per Minute = handle / duration
+```
+
+#### **Session Event Tracking**
+```
+Session Events = FIND(machineevents WHERE 
+  currentSession = sessionId AND 
+  machine = machineId
+) ORDER BY timestamp ASC
+```
+
+#### **Session Aggregation by Time**
+```
+Daily Sessions = GROUP BY DATE(startTime)
+Weekly Sessions = GROUP BY WEEK(startTime)
+Monthly Sessions = GROUP BY MONTH(startTime)
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Session ID**: Validates session identifier format
+- **Date Ranges**: Validates ISO date format for filtering
+- **Pagination**: Validates numeric page and limit parameters
+- **Search Terms**: Sanitizes input to prevent injection attacks
+
+#### **Data Integrity ❌**
+- **Session Metrics**: Session-level financial calculations need verification
+- **Null Handling**: Uses fallback values but session structure needs verification
+- **Time Calculations**: Duration calculations assume valid start/end times
+
+### Required Verification
+
+**The following calculations need to be verified against the financial metrics guide:**
+
+1. **Session Financial Structure**: Confirm session meter data aligns with standard calculations
+2. **Performance Metrics**: Verify session-level metrics represent accurate gaming outcomes
+3. **Data Source Accuracy**: Confirm session data accurately reflects actual gaming activity
+4. **Event Association**: Verify session-event linking accurately represents machine activity
+
+**Note**: Session calculations use session-level data structures not explicitly defined in the financial metrics guide and require verification for accuracy.

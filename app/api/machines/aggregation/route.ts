@@ -7,61 +7,9 @@ import {
   MachineMatchStage,
   MachineAggregationMatchStage,
 } from "@/lib/types/machines";
+import { getDateRangeForTimePeriodAlt } from "@/app/api/lib/utils/dateUtils";
 
-// Helper function to get date range based on time period
-function getDateRangeForTimePeriod(timePeriod: string): DateRange {
-  // Use timezone-aware date calculations for Trinidad
-  const tz = "America/Port_of_Spain";
-  const now = new Date();
-
-  let start: Date;
-  let end: Date;
-
-  switch (timePeriod) {
-    case "Today":
-      // Start of today in Trinidad timezone
-      start = new Date(
-        now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
-      );
-      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-      break;
-    case "Yesterday":
-      // Start of yesterday in Trinidad timezone
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      start = new Date(
-        yesterday.toLocaleDateString("en-CA", { timeZone: tz }) +
-          "T00:00:00.000Z"
-      );
-      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-      break;
-    case "7d":
-    case "last7days":
-      // 7 days ago
-      end = now;
-      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case "30d":
-    case "last30days":
-      // 30 days ago
-      end = now;
-      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case "Custom":
-      // Custom date range would need to be handled with additional parameters
-      // For now, default to last 30 days if Custom is specified without dates
-      end = now;
-      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      // Default to Today if no valid time period is specified
-      start = new Date(
-        now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
-      );
-      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-  }
-
-  return { start, end };
-}
+// Date range helper function moved to @/app/api/lib/utils/dateUtils
 
 export async function GET(req: NextRequest) {
   try {
@@ -87,7 +35,7 @@ export async function GET(req: NextRequest) {
         end: new Date(endDateParam),
       };
     } else {
-      dateRange = getDateRangeForTimePeriod(timePeriod as TimePeriod);
+      dateRange = getDateRangeForTimePeriodAlt(timePeriod as TimePeriod);
     }
 
     const { start, end } = dateRange;

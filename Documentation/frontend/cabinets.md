@@ -45,11 +45,11 @@ This page provides comprehensive cabinet (slot machine) management for the casin
   - `components/ui/cabinets/EditCabinetModal.tsx` - Edit cabinet form
   - `components/ui/cabinets/DeleteCabinetModal.tsx` - Cabinet deletion confirmation
 - **SMIB Management Components:**
-  - `components/cabinets/SMIBManagement.tsx` - SMIB configuration interface
+  - `components/cabinets/SMIBManagement.tsx` - SMIB configuration component
   - `components/ui/firmware/SMIBFirmwareSection.tsx` - Firmware management
   - `components/ui/firmware/UploadSmibDataModal.tsx` - Firmware upload
 - **Movement Management Components:**
-  - `components/cabinets/MovementRequests.tsx` - Movement request interface
+  - `components/cabinets/MovementRequests.tsx` - Movement request component
   - `components/ui/movements/NewMovementRequestModal.tsx` - New movement form
 - **Utility Components:**
   - `components/ui/RefreshButton.tsx` - Data refresh functionality
@@ -213,6 +213,12 @@ The cabinets page is like a **control room for managing all your slot machines**
 - **Fields Used**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`, `gross`
 - **Simple Explanation**: Shows how much money each machine is making - like a profit report for each slot machine
 
+**💰 Financial Data Flow (Recent Fix)**
+- **Money In**: Shows how much money players put into the machine (`drop`)
+- **Money Out (Cancelled Credits)**: Shows how much money was cancelled/refunded (`totalCancelledCredits`)
+- **Gross Revenue**: Money In minus Money Out - the actual profit
+- **Data Source**: The API calculates these from the `meters` collection and returns them as `moneyIn`, `moneyOut`, and `gross`
+
 **🔍 How Cabinet Search Works**
 - **Collection**: Filters the `machines` collection
 - **Fields Used**: Searches by `Custom.name`, `game`, `serialNumber`
@@ -252,36 +258,65 @@ The cabinets page is like a **control room for managing all your slot machines**
 - **Fields Used**: `status`, `approvedBy`, `approvedBySecond`
 - **Simple Explanation**: Like getting permission to move expensive equipment - requires approval before machines can be moved
 
-#### **Database Queries Explained**
+#### **Database Queries Explained (In Plain English)**
 
 **For Cabinet List:**
 ```javascript
-// Queries the machines collection
-// Filters by: licensee, location, time period
-// Aggregates with meters collection for performance data
-// Returns: cabinets with financial metrics and status
+// What the system does:
+// 1. Looks up all slot machines in the database
+// 2. Filters them by: which company owns them, which location they're at, what time period you want
+// 3. Adds up all the money data from each machine's meter readings
+// 4. Returns: a list of machines with their financial performance and current status
 ```
 
 **For Cabinet Details:**
 ```javascript
-// Queries the machines collection by ID
-// Joins with meters collection for historical data
-// Returns: detailed cabinet information with configuration
+// What the system does:
+// 1. Finds a specific machine by its ID number
+// 2. Gets all the historical money data for that machine
+// 3. Returns: detailed information about that specific machine including its settings and history
 ```
 
 **For Movement Requests:**
 ```javascript
-// Queries the movementrequests collection
-// Filters by: status, location, date range
-// Returns: pending and approved movement requests
+// What the system does:
+// 1. Looks up all requests to move machines between locations
+// 2. Filters by: whether they're approved, which locations are involved, what dates
+// 3. Returns: a list of pending and approved machine movement requests
 ```
 
 **For SMIB Configuration:**
 ```javascript
-// Queries the machines collection
-// Filters by: smibBoard field (SMIB-equipped machines)
-// Returns: machines with SMIB configuration data
+// What the system does:
+// 1. Finds all machines that have SMIB controllers installed
+// 2. Gets their current communication settings and software versions
+// 3. Returns: machines with their SMIB configuration data
 ```
+
+#### **Financial Data Calculation (Recent Fix Explained)**
+
+**The Problem We Fixed:**
+- **Before**: The system was looking for a field called `cancelledCredits` that didn't exist in the database
+- **After**: The system now correctly uses `moneyOut` which contains the cancelled credits data
+
+**How the Money Data Works:**
+1. **Database Storage**: Each time a machine is read, it records:
+   - `coinIn`: Money players put in
+   - `drop`: Money collected from the machine
+   - `totalCancelledCredits`: Money that was cancelled/refunded
+   
+2. **API Processing**: The backend adds up all these readings for the time period you select and returns:
+   - `moneyIn`: Total money put into the machine
+   - `moneyOut`: Total cancelled credits (money refunded)
+   - `gross`: Money In minus Money Out (actual profit)
+
+3. **Frontend Display**: The page shows these values in the table and cards, with proper formatting and sorting
+
+**Why This Matters:**
+- **Accurate Financial Reporting**: You can see exactly how much each machine is making
+- **Profit Analysis**: Gross revenue shows the real profit after refunds
+- **Operational Insights**: High cancelled credits might indicate machine problems
+- **Compliance**: Accurate financial tracking is required for casino regulations
 
 #### **Why This Matters for Casino Operations**
 
@@ -309,4 +344,134 @@ The cabinets page is like a **control room for managing all your slot machines**
 - **Capacity Planning**: Know when you need more machines
 - **Financial Reporting**: Generate reports for management and regulators
 
-The cabinets page essentially **manages your slot machine fleet** like a fleet manager would manage a company's vehicles - tracking location, performance, maintenance, and movements of each machine. 
+The cabinets page essentially **manages your slot machine fleet** like a fleet manager would manage a company's vehicles - tracking location, performance, maintenance, and movements of each machine.
+
+## Financial Calculations Analysis
+
+### Cabinet Financial Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Cabinet Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyIn: { $sum: "$movement.drop" }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash inserted into individual cabinet
+- **Aggregation**: Sums across all meter readings for cabinet within date range
+
+#### **Cabinet Money Out (Total Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits cancelled/paid out from individual cabinet
+- **Aggregation**: Sums across all meter readings for cabinet within date range
+
+#### **Cabinet Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  // Where: moneyIn = Σ(movement.drop), moneyOut = Σ(movement.totalCancelledCredits)
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per cabinet
+
+#### **Cabinet Status Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Online status
+  lastActivity: { $gte: new Date(Date.now() - 3 * 60 * 1000) }
+  // Asset status
+  assetStatus: "active" | "maintenance" | "offline"
+  ```
+- **Business Logic**: 
+  - **Online**: `lastActivity >= (currentTime - 3 minutes)`
+  - **Status**: Based on `assetStatus` field
+- ✅ **CONSISTENT** - Standard cabinet status calculation
+
+#### **Cabinet Collection Meters ❌**
+- **Current Implementation**: 
+  ```javascript
+  collectionMeters: {
+    metersIn: Number,  // Not clearly defined
+    metersOut: Number  // Not clearly defined
+  }
+  ```
+- **Financial Guide**: No specific definition for collection meters
+- ❌ **NOT IN GUIDE** - Collection meters calculation not defined in financial metrics guide
+
+#### **Cabinet Performance Ranking ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Sort by performance metrics
+  { $sort: { gross: -1 } }      // By gross revenue
+  { $sort: { moneyIn: -1 } }    // By money in (drop)
+  { $sort: { gamesPlayed: -1 } } // By activity level
+  ```
+- **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
+- **Business Logic**: Ranks cabinets by financial performance
+
+### Mathematical Formulas Summary
+
+#### **Core Cabinet Metrics**
+```
+Cabinet Money In = Σ(movement.drop) for individual cabinet
+Cabinet Money Out = Σ(movement.totalCancelledCredits) for individual cabinet
+Cabinet Gross Revenue = Cabinet Money In - Cabinet Money Out
+```
+
+#### **Cabinet Status Calculations**
+```
+Cabinet Online = lastActivity >= (currentTime - 3 minutes)
+Cabinet Active = assetStatus = "active" AND deletedAt IS NULL
+Cabinet Performance = gross revenue ranking
+```
+
+#### **Cabinet Performance Ranking**
+```
+Top Cabinets by Revenue = ORDER BY gross DESC
+Top Cabinets by Activity = ORDER BY gamesPlayed DESC
+Top Cabinets by Drop = ORDER BY moneyIn DESC
+```
+
+#### **Collection Meters (Not in Guide)**
+```
+Collection Meters In = collectionMeters.metersIn   // Definition unclear
+Collection Meters Out = collectionMeters.metersOut // Definition unclear
+```
+
+#### **Cabinet Search Logic**
+```
+Cabinet Search = FIND(machines WHERE 
+  Custom.name CONTAINS searchTerm OR
+  game CONTAINS searchTerm OR
+  serialNumber CONTAINS searchTerm
+) CASE_INSENSITIVE
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Cabinet ID**: Validates MongoDB ObjectId format
+- **Search Terms**: Sanitizes input to prevent injection attacks
+- **Date Ranges**: Validates ISO date format for filtering
+- **SMIB Config**: Validates configuration parameters
+
+#### **Data Integrity ✅**
+- **Null Handling**: Uses `$ifNull` operators to default missing values to 0
+- **Deleted Cabinets**: Filters out soft-deleted cabinets (`deletedAt` exists)
+- **Financial Validation**: Prevents negative financial calculations
+- **Status Validation**: Validates cabinet status against allowed values
+
+### Required Verification
+
+**The following calculations need to be verified against the financial metrics guide:**
+
+1. **Collection Meters**: Clarify definition and calculation of `collectionMeters.metersIn/metersOut`
+2. **Cabinet Aggregation**: Verify cabinet-level aggregation matches standard meter calculations
+3. **Performance Metrics**: Confirm cabinet ranking algorithms use appropriate financial metrics
+
+**Note**: Most cabinet calculations align with the financial metrics guide, but collection meters require clarification. 

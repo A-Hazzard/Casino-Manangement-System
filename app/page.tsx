@@ -1,6 +1,6 @@
 "use client";
 
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import PcLayout from "@/components/layout/PcLayout";
 
@@ -10,15 +10,15 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 
 import {
-  calculatePieChartLabelData,
   loadGamingLocations,
   fetchMetricsData,
   fetchTopPerformingDataHelper,
   handleDashboardRefresh,
 } from "@/lib/helpers/dashboard";
+import { calculatePieChartLabelData } from "@/lib/utils/chart";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
 
-import { Toaster } from "sonner";
+
 
 // Create a client component to ensure the page only renders on the client
 export default function Home() {
@@ -178,13 +178,13 @@ function DashboardContent() {
     setTopPerformingData,
   ]);
 
-  // Render function for pie chart labels
+  // Render function for pie chart labels - must stay in component for JSX
   const renderCustomizedLabel = (props: CustomizedLabelProps) => {
     const labelData = calculatePieChartLabelData(props);
     return (
-      <text
-        x={labelData.x}
-        y={labelData.y}
+      <text 
+        x={labelData.x} 
+        y={labelData.y} 
         fill={labelData.fill}
         textAnchor={labelData.textAnchor}
         dominantBaseline={labelData.dominantBaseline}
@@ -197,74 +197,77 @@ function DashboardContent() {
   };
 
   return (
-    <>
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            disabled={loadingChartData || refreshing}
-          />
+    <PageLayout
+      headerProps={{
+        selectedLicencee,
+        setSelectedLicencee,
+        disabled: loadingChartData || refreshing,
+      }}
+      showToaster={true}
+      toasterRichColors={true}
+    >
+      {/* Mobile layout for small screens */}
+      <div className="block md:hidden">
+        <MobileLayout
+              activeFilters={activeFilters}
+              activeTab={activeTab}
+              totals={totals}
+              chartData={chartData}
+              gamingLocations={gamingLocations}
+              loadingChartData={loadingChartData}
+              refreshing={refreshing}
+              pieChartSortIsOpen={pieChartSortIsOpen}
+              activeMetricsFilter={activeMetricsFilter}
+              activePieChartFilter={activePieChartFilter}
+              topPerformingData={topPerformingData}
+              setLoadingChartData={setLoadingChartData}
+              setRefreshing={setRefreshing}
+              setActiveFilters={setActiveFilters}
+              setActiveTab={setActiveTab}
+              setTotals={setTotals}
+              setChartData={setChartData}
+              setPieChartSortIsOpen={setPieChartSortIsOpen}
+              setTopPerformingData={setTopPerformingData}
+              setActiveMetricsFilter={setActiveMetricsFilter}
+              setActivePieChartFilter={setActivePieChartFilter}
+              renderCustomizedLabel={renderCustomizedLabel}
+              selectedLicencee={selectedLicencee}
+              loadingTopPerforming={loadingTopPerforming}
+              onRefresh={handleRefresh}
+              isChangingDateFilter={false}
+            />
+          </div>
 
-          {/* Main dashboard layouts */}
-          <PcLayout
-            activeFilters={activeFilters}
-            activeTab={activeTab}
-            totals={totals}
-            chartData={chartData}
-            gamingLocations={gamingLocations}
-            loadingChartData={loadingChartData}
-            refreshing={refreshing}
-            pieChartSortIsOpen={pieChartSortIsOpen}
-            activeMetricsFilter={activeMetricsFilter}
-            activePieChartFilter={activePieChartFilter}
-            topPerformingData={topPerformingData}
-            setLoadingChartData={setLoadingChartData}
-            setRefreshing={setRefreshing}
-            setActiveFilters={setActiveFilters}
-            setActiveTab={setActiveTab}
-            setTotals={setTotals}
-            setChartData={setChartData}
-            setPieChartSortIsOpen={setPieChartSortIsOpen}
-            setTopPerformingData={setTopPerformingData}
-            setActiveMetricsFilter={setActiveMetricsFilter}
-            setActivePieChartFilter={setActivePieChartFilter}
-            renderCustomizedLabel={renderCustomizedLabel}
-            selectedLicencee={selectedLicencee}
-            loadingTopPerforming={loadingTopPerforming}
-            onRefresh={handleRefresh}
-          />
-          <MobileLayout
-            activeFilters={activeFilters}
-            activeTab={activeTab}
-            totals={totals}
-            chartData={chartData}
-            gamingLocations={gamingLocations}
-            loadingChartData={loadingChartData}
-            refreshing={refreshing}
-            pieChartSortIsOpen={pieChartSortIsOpen}
-            activeMetricsFilter={activeMetricsFilter}
-            activePieChartFilter={activePieChartFilter}
-            topPerformingData={topPerformingData}
-            setLoadingChartData={setLoadingChartData}
-            setRefreshing={setRefreshing}
-            setActiveFilters={setActiveFilters}
-            setActiveTab={setActiveTab}
-            setTotals={setTotals}
-            setChartData={setChartData}
-            setPieChartSortIsOpen={setPieChartSortIsOpen}
-            setTopPerformingData={setTopPerformingData}
-            setActiveMetricsFilter={setActiveMetricsFilter}
-            setActivePieChartFilter={setActivePieChartFilter}
-            renderCustomizedLabel={renderCustomizedLabel}
-            selectedLicencee={selectedLicencee}
-            loadingTopPerforming={loadingTopPerforming}
-            onRefresh={handleRefresh}
-            isChangingDateFilter={false}
-          />
-        </main>
-      </div>
-      <Toaster richColors />
-    </>
+          {/* PC layout for medium screens and up */}
+          <div className="hidden md:block">
+            <PcLayout
+              activeFilters={activeFilters}
+              activeTab={activeTab}
+              totals={totals}
+              chartData={chartData}
+              gamingLocations={gamingLocations}
+              loadingChartData={loadingChartData}
+              refreshing={refreshing}
+              pieChartSortIsOpen={pieChartSortIsOpen}
+              activeMetricsFilter={activeMetricsFilter}
+              activePieChartFilter={activePieChartFilter}
+              topPerformingData={topPerformingData}
+              setLoadingChartData={setLoadingChartData}
+              setRefreshing={setRefreshing}
+              setActiveFilters={setActiveFilters}
+              setActiveTab={setActiveTab}
+              setTotals={setTotals}
+              setChartData={setChartData}
+              setPieChartSortIsOpen={setPieChartSortIsOpen}
+              setTopPerformingData={setTopPerformingData}
+              setActiveMetricsFilter={setActiveMetricsFilter}
+              setActivePieChartFilter={setActivePieChartFilter}
+              renderCustomizedLabel={renderCustomizedLabel}
+              selectedLicencee={selectedLicencee}
+              loadingTopPerforming={loadingTopPerforming}
+              onRefresh={handleRefresh}
+            />
+          </div>
+    </PageLayout>
   );
 }

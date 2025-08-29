@@ -56,6 +56,7 @@ ActivityLogSchema.index({ resource: 1, timestamp: -1 });
 ActivityLogSchema.index({ userId: 1, timestamp: -1 });
 ActivityLogSchema.index({ action: 1, timestamp: -1 });
 ActivityLogSchema.index({ resourceId: 1, timestamp: -1 });
+ActivityLogSchema.index({ ipAddress: 1, timestamp: -1 }); // Index for IP address queries
 // Legacy indexes for backward compatibility
 ActivityLogSchema.index({ entityType: 1, timestamp: -1 });
 ActivityLogSchema.index({ "actor.id": 1, timestamp: -1 });

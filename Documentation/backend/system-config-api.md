@@ -352,7 +352,7 @@ Creates new gaming location.
 
 ### Country Model
 ```typescript
-interface Country {
+type Country = {
   _id: string;
   name: string;
   code: string;
@@ -373,7 +373,7 @@ interface Country {
 
 ### Firmware Model
 ```typescript
-interface Firmware {
+type Firmware = {
   _id: string;
   name: string;
   version: string;
@@ -394,7 +394,7 @@ interface Firmware {
 
 ### Licensee Model
 ```typescript
-interface Licensee {
+type Licensee = {
   _id: string;
   name: string;
   licenseNumber: string;
@@ -425,7 +425,7 @@ interface Licensee {
 
 ### GamingLocation Model
 ```typescript
-interface GamingLocation {
+type GamingLocation = {
   _id: string;
   name: string;
   licenseeId: string;
@@ -513,7 +513,7 @@ interface GamingLocation {
 
 ## Related Frontend Pages
 
-- **System Configuration**: `/administration/config` - Main configuration interface
+- **System Configuration**: `/administration/config` - Main configuration page
 - **Country Management**: `/administration/countries` - Country configuration
 - **Firmware Management**: `/administration/firmwares` - Firmware upload and management
 - **Licensee Management**: `/administration/licensees` - Licensee information

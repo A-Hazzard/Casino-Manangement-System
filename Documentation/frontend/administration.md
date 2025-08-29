@@ -185,7 +185,7 @@ This page provides user and licensee management for the casino management system
 - **Page Types:** `lib/types/pages.ts` - Form and page-specific types
   - `AddUserForm`, `AddLicenseeForm`
 - **Shared Types:** `@shared/types` - Core type definitions
-- **API Logging Types:** `app/api/lib/utils/logger.ts` - Logging interface definitions
+- **API Logging Types:** `app/api/lib/utils/logger.ts` - Logging type definitions
   - `LogContext`, `LogResult`
 
 #### Utility Functions

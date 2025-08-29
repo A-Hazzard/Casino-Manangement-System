@@ -1,5 +1,10 @@
+/**
+ * Movement requests helper functions for filtering, pagination, and API operations
+ */
+
 import axios from "axios";
-import { MovementRequest } from "@/lib/types/movementRequests";
+import type { MovementRequest } from "@/lib/types/movementRequests";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 /**
  * Fetch all movement requests from the API.
@@ -26,7 +31,18 @@ export async function fetchMovementRequests(
 export async function createMovementRequest(
   data: Omit<MovementRequest, "_id" | "createdAt" | "updatedAt">
 ): Promise<MovementRequest> {
+  const movementLogger = createActivityLogger("session");
+  
   const res = await axios.post("/api/movement-requests", data);
+  
+  // Log the movement request creation activity
+  await movementLogger.logCreate(
+    res.data._id,
+    `Movement Request: ${data.locationFrom} to ${data.locationTo}`,
+    data,
+    `Created movement request from ${data.locationFrom} to ${data.locationTo}`
+  );
+  
   return res.data;
 }
 
@@ -38,7 +54,19 @@ export async function createMovementRequest(
 export async function updateMovementRequest(
   data: MovementRequest
 ): Promise<MovementRequest> {
+  const movementLogger = createActivityLogger("session");
+  
   const res = await axios.patch(`/api/movement-requests/${data._id}`, data);
+  
+  // Log the movement request update activity
+  await movementLogger.logUpdate(
+    data._id,
+    `Movement Request: ${data.locationFrom} to ${data.locationTo}`,
+    data,
+    data,
+    `Updated movement request from ${data.locationFrom} to ${data.locationTo}`
+  );
+  
   return res.data;
 }
 
@@ -48,5 +76,75 @@ export async function updateMovementRequest(
  * @returns Promise<void>
  */
 export async function deleteMovementRequest(id: string): Promise<void> {
+  const movementLogger = createActivityLogger("session");
+  
   await axios.delete(`/api/movement-requests/${id}`);
+  
+  // Log the movement request deletion activity
+  await movementLogger.logDelete(
+    id,
+    "Movement Request",
+    { id },
+    `Deleted movement request with ID: ${id}`
+  );
+}
+
+/**
+ * Filters movement requests based on search term and selected location
+ * @param requests - Array of movement requests to filter
+ * @param searchTerm - Search term to filter by
+ * @param selectedLocation - Selected location filter
+ * @param locations - Array of available locations for lookup
+ * @returns Filtered array of movement requests
+ */
+export function filterMovementRequests(
+  requests: MovementRequest[],
+  searchTerm: string,
+  selectedLocation: string,
+  locations: { _id: string; name: string }[]
+): MovementRequest[] {
+  return requests.filter((req) => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch =
+      req.createdBy.toLowerCase().includes(searchLower) ||
+      req.locationFrom.toLowerCase().includes(searchLower) ||
+      req.locationTo.toLowerCase().includes(searchLower) ||
+      req.cabinetIn.toLowerCase().includes(searchLower) ||
+      req.status.toLowerCase().includes(searchLower);
+    
+    const locationData = locations.find((l) => l._id === selectedLocation);
+    const matchesLocation =
+      selectedLocation === "all" ||
+      req.locationFrom === locationData?.name ||
+      req.locationTo === locationData?.name;
+    
+    return matchesSearch && matchesLocation;
+  });
+}
+
+/**
+ * Paginates movement requests
+ * @param requests - Array of requests to paginate
+ * @param currentPage - Current page number (0-based)
+ * @param itemsPerPage - Number of items per page
+ * @returns Paginated requests and total pages
+ */
+export function paginateMovementRequests(
+  requests: MovementRequest[],
+  currentPage: number,
+  itemsPerPage: number
+): {
+  paginatedRequests: MovementRequest[];
+  totalPages: number;
+} {
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const paginatedRequests = requests.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  return {
+    paginatedRequests,
+    totalPages,
+  };
 }

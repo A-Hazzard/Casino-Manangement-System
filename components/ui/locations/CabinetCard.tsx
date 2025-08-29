@@ -52,7 +52,7 @@ export default function CabinetCard(props: CabinetCardProps) {
     smbId: props.smbId,
     serialNumber: props.serialNumber,
     moneyIn: props.moneyIn,
-    cancelledCredits: props.cancelledCredits,
+    cancelledCredits: props.moneyOut,
     jackpot: props.jackpot,
     gross: props.gross,
     lastOnline: props.lastOnline,
@@ -140,7 +140,7 @@ export default function CabinetCard(props: CabinetCardProps) {
         </div>
         <div className="flex justify-between py-1">
           <span>Cancelled Credits</span>
-          <span>${formatCurrency(props.cancelledCredits || 0)}</span>
+          <span>${formatCurrency(props.moneyOut || 0)}</span>
         </div>
         <div className="flex justify-between py-1">
           <span>Jackpot</span>

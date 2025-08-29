@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useUserStore } from "@/lib/store/userStore";
 
 export type ActivityAction = "create" | "update" | "delete" | "view";
 export type ActivityResource =
@@ -19,6 +20,8 @@ export type ActivityLogData = {
   newData?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
+  userId?: string;
+  username?: string;
 }
 
 /**
@@ -29,6 +32,9 @@ export async function logActivity(
   activityData: ActivityLogData
 ): Promise<void> {
   try {
+    // Get user information from store
+    const user = useUserStore.getState().user;
+    
     // Get client information
     const clientInfo = {
       ipAddress: await getClientIP(),
@@ -38,6 +44,8 @@ export async function logActivity(
     const logEntry = {
       ...activityData,
       ...clientInfo,
+      userId: activityData.userId || user?._id || "unknown",
+      username: activityData.username || user?.emailAddress || "unknown",
       timestamp: new Date().toISOString(),
     };
 
@@ -50,12 +58,14 @@ export async function logActivity(
 
 /**
  * Get client IP address (best effort)
+ * The server-side API will capture the real IP from request headers
  */
 async function getClientIP(): Promise<string> {
   try {
-    // In a real implementation, you might want to use a service to get the real IP
-    // For now, we'll use a placeholder or try to get it from headers
-    return "client-ip"; // Placeholder - the server should capture the real IP
+    // The client-side can't reliably get the real IP address
+    // The server-side API will capture the real IP from request headers
+    // This is just a placeholder - the actual IP will be captured server-side
+    return "client-side"; // Server will replace this with real IP
   } catch {
     return "unknown";
   }

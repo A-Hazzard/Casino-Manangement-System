@@ -3,12 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { MemberSession } from "@/lib/types/members";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
+// Removed unused icon imports - using text symbols instead
 import { formatCurrency } from "@/lib/utils/formatters";
 import Link from "next/link";
 import { ActivityIcon } from "lucide-react";
@@ -285,47 +280,67 @@ export default function PlayerSessionTable({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 bg-gray-50 border-t gap-3">
+      {/* Mobile Pagination */}
+      <div className="flex flex-col space-y-3 px-4 py-3 bg-gray-50 border-t sm:hidden">
+        <div className="text-xs text-gray-600 text-center">
+          Page {currentPage + 1} of {totalPages}
+        </div>
+        <div className="flex items-center justify-center space-x-2">
+          <Button variant="outline" size="sm" onClick={handleFirstPage} disabled={currentPage === 0} className="px-2 py-1 text-xs">««</Button>
+          <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage === 0} className="px-2 py-1 text-xs">‹</Button>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-600">Page</span>
+            <input 
+              type="number" 
+              min={1} 
+              max={totalPages} 
+              value={currentPage + 1} 
+              onChange={(e) => { 
+                let val = Number(e.target.value); 
+                if (isNaN(val)) val = 1; 
+                if (val < 1) val = 1; 
+                if (val > totalPages) val = totalPages; 
+                onPageChange(val - 1); 
+              }} 
+              className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive" 
+              aria-label="Page number" 
+            />
+            <span className="text-xs text-gray-600">of {totalPages}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages - 1} className="px-2 py-1 text-xs">›</Button>
+          <Button variant="outline" size="sm" onClick={handleLastPage} disabled={currentPage === totalPages - 1} className="px-2 py-1 text-xs">»»</Button>
+        </div>
+      </div>
+      
+      {/* Desktop Pagination */}
+      <div className="hidden sm:flex items-center justify-between px-4 py-3 bg-gray-50 border-t">
         <span className="text-sm text-gray-600">
           Page {currentPage + 1} of {totalPages}
         </span>
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          <Button
-            onClick={handleFirstPage}
-            disabled={currentPage === 0}
-            variant="ghost"
-            size="sm"
-            className="p-1 sm:p-2"
-          >
-            <DoubleArrowLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          </Button>
-          <Button
-            onClick={handlePrevPage}
-            disabled={currentPage === 0}
-            variant="ghost"
-            size="sm"
-            className="p-1 sm:p-2"
-          >
-            <ChevronLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          </Button>
-          <Button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages - 1}
-            variant="ghost"
-            size="sm"
-            className="p-1 sm:p-2"
-          >
-            <ChevronRightIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          </Button>
-          <Button
-            onClick={handleLastPage}
-            disabled={currentPage === totalPages - 1}
-            variant="ghost"
-            size="sm"
-            className="p-1 sm:p-2"
-          >
-            <DoubleArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleFirstPage} disabled={currentPage === 0}>First</Button>
+          <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage === 0}>Previous</Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Page</span>
+            <input 
+              type="number" 
+              min={1} 
+              max={totalPages} 
+              value={currentPage + 1} 
+              onChange={(e) => { 
+                let val = Number(e.target.value); 
+                if (isNaN(val)) val = 1; 
+                if (val < 1) val = 1; 
+                if (val > totalPages) val = totalPages; 
+                onPageChange(val - 1); 
+              }} 
+              className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive" 
+              aria-label="Page number" 
+            />
+            <span className="text-sm text-gray-600">of {totalPages}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages - 1}>Next</Button>
+          <Button variant="outline" size="sm" onClick={handleLastPage} disabled={currentPage === totalPages - 1}>Last</Button>
         </div>
       </div>
     </div>

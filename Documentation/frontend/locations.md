@@ -289,4 +289,141 @@ The locations page is like a **map of all your casino locations** with performan
 - **Reporting**: Generate reports for management and regulators
 - **Compliance**: Track performance for regulatory requirements
 
-The locations page essentially **gives you a bird's-eye view of your entire casino empire**, showing you how each location is performing and helping you make strategic decisions about your business. 
+The locations page essentially **gives you a bird's-eye view of your entire casino empire**, showing you how each location is performing and helping you make strategic decisions about your business.
+
+## Financial Calculations Analysis
+
+### Location Performance Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Location Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyIn: { $sum: "$movement.drop" }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash inserted across all machines at location
+- **Aggregation**: Sums across all machines at location within date range
+
+#### **Location Money Out (Total Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits paid out to players at location (vouchers + hand-paid)
+- **Aggregation**: Sums across all machines at location within date range
+
+#### **Location Gross Revenue ✅**
+- **Current Implementation**: 
+  ```javascript
+  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  // Where: moneyIn = Σ(movement.drop), moneyOut = Σ(movement.totalCancelledCredits)
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per location
+
+#### **Machine Count Calculations ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Total machines at location
+  { $match: { gamingLocation: locationId, deletedAt: { $exists: false } } }
+  // Online machines at location
+  { $match: { lastActivity: { $gte: recentThreshold } } }
+  ```
+- **Business Logic**: 
+  - **Total**: Count of non-deleted machines at location
+  - **Online**: Count of machines with recent activity (< 3 minutes)
+  - **Offline**: Total - Online
+- ✅ **CONSISTENT** - Standard machine status calculation per location
+
+#### **Location Search Logic ✅**
+- **Current Implementation**: 
+  ```javascript
+  $or: [
+    { name: { $regex: searchTerm, $options: 'i' } },
+    { "address.street": { $regex: searchTerm, $options: 'i' } },
+    { "address.city": { $regex: searchTerm, $options: 'i' } }
+  ]
+  ```
+- **Business Logic**: Case-insensitive search across location name and address fields
+- ✅ **COMPREHENSIVE** - Covers all relevant searchable location fields
+
+#### **Location Ranking Logic ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Sort by performance metrics
+  { $sort: { gross: -1 } }        // By gross revenue
+  { $sort: { moneyIn: -1 } }      // By money in (drop)
+  { $sort: { totalMachines: -1 } } // By machine count
+  ```
+- **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
+- **Business Logic**: Ranks locations by financial performance
+
+#### **Cabinet Performance by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Aggregates cabinet data by location
+  { $group: {
+    _id: "$gamingLocation",
+    totalCabinets: { $sum: 1 },
+    totalDrop: { $sum: "$movement.drop" },
+    totalGross: { $sum: { $subtract: ["$movement.drop", "$movement.totalCancelledCredits"] } }
+  }}
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Business Logic**: Aggregates cabinet financial data at location level
+
+### Mathematical Formulas Summary
+
+#### **Core Location Metrics**
+```
+Location Money In = Σ(movement.drop) across all machines at location
+Location Money Out = Σ(movement.totalCancelledCredits) across all machines at location
+Location Gross Revenue = Location Money In - Location Money Out
+```
+
+#### **Machine Status by Location**
+```
+Total Machines = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
+Online Machines = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
+Offline Machines = Total Machines - Online Machines
+```
+
+#### **Location Performance Ranking**
+```
+Top Performing Locations = ORDER BY gross DESC
+Revenue Ranking = ORDER BY moneyIn DESC  
+Machine Count Ranking = ORDER BY totalMachines DESC
+```
+
+#### **Cabinet Aggregation by Location**
+```
+Location Cabinet Count = COUNT(machines WHERE gamingLocation = locationId)
+Location Cabinet Revenue = Σ(movement.drop) WHERE gamingLocation = locationId
+Location Cabinet Gross = Σ(movement.drop - movement.totalCancelledCredits) WHERE gamingLocation = locationId
+```
+
+#### **Search Algorithm**
+```
+Location Search = FIND(locations WHERE 
+  name CONTAINS searchTerm OR
+  address.street CONTAINS searchTerm OR 
+  address.city CONTAINS searchTerm
+) CASE_INSENSITIVE
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Location ID**: Validates MongoDB ObjectId format
+- **Search Terms**: Sanitizes input to prevent injection attacks
+- **Date Ranges**: Validates ISO date format for filtering
+- **Pagination**: Validates numeric page and limit parameters
+
+#### **Data Integrity ✅**
+- **Null Handling**: Uses `$ifNull` operators to default missing values to 0
+- **Deleted Locations**: Filters out soft-deleted locations (`deletedAt` exists)
+- **Missing Coordinates**: Gracefully handles locations without geo coordinates
+- **Financial Validation**: Prevents negative financial calculations 

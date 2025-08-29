@@ -7,10 +7,10 @@ import {
   Download,
   BarChart3,
   Monitor,
-  TrendingUp,
   Trophy,
   Activity,
   RefreshCw,
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -24,32 +24,36 @@ import { Button } from "@/components/ui/button";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils/formatting";
+// import { Skeleton } from "@/components/ui/skeleton";
+// import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
+import { 
+  handleLocationSelectLocations,
+  handleExportSASEvaluation as handleExportSASEvaluationHelper
+} from "@/lib/helpers/reportsPage";
 
 
-// Recharts imports for CasinoLocationCard charts
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+// Recharts imports for CasinoLocationCard charts - Commented out since Top 5 Locations section is hidden
+// import {
+//   BarChart,
+//   Bar,
+//   XAxis,
+//   YAxis,
+//   CartesianGrid,
+//   Tooltip,
+//   ResponsiveContainer,
+// } from "recharts";
 
 // SAS Evaluation Components
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import EnhancedLocationTable from "@/components/reports/common/EnhancedLocationTable";
 import RevenueAnalysisTable from "@/components/reports/common/RevenueAnalysisTable";
 
-import SimpleChart from "@/components/reports/charts/SimpleChart";
-import CompareLocationsModal from "@/components/reports/modals/CompareLocationsModal";
+
+import { StackedChart } from "@/components/ui/StackedChart";
 
 // Reports helpers and components
 import { AggregatedLocation } from "@/lib/types/location";
@@ -57,6 +61,7 @@ import axios from "axios";
 
 // Types for location data
 import { LocationMetrics, TopLocation } from "@/shared/types";
+import { MachineData } from "@/shared/types/machines";
 
 // Skeleton loader components
 const MetricsOverviewSkeleton = () => (
@@ -74,265 +79,52 @@ const MetricsOverviewSkeleton = () => (
   </div>
 );
 
-const TopLocationsSkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-    {[1, 2, 3, 4, 5].map((i) => (
-      <div
-        key={i}
-        className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-pulse"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="h-6 bg-gray-200 rounded w-32"></div>
-            <div className="h-5 bg-gray-200 rounded w-16"></div>
-          </div>
-          <div className="h-5 w-5 bg-gray-200 rounded"></div>
-        </div>
-        <div className="h-4 bg-gray-200 rounded w-48 mb-4"></div>
+// TopLocationsSkeleton - Commented out since Top 5 Locations section is hidden
+// const TopLocationsSkeleton = () => (
+//   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+//     {[1, 2, 3, 4, 5].map((i) => (
+//       <div
+//         key={i}
+//         className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-pulse"
+//       >
+//         {/* Header */}
+//         <div className="flex items-center justify-between mb-2">
+//           <div className="flex items-center gap-2">
+//             <div className="h-6 bg-gray-200 rounded w-32"></div>
+//             <div className="h-5 bg-gray-200 rounded w-16"></div>
+//           </div>
+//           <div className="h-5 w-5 bg-gray-200 rounded"></div>
+//         </div>
+//         <div className="h-4 bg-gray-200 rounded w-48 mb-4"></div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-          {[1, 2, 3, 4].map((j) => (
-            <div key={j}>
-              <div className="h-3 bg-gray-200 rounded w-20 mb-1"></div>
-              <div className="h-5 bg-gray-200 rounded w-16"></div>
-            </div>
-          ))}
-        </div>
+//         {/* Metrics Grid */}
+//         <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
+//           {[1, 2, 3, 4].map((j) => (
+//             <div key={j}>
+//               <div className="h-3 bg-gray-200 rounded w-20 mb-1"></div>
+//               <div className="h-5 bg-gray-200 rounded w-16"></div>
+//             </div>
+//           ))}
+//         </div>
 
-        {/* Chart */}
-        <div className="h-24 bg-gray-200 rounded mb-4"></div>
+//         {/* Chart */}
+//         <div className="h-24 bg-gray-200 rounded mb-4"></div>
 
-        {/* Daily Trend */}
-        <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+//         {/* Daily Trend */}
+//         <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
 
-        {/* Top Performer */}
-        <div className="border-t pt-3">
-          <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
-          <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
-          <div className="h-3 bg-gray-200 rounded w-20"></div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
+//         {/* Top Performer */}
+//         <div className="border-t pt-3">
+//           <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+//           <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
+//           <div className="h-3 bg-gray-200 rounded w-20"></div>
+//         </div>
+//       </div>
+//     ))}
+//   </div>
+// );
 
-// Casino Location Card Component
-const CasinoLocationCard = ({
-  location,
-  isSelected,
-  onClick,
-  isComparisonSelected = false,
-}: {
-  location: TopLocation;
-  isSelected: boolean;
-  onClick: () => void;
-  isComparisonSelected?: boolean;
-}) => {
-  const [revenueTrend, setRevenueTrend] = useState<Record<string, unknown>[]>([]);
-  const [trendLoading, setTrendLoading] = useState(false);
-
-
-
-  const { selectedDateRange } = useReportsStore();
-
-  // Fetch real hourly revenue trend for this location (meters-based)
-  useEffect(() => {
-    const fetchHourly = async () => {
-      try {
-        setTrendLoading(true);
-        const params = new URLSearchParams();
-        params.set("locationId", location.locationId);
-        const start =
-          selectedDateRange?.start ??
-          new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const end = selectedDateRange?.end ?? new Date();
-        params.set("startDate", start.toISOString());
-        params.set("endDate", end.toISOString());
-        const res = await axios.get(
-          `/api/metrics/hourly-trends?${params.toString()}`
-        );
-        const payload: {
-          hourlyTrends?: Array<{ hour: string; revenue: number }>;
-        } = res.data;
-        const trend = Array.from({ length: 24 }, (_, i) => {
-          const label = `${i.toString().padStart(2, "0")}:00`;
-          const found = payload.hourlyTrends?.find((d) => d.hour === label);
-          return {
-            hour: label,
-            revenue: Math.max(0, Math.round(found?.revenue ?? 0)),
-          };
-        });
-        setRevenueTrend(trend);
-      } catch {
-        const trend = Array.from({ length: 24 }, (_, i) => ({
-          hour: `${i.toString().padStart(2, "0")}:00`,
-          revenue: 0,
-        }));
-        setRevenueTrend(trend);
-      } finally {
-        setTrendLoading(false);
-      }
-    };
-    fetchHourly();
-  }, [location.locationId, selectedDateRange?.start, selectedDateRange?.end]);
-
-
-
-  const totalRevenue = revenueTrend.reduce(
-    (sum, item) => sum + (item.revenue as number),
-    0
-  );
-  const peakRevenue =
-    revenueTrend.length > 0
-      ? Math.max(...revenueTrend.map((item) => item.revenue as number))
-      : 0;
-  const avgRevenue =
-    revenueTrend.length > 0
-      ? Math.floor(totalRevenue / revenueTrend.length)
-      : 0;
-
-  const chartData = revenueTrend.map((item) => ({
-    hour: item.hour,
-    revenue: item.revenue,
-  }));
-
-
-
-
-
-  return (
-    <div
-      className={`bg-white rounded-xl shadow-lg p-6 w-full border border-gray-200 cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] ${
-        isSelected
-          ? "ring-2 ring-blue-500 shadow-xl bg-blue-50"
-          : isComparisonSelected
-          ? "ring-2 ring-blue-400 shadow-xl bg-blue-50"
-          : "hover:ring-1 hover:ring-gray-300"
-      }`}
-      onClick={onClick}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base sm:text-lg font-semibold text-gray-900">
-            {location.locationName}
-          </span>
-          {isComparisonSelected && (
-            <div className="ml-2 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="text-xs sm:text-sm text-gray-500 mb-4">
-        {location.onlineMachines}/{location.totalMachines} machines online
-      </div>
-
-      {/* Metrics Grid - Responsive layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-x-6 sm:gap-y-2 mb-4">
-        <div className="flex flex-col sm:block">
-          <div className="text-xs text-gray-500">Gross Revenue:</div>
-          <div className="text-green-600 font-bold text-base sm:text-lg">
-            {formatCurrency(location.gross || 0)}
-          </div>
-        </div>
-        <div className="flex flex-col sm:block">
-          <div className="text-xs text-gray-500">Drop:</div>
-          <div className="text-yellow-600 font-bold text-base sm:text-lg">
-            {formatCurrency(location.drop || 0)}
-          </div>
-        </div>
-        <div className="flex flex-col sm:block">
-          <div className="text-xs text-gray-500">Gross %:</div>
-          <div className="text-gray-900 font-bold text-base sm:text-lg">
-            {location.drop > 0
-              ? ((location.gross / location.drop) * 100).toFixed(1)
-              : "0.0"}
-            %
-          </div>
-        </div>
-        <div className="flex flex-col sm:block">
-          <div className="text-xs text-gray-500">Cancelled Credits:</div>
-          <div className="text-gray-900 font-bold text-base sm:text-lg">
-            {formatCurrency(location.cancelledCredits || 0)}
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue Trend */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-gray-500">24h Revenue Trend</span>
-          <span className="text-xs text-gray-500">
-            Total:{" "}
-            <span className="font-semibold text-gray-900">
-              {formatCurrency(totalRevenue)}
-            </span>
-          </span>
-        </div>
-        {trendLoading ? (
-          <Skeleton className="h-32 w-full rounded" />
-        ) : (
-          <div className="h-32 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="hour"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => {
-                    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                    return value.toString();
-                  }}
-                />
-                <Tooltip
-                  formatter={(value: unknown) => [
-                    formatCurrency(value as number),
-                    "Revenue",
-                  ]}
-                  labelFormatter={(label) => `${label}`}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, fill: "#3b82f6" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>
-            Peak:{" "}
-            <span className="font-semibold text-gray-900">
-              {formatCurrency(peakRevenue)}
-            </span>
-          </span>
-          <span>
-            Avg Hourly:{" "}
-            <span className="font-semibold text-gray-900">
-              {formatCurrency(avgRevenue)}
-            </span>
-          </span>
-        </div>
-      </div>
-
-      {/* Simplified: removed daily trend and top performer sections */}
-    </div>
-  );
-};
+// Casino Location Card Component - Commented out since Top 5 Locations section is hidden
 
 export default function LocationsTab() {
   const router = useRouter();
@@ -347,6 +139,31 @@ export default function LocationsTab() {
   const [metricsOverview, setMetricsOverview] =
     useState<LocationMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
+
+  // Add state for top machines data
+  const [topMachinesData, setTopMachinesData] = useState<MachineData[]>([]);
+  const [topMachinesLoading, setTopMachinesLoading] = useState(false);
+
+  // Add state for machine hourly data
+  const [machineHourlyData, setMachineHourlyData] = useState<{
+    hourlyTrends: Array<{
+      hour: string;
+      [locationId: string]: {
+        handle: number;
+        winLoss: number;
+        jackpot: number;
+        plays: number;
+      } | string;
+    }>;
+    totals: Record<string, {
+      handle: number;
+      winLoss: number;
+      jackpot: number;
+      plays: number;
+    }>;
+    locations: string[];
+  } | null>(null);
+  const [machineHourlyLoading, setMachineHourlyLoading] = useState(false);
 
   // Two-phase loading: gaming locations (fast) + financial data (slow)
   const [gamingLocations, setGamingLocations] = useState<Record<string, unknown>[]>([]);
@@ -397,14 +214,7 @@ export default function LocationsTab() {
     }
   }, [selectedLicencee]);
 
-  // Comparison state
-  const [selectedForComparison, setSelectedForComparison] = useState<
-    (AggregatedLocation | TopLocation)[]
-  >([]);
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
-  const [comparisonType, setComparisonType] = useState<
-    "locations" | "machines"
-  >("locations");
+
 
   // Simplified data fetching for locations
   const fetchLocationDataAsync = useCallback(
@@ -615,28 +425,166 @@ export default function LocationsTab() {
     ]
   );
 
-  useEffect(() => {
-    // Fetch location data for all tabs (only when filters change, not when locations are selected)
+  // Function to fetch top machines data
+  const fetchTopMachines = useCallback(async () => {
     if (selectedLocations.length === 0) {
-      fetchLocationDataAsync();
+      setTopMachinesData([]);
+      return;
     }
+
+    setTopMachinesLoading(true);
+    try {
+      const params: Record<string, string> = {
+        type: "all", // Get all machines for the selected locations
+      };
+
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      // Add date parameters
+      if (activeMetricsFilter === "Today") {
+        params.timePeriod = "Today";
+      } else if (activeMetricsFilter === "Yesterday") {
+        params.timePeriod = "Yesterday";
+      } else if (
+        activeMetricsFilter === "last7days" ||
+        activeMetricsFilter === "7d"
+      ) {
+        params.timePeriod = "7d";
+      } else if (
+        activeMetricsFilter === "last30days" ||
+        activeMetricsFilter === "30d"
+      ) {
+        params.timePeriod = "30d";
+      } else if (activeMetricsFilter === "All Time") {
+        params.timePeriod = "All Time";
+      } else if (
+        activeMetricsFilter === "Custom" &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+      ) {
+        params.startDate = (
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate as string)
+        ).toISOString();
+        params.endDate = (
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate as string)
+        ).toISOString();
+      } else {
+        params.timePeriod = "Today";
+      }
+
+      const response = await axios.get("/api/reports/machines", { params });
+      const { data: machinesData } = response.data;
+
+      // Filter machines by selected locations and sort by netWin
+      const filteredMachines = machinesData
+        .filter((machine: MachineData) => 
+          selectedLocations.includes(machine.locationId)
+        )
+        .sort((a: MachineData, b: MachineData) => b.netWin - a.netWin)
+        .slice(0, 5);
+
+      setTopMachinesData(filteredMachines);
+    } catch (error) {
+      console.error("Error fetching top machines:", error);
+      toast.error("Failed to fetch top machines data");
+      setTopMachinesData([]);
+    } finally {
+      setTopMachinesLoading(false);
+    }
+  }, [selectedLocations, selectedLicencee, activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+
+  // Function to fetch machine hourly data
+  const fetchMachineHourlyData = useCallback(async () => {
+    if (selectedLocations.length === 0) {
+      setMachineHourlyData(null);
+      return;
+    }
+
+    setMachineHourlyLoading(true);
+    try {
+      const params: Record<string, string> = {
+        locationIds: selectedLocations.join(","),
+      };
+
+      if (selectedLicencee && selectedLicencee !== "all") {
+        params.licencee = selectedLicencee;
+      }
+
+      // Add date parameters
+      if (activeMetricsFilter === "Today") {
+        params.timePeriod = "Today";
+      } else if (activeMetricsFilter === "Yesterday") {
+        params.timePeriod = "Yesterday";
+      } else if (
+        activeMetricsFilter === "last7days" ||
+        activeMetricsFilter === "7d"
+      ) {
+        params.timePeriod = "7d";
+      } else if (
+        activeMetricsFilter === "last30days" ||
+        activeMetricsFilter === "30d"
+      ) {
+        params.timePeriod = "30d";
+      } else if (activeMetricsFilter === "All Time") {
+        params.timePeriod = "All Time";
+      } else if (
+        activeMetricsFilter === "Custom" &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+      ) {
+        params.startDate = (
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate as string)
+        ).toISOString();
+        params.endDate = (
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate as string)
+        ).toISOString();
+      } else {
+        params.timePeriod = "Today";
+      }
+
+      const response = await axios.get("/api/analytics/machine-hourly", { params });
+      setMachineHourlyData(response.data);
+    } catch (error) {
+      console.error("Error fetching machine hourly data:", error);
+      toast.error("Failed to fetch machine hourly data");
+      setMachineHourlyData(null);
+    } finally {
+      setMachineHourlyLoading(false);
+    }
+  }, [selectedLocations, selectedLicencee, activeMetricsFilter, customDateRange]);
+
+  // Consolidated useEffect to handle all data fetching
+  useEffect(() => {
+    // Fetch location data when filters change or when locations are selected
+    fetchLocationDataAsync(selectedLocations.length > 0 ? selectedLocations : undefined);
+    
+    // Fetch additional data only when locations are selected
+    if (selectedLocations.length > 0) {
+      fetchTopMachines();
+      fetchMachineHourlyData();
+    } else {
+      setTopMachinesData([]);
+      setMachineHourlyData(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLicencee,
     activeTab,
     activeMetricsFilter,
     customDateRange?.startDate,
     customDateRange?.endDate,
-    fetchLocationDataAsync,
-    selectedLocations.length,
+    selectedLocations,
   ]);
-
-  // Handle location selection by re-querying the API
-  useEffect(() => {
-    if (selectedLocations.length > 0) {
-      // Re-fetch data with selected locations filter
-      fetchLocationDataAsync(selectedLocations);
-    }
-  }, [selectedLocations, fetchLocationDataAsync]);
 
   // Initialize from URL
   useEffect(() => {
@@ -729,103 +677,19 @@ export default function LocationsTab() {
   ]);
 
   const handleLocationSelect = (locationIds: string[]) => {
-    // For now, handle the first selected location if any
-    if (locationIds.length > 0) {
-      const locationId = locationIds[0];
-      setSelectedLocations((prev) =>
-        prev.includes(locationId)
-          ? prev.filter((id) => id !== locationId)
-          : [...prev, locationId]
-      );
-    }
+    handleLocationSelectLocations(locationIds, setSelectedLocations);
   };
 
   const handleExportSASEvaluation = async () => {
-    try {
-      const filteredData =
-        selectedLocations.length > 0
-          ? paginatedLocations.filter((loc) => {
-              // Find the corresponding topLocation to get the correct locationId
-              const topLocation = topLocations.find(
-                (tl) => tl.locationName === loc.locationName
-              );
-              return topLocation
-                ? selectedLocations.includes(topLocation.locationId)
-                : false;
-            })
-          : paginatedLocations;
-
-      const exportDataObj = {
-        title: "SAS Evaluation Report",
-        subtitle: "SAS machine evaluation and performance metrics",
-        headers: [
-          "Location ID",
-          "Location Name",
-          "Money In",
-          "Money Out",
-          "Gross",
-          "Total Machines",
-          "Online Machines",
-          "SAS Machines",
-          "Non-SAS Machines",
-          "Has SAS Machines",
-          "Has Non-SAS Machines",
-          "Is Local Server",
-        ],
-        data: filteredData.map((loc) => [
-          loc.location,
-          loc.locationName,
-          (loc.moneyIn || 0).toLocaleString(),
-          (loc.moneyOut || 0).toLocaleString(),
-          (loc.gross || 0).toLocaleString(),
-          loc.totalMachines,
-          loc.onlineMachines,
-          loc.sasMachines,
-          loc.nonSasMachines,
-          loc.hasSasMachines ? "Yes" : "No",
-          loc.hasNonSasMachines ? "Yes" : "No",
-          loc.isLocalServer ? "Yes" : "No",
-        ]),
-        summary: [
-          { label: "Total Locations", value: filteredData.length.toString() },
-          {
-            label: "Total SAS Machines",
-            value: filteredData
-              .reduce((sum, loc) => sum + loc.sasMachines, 0)
-              .toString(),
-          },
-          {
-            label: "Total Non-SAS Machines",
-            value: filteredData
-              .reduce((sum, loc) => sum + loc.nonSasMachines, 0)
-              .toString(),
-          },
-          {
-            label: "Total Gross Revenue",
-            value: `$${filteredData
-              .reduce((sum, loc) => sum + (loc.gross || 0), 0)
-              .toLocaleString()}`,
-          },
-        ],
-        metadata: {
-          generatedBy: "Reports System",
-          generatedAt: new Date().toISOString(),
-          dateRange:
-            selectedDateRange?.start && selectedDateRange?.end
-              ? `${selectedDateRange.start.toLocaleDateString()} - ${selectedDateRange.end.toLocaleDateString()}`
-              : `${activeMetricsFilter}`,
-          tab: "SAS Evaluation",
-          selectedLocations:
-            selectedLocations.length > 0 ? selectedLocations.length : "All",
-        },
-      };
-
-      await exportData(exportDataObj);
-      toast.success("SAS evaluation report exported successfully");
-    } catch (error) {
-      toast.error("Failed to export report");
-      console.error("Export error:", error);
-    }
+    await handleExportSASEvaluationHelper(
+      selectedLocations,
+      paginatedLocations,
+      topLocations,
+      selectedDateRange,
+      activeMetricsFilter,
+      exportData,
+      toast
+    );
   };
 
   const handleExportRevenueAnalysis = async () => {
@@ -909,60 +773,7 @@ export default function LocationsTab() {
     }
   };
 
-  // Comparison functions
-  const handleItemClick = (
-    item: AggregatedLocation | TopLocation,
-    type: "locations" | "machines"
-  ) => {
-    setSelectedForComparison((prev) => {
-      const isSelected = prev.some((selected) => {
-        if ("location" in item && "location" in selected) {
-          return selected.location === item.location;
-        }
-        if ("locationId" in item && "locationId" in selected) {
-          return selected.locationId === item.locationId;
-        }
-        return false;
-      });
 
-      if (isSelected) {
-        return prev.filter((selected) => {
-          if ("location" in item && "location" in selected) {
-            return selected.location !== item.location;
-          }
-          if ("locationId" in item && "locationId" in selected) {
-            return selected.locationId !== item.locationId;
-          }
-          return true;
-        });
-      } else {
-        return [...prev, item];
-      }
-    });
-    setComparisonType(type);
-  };
-
-  const handleCompareClick = () => {
-    if (selectedForComparison.length > 0) {
-      setIsCompareModalOpen(true);
-    }
-  };
-
-  const handleClearComparison = () => {
-    setSelectedForComparison([]);
-  };
-
-  const isItemSelected = (item: AggregatedLocation | TopLocation) => {
-    return selectedForComparison.some((selected) => {
-      if ("location" in item && "location" in selected) {
-        return selected.location === item.location;
-      }
-      if ("locationId" in item && "locationId" in selected) {
-        return selected.locationId === item.locationId;
-      }
-      return false;
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -1031,31 +842,6 @@ export default function LocationsTab() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Interactive Map */}
-            <LocationMap
-              key={`map-${activeTab}-${topLocations.length}`}
-              locations={topLocations.map((location) => ({
-                id: location.locationId,
-                name: location.locationName,
-                coordinates: location.coordinates || { lat: 0, lng: 0 },
-                performance:
-                  location.performance === "excellent"
-                    ? 95
-                    : location.performance === "good"
-                    ? 80
-                    : location.performance === "average"
-                    ? 65
-                    : 50,
-                revenue: location.gross,
-              }))}
-              selectedLocations={selectedLocations}
-              onLocationSelect={handleLocationSelect}
-              aggregates={paginatedLocations}
-              gamingLocations={gamingLocations}
-              gamingLocationsLoading={gamingLocationsLoading}
-              financialDataLoading={locationsLoading}
-            />
-
             {/* Metrics Overview */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -1147,8 +933,33 @@ export default function LocationsTab() {
               )}
             </div>
 
-            {/* Top 5 Locations */}
-            <div>
+            {/* Interactive Map */}
+            <LocationMap
+              key={`map-${activeTab}-${topLocations.length}`}
+              locations={topLocations.map((location) => ({
+                id: location.locationId,
+                name: location.locationName,
+                coordinates: location.coordinates || { lat: 0, lng: 0 },
+                performance:
+                  location.performance === "excellent"
+                    ? 95
+                    : location.performance === "good"
+                    ? 80
+                    : location.performance === "average"
+                    ? 65
+                    : 50,
+                revenue: location.gross,
+              }))}
+              selectedLocations={selectedLocations}
+              onLocationSelect={handleLocationSelect}
+              aggregates={paginatedLocations}
+              gamingLocations={gamingLocations}
+              gamingLocationsLoading={gamingLocationsLoading}
+              financialDataLoading={locationsLoading}
+            />
+
+            {/* Top 5 Locations - Commented Out */}
+            {/* <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Top 5 Locations (Sorted by Gross)
@@ -1199,7 +1010,7 @@ export default function LocationsTab() {
                   No location data available
                 </div>
               )}
-            </div>
+            </div> */}
           </TabsContent>
 
           {/* SAS Evaluation Tab */}
@@ -1377,201 +1188,346 @@ export default function LocationsTab() {
                     </CardContent>
                   </Card>
 
-                  {/* Charts Section - Using existing data instead of API calls */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Generate chart data from existing location data */}
+                  {/* Summary Cards for SAS Evaluation - Only show when more than 1 location selected */}
+                  {selectedLocations.length > 1 && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                              : [];
+                            const totalGross = filteredLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0);
+                            return totalGross.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Net Win (Gross)
+                        </p>
+                        <p className="text-xs text-green-600 font-medium">
+                          (Green - Gross)
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                              : [];
+                            const totalDrop = filteredLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0);
+                            return totalDrop.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Drop
+                        </p>
+                        <p className="text-xs text-yellow-600 font-medium">
+                          (Yellow - Drop)
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                              : [];
+                            const totalCancelledCredits = filteredLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0);
+                            return totalCancelledCredits.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Cancelled Credits
+                        </p>
+                        <p className="text-xs text-black font-medium">
+                          (Black - Cancelled)
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                     {(() => {
-                      // Use filtered locations if any are selected, otherwise use all
-                      const chartLocations =
-                        selectedLocations.length > 0
-                          ? paginatedLocations.filter((loc) =>
-                              selectedLocations.includes(loc.location)
-                            )
-                          : [];
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                              : [];
+                            const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+                            const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+                            return `${onlineMachines}/${totalMachines}`;
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Online Machines
+                        </p>
+                        <Progress
+                          value={
+                            (() => {
+                              const filteredLocations = selectedLocations.length > 0
+                                ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                                : [];
+                              const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+                              const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+                              return totalMachines > 0 ? (onlineMachines / totalMachines) * 100 : 0;
+                            })()
+                          }
+                          className="mt-2"
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                  )}
 
-                      // Generate handle trends data from location data
-                      const handleData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          handle: loc.moneyIn || 0,
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate win/loss data from location data
-                      const winLossData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          wins: loc.gross || 0,
-                          losses: loc.moneyOut || 0,
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate jackpot data from location data
-                      const jackpotData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate plays data from location data
-                      const playsData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          plays: loc.gamesPlayed || 0, // Use real gamesPlayed data
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      return (
-                        <>
-                          <SimpleChart
-                            type="line"
-                            title="Handle Trends"
-                            icon={<TrendingUp className="h-5 w-5" />}
-                            data={handleData}
-                            dataKey="handle"
-                            color="#8884d8"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
-
-                          <SimpleChart
-                            type="bar"
-                            title="Win/Loss Analysis"
+                                     {/* Machine Hourly Charts - Stacked by Machine */}
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                     {machineHourlyLoading ? (
+                       <div className="col-span-2 flex items-center justify-center py-8">
+                         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                         <span>Loading machine hourly data...</span>
+                       </div>
+                     ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
+                      <>
+                        {/* Handle Chart */}
+                                                 <StackedChart
+                           title="Handle"
                             icon={<BarChart3 className="h-5 w-5" />}
-                            data={winLossData}
-                            dataKey="wins"
-                            color="#4ade80"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
+                           data={machineHourlyData.hourlyTrends}
+                            dataKey="handle"
+                           machines={machineHourlyData.locations}
+                           colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                         />
 
-                          <SimpleChart
-                            type="area"
-                            title="Jackpot Trends"
+                                                 {/* Win/Loss Chart */}
+                         <StackedChart
+                           title="Win/Loss"
+                           icon={<TrendingUp className="h-5 w-5" />}
+                           data={machineHourlyData.hourlyTrends}
+                           dataKey="winLoss"
+                           machines={machineHourlyData.locations}
+                           colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                         />
+
+                         {/* Jackpot Chart */}
+                         <StackedChart
+                           title="Jackpot"
                             icon={<Trophy className="h-5 w-5" />}
-                            data={jackpotData}
+                           data={machineHourlyData.hourlyTrends}
                             dataKey="jackpot"
-                            color="#fbbf24"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
+                           machines={machineHourlyData.locations}
+                           colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                         />
 
-                          <SimpleChart
-                            type="bar"
-                            title="Plays Analysis"
+                         {/* Plays Chart */}
+                         <StackedChart
+                           title="Plays"
                             icon={<Activity className="h-5 w-5" />}
-                            data={playsData}
+                           data={machineHourlyData.hourlyTrends}
                             dataKey="plays"
-                            color="#3b82f6"
-                            formatter={(value) => (value as number).toLocaleString()}
+                           machines={machineHourlyData.locations}
+                           colors={["#8b5cf6", "#ef4444", "#10b981", "#3b82f6", "#f59e0b"]}
+                           formatter={(value) => value.toLocaleString()}
                           />
                         </>
-                      );
-                    })()}
+                    ) : (
+                      <div className="col-span-2 text-center py-8 text-muted-foreground">
+                        Select locations to view machine hourly data
+                      </div>
+                    )}
                   </div>
 
-                  {/* Top Machines Section - Overall top 5 across selected locations */}
+                  {/* Top 5 Machines Table */}
                   <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
-                          <Trophy className="h-5 w-5" />
-                          Top 5 Machines (Overall)
+                        <BarChart3 className="w-5 h-5 text-orange-600" />
+                        Top 5 Machines
                         </CardTitle>
-                        {selectedForComparison.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">
-                              {selectedForComparison.length} selected
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCompareClick}
-                              className="flex items-center gap-2"
-                            >
-                              <BarChart3 className="w-4 h-4" />
-                              Compare ({selectedForComparison.length})
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleClearComparison}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Clear
-                            </Button>
-                          </div>
-                        )}
-                      </div>
+                      <CardDescription>
+                        Highest performing machines by revenue and hold percentage
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        {(() => {
-                          // Get all locations and sort by gross revenue to get overall top 5
-                          const allLocations =
-                            selectedLocations.length > 0
-                              ? paginatedLocations.filter((loc) =>
-                                  selectedLocations.includes(loc.location)
-                                )
-                              : [];
+                      {topMachinesLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                          <span>Loading top machines...</span>
+                        </div>
+                      ) : (
+                        <>
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-gray-50">
+                              <th className="text-left p-3 font-medium text-gray-700">Location</th>
+                                                                     <th className="text-left p-3 font-medium text-gray-700">Machine</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Game</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Manufacturer</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Handle</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Win/Loss</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Jackpot</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Avg. Wag. per Game</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Actual Hold</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Theoretical Hold</th>
+                              <th className="text-left p-3 font-medium text-gray-700">Games Played</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                                {topMachinesData.map((machine, index) => (
+                                  <tr
+                                    key={`${machine.machineId}-${index}`}
+                                  className="border-b hover:bg-gray-50"
+                                >
+                                  <td className="p-3 text-sm">
+                                      {machine.locationName}
+                                  </td>
+                                  <td className="p-3 text-sm font-mono">
+                                      {machine.serialNumber || machine.machineId}
+                                  </td>
+                                    <td className="p-3 text-sm">{machine.gameTitle}</td>
+                                    <td className="p-3 text-sm">{machine.manufacturer}</td>
+                                  <td className="p-3 text-sm font-medium">
+                                      ${(machine.drop || 0).toLocaleString()}
+                                  </td>
+                                  <td
+                                    className={`p-3 text-sm font-medium ${
+                                        (machine.netWin || 0) >= 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                      ${(machine.jackpot || 0).toLocaleString()}
+                                    </td>
+                                    <td className="p-3 text-sm">
+                                      ${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}
+                                  </td>
+                                                                     <td className="p-3 text-sm font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                   </td>
+                                   <td className="p-3 text-sm text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                   </td>
+                                  <td className="p-3 text-sm">
+                                      {(machine.gamesPlayed || 0).toLocaleString()}
+                                  </td>
+                                </tr>
+                                ))}
+                          </tbody>
+                        </table>
+                                </div>
 
-                          // Sort by gross revenue and take top 5
-                          const top5Locations = allLocations
-                            .sort((a, b) => (b.gross || 0) - (a.gross || 0))
-                            .slice(0, 5);
-
-                          return top5Locations.map((location, index) => (
-                            <div
-                              key={`${location.location}-${index}`}
-                              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
-                                isItemSelected(location)
-                                  ? "bg-blue-50 border-2 border-blue-400"
-                                  : "bg-gray-50 border-2 border-transparent"
-                              }`}
-                              onClick={() =>
-                                handleItemClick(location, "machines")
-                              }
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
-                                  {index + 1}
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-4">
+                            {topMachinesData.map((machine, index) => (
+                              <Card key={`${machine.machineId}-${index}`} className="p-4">
+                              <div className="mb-3">
+                                <h4 className="font-medium text-sm">
+                                    {machine.machineName}
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                    {machine.locationName} • {machine.gameTitle}
+                                </p>
+                                  </div>
+                              
+                              {/* Tiny screen layout (< 425px) - Single column */}
+                              <div className="block sm:hidden space-y-2 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Manufacturer:</span>
+                                    <span className="font-medium">{machine.manufacturer}</span>
+                                  </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Handle:</span>
+                                    <span className="font-medium">${(machine.drop || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Win/Loss:</span>
+                                    <span className={`font-medium ${(machine.netWin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                  </span>
+                                  </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                                    <span className="font-medium">${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</span>
+                              </div>
+                                                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Actual Hold:</span>
+                                    <span className="font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                    </span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Theoretical Hold:</span>
+                                    <span className="font-medium text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                    </span>
+                                 </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Games Played:</span>
+                                    <span className="font-medium">{(machine.gamesPlayed || 0).toLocaleString()}</span>
+                                </div>
+                              </div>
+                              
+                              {/* Small screen layout (425px+) - Two columns */}
+                              <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Manufacturer:</span>
+                                    <p>{machine.manufacturer}</p>
                                 </div>
                                 <div>
-                                  <div className="font-medium text-gray-900">
-                                    {location.locationName ||
-                                      `Location ${index + 1}`}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {location.totalMachines || 0} machines
-                                  </div>
+                                  <span className="text-muted-foreground">Handle:</span>
+                                    <p className="font-medium">${(machine.drop || 0).toLocaleString()}</p>
                                 </div>
-                                {isItemSelected(location) && (
-                                  <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                  </div>
-                                )}
+                                <div>
+                                  <span className="text-muted-foreground">Win/Loss:</span>
+                                    <p className={`font-medium ${(machine.netWin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                                    <p>${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</p>
+                                </div>
+                                                                 <div>
+                                   <span className="text-muted-foreground">Actual Hold:</span>
+                                    <p className="font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                    </p>
                               </div>
-                              <div className="text-right">
-                                <div className="font-semibold text-green-600">
-                                  ${(location.gross || 0).toLocaleString()}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {location.gross && location.moneyIn
-                                    ? `${(
-                                        (location.gross / location.moneyIn) *
-                                        100
-                                      ).toFixed(1)}% hold`
-                                    : "N/A"}
-                                </div>
-                              </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Theoretical Hold:</span>
+                                    <p className="text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                    </p>
                             </div>
-                          ));
-                        })()}
+                                <div className="col-span-2">
+                                  <span className="text-muted-foreground">Games Played:</span>
+                                    <p>{(machine.gamesPlayed || 0).toLocaleString()}</p>
+                                </div>
+                              </div>
+                            </Card>
+                            ))}
                       </div>
+
+                          {topMachinesData.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            No machine data available for evaluation
+                          </div>
+                          )}
+                        </>
+                      )}
                     </CardContent>
                   </Card>
+
+
                 </>
               ) : !isInitialLoadComplete ? (
                 <Card>
@@ -1724,213 +1680,424 @@ export default function LocationsTab() {
                     }}
                   />
 
-                  {/* Charts Section - Using existing data instead of API calls */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Generate chart data from existing location data */}
-                    {(() => {
-                      // Use filtered locations if any are selected, otherwise use all
-                      const chartLocations =
-                        selectedLocations.length > 0
+                  {/* Summary Cards for Revenue Analysis - Only show when more than 1 location selected */}
+                  {selectedLocations.length > 1 && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
                           ? paginatedLocations.filter((loc) => {
                               const topLocation = topLocations.find(
                                 (tl) => tl.locationName === loc.locationName
                               );
                               return topLocation
-                                ? selectedLocations.includes(
-                                    topLocation.locationId
-                                  )
+                                    ? selectedLocations.includes(topLocation.locationId)
                                 : false;
                             })
                           : [];
+                            const totalGross = filteredLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0);
+                            return totalGross.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Net Win (Gross)
+                        </p>
+                        <p className="text-xs text-green-600 font-medium">
+                          (Green - Gross)
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                      // Generate handle trends data from location data
-                      const handleData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          handle: loc.moneyIn || 0,
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate win/loss data from location data
-                      const winLossData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          wins: loc.gross || 0,
-                          losses: loc.moneyOut || 0,
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate jackpot data from location data
-                      const jackpotData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          jackpot: Math.floor((loc.gross || 0) * 0.1), // 10% of gross as jackpot
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      // Generate plays data from location data
-                      const playsData = chartLocations
-                        .slice(0, 10)
-                        .map((loc, index) => ({
-                          time: `${index + 1}`,
-                          plays: loc.gamesPlayed || 0, // Use real gamesPlayed data
-                          location: loc.locationName || `Location ${index + 1}`,
-                        }));
-
-                      return (
-                        <>
-                          <SimpleChart
-                            type="line"
-                            title="Handle Trends"
-                            icon={<TrendingUp className="h-5 w-5" />}
-                            data={handleData}
-                            dataKey="handle"
-                            color="#8884d8"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
-
-                          <SimpleChart
-                            type="bar"
-                            title="Win/Loss Analysis"
-                            icon={<BarChart3 className="h-5 w-5" />}
-                            data={winLossData}
-                            dataKey="wins"
-                            color="#4ade80"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
-
-                          <SimpleChart
-                            type="area"
-                            title="Jackpot Trends"
-                            icon={<Trophy className="h-5 w-5" />}
-                            data={jackpotData}
-                            dataKey="jackpot"
-                            color="#fbbf24"
-                            formatter={(value) => `$${(value as number).toLocaleString()}`}
-                          />
-
-                          <SimpleChart
-                            type="bar"
-                            title="Plays Analysis"
-                            icon={<Activity className="h-5 w-5" />}
-                            data={playsData}
-                            dataKey="plays"
-                            color="#3b82f6"
-                            formatter={(value) => (value as number).toLocaleString()}
-                          />
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Top Machines Section - Overall top 5 across selected locations */}
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Trophy className="h-5 w-5" />
-                          Top 5 Machines (Overall)
-                        </CardTitle>
-                        {selectedForComparison.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">
-                              {selectedForComparison.length} selected
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCompareClick}
-                              className="flex items-center gap-2"
-                            >
-                              <BarChart3 className="w-4 h-4" />
-                              Compare ({selectedForComparison.length})
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleClearComparison}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Clear
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {(() => {
-                          // Get all locations and sort by gross revenue to get overall top 5
-                          const allLocations =
-                            selectedLocations.length > 0
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
                               ? paginatedLocations.filter((loc) => {
                                   const topLocation = topLocations.find(
                                     (tl) => tl.locationName === loc.locationName
                                   );
                                   return topLocation
-                                    ? selectedLocations.includes(
-                                        topLocation.locationId
-                                      )
+                                    ? selectedLocations.includes(topLocation.locationId)
                                     : false;
                                 })
                               : [];
+                            const totalDrop = filteredLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0);
+                            return totalDrop.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Drop
+                        </p>
+                        <p className="text-xs text-yellow-600 font-medium">
+                          (Yellow - Drop)
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                          // Sort by gross revenue and take top 5
-                          const top5Locations = allLocations
-                            .sort((a, b) => (b.gross || 0) - (a.gross || 0))
-                            .slice(0, 5);
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words">
+                          ${(() => {
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => {
+                                  const topLocation = topLocations.find(
+                                    (tl) => tl.locationName === loc.locationName
+                                  );
+                                  return topLocation
+                                    ? selectedLocations.includes(topLocation.locationId)
+                                    : false;
+                                })
+                              : [];
+                            const totalCancelledCredits = filteredLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0);
+                            return totalCancelledCredits.toLocaleString();
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Total Cancelled Credits
+                        </p>
+                        <p className="text-xs text-black font-medium">
+                          (Black - Cancelled)
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                          return top5Locations.map((location, index) => (
-                            <div
-                              key={`${location.location}-${index}`}
-                              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
-                                isItemSelected(location)
-                                  ? "bg-blue-50 border-2 border-blue-400"
-                                  : "bg-gray-50 border-2 border-transparent"
-                              }`}
-                              onClick={() =>
-                                handleItemClick(location, "machines")
-                              }
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
-                                  {index + 1}
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
+                          {(() => {
+                            const filteredLocations = selectedLocations.length > 0
+                              ? paginatedLocations.filter((loc) => {
+                                  const topLocation = topLocations.find(
+                                    (tl) => tl.locationName === loc.locationName
+                                  );
+                                  return topLocation
+                                    ? selectedLocations.includes(topLocation.locationId)
+                                    : false;
+                                })
+                              : [];
+                            const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+                            const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+                            return `${onlineMachines}/${totalMachines}`;
+                          })()}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          Online Machines
+                        </p>
+                        <Progress
+                          value={
+                            (() => {
+                              const filteredLocations = selectedLocations.length > 0
+                                ? paginatedLocations.filter((loc) => {
+                                    const topLocation = topLocations.find(
+                                      (tl) => tl.locationName === loc.locationName
+                                    );
+                                    return topLocation
+                                      ? selectedLocations.includes(topLocation.locationId)
+                                      : false;
+                                  })
+                                : [];
+                              const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
+                              const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
+                              return totalMachines > 0 ? (onlineMachines / totalMachines) * 100 : 0;
+                            })()
+                          }
+                          className="mt-2"
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                  )}
+
+                                     {/* Machine Hourly Charts - Stacked by Location for Revenue Analysis */}
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                     {machineHourlyLoading ? (
+                       <div className="col-span-2 flex items-center justify-center py-8">
+                         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                         <span>Loading machine hourly data...</span>
+                       </div>
+                     ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
+                      <>
+                                                 {/* Handle Chart */}
+                         <StackedChart
+                           title="Handle"
+                           icon={<BarChart3 className="h-5 w-5" />}
+                           data={machineHourlyData.hourlyTrends}
+                            dataKey="handle"
+                           machines={machineHourlyData.locations}
+                           colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                           locationNames={(() => {
+                             const locationNameMap: Record<string, string> = {};
+                             gamingLocations.forEach(loc => {
+                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                 const locationId = loc._id?.toString() || '';
+                                 const locationName = (loc.name || loc.locationName || locationId) as string;
+                                 locationNameMap[locationId] = locationName;
+                               }
+                             });
+                             return locationNameMap;
+                           })()}
+                         />
+
+                                                 {/* Win/Loss Chart */}
+                         <StackedChart
+                           title="Win/Loss"
+                           icon={<TrendingUp className="h-5 w-5" />}
+                           data={machineHourlyData.hourlyTrends}
+                           dataKey="winLoss"
+                           machines={machineHourlyData.locations}
+                           colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                           locationNames={(() => {
+                             const locationNameMap: Record<string, string> = {};
+                             gamingLocations.forEach(loc => {
+                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                 const locationId = loc._id?.toString() || '';
+                                 const locationName = (loc.name || loc.locationName || locationId) as string;
+                                 locationNameMap[locationId] = locationName;
+                               }
+                             });
+                             return locationNameMap;
+                           })()}
+                         />
+
+                         {/* Jackpot Chart */}
+                         <StackedChart
+                           title="Jackpot"
+                            icon={<Trophy className="h-5 w-5" />}
+                           data={machineHourlyData.hourlyTrends}
+                            dataKey="jackpot"
+                           machines={machineHourlyData.locations}
+                           colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
+                           formatter={(value) => `$${value.toLocaleString()}`}
+                           locationNames={(() => {
+                             const locationNameMap: Record<string, string> = {};
+                             gamingLocations.forEach(loc => {
+                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                 const locationId = loc._id?.toString() || '';
+                                 const locationName = (loc.name || loc.locationName || locationId) as string;
+                                 locationNameMap[locationId] = locationName;
+                               }
+                             });
+                             return locationNameMap;
+                           })()}
+                         />
+
+                         {/* Plays Chart */}
+                         <StackedChart
+                           title="Plays"
+                            icon={<Activity className="h-5 w-5" />}
+                           data={machineHourlyData.hourlyTrends}
+                            dataKey="plays"
+                           machines={machineHourlyData.locations}
+                           colors={["#8b5cf6", "#ef4444", "#10b981", "#3b82f6", "#f59e0b"]}
+                           formatter={(value) => value.toLocaleString()}
+                           locationNames={(() => {
+                             const locationNameMap: Record<string, string> = {};
+                             gamingLocations.forEach(loc => {
+                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                 const locationId = loc._id?.toString() || '';
+                                 const locationName = (loc.name || loc.locationName || locationId) as string;
+                                 locationNameMap[locationId] = locationName;
+                               }
+                             });
+                             return locationNameMap;
+                           })()}
+                          />
+                        </>
+                    ) : (
+                      <div className="col-span-2 text-center py-8 text-muted-foreground">
+                        Select locations to view machine hourly data
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top 5 Machines Table for Revenue Analysis */}
+                  <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="h-5 w-5 text-orange-600" />
+                          Top 5 Machines (Overall)
+                        </CardTitle>
+                        <CardDescription>
+                          Highest performing machines by revenue and hold percentage
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {topMachinesLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                            <span>Loading top machines...</span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b bg-gray-50">
+                                    <th className="text-left p-3 font-medium text-gray-700">Location</th>
+                                    <th className="text-left p-3 font-medium text-gray-700">Machine</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Game</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Manufacturer</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Handle</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Win/Loss</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Jackpot</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Avg. Wag. per Game</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Actual Hold</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Theoretical Hold</th>
+                                  <th className="text-left p-3 font-medium text-gray-700">Games Played</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {topMachinesData.map((machine, index) => (
+                                  <tr
+                                    key={`${machine.machineId}-${index}`}
+                                    className="border-b hover:bg-gray-50"
+                                  >
+                                    <td className="p-3 text-sm">
+                                      {machine.locationName}
+                                    </td>
+                                    <td className="p-3 text-sm font-mono">
+                                      {machine.serialNumber || machine.machineId}
+                                    </td>
+                                    <td className="p-3 text-sm">{machine.gameTitle}</td>
+                                    <td className="p-3 text-sm">{machine.manufacturer}</td>
+                                    <td className="p-3 text-sm font-medium">
+                                      ${(machine.drop || 0).toLocaleString()}
+                                    </td>
+                                    <td
+                                      className={`p-3 text-sm font-medium ${
+                                        (machine.netWin || 0) >= 0
+                                          ? "text-green-600"
+                                          : "text-red-600"
+                                      }`}
+                                    >
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                    </td>
+                                    <td className="p-3 text-sm">
+                                      ${(machine.jackpot || 0).toLocaleString()}
+                                    </td>
+                                    <td className="p-3 text-sm">
+                                      ${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}
+                                    </td>
+                                    <td className="p-3 text-sm font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                    </td>
+                                    <td className="p-3 text-sm text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                    </td>
+                                    <td className="p-3 text-sm">
+                                      {(machine.gamesPlayed || 0).toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Mobile Card View */}
+                          <div className="md:hidden space-y-4">
+                            {topMachinesData.map((machine, index) => (
+                              <Card key={`${machine.machineId}-${index}`} className="p-4">
+                                <div className="mb-3">
+                                  <h4 className="font-medium text-sm">
+                                    {machine.machineName}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {machine.locationName} • {machine.gameTitle}
+                                  </p>
+                      </div>
+                                
+                                {/* Tiny screen layout (< 425px) - Single column */}
+                                <div className="block sm:hidden space-y-2 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Manufacturer:</span>
+                                    <span className="font-medium">{machine.manufacturer}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Handle:</span>
+                                    <span className="font-medium">${(machine.drop || 0).toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Win/Loss:</span>
+                                    <span className={`font-medium ${(machine.netWin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                                    <span className="font-medium">${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Actual Hold:</span>
+                                    <span className="font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Theoretical Hold:</span>
+                                    <span className="font-medium text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Games Played:</span>
+                                    <span className="font-medium">{(machine.gamesPlayed || 0).toLocaleString()}</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Small screen layout (425px+) - Two columns */}
+                                <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Manufacturer:</span>
+                                    <p>{machine.manufacturer}</p>
                                 </div>
                                 <div>
-                                  <div className="font-medium text-gray-900">
-                                    {location.locationName ||
-                                      `Location ${index + 1}`}
+                                    <span className="text-muted-foreground">Handle:</span>
+                                    <p className="font-medium">${(machine.drop || 0).toLocaleString()}</p>
                                   </div>
-                                  <div className="text-sm text-gray-500">
-                                    {location.totalMachines || 0} machines
+                                  <div>
+                                    <span className="text-muted-foreground">Win/Loss:</span>
+                                    <p className={`font-medium ${(machine.netWin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${(machine.netWin || 0).toLocaleString()}
+                                    </p>
                                   </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Avg. Wag. per Game:</span>
+                                    <p>${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</p>
                                 </div>
-                                {isItemSelected(location) && (
-                                  <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                  <div>
+                                    <span className="text-muted-foreground">Actual Hold:</span>
+                                    <p className="font-medium text-gray-600">
+                                      {machine.actualHold ? machine.actualHold.toFixed(3) + "%" : "N/A"}
+                                    </p>
                                   </div>
-                                )}
+                                  <div>
+                                    <span className="text-muted-foreground">Theoretical Hold:</span>
+                                    <p className="text-gray-600">
+                                      {machine.theoreticalHold ? machine.theoreticalHold.toFixed(3) + "%" : "N/A"}
+                                    </p>
                               </div>
-                              <div className="text-right">
-                                <div className="font-semibold text-green-600">
-                                  ${(location.gross || 0).toLocaleString()}
+                                  <div className="col-span-2">
+                                    <span className="text-muted-foreground">Games Played:</span>
+                                    <p>{(machine.gamesPlayed || 0).toLocaleString()}</p>
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {location.gross && location.moneyIn
-                                    ? `${(
-                                        (location.gross / location.moneyIn) *
-                                        100
-                                      ).toFixed(1)}% hold`
-                                    : "N/A"}
                                 </div>
+                              </Card>
+                            ))}
                               </div>
+
+                          {topMachinesData.length === 0 && (
+                            <div className="text-center py-8 text-gray-500">
+                              No machine data available for evaluation
                             </div>
-                          ));
-                        })()}
-                      </div>
+                          )}
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </>
@@ -1963,13 +2130,7 @@ export default function LocationsTab() {
         </Tabs>
       </div>
 
-      {/* Comparison Modal */}
-      <CompareLocationsModal
-        isOpen={isCompareModalOpen}
-        onClose={() => setIsCompareModalOpen(false)}
-        selectedItems={selectedForComparison}
-        type={comparisonType}
-      />
+
     </div>
   );
 }

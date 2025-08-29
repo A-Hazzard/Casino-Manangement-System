@@ -69,7 +69,7 @@ Retrieves all system users with optional filtering.
 **Logging:** Comprehensive logging with user count and filtering context
 
 **Used By:**
-- `/administration` page - User management interface
+- `/administration` page - User management page
 - User listing components
 - Access control systems
 
@@ -147,7 +147,7 @@ Creates a new system user.
 
 **Used By:**
 - User creation forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -242,7 +242,7 @@ Deletes a system user.
 
 **Used By:**
 - User deletion forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -276,7 +276,7 @@ Retrieves all licensees with optional filtering.
 **Logging:** Access logging with filtering context and licensee count
 
 **Used By:**
-- Licensee management interfaces
+- Licensee management pages
 - Payment tracking systems
 
 ---
@@ -319,7 +319,7 @@ Creates a new licensee.
 
 **Used By:**
 - Licensee creation forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -354,7 +354,7 @@ Updates an existing licensee.
 
 **Used By:**
 - Licensee editing forms
-- Payment management interfaces
+- Payment management pages
 
 ---
 
@@ -380,7 +380,7 @@ Deletes a licensee.
 
 **Used By:**
 - Licensee deletion forms
-- Administrative interfaces
+- Administrative pages
 
 ---
 
@@ -442,7 +442,7 @@ Retrieves system activity logs with filtering and pagination.
 **Logging:** Access logging for audit trail queries with filtering context
 
 **Used By:**
-- Activity log interfaces
+- Activity log pages
 - Audit trail systems
 - Security monitoring
 
@@ -523,7 +523,7 @@ Creates a new activity log entry.
 
 ### User Model
 ```typescript
-interface User {
+type User = {
   _id: string;
   username: string;
   email: string;
@@ -550,7 +550,7 @@ interface User {
 
 ### Licensee Model
 ```typescript
-interface Licensee {
+type Licensee = {
   _id: string;
   name: string;
   country: string;
@@ -567,7 +567,7 @@ interface Licensee {
 
 ### Activity Log Model
 ```typescript
-interface ActivityLog {
+type ActivityLog = {
   _id: string;
   actor: {
     id: string;

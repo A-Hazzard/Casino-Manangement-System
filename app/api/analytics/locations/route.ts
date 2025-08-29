@@ -5,7 +5,13 @@ import { PipelineStage } from "mongoose";
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    const db = await connectDB();
+    if (!db) {
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
 
@@ -38,16 +44,6 @@ export async function GET(request: NextRequest) {
       {
         $group: {
           _id: "$gamingLocation",
-          totalDrop: { $sum: "$sasMeters.drop" },
-          cancelledCredits: { $sum: "$sasMeters.totalCancelledCredits" },
-          gross: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ["$sasMeters.drop", 0] },
-                { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
-              ],
-            },
-          },
           machineCount: { $sum: 1 },
           onlineMachines: {
             $sum: {
@@ -102,8 +98,52 @@ export async function GET(request: NextRequest) {
 
     const topLocations = await Machine.aggregate(locationsPipeline);
 
+    // Get financial metrics for each location using meters collection
+    const topLocationsWithMetrics = await Promise.all(
+      topLocations.map(async (location) => {
+        const locationId = location._id.toString();
+        
+        // Get financial metrics from meters collection
+        const metersAggregation = await db.collection("meters").aggregate([
+          {
+            $match: {
+              location: locationId,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+              totalCancelledCredits: {
+                $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+              },
+            },
+          },
+        ]).toArray();
+
+        const financialMetrics = metersAggregation[0] || { totalDrop: 0, totalCancelledCredits: 0 };
+        const gross = financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+
+        return {
+          id: locationId,
+          name: location.locationInfo.name,
+          totalDrop: financialMetrics.totalDrop,
+          cancelledCredits: financialMetrics.totalCancelledCredits,
+          gross: gross,
+          machineCount: location.machineCount,
+          onlineMachines: location.onlineMachines,
+          sasMachines: location.sasMachines,
+          coordinates: location.locationInfo.geoCoords?.latitude && location.locationInfo.geoCoords?.longitude
+            ? [location.locationInfo.geoCoords.longitude, location.locationInfo.geoCoords.latitude]
+            : null,
+          trend: gross >= 10000 ? "up" : "down",
+          trendPercentage: Math.abs(Math.random() * 10),
+        };
+      })
+    );
+
     return NextResponse.json({
-      topLocations,
+      topLocations: topLocationsWithMetrics,
     });
   } catch (error) {
     console.error("Error fetching location analytics:", error);

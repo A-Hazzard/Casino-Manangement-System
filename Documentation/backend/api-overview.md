@@ -123,7 +123,7 @@ All APIs follow a consistent response format:
 | `/collection-report/sync-meters` | POST | Sync meter data | Meter synchronization |
 | `/collectionReport` | GET | Collection report data | Collection management |
 | `/collectionReport/locations` | GET | Location collection data | Location reports |
-| `/collections` | GET | Collection management | Collection interface |
+| `/collections` | GET | Collection management | Collection page |
 
 ### 8. System Configuration
 **Base URLs:** `/api/firmwares`, `/api/licensees`, `/api/countries`, `/api/collectors`
@@ -320,3 +320,7 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 - Event-driven updates
 - Live data synchronization
 - Push notifications
+
+---
+
+**Last Updated:** August 29th, 2025

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import Header from "@/components/layout/Header";
+import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -33,6 +33,7 @@ import {
   animateColumnSort,
   filterAndSortCabinets as filterAndSortCabinetsUtil,
 } from "@/lib/utils/ui";
+import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
 import CabinetCardsSkeleton from "@/components/ui/locations/CabinetCardsSkeleton";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
@@ -81,34 +82,7 @@ export default function LocationPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Calculate financial totals from cabinet data
-  const calculateFinancialTotals = () => {
-    if (!allCabinets || allCabinets.length === 0) {
-      return null;
-    }
-
-    const totals = allCabinets.reduce(
-      (acc, cabinet) => {
-        // Use calculatedMetrics if available, otherwise fall back to direct properties
-        const moneyIn =
-          cabinet.calculatedMetrics?.moneyIn || cabinet.moneyIn || 0;
-        const moneyOut =
-          cabinet.calculatedMetrics?.moneyOut || cabinet.moneyOut || 0;
-        // Calculate gross as moneyIn - moneyOut, or use direct gross property if available
-        const gross = cabinet.gross || moneyIn - moneyOut;
-
-        return {
-          moneyIn: acc.moneyIn + moneyIn,
-          moneyOut: acc.moneyOut + moneyOut,
-          gross: acc.gross + gross,
-        };
-      },
-      { moneyIn: 0, moneyOut: 0, gross: 0 }
-    );
-
-    return totals;
-  };
-
-  const financialTotals = calculateFinancialTotals();
+  const financialTotals = calculateCabinetFinancialTotals(allCabinets);
 
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
@@ -316,16 +290,18 @@ export default function LocationPage() {
   return (
     <>
 
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-x-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={false}
-            disabled={loading || cabinetsLoading || refreshing}
-          />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: loading || cabinetsLoading || refreshing,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={false}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
 
           {/* Title Row */}
           <div className="flex items-center justify-between mt-4 w-full max-w-full">
@@ -784,8 +760,7 @@ export default function LocationPage() {
           )}
 
           <NewCabinetModal />
-        </main>
-      </div>
+      </PageLayout>
     </>
   );
 }

@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -161,19 +161,7 @@ export default function JackpotChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <defs>
-                <linearGradient
-                  id="jackpotGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
@@ -201,14 +189,12 @@ export default function JackpotChart({
                   boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="jackpot"
-                stroke="#f59e0b"
-                strokeWidth={3}
-                fill="url(#jackpotGradient)"
+                fill="#f59e0b"
+                radius={[4, 4, 0, 0]}
               />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

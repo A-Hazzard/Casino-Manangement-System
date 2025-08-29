@@ -234,4 +234,145 @@ The dashboard is like a **real-time command center** for your casino operations.
 - **Multi-location Management**: Manage multiple casino locations from one dashboard
 - **Real-time Monitoring**: Make decisions based on current data, not yesterday's reports
 
-The dashboard essentially **translates raw meter data from slot machines into business intelligence** that helps you run your casino operations efficiently. 
+The dashboard essentially **translates raw meter data from slot machines into business intelligence** that helps you run your casino operations efficiently.
+
+## Financial Calculations Analysis
+
+### Dashboard Metrics Calculations vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Money In (Drop) ✅**
+- **Current Implementation**: 
+  ```javascript
+  drop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Physical cash inserted into machines across all selected locations
+- **Aggregation**: Sums across all machines and meter readings within date range
+
+#### **Money Out (Total Cancelled Credits) ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: All credits paid out to players (vouchers + hand-paid)
+- **Aggregation**: Sums across all machines and meter readings within date range
+
+#### **Gross Revenue Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  // Where: moneyIn = drop, moneyOut = totalCancelledCredits
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)`
+
+#### **Machine Status Calculations ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Online machines
+  lastActivity: { $gte: new Date(Date.now() - 3 * 60 * 1000) }
+  // Total machines
+  deletedAt: { $exists: false }
+  ```
+- **Business Logic**: 
+  - **Online**: `lastActivity >= (currentTime - 3 minutes)`
+  - **Offline**: `lastActivity < (currentTime - 3 minutes)`
+  - **Total**: Count of non-deleted machines
+- ✅ **CONSISTENT** - Standard machine status calculation
+
+#### **Top Performing Locations Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  // Sorted by totalDrop descending, limit 5
+  ```
+- **Financial Guide**: Uses `movement.drop` for revenue ranking ✅ **MATCHES**
+- **Business Logic**: Ranks locations by total money inserted (drop)
+
+#### **Top Performing Machines Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+  totalGamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+  totalJackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } }
+  // Sorted by totalDrop descending, limit 5
+  ```
+- **Financial Guide**: Uses `movement.drop`, `movement.gamesPlayed`, `movement.jackpot` ✅ **MATCHES**
+- **Business Logic**: Ranks machines by total money inserted with additional performance metrics
+
+#### **Chart Data Processing ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Time-series aggregation by hour/day
+  _id: {
+    year: { $year: "$readAt" },
+    month: { $month: "$readAt" },
+    day: { $dayOfMonth: "$readAt" },
+    hour: { $hour: "$readAt" } // Only for Today/Yesterday
+  }
+  ```
+- **Business Logic**: 
+  - **Today/Yesterday**: Hourly granularity
+  - **7d/30d/Custom**: Daily granularity
+- ✅ **CONSISTENT** - Appropriate time granularity for different periods
+
+#### **Win/Loss Calculation ❌**
+- **Current Implementation**: 
+  ```javascript
+  winLoss: { 
+    $subtract: [
+      { $ifNull: ["$movement.coinIn", 0] },
+      { $ifNull: ["$movement.coinOut", 0] }
+    ]
+  }
+  ```
+- **Financial Guide**: No direct equivalent - this appears to be `Handle - Coin Out`
+- **Mathematical Formula**: `winLoss = coinIn - coinOut`
+- **Analysis**: This represents house advantage from betting activity
+- ❌ **NOT IN GUIDE** - Custom calculation not defined in financial metrics guide
+
+### Mathematical Formulas Summary
+
+#### **Primary Financial Metrics**
+```
+Money In = Σ(movement.drop) across all machines/time
+Money Out = Σ(movement.totalCancelledCredits) across all machines/time  
+Gross Revenue = Money In - Money Out
+```
+
+#### **Performance Rankings**
+```
+Top Location Rank = ORDER BY Σ(movement.drop) DESC LIMIT 5
+Top Machine Rank = ORDER BY Σ(movement.drop) DESC LIMIT 5
+```
+
+#### **Machine Status**
+```
+Online Count = COUNT(machines WHERE lastActivity >= currentTime - 3min)
+Offline Count = COUNT(machines WHERE lastActivity < currentTime - 3min)
+Total Count = COUNT(machines WHERE deletedAt IS NULL)
+```
+
+#### **Chart Data Aggregation**
+```
+Hourly Data (Today/Yesterday):
+  GROUP BY year, month, day, hour OF readAt
+  
+Daily Data (7d/30d/Custom):
+  GROUP BY year, month, day OF readAt
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Date Range**: Validates ISO date format for custom ranges
+- **Time Period**: Validates against allowed values (Today, Yesterday, 7d, 30d)
+- **Licensee**: Optional string validation for licensee filtering
+
+#### **Data Integrity ✅**
+- **Null Handling**: Uses `$ifNull` operators to default missing values to 0
+- **Negative Values**: Prevents negative financial calculations
+- **Missing Machines**: Gracefully handles deleted or inactive machines 

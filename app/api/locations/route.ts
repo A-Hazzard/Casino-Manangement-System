@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import path from "path";
-import fs from "fs";
+
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 import { apiLogger } from "@/app/api/lib/utils/logger";
 import { NextRequest } from "next/server";
+import { analyzeLocationGeoCoords, logGeoCoordIssues } from "@/app/api/lib/helpers/locationFileLogging";
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(request as NextRequest, "/api/locations");
@@ -31,52 +31,12 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
-    const missingGeoCoords: string[] = [];
-    const zeroGeoCoords: string[] = [];
-    const validLocations: Record<string, unknown>[] = [];
-
-    // Process all locations
-    locations.forEach((location) => {
-      if (!location.geoCoords && location._id) {
-        // Case: Missing geoCoords
-        missingGeoCoords.push(`${location._id.toString()} (${location.name})`);
-      } else if (location.geoCoords) {
-        const { latitude, longitude, longtitude } = location.geoCoords;
-
-        // Use longitude if available, otherwise fallback to longtitude
-        const validLongitude = longitude !== undefined ? longitude : longtitude;
-
-        if ((latitude === 0 || validLongitude === 0) && location._id) {
-          // Case: Zero-valued geoCoords
-          zeroGeoCoords.push(`${location._id.toString()} (${location.name})`);
-        } else {
-          // Case: Valid coordinates
-          validLocations.push(location);
-        }
-      }
-    });
+    // Analyze location geoCoords and log issues
+    const { missingGeoCoords, zeroGeoCoords } = analyzeLocationGeoCoords(locations);
+    logGeoCoordIssues(missingGeoCoords, zeroGeoCoords);
 
     // Return minimal or full set based on query
     const locationsToReturn = minimal ? locations : locations;
-
-    // Prepare log directory
-    const logDir = path.join(process.cwd(), "logs");
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-
-    const logFile = path.join(logDir, "missing_geoCoords.log");
-    const logData = [
-      `[${new Date().toISOString()}] - Missing/Invalid GeoCoords Report`,
-      `Missing geoCoords:\n ${
-        missingGeoCoords.length ? missingGeoCoords.join(", \n") : "None"
-      }`,
-      `Zero-valued geoCoords:\n ${
-        zeroGeoCoords.length ? zeroGeoCoords.join(", \n") : "None"
-      }`,
-      "---------------------------------------------\n",
-    ].join("\n");
-
-    // Append log entry
-    fs.appendFileSync(logFile, logData);
 
     apiLogger.logSuccess(
       context,

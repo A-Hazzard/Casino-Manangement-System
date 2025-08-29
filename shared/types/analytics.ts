@@ -192,3 +192,16 @@ export type ActivityLog = {
   success: boolean;
   errorMessage?: string;
 };
+
+// Machine hourly analytics types
+export type MachineMetrics = {
+  handle: number;
+  winLoss: number;
+  jackpot: number;
+  plays: number;
+};
+
+export type StackedData = {
+  hour: string;
+  [machineId: string]: MachineMetrics | string;
+};

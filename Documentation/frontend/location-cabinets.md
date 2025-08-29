@@ -173,6 +173,139 @@ LocationPage (app/locations/[slug]/page.tsx)
 - Handles loading, searching, sorting, and pagination states
 - Provides real-time cabinet status updates and location switching
 
+## Financial Calculations Analysis
+
+### Location Cabinets Metrics vs Financial Metrics Guide
+
+**Current Implementation Analysis:**
+
+#### **Cabinet Financial Metrics by Location ✅**
+- **Current Implementation**: Displays cabinet financial data filtered by location
+- **Data Source**: Cabinet meter readings aggregated per location from `meters` collection
+- **Time Period Filtering**: Supports time-based filtering for historical analysis
+- **Financial Guide**: Uses standard meter aggregation ✅ **MATCHES**
+
+#### **Cabinet Money In (Drop) by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  cabinetMoneyIn = Σ(movement.drop) WHERE machine = cabinetId AND gamingLocation = locationId
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Money collected from each cabinet at specific location
+- **Display**: Table/cards show money in values for each cabinet
+
+#### **Cabinet Gross Revenue by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  cabinetGross = cabinetMoneyIn - cabinetMoneyOut
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Business Context**: Net revenue per cabinet within location context
+- **Display**: Sortable gross column for cabinet performance comparison
+
+#### **Cabinet Status by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Online/Offline filtering
+  onlineCabinets = cabinets.filter(cabinet => 
+    cabinet.lastActivity >= (currentTime - 3 minutes)
+  )
+  offlineCabinets = cabinets.filter(cabinet => 
+    cabinet.lastActivity < (currentTime - 3 minutes)
+  )
+  ```
+- **Business Logic**: Cabinet status filtering within location
+- ✅ **CONSISTENT** - Standard machine status calculation
+
+#### **Cabinet Performance Ranking by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Sort options for cabinets within location
+  sortBy: "moneyIn" | "gross" | "assetNumber" | "game" | "lastOnline"
+  ORDER BY gross DESC     // By gross revenue
+  ORDER BY moneyIn DESC   // By money in (drop)
+  ORDER BY lastActivity DESC // By last activity
+  ```
+- **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
+- **Business Logic**: Ranks cabinets within location by financial performance
+
+#### **Cabinet Search by Location ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Multi-field search within location
+  searchFields: ["Custom.name", "game", "serialNumber", "assetNumber"]
+  ```
+- **Business Logic**: Comprehensive search across cabinet identifiers
+- ✅ **COMPREHENSIVE** - Standard cabinet search within location context
+
+### Mathematical Formulas Summary
+
+#### **Location Cabinet Metrics**
+```
+Location Cabinet Money In = Σ(movement.drop) WHERE gamingLocation = locationId
+Location Cabinet Money Out = Σ(movement.totalCancelledCredits) WHERE gamingLocation = locationId
+Location Cabinet Gross = Location Cabinet Money In - Location Cabinet Money Out
+```
+
+#### **Individual Cabinet Performance within Location**
+```
+Cabinet Money In = Σ(movement.drop) WHERE machine = cabinetId AND gamingLocation = locationId
+Cabinet Money Out = Σ(movement.totalCancelledCredits) WHERE machine = cabinetId AND gamingLocation = locationId
+Cabinet Gross = Cabinet Money In - Cabinet Money Out
+```
+
+#### **Cabinet Status within Location**
+```
+Location Online Cabinets = COUNT(cabinets WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
+Location Offline Cabinets = COUNT(cabinets WHERE gamingLocation = locationId AND lastActivity < currentTime - 3min)
+Location Total Cabinets = COUNT(cabinets WHERE gamingLocation = locationId AND deletedAt IS NULL)
+```
+
+#### **Cabinet Performance Ranking within Location**
+```
+Top Cabinet by Revenue = MAX(gross) WHERE gamingLocation = locationId
+Cabinet Ranking = ORDER BY gross DESC WHERE gamingLocation = locationId
+Location Revenue per Cabinet = Σ(gross) / COUNT(cabinets) WHERE gamingLocation = locationId
+```
+
+#### **Cabinet Search within Location**
+```
+Cabinet Search = FIND(cabinets WHERE 
+  gamingLocation = locationId AND (
+    Custom.name CONTAINS searchTerm OR
+    game CONTAINS searchTerm OR
+    serialNumber CONTAINS searchTerm OR
+    assetNumber CONTAINS searchTerm
+  )
+) CASE_INSENSITIVE
+```
+
+### Data Validation & Error Handling
+
+#### **Input Validation ✅**
+- **Location ID**: Validates MongoDB ObjectId format from URL
+- **Search Terms**: Sanitizes input to prevent injection attacks
+- **Time Period**: Validates date range selections
+- **Sort Options**: Validates sort field and direction parameters
+
+#### **Data Integrity ✅**
+- **Location Filtering**: Ensures cabinet data matches selected location
+- **Null Handling**: Uses fallback values for missing cabinet data
+- **Real-time Sync**: Maintains consistency with cabinet status changes
+- **Pagination**: Validates page boundaries and limits
+
+### Required Verification
+
+**Location cabinets calculations align with the financial metrics guide:**
+
+1. **Cabinet Aggregations**: Use standard drop and cancelled credits fields ✅
+2. **Gross Revenue**: Standard calculation (drop - cancelled credits) ✅
+3. **Status Calculations**: Standard machine status calculation ✅
+4. **Performance Ranking**: Use appropriate financial metrics ✅
+5. **Location Filtering**: Correctly isolates cabinet data by location ✅
+
+**Note**: Location cabinets calculations correctly implement the financial metrics guide for location-specific cabinet analysis.
+
 ## UI
 - Clean, modern design with Tailwind CSS
 - Responsive layout with separate mobile and desktop experiences

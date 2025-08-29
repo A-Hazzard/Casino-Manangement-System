@@ -92,7 +92,7 @@ ________________________________________
 •	**Performance**: Optimized for large datasets with progress indicators
 
 4.4. Technical Architecture
-•	**Frontend**: React-based interface with Zustand state management
+•	**Frontend**: React-based UI with Zustand state management
 •	**API Integration**: RESTful API calls with proper authentication
 •	**Data Processing**: Server-side data aggregation and formatting
 •	**File Generation**: Client-side file creation and download handling

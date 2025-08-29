@@ -10,7 +10,7 @@
 
 This document outlines the core functional requirements for the Dynamic1 Casino Management System (CMS), a comprehensive platform designed to oversee casino operations, financial tracking, compliance monitoring, and real-time analytics. The system provides a seamless dashboard for real-time data visualization, revenue tracking, slot machine performance monitoring, and administrative management across all casino locations.
 
-The system has been in active development from February to July 2025, with a target for full completion by the end of August 2025. The platform serves internal stakeholders, collections staff, licensees, and casino management personnel to enable efficient monitoring of financials, machine performance, customer data, and site operations.
+The first phase of the system has been in active development from February 2025, with a target for full completion by the end of August 2025. The platform serves internal stakeholders, collections staff, licensees, and casino management personnel to enable efficient monitoring of financials, machine performance, customer data, and site operations.
 
 ---
 
