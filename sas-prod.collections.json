@@ -1,0 +1,339 @@
+[{
+  "_id": "659bb9711c8e6565b55e485c",
+  "isCompleted": true,
+  "metersIn": 168700,
+  "metersOut": 111178,
+  "prevIn": 0,
+  "prevOut": 0,
+  "softMetersIn": 168700,
+  "softMetersOut": 111178,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-06T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "machine": "f62f7b50ebb22eb862877a01",
+    "drop": 15899388,
+    "totalCancelledCredits": 13457197,
+    "gross": 2442191,
+    "gamesPlayed": 508506,
+    "jackpot": 0,
+    "sasStartTime": "1969, Dec 31, 20:00:00",
+    "sasEndTime": "2025, Aug 06, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "7ca024df-0537-43ef-9de8-c22c0066f7f1",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 168700,
+    "metersOut": 111178,
+    "gross": 57522
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-06T14:10:28.992Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-06T14:17:03.374Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "659bb9711c8e6565b55e485c"
+},
+{
+  "_id": "b21efab633ab61ebb44aa081",
+  "isCompleted": true,
+  "metersIn": 329900,
+  "metersOut": 321209,
+  "prevIn": 168700,
+  "prevOut": 111178,
+  "softMetersIn": 329900,
+  "softMetersOut": 321209,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-07T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 06, 08:00:00",
+    "sasEndTime": "2025, Aug 07, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "8bd2347f-9e6b-4164-abf2-ab862978184c",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 161200,
+    "metersOut": 210031,
+    "gross": -48831
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-07T14:07:53.129Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-07T14:12:58.923Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "b21efab633ab61ebb44aa081"
+},
+{
+  "_id": "af30916bf8001eaed4b212e7",
+  "isCompleted": true,
+  "metersIn": 375800,
+  "metersOut": 373048,
+  "prevIn": 329900,
+  "prevOut": 321209,
+  "softMetersIn": 375800,
+  "softMetersOut": 373048,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-08T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 07, 08:00:00",
+    "sasEndTime": "2025, Aug 08, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "a725bad3-c69a-49f0-bc59-fde687bc638b",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 45900,
+    "metersOut": 51839,
+    "gross": -5939
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-08T13:28:52.684Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-08T13:32:54.795Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "af30916bf8001eaed4b212e7"
+},
+{
+  "_id": "6cb5c0051a8230a0d46a5278",
+  "isCompleted": true,
+  "metersIn": 528900,
+  "metersOut": 514204,
+  "prevIn": 375800,
+  "prevOut": 373048,
+  "softMetersIn": 528900,
+  "softMetersOut": 514204,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-09T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 08, 08:00:00",
+    "sasEndTime": "2025, Aug 09, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "906a006f-2aac-4e17-ac62-67476eee8ae5",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 153100,
+    "metersOut": 141156,
+    "gross": 11944
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-11T15:18:32.464Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-11T15:21:53.791Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "6cb5c0051a8230a0d46a5278"
+},
+{
+  "_id": "5f0d665829395fce98e0ea75",
+  "isCompleted": true,
+  "metersIn": 611900,
+  "metersOut": 597796,
+  "prevIn": 528900,
+  "prevOut": 514204,
+  "softMetersIn": 611900,
+  "softMetersOut": 597796,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-10T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 09, 08:00:00",
+    "sasEndTime": "2025, Aug 10, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "10b31046-dddc-4b5a-baf2-35f1de936225",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 83000,
+    "metersOut": 83592,
+    "gross": -592
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-11T15:32:25.330Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-11T15:36:40.168Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "5f0d665829395fce98e0ea75"
+},
+{
+  "_id": "1b571bb59030fdb4c87301e3",
+  "isCompleted": true,
+  "metersIn": 837400,
+  "metersOut": 806871,
+  "prevIn": 611900,
+  "prevOut": 597796,
+  "softMetersIn": 837400,
+  "softMetersOut": 806871,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-11T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 10, 08:00:00",
+    "sasEndTime": "2025, Aug 11, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "265f4af8-1641-4d1a-b698-bde6beae2b07",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 225500,
+    "metersOut": 209075,
+    "gross": 16425
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-11T15:42:26.023Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-11T15:45:18.751Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "1b571bb59030fdb4c87301e3"
+},
+{
+  "_id": "9ed8b91922baab8bda53345c",
+  "isCompleted": true,
+  "metersIn": 972500,
+  "metersOut": 858012,
+  "prevIn": 837400,
+  "prevOut": 806871,
+  "softMetersIn": 972500,
+  "softMetersOut": 858012,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-12T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 11, 08:00:00",
+    "sasEndTime": "2025, Aug 12, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "07fddb7d-d0e1-4f8f-a35e-1795832fb796",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 135100,
+    "metersOut": 51141,
+    "gross": 83959
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-12T13:41:11.494Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-12T13:44:52.435Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "9ed8b91922baab8bda53345c"
+},
+{
+  "_id": "f22f6ba1786c6585001d3419",
+  "isCompleted": true,
+  "metersIn": 1118100,
+  "metersOut": 1033132,
+  "prevIn": 972500,
+  "prevOut": 858012,
+  "softMetersIn": 1118100,
+  "softMetersOut": 1033132,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-08-13T12:00:00.000Z"
+  },
+  "isBeforeRC": false,
+  "isCustomTime": true,
+  "sasMeters": {
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "sasStartTime": "2025, Aug 12, 08:00:00",
+    "sasEndTime": "2025, Aug 13, 08:00:00"
+  },
+  "location": "Bet Cabana Stabroek ",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "a0ba42a8-ea4c-4c00-9501-3a18d5907089",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "noSmib": false,
+  "movement": {
+    "metersIn": 145600,
+    "metersOut": 175120,
+    "gross": -29520
+  },
+  "machineCustomName": "GGNOVO148",
+  "createdAt": {
+    "$date": "2025-08-13T20:09:21.738Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-13T20:12:26.517Z"
+  },
+  "__v": 0,
+  "savedCollectionItemId": "f22f6ba1786c6585001d3419"
+}]

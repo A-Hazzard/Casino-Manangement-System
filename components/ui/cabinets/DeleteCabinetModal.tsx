@@ -9,8 +9,13 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { deleteCabinet } from "@/lib/helpers/cabinets";
 import { IMAGES } from "@/lib/constants/images";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import { toast } from "sonner";
 
-export const DeleteCabinetModal = () => {
+export const DeleteCabinetModal = ({
+  onCabinetDeleted,
+}: {
+  onCabinetDeleted?: () => void;
+}) => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
     useCabinetActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -73,8 +78,14 @@ export const DeleteCabinetModal = () => {
           `Deleted cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"})`
         );
 
+        // Call the callback to refresh data
+        onCabinetDeleted?.();
+        
+        // Show success feedback
+        toast.success("Cabinet deleted successfully");
+        
+        // Close the modal
         handleClose();
-        // You could add a toast notification here
       }
     } catch (err) {
       // Log error for debugging in development

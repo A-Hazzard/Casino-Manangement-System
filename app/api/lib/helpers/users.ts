@@ -58,7 +58,15 @@ export function formatUsersForResponse(users: UserDocument[]) {
  * Retrieves all users from database
  */
 export async function getAllUsers() {
-  return await UserModel.find({}, "-password");
+  return await UserModel.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    },
+    "-password"
+  );
 }
 
 /**
@@ -107,6 +115,7 @@ export async function createUser(
     isEnabled,
     profilePicture,
     resourcePermissions,
+    deletedAt: new Date(-1), // SMIB boards require all fields to be present
   });
 
   const currentUser = await getUserFromServer();
@@ -201,10 +210,17 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user with activity logging
+ * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
-  const deletedUser = await UserModel.findByIdAndDelete(_id);
+  const deletedUser = await UserModel.findByIdAndUpdate(
+    _id,
+    {
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
   if (!deletedUser) {
     throw new Error("User not found");
   }

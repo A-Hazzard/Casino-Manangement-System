@@ -3,8 +3,8 @@
 import MapPreview from "@/components/ui/MapPreview";
 import { timeFrames } from "@/lib/constants/uiConstants";
 import { PcLayoutProps } from "@/lib/types/componentProps";
-import { formatNumber } from "@/lib/utils/metrics";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import CustomSelect from "../ui/CustomSelect";
 import StatCardSkeleton, {
@@ -19,6 +19,8 @@ import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
 
 export default function PcLayout(props: PcLayoutProps) {
+  const { displayCurrency, formatAmount } = useCurrencyStore();
+
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
       <div className="text-gray-500 text-lg mb-2">No Data Available</div>
@@ -27,7 +29,9 @@ export default function PcLayout(props: PcLayoutProps) {
   );
 
   // State for aggregated location data
-  const [locationAggregates, setLocationAggregates] = useState<Record<string, unknown>[]>([]);
+  const [locationAggregates, setLocationAggregates] = useState<
+    Record<string, unknown>[]
+  >([]);
   const [aggLoading, setAggLoading] = useState(true);
 
   // Only fetch locationAggregation for MapPreview when needed
@@ -54,7 +58,7 @@ export default function PcLayout(props: PcLayoutProps) {
   }, []);
 
   return (
-    <div className="hidden xl:block">
+    <div className="hidden md:block">
       <div className="grid grid-cols-5 gap-6">
         {/* Left Section (Dashboard Content) - 60% Width (3/5 columns) */}
         <div className="col-span-3 space-y-6">
@@ -68,6 +72,9 @@ export default function PcLayout(props: PcLayoutProps) {
               height={32}
               className="w-6 h-6 sm:w-8 sm:h-8"
             />
+            <div className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+              {displayCurrency}
+            </div>
           </div>
 
           {/* Date Filter Controls */}
@@ -116,8 +123,14 @@ export default function PcLayout(props: PcLayoutProps) {
                     Money In
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.moneyIn)}`}>
-                    {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
+                  <p
+                    className={`font-bold text-lg ${getFinancialColorClass(
+                      props.totals?.moneyIn
+                    )}`}
+                  >
+                    {props.totals
+                      ? formatAmount(props.totals.moneyIn, "USD")
+                      : "--"}
                   </p>
                 </div>
                 {/* Games Won Card */}
@@ -126,8 +139,14 @@ export default function PcLayout(props: PcLayoutProps) {
                     Money Out
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.moneyOut)}`}>
-                    {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
+                  <p
+                    className={`font-bold text-lg ${getFinancialColorClass(
+                      props.totals?.moneyOut
+                    )}`}
+                  >
+                    {props.totals
+                      ? formatAmount(props.totals.moneyOut, "USD")
+                      : "--"}
                   </p>
                 </div>
                 {/* Gross Card */}
@@ -136,8 +155,14 @@ export default function PcLayout(props: PcLayoutProps) {
                     Gross
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-                  <p className={`font-bold text-lg ${getFinancialColorClass(props.totals?.gross)}`}>
-                    {props.totals ? formatNumber(props.totals.gross) : "--"}
+                  <p
+                    className={`font-bold text-lg ${getFinancialColorClass(
+                      props.totals?.gross
+                    )}`}
+                  >
+                    {props.totals
+                      ? formatAmount(props.totals.gross, "USD")
+                      : "--"}
                   </p>
                 </div>
               </>

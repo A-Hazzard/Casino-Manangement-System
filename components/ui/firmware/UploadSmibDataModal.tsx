@@ -17,6 +17,7 @@ import { createActivityLogger } from "@/lib/helpers/activityLogger";
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
   onClose,
+  onRefresh,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comments, setComments] = useState("");
@@ -57,8 +58,15 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
           fileSize: selectedFile.size,
           comments: comments,
         },
-        `Uploaded SMIB data file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`
+        `Uploaded SMIB data file: ${selectedFile.name} (${(
+          selectedFile.size / 1024
+        ).toFixed(2)} KB)`
       );
+
+      // Refresh the parent page data after successful upload
+      if (onRefresh) {
+        onRefresh();
+      }
 
       // Close modal and clear form on success
       onClose();

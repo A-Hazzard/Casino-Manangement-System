@@ -1,3 +1,9 @@
+import type {
+  CurrencyCode,
+  ExchangeRates,
+  CurrencyConversionRequest,
+} from "@/shared/types";
+
 /**
  * Format currency using default USD formatting
  * For user-specific currency formatting, use the formatCurrency method from the settings store
@@ -72,4 +78,86 @@ export function formatCurrencyPlain(
   return position === "before"
     ? `${symbol}${formattedAmount}`
     : `${formattedAmount}${symbol}`;
+}
+
+/**
+ * Convert amount from one currency to another using exchange rates
+ */
+export function convertCurrency({
+  amount,
+  amountCurrency,
+  displayCurrency,
+  rates,
+}: CurrencyConversionRequest): number {
+  if (amountCurrency === displayCurrency) {
+    return amount;
+  }
+
+  // Convert to base currency first, then to display currency
+  const baseRate = rates.rates[amountCurrency];
+  const displayRate = rates.rates[displayCurrency];
+
+  if (!baseRate || !displayRate) {
+    console.warn(
+      `Missing exchange rates for ${amountCurrency} or ${displayCurrency}`
+    );
+    return amount;
+  }
+
+  // Convert: amount / baseRate * displayRate
+  return (amount / baseRate) * displayRate;
+}
+
+/**
+ * Format money with currency conversion support
+ */
+export function formatMoney(
+  value: number | null | undefined,
+  displayCurrency: CurrencyCode,
+  rates?: ExchangeRates,
+  originalCurrency?: CurrencyCode
+): string {
+  if (value == null) return formatCurrencyWithCode(0, displayCurrency);
+
+  let amount = value;
+
+  // Convert currency if rates and original currency are provided
+  if (rates && originalCurrency && originalCurrency !== displayCurrency) {
+    amount = convertCurrency({
+      amount: value,
+      amountCurrency: originalCurrency,
+      displayCurrency,
+      rates,
+    });
+  }
+
+  return formatCurrencyWithCode(amount, displayCurrency);
+}
+
+/**
+ * Get currency symbol for a given currency code
+ */
+export function getCurrencySymbol(currencyCode: CurrencyCode): string {
+  const symbols: Record<CurrencyCode, string> = {
+    USD: "$",
+    TTD: "TT$",
+    GYD: "GY$",
+    BBD: "BBD$",
+  };
+
+  return symbols[currencyCode] || currencyCode;
+}
+
+/**
+ * Get currency name for a given currency code
+ */
+export function getCurrencyName(currencyCode: CurrencyCode): string {
+  const names: Record<CurrencyCode, string> = {
+    USD: "US Dollar",
+    TTD: "Trinidad & Tobago Dollar",
+    GYD: "Guyanese Dollar",
+    BBD: "Barbados Dollar",
+  };
+
+  return names[currencyCode] || currencyCode;
 }

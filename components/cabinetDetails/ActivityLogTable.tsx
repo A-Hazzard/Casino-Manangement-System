@@ -1,95 +1,80 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
+import { CheckIcon, PlusIcon, MinusIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  CheckIcon,
-  PlusIcon,
-  MinusIcon,
-} from "@radix-ui/react-icons";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type MachineEvent = {
   _id: string;
-  eventType: string;
-  description: string;
-  command: string;
-  gameName: string;
-  date: string;
-  eventLogLevel: string;
-  eventSuccess: boolean;
+  message?: {
+    incomingMessage?: {
+      typ: string;
+      rly: string;
+      mac: string;
+      pyd: string;
+    };
+    serialNumber?: string;
+    game?: string;
+    gamingLocation?: string;
+  };
+  machine: string;
+  relay?: string;
+  commandType?: string;
+  command?: string;
+  description?: string;
+  date: string | Date;
+  cabinetId?: string;
+  gameName?: string;
+  location?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   sequence?: Array<{
     description: string;
     logLevel: string;
     success: boolean;
     createdAt: string;
   }>;
+  eventType?: string;
+  eventLogLevel?: string;
+  eventSuccess?: boolean;
 };
 
 type ExtendedActivityLogTableProps = {
   data: MachineEvent[];
+  onFilterChange?: (filters: {
+    startTime?: string;
+    endTime?: string;
+    eventType?: string;
+    type?: string;
+  }) => void;
 };
 
 /**
- * Renders the Activity Log table with filters and updated structure.
+ * Renders the Activity Log table with simplified structure and no filters.
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
 const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
   data,
+  onFilterChange,
 }) => {
-  // Filter states
-  const [eventTypeFilter, setEventTypeFilter] = useState("");
-  const [eventFilter, setEventFilter] = useState("");
-  const [gameFilter, setGameFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
     new Set()
   );
+  const [filters, setFilters] = useState({
+    startTime: "",
+    endTime: "",
+    eventType: "",
+    type: "",
+  });
 
-  // Get unique values for filter dropdowns
-  const uniqueEventTypes = useMemo(() => {
-    const types = [...new Set(data.map((item) => item.eventType))];
-    return types.filter(Boolean).sort();
-  }, [data]);
-
-  const uniqueEvents = useMemo(() => {
-    const events = [...new Set(data.map((item) => item.description))];
-    return events.filter(Boolean).sort();
-  }, [data]);
-
-  const uniqueGames = useMemo(() => {
-    const games = [...new Set(data.map((item) => item.gameName))];
-    return games.filter(Boolean).sort();
-  }, [data]);
-
-  // Filter and sort data
-  const filtered = useMemo(() => {
-    let filteredData = data;
-
-    if (eventTypeFilter) {
-      filteredData = filteredData.filter((item) =>
-        item.eventType?.toLowerCase().includes(eventTypeFilter.toLowerCase())
-      );
-    }
-
-    if (eventFilter) {
-      filteredData = filteredData.filter((item) =>
-        item.description?.toLowerCase().includes(eventFilter.toLowerCase())
-      );
-    }
-
-    if (gameFilter) {
-      filteredData = filteredData.filter((item) =>
-        item.gameName?.toLowerCase().includes(gameFilter.toLowerCase())
-      );
-    }
-
-    return filteredData;
-  }, [data, eventTypeFilter, eventFilter, gameFilter]);
-
-  // Pagination
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | Date) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -113,76 +98,86 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
     setExpandedSequences(newExpanded);
   };
 
+  const handleFilterChange = (key: string, value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    onFilterChange?.(newFilters);
+  };
+
+  const clearFilters = () => {
+    const clearedFilters = {
+      startTime: "",
+      endTime: "",
+      eventType: "",
+      type: "",
+    };
+    setFilters(clearedFilters);
+    onFilterChange?.(clearedFilters);
+  };
+
   return (
     <div className="w-full">
       {/* Filter Controls */}
-      <div className="mb-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Event Type Filter */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Type
-            </label>
-            <select
-              value={eventTypeFilter}
-              onChange={(e) => {
-                setEventTypeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
-            >
-              <option value="">All Event Types</option>
-              {uniqueEventTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Time</label>
+            <Input
+              type="time"
+              value={filters.startTime}
+              onChange={(e) => handleFilterChange("startTime", e.target.value)}
+              className="w-full"
+            />
           </div>
-
-          {/* Event Filter */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event
-            </label>
-            <select
-              value={eventFilter}
-              onChange={(e) => {
-                setEventFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
-            >
-              <option value="">All Events</option>
-              {uniqueEvents.map((event) => (
-                <option key={event} value={event}>
-                  {event}
-                </option>
-              ))}
-            </select>
+          <div>
+            <label className="block text-sm font-medium mb-1">End Time</label>
+            <Input
+              type="time"
+              value={filters.endTime}
+              onChange={(e) => handleFilterChange("endTime", e.target.value)}
+              className="w-full"
+            />
           </div>
-
-          {/* Game Filter */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Game
-            </label>
-            <select
-              value={gameFilter}
-              onChange={(e) => {
-                setGameFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-button focus:border-transparent"
+          <div>
+            <label className="block text-sm font-medium mb-1">Event Type</label>
+            <Select
+              value={filters.eventType}
+              onValueChange={(value) => handleFilterChange("eventType", value)}
             >
-              <option value="">All Games</option>
-              {uniqueGames.map((game) => (
-                <option key={game} value={game}>
-                  {game}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="All Events" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Events</SelectItem>
+                <SelectItem value="machine">Machine</SelectItem>
+                <SelectItem value="session">Session</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="location">Location</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Type</label>
+            <Select
+              value={filters.type}
+              onValueChange={(value) => handleFilterChange("type", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+                <SelectItem value="Significant">Significant</SelectItem>
+                <SelectItem value="Priority">Priority</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button variant="outline" onClick={clearFilters} size="sm">
+            Clear Filters
+          </Button>
         </div>
       </div>
 
@@ -194,12 +189,11 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
               <th className="p-3 border border-border text-sm">Type</th>
               <th className="p-3 border border-border text-sm">Event</th>
               <th className="p-3 border border-border text-sm">Event Code</th>
-              <th className="p-3 border border-border text-sm">Game</th>
               <th className="p-3 border border-border text-sm">Date</th>
             </tr>
           </thead>
           <tbody>
-            {paged.map((row, idx) => (
+            {data.map((row, idx) => (
               <React.Fragment key={row._id || idx}>
                 <tr className="text-center hover:bg-muted">
                   <td className="p-3 border border-border">
@@ -265,9 +259,6 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
                     {row.command || "00"}
                   </td>
                   <td className="p-3 border border-border">
-                    {row.gameName || "Rhapsody S3"}
-                  </td>
-                  <td className="p-3 border border-border">
                     {formatDate(row.date)}
                   </td>
                 </tr>
@@ -279,7 +270,7 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
 
       {/* Mobile Cards View */}
       <div className="block lg:hidden space-y-4 w-full">
-        {paged.map((row, idx) => (
+        {data.map((row, idx) => (
           <div
             key={row._id || idx}
             className="bg-container rounded-lg shadow-md overflow-hidden w-full border border-border"
@@ -315,12 +306,6 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
                 <span className="text-gray-700 font-medium">Event Code</span>
                 <span className="font-mono font-medium">
                   {row.command || "00"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-700 font-medium">Game</span>
-                <span className="font-medium">
-                  {row.gameName || "Rhapsody S3"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -369,57 +354,57 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
       </div>
 
       {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center mt-6 gap-2">
-          <button
-            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage(1)}
-            disabled={page === 1}
-          >
-            {"<<"}
-          </button>
-          <button
-            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            {"<"}
-          </button>
-          <span className="px-3 py-2 text-sm">Page</span>
-          <input
-            type="number"
-            min={1}
-            max={totalPages}
-            value={page}
-            onChange={(e) => {
-              let val = Number(e.target.value);
-              if (isNaN(val)) val = 1;
-              if (val < 1) val = 1;
-              if (val > totalPages) val = totalPages;
-              setPage(val);
-            }}
-            className="w-16 px-2 py-2 border border-border rounded-md text-center text-sm"
-            aria-label="Page number"
-          />
-          <span className="px-3 py-2 text-sm">
-            of {Math.max(1, totalPages)}
-          </span>
-          <button
-            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages || totalPages === 0}
-          >
-            {">"}
-          </button>
-          <button
-            className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage(totalPages)}
-            disabled={page === totalPages || totalPages === 0}
-          >
-            {">>"}
-          </button>
-        </div>
-      )}
+      {/* totalPages > 1 && ( */}
+      {/*   <div className="flex justify-center items-center mt-6 gap-2"> */}
+      {/*     <button */}
+      {/*       className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed" */}
+      {/*       onClick={() => setPage(1)} */}
+      {/*       disabled={page === 1} */}
+      {/*     > */}
+      {/*       {"<<"} */}
+      {/*     </button> */}
+      {/*     <button */}
+      {/*       className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed" */}
+      {/*       onClick={() => setPage((p) => Math.max(1, p - 1))} */}
+      {/*       disabled={page === 1} */}
+      {/*     > */}
+      {/*       {"<"} */}
+      {/*     </button> */}
+      {/*     <span className="px-3 py-2 text-sm">Page</span> */}
+      {/*     <input */}
+      {/*       type="number" */}
+      {/*       min={1} */}
+      {/*       max={totalPages} */}
+      {/*       value={page} */}
+      {/*       onChange={(e) => { */}
+      {/*         let val = Number(e.target.value); */}
+      {/*         if (isNaN(val)) val = 1; */}
+      {/*         if (val < 1) val = 1; */}
+      {/*         if (val > totalPages) val = totalPages; */}
+      {/*         setPage(val); */}
+      {/*       }} */}
+      {/*       className="w-16 px-2 py-2 border border-border rounded-md text-center text-sm" */}
+      {/*       aria-label="Page number" */}
+      {/*     /> */}
+      {/*     <span className="px-3 py-2 text-sm"> */}
+      {/*       of {Math.max(1, totalPages)} */}
+      {/*     </span> */}
+      {/*     <button */}
+      {/*       className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed" */}
+      {/*       onClick={() => setPage((p) => Math.min(totalPages, p + 1))} */}
+      {/*       disabled={page === totalPages || totalPages === 0} */}
+      {/*     > */}
+      {/*       {">"} */}
+      {/*     </button> */}
+      {/*     <button */}
+      {/*       className="px-3 py-2 border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed" */}
+      {/*       onClick={() => setPage(totalPages)} */}
+      {/*       disabled={page === totalPages || totalPages === 0} */}
+      {/*     > */}
+      {/*       {">>"} */}
+      {/*     </button> */}
+      {/*   </div> */}
+      {/* )} */}
     </div>
   );
 };

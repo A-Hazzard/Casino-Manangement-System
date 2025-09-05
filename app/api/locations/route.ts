@@ -1,14 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 import { apiLogger } from "@/app/api/lib/utils/logger";
-import { NextRequest } from "next/server";
-import { analyzeLocationGeoCoords, logGeoCoordIssues } from "@/app/api/lib/helpers/locationFileLogging";
+import {
+  analyzeLocationGeoCoords,
+  logGeoCoordIssues,
+} from "@/app/api/lib/helpers/locationFileLogging";
+import { generateMongoId } from "@/lib/utils/id";
 
 export async function GET(request: Request) {
-  const context = apiLogger.createContext(request as NextRequest, "/api/locations");
+  const context = apiLogger.createContext(
+    request as NextRequest,
+    "/api/locations"
+  );
   apiLogger.startLogging();
 
   try {
@@ -20,10 +26,16 @@ export async function GET(request: Request) {
     const minimal = searchParams.get("minimal") === "1";
 
     // Build query filter
-    const queryFilter: Record<string, string> = {};
+    const queryFilter: Record<string, unknown> = {};
     if (licencee && licencee !== "all") {
       queryFilter["rel.licencee"] = licencee;
     }
+
+    // Exclude deleted locations
+    queryFilter.$or = [
+      { deletedAt: null },
+      { deletedAt: { $lt: new Date("2020-01-01") } },
+    ];
 
     // Fetch locations. If minimal is requested, project minimal fields only.
     const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
@@ -32,7 +44,8 @@ export async function GET(request: Request) {
       .lean();
 
     // Analyze location geoCoords and log issues
-    const { missingGeoCoords, zeroGeoCoords } = analyzeLocationGeoCoords(locations);
+    const { missingGeoCoords, zeroGeoCoords } =
+      analyzeLocationGeoCoords(locations);
     logGeoCoordIssues(missingGeoCoords, zeroGeoCoords);
 
     // Return minimal or full set based on query
@@ -63,6 +76,7 @@ export async function POST(request: Request) {
       rel,
       isLocalServer,
       geoCoords,
+      billValidatorOptions,
     } = body;
 
     // Validate required fields
@@ -73,8 +87,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create new location
+    // Create new location with proper MongoDB ObjectId-style hex string
+    const locationId = await generateMongoId();
     const newLocation = new GamingLocations({
+      _id: locationId,
       name,
       country,
       address: {
@@ -90,8 +106,24 @@ export async function POST(request: Request) {
         latitude: geoCoords?.latitude || 0,
         longitude: geoCoords?.longitude || 0,
       },
+      billValidatorOptions: billValidatorOptions || {
+        denom1: true,
+        denom2: true,
+        denom5: true,
+        denom10: true,
+        denom20: true,
+        denom50: true,
+        denom100: true,
+        denom200: true,
+        denom500: true,
+        denom1000: false,
+        denom2000: false,
+        denom5000: false,
+        denom10000: false,
+      },
       createdAt: new Date(),
       updatedAt: new Date(),
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
 
     // Save the new location
@@ -118,7 +150,7 @@ export async function PUT(request: Request) {
     const body = await request.json();
 
     const {
-      locationName,
+      locationName, // This should be the location ID
       name,
       address,
       country,
@@ -126,18 +158,25 @@ export async function PUT(request: Request) {
       rel,
       isLocalServer,
       geoCoords,
+      billValidatorOptions,
     } = body;
 
     if (!locationName) {
       return NextResponse.json(
-        { success: false, message: "Location name is required" },
+        { success: false, message: "Location ID is required" },
         { status: 400 }
       );
     }
 
     try {
-      // Find the location by name - use exact match with the locationName
-      const location = await GamingLocations.findOne({ name: locationName });
+      // Find the location by ID (not by name) and ensure it's not deleted
+      const location = await GamingLocations.findOne({
+        _id: locationName,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      });
 
       if (!location) {
         return NextResponse.json(
@@ -158,13 +197,14 @@ export async function PUT(request: Request) {
       // Handle nested objects
       if (address) {
         updateData.address = {};
-        if (address.street) updateData.address.street = address.street;
-        if (address.city) updateData.address.city = address.city;
+        if (address.street !== undefined)
+          updateData.address.street = address.street;
+        if (address.city !== undefined) updateData.address.city = address.city;
       }
 
       if (rel) {
         updateData.rel = {};
-        if (rel.licencee) updateData.rel.licencee = rel.licencee;
+        if (rel.licencee !== undefined) updateData.rel.licencee = rel.licencee;
       }
 
       // Handle primitive types with explicit checks to handle zero values
@@ -179,6 +219,11 @@ export async function PUT(request: Request) {
           updateData.geoCoords.latitude = geoCoords.latitude;
         if (typeof geoCoords.longitude === "number")
           updateData.geoCoords.longitude = geoCoords.longitude;
+      }
+
+      // Handle billValidatorOptions
+      if (billValidatorOptions) {
+        updateData.billValidatorOptions = billValidatorOptions;
       }
 
       // Always update the updatedAt timestamp
@@ -215,7 +260,6 @@ export async function PUT(request: Request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error in PUT /api/locations:", errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

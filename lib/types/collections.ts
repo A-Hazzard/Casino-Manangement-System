@@ -79,3 +79,49 @@ export type CollectionDocument = {
   updatedAt: Date;
   __v: number;
 };
+
+// Collection Creation Types
+export type CreateCollectionPayload = {
+  machineId: string;
+  location: string;
+  collector: string;
+  metersIn: number;
+  metersOut: number;
+  sasStartTime?: Date;
+  sasEndTime?: Date;
+  notes?: string;
+  locationReportId?: string;
+  machineCustomName?: string;
+  machineName?: string;
+  serialNumber?: string;
+  isCompleted?: boolean;
+};
+
+export type SasMetricsCalculation = {
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+  sasStartTime: string;
+  sasEndTime: string;
+  gamesPlayed: number;
+  jackpot: number;
+};
+
+export type MovementCalculation = {
+  metersIn: number;
+  metersOut: number;
+  gross: number;
+};
+
+export type PreviousCollectionMeters = {
+  metersIn: number;
+  metersOut: number;
+  collectionTime?: Date;
+};
+
+export type MachineCollectionUpdate = {
+  machineId: string;
+  metersIn: number;
+  metersOut: number;
+  collectionTime: Date;
+};

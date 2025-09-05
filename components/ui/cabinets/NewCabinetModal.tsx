@@ -18,7 +18,15 @@ import { NewCabinetFormData } from "@/lib/types/cabinets";
 import { createCabinet } from "@/lib/helpers/cabinets";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
-export const NewCabinetModal = () => {
+type NewCabinetModalProps = {
+  locations?: { _id: string; name: string }[];
+  onCreated?: () => void;
+};
+
+export const NewCabinetModal = ({
+  locations,
+  onCreated,
+}: NewCabinetModalProps) => {
   const { isCabinetModalOpen, locationId, closeCabinetModal } =
     useNewCabinetStore();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -41,7 +49,7 @@ export const NewCabinetModal = () => {
     collectionSettings: {
       multiplier: "1",
       lastCollectionTime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDThh:mm
-      lastMetersIn: "0",
+     lastMetersIn: "0",
       lastMetersOut: "0",
     },
   });
@@ -98,6 +106,7 @@ export const NewCabinetModal = () => {
   const handleSubmit = async () => {
     try {
       setLoading(true);
+
       const success = await createCabinet(formData);
       if (success) {
         // Log the cabinet creation activity
@@ -111,6 +120,7 @@ export const NewCabinetModal = () => {
         handleClose();
         // Reset form after successful submission
         resetForm();
+        onCreated?.(); // Call the onCreated callback
       }
     } catch (err) {
       // Log error for debugging in development
@@ -278,24 +288,25 @@ export const NewCabinetModal = () => {
 
               {/* Accounting Denomination & Cabinet Type */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Accounting Denomination{" "}
-                    {formData.isCronosMachine ? "(Only Cronos)" : ""}
-                  </label>
-                  <Input
-                    id="accountingDenomination"
-                    placeholder="The denomination the machine uses when sending meter values"
-                    value={formData.accountingDenomination}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "accountingDenomination",
-                        e.target.value
-                      )
-                    }
-                    className="bg-container border-border"
-                  />
-                </div>
+                {formData.isCronosMachine && (
+                  <div>
+                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                      Accounting Denomination (Only Cronos)
+                    </label>
+                    <Input
+                      id="accountingDenomination"
+                      placeholder="The denomination the machine uses when sending meter values"
+                      value={formData.accountingDenomination}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "accountingDenomination",
+                          e.target.value
+                        )
+                      }
+                      className="bg-container border-border"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
                     Cabinet Type
@@ -324,16 +335,30 @@ export const NewCabinetModal = () => {
                   <label className="text-sm font-medium text-buttonActive block mb-2">
                     Location
                   </label>
-                  <Input
-                    id="location"
-                    placeholder="Enter Location"
+                  <Select
                     value={formData.gamingLocation}
-                    onChange={(e) =>
-                      handleInputChange("gamingLocation", e.target.value)
+                    onValueChange={(value) =>
+                      handleSelectChange("gamingLocation", value)
                     }
-                    className="bg-container border-border"
                     disabled={!!locationId}
-                  />
+                  >
+                    <SelectTrigger className="bg-container border-border">
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations && locations.length > 0 ? (
+                        locations.map((location) => (
+                          <SelectItem key={location._id} value={location._id}>
+                            {location.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-locations" disabled>
+                          No locations available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">

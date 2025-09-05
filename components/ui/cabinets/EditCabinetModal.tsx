@@ -10,14 +10,21 @@ import { CabinetFormData } from "@/lib/types/cabinets";
 import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
 import { Trash2 } from "lucide-react";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { toast } from "sonner";
 
-export const EditCabinetModal = () => {
+export const EditCabinetModal = ({
+  onCabinetUpdated,
+}: {
+  onCabinetUpdated?: () => void;
+}) => {
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
+  const { hasRole } = useAuth();
 
   // Create activity logger for cabinet operations
   const cabinetLogger = createActivityLogger("machine");
@@ -31,6 +38,7 @@ export const EditCabinetModal = () => {
     location: "",
     smbId: "",
     status: "Functional",
+    isCronosMachine: false,
   });
 
   useEffect(() => {
@@ -47,6 +55,7 @@ export const EditCabinetModal = () => {
         location: selectedCabinet.locationId || "",
         smbId: selectedCabinet.smbId || "",
         status: selectedCabinet.status || "Functional",
+        isCronosMachine: selectedCabinet.isCronosMachine || false,
       });
 
       // Fetch additional cabinet details if needed
@@ -67,6 +76,8 @@ export const EditCabinetModal = () => {
                   cabinetDetails.collectionMultiplier ||
                   prevData.collectionMultiplier,
                 status: cabinetDetails.status || prevData.status,
+                isCronosMachine:
+                  cabinetDetails.isCronosMachine || prevData.isCronosMachine,
               }));
             }
           })
@@ -131,23 +142,41 @@ export const EditCabinetModal = () => {
     if (!selectedCabinet) return;
     try {
       setLoading(true);
-      
+
       const previousData = { ...selectedCabinet };
-      
+
       // Pass the entire formData object with id included
       const success = await updateCabinet(formData);
       if (success) {
         // Log the cabinet update activity
         await cabinetLogger.logUpdate(
           selectedCabinet._id,
-          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"}`,
+          `${
+            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
+          } - ${
+            selectedCabinet.assetNumber ||
+            selectedCabinet.serialNumber ||
+            "Unknown"
+          }`,
           previousData,
           formData,
-          `Updated cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"})`
+          `Updated cabinet: ${
+            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
+          } (${
+            selectedCabinet.assetNumber ||
+            selectedCabinet.serialNumber ||
+            "Unknown"
+          })`
         );
 
+        // Call the callback to refresh data
+        onCabinetUpdated?.();
+        
+        // Show success feedback
+        toast.success("Cabinet updated successfully");
+        
+        // Close the modal
         handleClose();
-        // You can add a toast notification here
       }
     } catch (error) {
       // Log error for debugging in development
@@ -245,34 +274,36 @@ export const EditCabinetModal = () => {
                 </div>
 
                 {/* Accounting Denomination & Collection Multiplier */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      Accounting Denomination
-                    </label>
-                    <Input
-                      id="accountingDenomination"
-                      name="accountingDenomination"
-                      value={formData.accountingDenomination}
-                      onChange={handleChange}
-                      placeholder="Enter denomination value"
-                      className="bg-container border-border"
-                    />
+                {hasRole("admin") && formData.isCronosMachine && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        Accounting Denomination (Chronos Only)
+                      </label>
+                      <Input
+                        id="accountingDenomination"
+                        name="accountingDenomination"
+                        value={formData.accountingDenomination}
+                        onChange={handleChange}
+                        placeholder="Enter denomination value"
+                        className="bg-container border-border"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        Collection Report Multiplier
+                      </label>
+                      <Input
+                        id="collectionMultiplier"
+                        name="collectionMultiplier"
+                        value={formData.collectionMultiplier}
+                        onChange={handleChange}
+                        placeholder="Enter multiplier value"
+                        className="bg-container border-border"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      Collection Report Multiplier
-                    </label>
-                    <Input
-                      id="collectionMultiplier"
-                      name="collectionMultiplier"
-                      value={formData.collectionMultiplier}
-                      onChange={handleChange}
-                      placeholder="Enter multiplier value"
-                      className="bg-container border-border"
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Location & SMIB Board */}
                 <div className="grid grid-cols-2 gap-4">
@@ -310,25 +341,20 @@ export const EditCabinetModal = () => {
                     Status
                   </label>
                   <div className="flex space-x-4">
-                    {["Functional", "Maintenance", "Offline"].map(
-                      (status) => (
-                        <label
-                          key={status}
-                          className="inline-flex items-center"
-                        >
-                          <input
-                            type="radio"
-                            name="status"
-                            checked={formData.status === status}
-                            onChange={() =>
-                              setFormData((prev) => ({ ...prev, status }))
-                            }
-                            className="w-4 h-4 text-button border-border focus:ring-button"
-                          />
-                          <span className="ml-2">{status}</span>
-                        </label>
-                      )
-                    )}
+                    {["Functional", "Maintenance", "Offline"].map((status) => (
+                      <label key={status} className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="status"
+                          checked={formData.status === status}
+                          onChange={() =>
+                            setFormData((prev) => ({ ...prev, status }))
+                          }
+                          className="w-4 h-4 text-button border-border focus:ring-button"
+                        />
+                        <span className="ml-2">{status}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>

@@ -1,0 +1,17 @@
+/**
+ * Generates a proper MongoDB ObjectId-style hex string (24 characters)
+ * This ensures consistency with MongoDB's ObjectId format while storing as strings
+ */
+export async function generateMongoId(): Promise<string> {
+  const mongoose = await import("mongoose");
+  return new mongoose.default.Types.ObjectId().toHexString();
+}
+
+/**
+ * Generates a proper MongoDB ObjectId-style hex string (24 characters)
+ * Alternative method using dynamic import
+ */
+export async function generateMongoIdAsync(): Promise<string> {
+  const mongoose = await import("mongoose");
+  return new mongoose.default.Types.ObjectId().toHexString();
+}

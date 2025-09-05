@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor } from "lucide-react";
+import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor, TrendingUp, Trophy } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,6 +37,12 @@ import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
+import { StackedChart } from "@/components/ui/StackedChart";
+import { 
+  RevenueAnalysisChartsSkeleton,
+  ChartNoData,
+  MainContentSkeleton
+} from "@/components/ui/skeletons/ReportsSkeletons";
 import type {
   MachineData,
   MachinesApiResponse,
@@ -100,6 +106,16 @@ export default function MachinesTab() {
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
   const [offlineMachines, setOfflineMachines] = useState<MachineData[]>([]); // Offline machines only
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
+  
+  // Machine hourly data for charts
+  const [machineHourlyData, setMachineHourlyData] = useState<{
+    locations: string[];
+    hourlyTrends: Array<{
+      hour: string;
+      [key: string]: string | { handle: number; winLoss: number; jackpot: number; plays: number };
+    }>;
+  } | null>(null);
+  const [machineHourlyLoading, setMachineHourlyLoading] = useState(false);
   const [locations, setLocations] = useState<{ id: string; name: string; sasEnabled: boolean }[]>(
     []
   );
@@ -381,7 +397,6 @@ export default function MachinesTab() {
   }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, offlineSelectedLocation]);
 
 
-
   // Handle search with backend fallback for overview tab
   const handleSearchChange = useCallback(
     async (value: string) => {
@@ -643,6 +658,49 @@ export default function MachinesTab() {
       fetchAllMachines();
     }
   }, [evaluationSelectedLocation, activeTab, fetchAllMachines]);
+
+  // Separate useEffect for machine hourly data that depends on allMachines
+  useEffect(() => {
+    if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "" && allMachines.length > 0) {
+      const fetchData = async () => {
+        try {
+          setMachineHourlyLoading(true);
+          
+          // Get machine IDs for the selected location
+          const locationMachines = allMachines.filter(machine => 
+            machine.locationId === evaluationSelectedLocation
+          );
+          
+          if (locationMachines.length === 0) {
+            setMachineHourlyData(null);
+            return;
+          }
+
+          const machineIds = locationMachines.map(machine => machine.machineId).join(',');
+          
+          const response = await axios.get(`/api/analytics/machine-hourly`, {
+            params: {
+              machineIds,
+              timePeriod: 'Today',
+              startDate: selectedDateRange?.start,
+              endDate: selectedDateRange?.end,
+              licencee: selectedLicencee
+            }
+          });
+
+          setMachineHourlyData(response.data);
+        } catch (error) {
+          console.error("Failed to fetch machine hourly data:", error);
+          toast.error("Failed to load machine performance data");
+          setMachineHourlyData(null);
+        } finally {
+          setMachineHourlyLoading(false);
+        }
+      };
+      
+      fetchData();
+    }
+  }, [evaluationSelectedLocation, activeTab, allMachines, selectedDateRange, selectedLicencee]);
 
   useEffect(() => {
     if (activeTab === "offline" && offlineSelectedLocation) {
@@ -1464,10 +1522,7 @@ export default function MachinesTab() {
             </div>
           </div>
           {evaluationLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-              <span>Loading evaluation data...</span>
-            </div>
+            <MainContentSkeleton />
           ) : !evaluationSelectedLocation || evaluationSelectedLocation === "" ? (
             <Card>
               <CardContent className="p-8 text-center">
@@ -1488,6 +1543,139 @@ export default function MachinesTab() {
               
 
 
+
+              {/* Machine Performance Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {machineHourlyLoading ? (
+                  <RevenueAnalysisChartsSkeleton />
+                ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
+                  <>
+                    {/* Handle Chart */}
+                    {(() => {
+                      const hasHandleData = machineHourlyData.hourlyTrends.some(item => 
+                        machineHourlyData.locations.some(locationId => {
+                          const locationData = item[locationId];
+                          return typeof locationData === 'object' && locationData !== null && locationData.handle > 0;
+                        })
+                      );
+                      
+                      return hasHandleData ? (
+                        <StackedChart
+                          title="Handle"
+                          icon={<BarChart3 className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="handle"
+                          machines={machineHourlyData.locations}
+                          colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            locations.forEach(loc => {
+                              locationNameMap[loc.id] = loc.name;
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
+                      ) : (
+                        <ChartNoData
+                          title="Handle"
+                          icon={<BarChart3 className="h-5 w-5" />}
+                          message="No handle data available for the selected location"
+                        />
+                      );
+                    })()}
+
+                    {/* Win/Loss Chart */}
+                    {(() => {
+                      const hasWinLossData = machineHourlyData.hourlyTrends.some(item => 
+                        machineHourlyData.locations.some(locationId => {
+                          const locationData = item[locationId];
+                          return typeof locationData === 'object' && locationData !== null && locationData.winLoss !== 0;
+                        })
+                      );
+                      
+                      return hasWinLossData ? (
+                        <StackedChart
+                          title="Win/Loss"
+                          icon={<TrendingUp className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="winLoss"
+                          machines={machineHourlyData.locations}
+                          colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            locations.forEach(loc => {
+                              locationNameMap[loc.id] = loc.name;
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
+                      ) : (
+                        <ChartNoData
+                          title="Win/Loss"
+                          icon={<TrendingUp className="h-5 w-5" />}
+                          message="No win/loss data available for the selected location"
+                        />
+                      );
+                    })()}
+
+                    {/* Jackpot Chart */}
+                    {(() => {
+                      const hasJackpotData = machineHourlyData.hourlyTrends.some(item => 
+                        machineHourlyData.locations.some(locationId => {
+                          const locationData = item[locationId];
+                          return typeof locationData === 'object' && locationData !== null && locationData.jackpot > 0;
+                        })
+                      );
+                      
+                      return hasJackpotData ? (
+                        <StackedChart
+                          title="Jackpot"
+                          icon={<Trophy className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="jackpot"
+                          machines={machineHourlyData.locations}
+                          colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            locations.forEach(loc => {
+                              locationNameMap[loc.id] = loc.name;
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
+                      ) : (
+                        <ChartNoData
+                          title="Jackpot"
+                          icon={<Trophy className="h-5 w-5" />}
+                          message="No jackpot data available for the selected location"
+                        />
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <>
+                    {/* No Data Charts */}
+                    <ChartNoData
+                      title="Handle"
+                      icon={<BarChart3 className="h-5 w-5" />}
+                      message="No handle data available for the selected location"
+                    />
+                    <ChartNoData
+                      title="Win/Loss"
+                      icon={<TrendingUp className="h-5 w-5" />}
+                      message="No win/loss data available for the selected location"
+                    />
+                    <ChartNoData
+                      title="Jackpot"
+                      icon={<Trophy className="h-5 w-5" />}
+                      message="No jackpot data available for the selected location"
+                    />
+                  </>
+                )}
+              </div>
 
           {/* Top 5 Machines Table */}
           <Card>
@@ -1761,10 +1949,7 @@ export default function MachinesTab() {
             </CardHeader>
             <CardContent>
               {offlineLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                  <span>Loading offline machines data...</span>
-                </div>
+                <MainContentSkeleton />
               ) : (
                 <>
                   <div className="flex flex-col md:flex-row gap-4 mb-6">

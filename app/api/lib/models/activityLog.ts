@@ -2,6 +2,10 @@ import { model, models, Schema } from "mongoose";
 
 const ActivityLogSchema = new Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+    },
     timestamp: { type: Date, default: Date.now, required: true },
     // User who performed the action
     userId: { type: String, required: true },

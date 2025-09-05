@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+
 import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
 import { Member, MemberSortOption } from "@/lib/types/members";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import DeleteMemberModal from "@/components/ui/members/DeleteMemberModal";
 import NewMemberModal from "@/components/ui/members/NewMemberModal";
 
 export default function MembersListTab() {
-  const { selectedLicencee } = useDashBoardStore();
+
 
   const {
     selectedMember,
@@ -73,10 +73,7 @@ export default function MembersListTab() {
           sortOrder: sortOrder,
         });
 
-        // Add licencee filter if selected
-        if (selectedLicencee && selectedLicencee !== "All Licensees") {
-          params.append("licencee", selectedLicencee);
-        }
+
 
         const response = await axios.get(`/api/members?${params}`);
         const result = response.data;
@@ -96,12 +93,12 @@ export default function MembersListTab() {
         setLoading(false);
       }
     },
-    [itemsPerPage, selectedLicencee]
+    [itemsPerPage]
   );
 
   useEffect(() => {
     fetchMembers(1, searchTerm, sortOption, sortOrder);
-  }, [fetchMembers, searchTerm, sortOption, sortOrder, selectedLicencee]);
+  }, [fetchMembers, searchTerm, sortOption, sortOrder]);
 
   // Sorting functionality - now handled by backend
   const handleSort = useCallback(

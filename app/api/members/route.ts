@@ -3,7 +3,6 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { Member } from "@/app/api/lib/models/members";
 import type { PipelineStage } from "mongoose";
 
-
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -16,6 +15,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const licencee = searchParams.get("licencee") || "";
+    console.warn("Received licencee parameter:", licencee);
 
     // Build optimized query
     const query: Record<string, unknown> = {};
@@ -118,10 +118,10 @@ export async function GET(request: NextRequest) {
 
     // Filter by licencee if specified
     if (licencee && licencee !== "All Licensees" && licencee !== "all") {
+      console.warn("Filtering by licencee:", licencee);
       pipeline.push({
         $match: {
           "locationInfo.rel.licencee": licencee,
-          "locationInfo.deletedAt": { $exists: false },
         },
       });
     }
@@ -152,8 +152,13 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $sort: sort });
 
     // Get total count
-    const countPipeline = [...pipeline, { $count: "total" } as Record<string, unknown>];
-        const countResult = await Member.aggregate(countPipeline as unknown as PipelineStage[]);
+    const countPipeline = [
+      ...pipeline,
+      { $count: "total" } as Record<string, unknown>,
+    ];
+    const countResult = await Member.aggregate(
+      countPipeline as unknown as PipelineStage[]
+    );
     const totalMembers = countResult[0]?.total || 0;
 
     // Add pagination
@@ -161,7 +166,21 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $limit: limit });
 
     // Execute aggregation
-        const members = await Member.aggregate(pipeline as unknown as PipelineStage[]);
+    const members = await Member.aggregate(
+      pipeline as unknown as PipelineStage[]
+    );
+
+    // Debug: Log some sample location info to see what licensee values exist
+    if (members.length > 0) {
+      console.warn(
+        "Sample member location info:",
+        members.slice(0, 3).map((m) => ({
+          memberId: m._id,
+          locationName: m.locationName,
+          gamingLocation: m.gamingLocation,
+        }))
+      );
+    }
 
     const response = {
       success: true,
@@ -232,6 +251,7 @@ export async function POST(request: NextRequest) {
       uaccount: body.uaccount || 0,
       pin: body.pin || "0000",
       gamingLocation: body.gamingLocation || "default", // Allow specifying gaming location
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
       createdAt: new Date(),
       updatedAt: new Date(),
     });

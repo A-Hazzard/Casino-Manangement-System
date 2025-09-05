@@ -5,9 +5,10 @@ import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
 } from "@/lib/types/api";
-import type { Machine as MachineType } from "@/lib/types/machines";
+import type { Machine as _MachineType } from "@/lib/types/machines";
 import { CollectionReportData } from "@/lib/types";
 import { CollectionReport } from "../models/collectionReport";
+import { Collections } from "../models/collections";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
 import { getDatesForTimePeriod } from "../utils/dates";
 import type { TimePeriod } from "@/app/api/lib/types";
@@ -309,8 +310,6 @@ export async function getCollectionMetersHistoryByMachine(
   }
 }
 
-
-
 /**
  * Fetches all accounting details for a given machine ID.
  *
@@ -346,22 +345,138 @@ export async function getCollectionReportById(
   }).lean();
   if (!report) return null;
 
-  // Fetch machine metrics for this report
-  // (Assume Machine model and collectionMetersHistory are available)
-  const machines = await Machine.find({
-    "collectionMetersHistory.locationReportId": report.locationReportId,
-  }).lean();
+  // Fetch actual collections for this report with machine details resolved
+  const collections = await Collections.aggregate([
+    {
+      $match: {
+        locationReportId: reportId,
+      },
+    },
+    {
+      $lookup: {
+        from: "machines",
+        localField: "sasMeters.machine",
+        foreignField: "_id",
+        as: "machineDetails",
+      },
+    },
+    {
+      $addFields: {
+        "sasMeters.machine": {
+          $let: {
+            vars: {
+              machine: { $arrayElemAt: ["$machineDetails", 0] },
+            },
+            in: {
+              $cond: {
+                if: { $ne: ["$$machine", null] },
+                then: {
+                  $cond: {
+                    if: { $ne: ["$$machine.serialNumber", null] },
+                    then: "$$machine.serialNumber",
+                    else: {
+                      $cond: {
+                        if: { $ne: ["$$machine.custom.name", null] },
+                        then: "$$machine.custom.name",
+                        else: {
+                          $cond: {
+                            if: { $ne: ["$$machine.machineId", null] },
+                            then: "$$machine.machineId",
+                            else: "$$machine._id",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                else: {
+                  // Fallback to collection fields if no machine found
+                  $cond: {
+                    if: { $ne: ["$machineCustomName", null] },
+                    then: "$machineCustomName",
+                    else: {
+                      $cond: {
+                        if: { $ne: ["$serialNumber", null] },
+                        then: "$serialNumber",
+                        else: {
+                          $cond: {
+                            if: { $ne: ["$machineName", null] },
+                            then: "$machineName",
+                            else: {
+                              $cond: {
+                                if: { $ne: ["$machineId", null] },
+                                then: "$machineId",
+                                else: "$sasMeters.machine",
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        machineDetails: 0, // Remove the temporary machineDetails field
+      },
+    },
+  ]);
 
-  // Map location metrics
+  // Calculate location metrics from actual collections using the same logic as individual machines
+  const totalDrop = collections.reduce(
+    (sum, col) => sum + ((col.metersIn || 0) - (col.prevIn || 0)),
+    0
+  );
+  const totalCancelled = collections.reduce(
+    (sum, col) => sum + ((col.metersOut || 0) - (col.prevOut || 0)),
+    0
+  );
+
+  const totalMetersGross = collections.reduce(
+    (sum, col) => sum + (col.movement?.gross || 0),
+    0
+  );
+  const totalSasGross = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.gross || 0),
+    0
+  );
+  const totalVariation = totalMetersGross - totalSasGross;
+
+
+  // Get total number of machines for this location
+  let totalMachinesForLocation = collections.length; // Default fallback
+  try {
+    if (report.location) {
+      const totalMachinesCount = await Machine.countDocuments({
+        gamingLocation: report.location,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      });
+      totalMachinesForLocation = totalMachinesCount;
+    }
+  } catch (error) {
+    console.warn("Could not count total machines for location:", error);
+    // Keep the fallback value
+  }
+
+  // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
   const locationMetrics = {
-    droppedCancelled: `${report.totalDrop || 0}/${report.totalCancelled || 0}`,
-    metersGross: report.totalGross || 0,
-    variation: report.variance || 0,
-    sasGross: report.totalSasGross || 0,
+    droppedCancelled: `${totalDrop}/${totalCancelled}`,
+    metersGross: totalMetersGross,
+    variation: totalVariation,
+    sasGross: totalSasGross,
     locationRevenue: report.partnerProfit || 0,
     amountUncollected: report.amountUncollected || 0,
     amountToCollect: report.amountToCollect || 0,
-    machinesNumber: report.machinesCollected || "-",
+    machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
     collectedAmount: report.amountCollected || 0,
     reasonForShortage: report.reasonShortagePayment || "-",
     taxes: report.taxes || 0,
@@ -374,11 +489,25 @@ export async function getCollectionReportById(
     varianceReason: report.varianceReason || "-",
   };
 
-  // Map SAS metrics
+  // Calculate SAS-specific metrics from sasMeters data
+  const sasDropTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.drop || 0),
+    0
+  );
+  const sasCancelledTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.totalCancelledCredits || 0),
+    0
+  );
+  const sasGrossTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.gross || 0),
+    0
+  );
+
+  // Map SAS metrics from actual collections
   const sasMetrics = {
-    dropped: report.totalSasGross || 0, // TODO: Replace with actual SAS dropped if available
-    cancelled: 0, // TODO: Replace with actual SAS cancelled if available
-    gross: report.totalSasGross || 0,
+    dropped: sasDropTotal,
+    cancelled: sasCancelledTotal,
+    gross: sasGrossTotal,
   };
 
   return {
@@ -387,26 +516,33 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toLocaleString()
       : "-",
-    machineMetrics: machines.map((machineRaw, idx: number) => {
-      const machine = machineRaw as unknown as MachineType;
-      const historyEntry = (machine.collectionMetersHistory || []).find(
-        (entry: CollectionMetersHistoryEntry) =>
-          entry.locationReportId === report.locationReportId
-      );
-      const metersInDiff =
-        (historyEntry?.metersIn || 0) - (historyEntry?.prevMetersIn || 0);
-      const metersOutDiff =
-        (historyEntry?.metersOut || 0) - (historyEntry?.prevMetersOut || 0);
-      const meterGross = metersInDiff - metersOutDiff;
+    machineMetrics: collections.map((collection, idx: number) => {
+      // sasMeters.machine is already resolved by the aggregation query
+      const machineDisplayName = collection.sasMeters?.machine || 
+        collection.machineCustomName ||
+        collection.serialNumber ||
+        collection.machineName ||
+        collection.machineId ||
+        `Machine ${idx + 1}`;
+
+      // Calculate drop/cancelled from the difference between current and previous meters
+      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
+      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
+      const meterGross = collection.movement?.gross || 0;
+      const sasGross = collection.sasMeters?.gross || 0;
+      const variation = meterGross - sasGross;
+
+
       return {
         id: String(idx + 1),
-        machineId: machine.serialNumber || machine._id,
-        dropCancelled: `${metersInDiff} / 0`, // TODO: Replace 0 with actual cancelled credits if available
-        meterGross,
-        sasGross: "-", // TODO: Replace with actual SAS gross if available
-        variation: "-", // TODO: Replace with actual variation if available
-        sasTimes: historyEntry ? `${historyEntry.timestamp}` : "-",
-        hasIssue: false, // TODO: Set true if there is an issue
+        machineId: machineDisplayName,
+        dropCancelled: `${drop} / ${cancelled}`,
+        metersGross: meterGross,
+        sasGross: sasGross.toString(),
+        variation: variation.toString(),
+        sasStartTime: collection.sasMeters?.sasStartTime || "-",
+        sasEndTime: collection.sasMeters?.sasEndTime || "-",
+        hasIssue: false,
       };
     }),
     locationMetrics,

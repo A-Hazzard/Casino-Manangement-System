@@ -25,6 +25,7 @@ export function mapToCabinetProps(
     smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
     moneyIn: cabinet.moneyIn || cabinet.sasMeters?.drop || 0,
     moneyOut: cabinet.moneyOut || 0,
+    cancelledCredits: cabinet.cancelledCredits || cabinet.moneyOut || 0,
     gross:
       cabinet.gross ||
       (cabinet.moneyIn || cabinet.sasMeters?.drop || 0) -

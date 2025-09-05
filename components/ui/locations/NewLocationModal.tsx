@@ -13,20 +13,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useLocationStore } from "@/lib/store/locationStore";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation, LocationCoordinates } from "@/lib/types/maps";
 import type { NewLocationModalProps } from "@/lib/types/components";
+import { fetchLicensees } from "@/lib/helpers/licensees";
+import type { Licensee } from "@/lib/types/licensee";
 
 export default function NewLocationModal({
   isOpen,
   onClose,
+  onCreated,
 }: NewLocationModalProps) {
-  const router = useRouter();
   const { createLocation } = useLocationStore();
-  const { selectedLicencee } = useDashBoardStore();
 
   // Form state - all fields blank by default
   const [formData, setFormData] = useState({
@@ -39,6 +38,21 @@ export default function NewLocationModal({
     isLocalServer: false,
     latitude: "",
     longitude: "",
+    billValidatorOptions: {
+      denom1: false,
+      denom2: false,
+      denom5: false,
+      denom10: false,
+      denom20: false,
+      denom50: false,
+      denom100: false,
+      denom200: false,
+      denom500: false,
+      denom1000: false,
+      denom2000: false,
+      denom5000: false,
+      denom10000: false,
+    },
   });
   const [useMap, setUseMap] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,11 +60,14 @@ export default function NewLocationModal({
   const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(
     null
   );
+  const [licensees, setLicensees] = useState<Licensee[]>([]);
+  const [licenseesLoading, setLicenseesLoading] = useState(false);
 
   // Detect user location on modal open
   useEffect(() => {
     if (isOpen) {
       detectUserLocation();
+      loadLicensees();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -68,6 +85,21 @@ export default function NewLocationModal({
         isLocalServer: false,
         latitude: "",
         longitude: "",
+        billValidatorOptions: {
+          denom1: false,
+          denom2: false,
+          denom5: false,
+          denom10: false,
+          denom20: false,
+          denom50: false,
+          denom100: false,
+          denom200: false,
+          denom500: false,
+          denom1000: false,
+          denom2000: false,
+          denom5000: false,
+          denom10000: false,
+        },
       });
       setUseMap(false);
     }
@@ -146,6 +178,19 @@ export default function NewLocationModal({
     }
   };
 
+  const loadLicensees = async () => {
+    setLicenseesLoading(true);
+    try {
+      const licenseesData = await fetchLicensees();
+      setLicensees(licenseesData);
+    } catch (error) {
+      console.error("Failed to fetch licensees:", error);
+      toast.error("Failed to load licensees");
+    } finally {
+      setLicenseesLoading(false);
+    }
+  };
+
   const getAddressFromCoordinates = async (
     lat: number,
     lng: number
@@ -220,6 +265,16 @@ export default function NewLocationModal({
     setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
+  const handleBillValidatorChange = (denom: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      billValidatorOptions: {
+        ...prev.billValidatorOptions,
+        [denom]: checked,
+      },
+    }));
+  };
+
   const handleLocationSelect = (location: SelectedLocation) => {
     setFormData((prev) => ({
       ...prev,
@@ -237,7 +292,7 @@ export default function NewLocationModal({
 
     try {
       // Validate form
-      if (!formData.name || !formData.street) {
+      if (!formData.name || !formData.street || !formData.licencee) {
         throw new Error("Please fill in all required fields");
       }
 
@@ -247,9 +302,8 @@ export default function NewLocationModal({
         address: formData.street, // Just pass the street as address string
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
-        rel: {
-          licencee: selectedLicencee || "", // Use current selected licencee
-        },
+        licencee: formData.licencee, // Use selected licensee from form
+        billValidatorOptions: formData.billValidatorOptions,
       };
 
       // Add location
@@ -259,8 +313,8 @@ export default function NewLocationModal({
       toast.success("Location added successfully");
 
       // Close modal and refresh
+      onCreated?.();
       onClose();
-      router.refresh();
     } catch (error) {
       console.error("Error adding location:", error);
       toast.error(
@@ -371,15 +425,28 @@ export default function NewLocationModal({
           {/* Licensee */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-grayHighlight mb-1">
-              Licensee
+              Licensee <span className="text-red-500">*</span>
             </label>
-            <Input
+            <select
               name="licencee"
               value={formData.licencee}
-              onChange={handleInputChange}
-              placeholder="Enter licensee"
-              className="w-full bg-container border-border"
-            />
+              onChange={(e) => handleSelectChange("licencee", e.target.value)}
+              className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+              required
+            >
+              <option value="">Select Licensee</option>
+              {licenseesLoading ? (
+                <option value="" disabled>
+                  Loading licensees...
+                </option>
+              ) : (
+                licensees.map((licensee) => (
+                  <option key={licensee._id} value={licensee._id}>
+                    {licensee.name}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
           {/* No SMIB Location Checkbox */}
@@ -465,6 +532,48 @@ export default function NewLocationModal({
               />
             </div>
           )}
+
+          {/* Bill Validator Denominations */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-grayHighlight mb-3">
+              Bill Validator Denominations
+            </label>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { key: "denom1", label: "$1" },
+                { key: "denom2", label: "$2" },
+                { key: "denom5", label: "$5" },
+                { key: "denom10", label: "$10" },
+                { key: "denom20", label: "$20" },
+                { key: "denom50", label: "$50" },
+                { key: "denom100", label: "$100" },
+                { key: "denom200", label: "$200" },
+                { key: "denom500", label: "$500" },
+                { key: "denom1000", label: "$1,000" },
+                { key: "denom2000", label: "$2,000" },
+                { key: "denom5000", label: "$5,000" },
+                { key: "denom10000", label: "$10,000" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={
+                      formData.billValidatorOptions[
+                        key as keyof typeof formData.billValidatorOptions
+                      ] as boolean
+                    }
+                    onCheckedChange={(checked) =>
+                      handleBillValidatorChange(key, checked === true)
+                    }
+                    className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+                  />
+                  <Label htmlFor={key} className="text-sm font-medium">
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

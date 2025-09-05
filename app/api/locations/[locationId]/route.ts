@@ -25,6 +25,27 @@ export async function GET(request: NextRequest) {
     const url = request.nextUrl;
     const locationId = url.pathname.split("/")[3];
 
+    // Check if this is a request for basic location details (no query params)
+    const hasQueryParams = url.searchParams.toString().length > 0;
+
+    if (!hasQueryParams) {
+      // Return basic location details for edit modal
+      await connectDB();
+      const location = await GamingLocations.findById(locationId);
+
+      if (!location) {
+        return NextResponse.json(
+          { success: false, message: "Location not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        location: location,
+      });
+    }
+
     // Connect to the database
     const db = await connectDB();
     if (!db) {
@@ -273,5 +294,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-

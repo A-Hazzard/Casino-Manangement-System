@@ -27,6 +27,36 @@ Licencee (licencee.ts)
 └── Scheduler (scheduler.ts)
 ```
 
+## Casino Machine System - How It Actually Works
+
+### **🎰 Complete Gaming Session Flow**
+
+```
+Member Swipes Card → MachineSession Created → MachineEvents Logged → Collection → CollectionReport
+```
+
+### **1. Member Gaming Session (MachineSessions)**
+- **Purpose**: Tracks when a member starts/ends playing on a machine
+- **Key Fields**: `memberId`, `machineId`, `startTime`, `endTime`, `startMeters`, `endMeters`
+- **Real Example**: John Doe plays slot machine for 2 hours, system tracks his entire session
+
+### **2. Machine Events (MachineEvents)**
+- **Purpose**: Logs every action during a gaming session
+- **Key Fields**: `machine`, `currentSession`, `sequence` (array of events)
+- **Real Example**: Every bet, win, bill insertion, and machine command is logged
+- **Dual Linking**: Events link to both machine (for machine queries) and session (for player queries)
+
+### **3. Collections (Collections)**
+- **Purpose**: Records money collected from machines after gaming sessions
+- **Key Fields**: `machineId`, `metersIn`, `metersOut`, `sasMeters`, `collector`
+- **Real Example**: Staff member collects $200 from machine after John Doe's session
+- **Financial Tracking**: Tracks drop (money in), gross (money collected), and variance
+
+### **4. Collection Reports (CollectionReport)**
+- **Purpose**: Aggregates all collections for a location into financial summaries
+- **Key Fields**: `location`, `totalDrop`, `totalGross`, `amountCollected`, `variance`
+- **Real Example**: Daily report showing $5,000 total drop and $1,200 collected from all machines
+
 ## Detailed Relationship Mappings
 
 ### 1. **Licencee → GamingLocation**
@@ -60,30 +90,30 @@ Licencee (licencee.ts)
 - **Purpose**: Detailed event logging for each gaming session
 - **Note**: MachineEvents are linked to sessions via the `currentSession` field, which contains the session ID
 
-### 6. **Member → AcceptedBill**
-- **Field**: `member` in `acceptedBills.ts`
-- **Type**: `string` (references `members._id`)
-- **Relationship**: One-to-Many (One Member can have multiple AcceptedBills)
-- **Purpose**: Tracking bill validator denominations accepted by each member
-
-### 7. **GamingLocation → Machine**
-- **Field**: `gamingLocation` in `machines.ts`
-- **Type**: `string` (references `gaminglocations._id`)
-- **Relationship**: One-to-Many (One GamingLocation can have multiple Machines)
-- **Purpose**: Each casino location contains multiple slot machines/cabinets
-
-### 8. **Machine → Meter**
-- **Field**: `machine` in `meters.ts`
-- **Type**: `string` (references `machines._id`)
-- **Relationship**: One-to-Many (One Machine can have multiple Meters)
-- **Purpose**: Real-time meter readings from slot machines for financial tracking
-
-### 9. **Machine → MachineEvent**
+### 6. **Machine → MachineEvent**
 - **Field**: `machine` in `machineEvents.ts`
 - **Type**: `string` (references `machines._id`)
 - **Relationship**: One-to-Many (One Machine can have multiple MachineEvents)
 - **Purpose**: Logging of machine events, commands, and communication
 - **Note**: MachineEvents are linked to both machines (via `machine` field) and sessions (via `currentSession` field)
+
+### 7. **Machine → Collection**
+- **Field**: `machineId` in `collections.ts`
+- **Type**: `string` (references `machines._id`)
+- **Relationship**: One-to-Many (One Machine can have multiple Collections)
+- **Purpose**: Financial collection records from each machine after gaming sessions
+
+### 8. **Collection → CollectionReport**
+- **Field**: `location` in both collections and collectionReport (via machine → location relationship)
+- **Type**: `string` (references `gaminglocations._id`)
+- **Relationship**: Many-to-One (Multiple Collections contribute to one CollectionReport)
+- **Purpose**: Aggregating individual machine collections into location-wide financial reports
+
+### 9. **Member → AcceptedBill**
+- **Field**: `member` in `acceptedBills.ts`
+- **Type**: `string` (references `members._id`)
+- **Relationship**: One-to-Many (One Member can have multiple AcceptedBills)
+- **Purpose**: Tracking bill validator denominations accepted by each member
 
 ### 10. **Machine → AcceptedBill**
 - **Field**: `machine` in `acceptedBills.ts`
@@ -144,6 +174,79 @@ Licencee (licencee.ts)
 - **Type**: `string` (references `gaminglocations._id`)
 - **Relationship**: One-to-Many (One GamingLocation can have multiple Schedules)
 - **Purpose**: Collection scheduling for specific locations
+
+## Casino Machine Financial Flow
+
+### **Complete Money Flow: Machine → Session → Events → Collection → Report**
+
+```
+Machine (machines.ts)
+├── MachineSession (machineSessions.ts) - Player gaming session
+│   ├── startMeters - Money in machine when session started
+│   ├── endMeters - Money in machine when session ended
+│   └── MachineEvent (machineEvents.ts) - Every action during session
+├── Collection (collections.ts) - Money collected after session
+│   ├── metersIn - Money when collection started
+│   ├── metersOut - Money when collection finished
+│   └── sasMeters - Financial calculations (drop, gross, variance)
+└── CollectionReport (collectionReport.ts) - Location financial summary
+    ├── totalDrop - Sum of all machine drops
+    ├── totalGross - Sum of all collections
+    └── variance - Difference between expected and actual
+```
+
+### **Real-World Example: John Doe's Gaming Session**
+
+1. **Session Start**:
+   ```typescript
+   MachineSession {
+     memberId: "john_doe",
+     machineId: "slot_machine_456",
+     startTime: "2024-12-20 10:00:00",
+     startMeters: { drop: 1000, gamesPlayed: 0 }
+   }
+   ```
+
+2. **During Play**:
+   ```typescript
+   MachineEvent {
+     machine: "slot_machine_456",
+     currentSession: "session_123",
+     sequence: [
+       { message: "Bill accepted $20", success: true },
+       { message: "Bet $1", success: true },
+       { message: "Won $5", success: true }
+     ]
+   }
+   ```
+
+3. **Session End**:
+   ```typescript
+   MachineSession {
+     endTime: "2024-12-20 12:00:00",
+     endMeters: { drop: 800, gamesPlayed: 25 }
+   }
+   ```
+
+4. **Collection**:
+   ```typescript
+   Collection {
+     machineId: "slot_machine_456",
+     metersIn: 800,    // Money when collection started
+     metersOut: 600,   // Money when collection finished
+     sasMeters: { drop: 800, gross: 200 }
+   }
+   ```
+
+5. **Report Generation**:
+   ```typescript
+   CollectionReport {
+     location: "casino_main_floor",
+     totalDrop: 5000,      // Sum of all collections
+     totalGross: 1200,     // Total money collected
+     machinesCollected: "5 machines"
+   }
+   ```
 
 ## Member Gaming Flow Relationships
 
@@ -237,6 +340,7 @@ Machine (machines.ts)
 - `machineSessionSchema.index({ memberId: 1, startTime: -1 })` - For member-based session queries
 - `machineSessionSchema.index({ machineId: 1, startTime: -1 })` - For machine-based session queries
 - `machineEventSchema.index({ machine: 1, date: -1 })` - For machine-based event queries
+- `machineEventSchema.index({ currentSession: 1, date: -1 })` - For session-based event queries
 - `machineSchema.index({ gamingLocation: 1, deletedAt: 1 })` - For location-based machine queries
 - `machineSchema.index({ serialNumber: 1 })` - For machine serial number lookups
 - `machineSchema.index({ lastActivity: 1 })` - For machine activity tracking
@@ -303,8 +407,9 @@ Member → Machine → AcceptedBill → Financial Tracking
 2. **Location-based aggregation**: Metrics aggregated by `gamingLocation`
 3. **Member-based queries**: Session and activity data filtered by `memberId`
 4. **Machine-based queries**: Events and meters filtered by `machine` or `machineId`
-5. **Time-based queries**: Most queries include date range filtering
-6. **Status-based filtering**: Active records filtered by `deletedAt: null`
+5. **Session-based queries**: Events filtered by `currentSession`
+6. **Time-based queries**: Most queries include date range filtering
+7. **Status-based filtering**: Active records filtered by `deletedAt: null`
 
 ### Performance Considerations
 - Indexes are optimized for the most common query patterns
@@ -328,7 +433,17 @@ Member → Machine → AcceptedBill → Financial Tracking
 - **Event Relationship**: `_id` ← `machineEvents.machine`
 - **Meter Relationship**: `_id` ← `meters.machine`
 - **Bill Relationship**: `_id` ← `acceptedBills.machine`
+- **Collection Relationship**: `_id` ← `collections.machineId`
 - **Embedded History**: `collectionMetersHistory` array for financial tracking
+- **Collection Meters**: `collectionMeters` object with `metersIn` and `metersOut` for previous collection tracking
+- **Collection Time**: `collectionTime` field for SAS time period calculation
+- **Collector Denomination**: `collectorDenomination` field for collection report multiplier
+- **Game Configuration**: `gameConfig` object for game-specific settings
+  - `accountingDenomination`: Smallest currency unit for financial tracking
+  - `theoreticalRtp`: Expected return-to-player percentage
+  - `maxBet`: Maximum bet allowed per spin
+  - `payTableId`: Specific pay table version
+  - `progressiveGroup`: Progressive jackpot group assignment
 
 ### **MachineSessions Model (`machineSessions.ts`)**
 - **Primary Key**: `_id`
@@ -337,6 +452,8 @@ Member → Machine → AcceptedBill → Financial Tracking
 - **Event Relationship**: `_id` ← `machineEvents.currentSession`
 - **Meter Data**: Embedded `startMeters`, `endMeters`, `intermediateMeters`
 - **Bill Data**: Embedded `startBillMeters`, `endBillMeters`
+- **Collection Time**: `collectionTime` field used for SAS time period calculation
+- **Collection Meters**: Embedded `collectionMeters` with `metersIn` and `metersOut` for previous collection tracking
 
 ### **MachineEvents Model (`machineEvents.ts`)**
 - **Primary Key**: `_id`
@@ -344,6 +461,23 @@ Member → Machine → AcceptedBill → Financial Tracking
 - **Session Relationship**: `currentSession` → `machineSessions._id`
 - **Event Details**: `sequence` array for detailed event logging
 - **Dual Linking**: Events are linked to both machines and sessions for comprehensive tracking
+
+### **Collections Model (`collections.ts`)**
+- **Primary Key**: `_id`
+- **Machine Relationship**: `machineId` → `machines._id`
+- **Location Relationship**: `location` → `gaminglocations._id`
+- **Collector Relationship**: `collector` → `users._id`
+- **Location Report Relationship**: `locationReportId` → `collectionReport.locationReportId`
+- **Financial Data**: `sasMeters` and `movement` objects for financial calculations
+- **SAS Metrics**: `sasMeters.drop`, `sasMeters.totalCancelledCredits`, `sasMeters.gross` calculated from meters collection
+- **SAS Time Period**: `sasMeters.sasStartTime` from `machineSessions.collectionTime`, `sasMeters.sasEndTime` from current time
+- **Movement Calculation**: `movement.metersIn` and `movement.metersOut` calculated as difference from previous collection
+
+### **CollectionReport Model (`collectionReport.ts`)**
+- **Primary Key**: `_id`
+- **Location Relationship**: `location` → `gaminglocations._id`
+- **Location Report Relationship**: `locationReportId` → `locationReports._id`
+- **Financial Summary**: Aggregates data from multiple collections
 
 ### **Meters Model (`meters.ts`)**
 - **Primary Key**: `_id`

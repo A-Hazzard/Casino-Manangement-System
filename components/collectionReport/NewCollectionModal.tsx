@@ -1,5 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { gsap } from "gsap";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Trash2, Edit3 } from "lucide-react";
 import axios from "axios";
 import type {
@@ -29,10 +35,12 @@ import type {
   CreateCollectionReportPayload,
 } from "@/lib/types/api";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
+import { 
   createCollectionReport,
-  fetchMachineCollectionMeters,
-  fetchPreviousCollectionTime,
+  calculateSasMetrics,
+  calculateMovement,
+  calculateTotalAmountToCollect,
+  calculateBalanceCorrection
 } from "@/lib/helpers/collectionReport";
 import { useUserStore } from "@/lib/store/userStore";
 import { v4 as uuidv4 } from "uuid";
@@ -54,7 +62,8 @@ async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   const res = await axios.post("/api/collections", data);
-  return res.data;
+  // The API returns { success: true, data: created, calculations: {...} }
+  return res.data.data;
 }
 
 async function deleteMachineCollection(
@@ -64,14 +73,61 @@ async function deleteMachineCollection(
   return res.data;
 }
 
+async function updateCollectionsWithReportId(
+  collections: CollectionDocument[],
+  reportId: string
+): Promise<void> {
+  // Update each collection with the correct locationReportId
+  const updatePromises = collections.map(async (collection) => {
+    try {
+      await axios.patch(`/api/collections?id=${collection._id}`, {
+        locationReportId: reportId,
+      });
+    } catch (error) {
+      console.error(`Failed to update collection ${collection._id}:`, error);
+      throw error;
+    }
+  });
+
+  await Promise.all(updatePromises);
+}
+
 export default function NewCollectionModal({
   show,
   onClose,
   locations = [],
+  onRefresh,
 }: NewCollectionModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const hasResetRef = useRef(false);
   const user = useUserStore((state) => state.user);
-  const collectionLogger = createActivityLogger("session");
+  const userId = user?._id;
+  const collectionLogger = useMemo(() => createActivityLogger("session"), []);
+
+  // Function to generate collector name from user profile
+  const getCollectorName = useCallback(() => {
+    if (!user) return "Unknown Collector";
+
+    // Check if user has profile with firstName and lastName
+    const userWithProfile = user as typeof user & {
+      profile?: { firstName?: string; lastName?: string };
+      username?: string;
+    };
+
+    if (
+      userWithProfile.profile?.firstName &&
+      userWithProfile.profile?.lastName
+    ) {
+      return `${userWithProfile.profile.firstName} ${userWithProfile.profile.lastName}`;
+    }
+
+    // Fallback to username if available
+    if (userWithProfile.username) {
+      return userWithProfile.username;
+    }
+
+    // Final fallback to email
+    return user.emailAddress || "Unknown Collector";
+  }, [user]);
 
   const [selectedLocationId, setSelectedLocationId] = useState<
     string | undefined
@@ -98,6 +154,8 @@ export default function NewCollectionModal({
     CollectionDocument[]
   >([]);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [financials, setFinancials] = useState({
     taxes: "",
@@ -118,13 +176,25 @@ export default function NewCollectionModal({
     string | Date | undefined
   >(undefined);
 
-  const selectedLocation = locations.find(
-    (l) => String(l._id) === selectedLocationId
+  const selectedLocation = useMemo(
+    () => locations.find((l) => String(l._id) === selectedLocationId),
+    [locations, selectedLocationId]
   );
 
-  const machineForDataEntry = machinesOfSelectedLocation.find(
-    (m) => m._id === selectedMachineId
+  const machineForDataEntry = useMemo(
+    () => machinesOfSelectedLocation.find((m) => m._id === selectedMachineId),
+    [machinesOfSelectedLocation, selectedMachineId]
   );
+
+  // Function to handle clicks on disabled input fields
+  const handleDisabledFieldClick = useCallback(() => {
+    if (!machineForDataEntry && !editingEntryId) {
+      toast.warning("Please select or edit a machine first", {
+        duration: 3000,
+        position: "top-right",
+      });
+    }
+  }, [machineForDataEntry, editingEntryId]);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -152,84 +222,168 @@ export default function NewCollectionModal({
   }, [selectedLocationId, locations]);
 
   useEffect(() => {
-    if (selectedMachineId) {
-      fetchMachineCollectionMeters(selectedMachineId).then((meters) => {
-        setPrevIn(meters ? meters.metersIn : null);
-        setPrevOut(meters ? meters.metersOut : null);
-      });
-      fetchPreviousCollectionTime(selectedMachineId).then((prevTime) => {
-        setPreviousCollectionTime(prevTime);
-      });
+    if (selectedMachineId && machineForDataEntry) {
+      // Check if this machine is already in the collected list
+      const existingEntry = collectedMachineEntries.find(
+        entry => entry.machineId === selectedMachineId
+      );
+      
+      if (existingEntry) {
+        // Pre-fill with existing values from collected list
+        setCurrentMetersIn(existingEntry.metersIn?.toString() || "");
+        setCurrentMetersOut(existingEntry.metersOut?.toString() || "");
+        setCurrentMachineNotes(existingEntry.notes || "");
+        setCurrentRamClear(existingEntry.ramClear || false);
+        setCurrentCollectionTime(existingEntry.timestamp ? new Date(existingEntry.timestamp) : new Date());
+        setPrevIn(existingEntry.prevIn || 0);
+        setPrevOut(existingEntry.prevOut || 0);
+      } else {
+        // Use collectionMeters directly from the machine data for new entries
+        if (machineForDataEntry.collectionMeters) {
+          setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
+          setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
+        } else {
+          setPrevIn(0);
+          setPrevOut(0);
+        }
+        
+        // Reset input fields for new entries
+        setCurrentMetersIn("");
+        setCurrentMetersOut("");
+        setCurrentMachineNotes("");
+        setCurrentRamClear(false);
+        setCurrentCollectionTime(new Date());
+      }
+
+      // Use collectionTime directly from the machine data
+      if (machineForDataEntry.collectionTime) {
+        setPreviousCollectionTime(machineForDataEntry.collectionTime);
+      } else {
+        setPreviousCollectionTime(undefined);
+      }
     } else {
       setPrevIn(null);
       setPrevOut(null);
       setPreviousCollectionTime(undefined);
     }
-  }, [selectedMachineId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMachineId, machineForDataEntry]);
 
   useEffect(() => {
-    if (show && user?._id) {
-      fetchInProgressCollections(user._id)
-        .then(setCollectedMachineEntries)
-        .catch(() => setCollectedMachineEntries([]));
+    if (show && userId) {
+      setIsLoadingCollections(true);
+      fetchInProgressCollections(userId)
+        .then((collections) => {
+          setCollectedMachineEntries(collections);
+          
+          // Auto-set location and select first machine based on first machine in the list
+          if (collections.length > 0) {
+            const firstMachine = collections[0];
+            if (firstMachine.location) {
+              // Find the location by name
+              const matchingLocation = locations.find(
+                (loc) => loc.name === firstMachine.location
+              );
+              if (matchingLocation) {
+                setSelectedLocationId(String(matchingLocation._id));
+                setSelectedLocationName(matchingLocation.name);
+                
+                // Auto-select the first machine to show its input fields
+                setSelectedMachineId(firstMachine.machineId);
+              }
+            }
+          }
+        })
+        .catch(() => setCollectedMachineEntries([]))
+        .finally(() => setIsLoadingCollections(false));
     }
-  }, [show, user?._id]);
+  }, [show, userId, locations]);
 
-  const resetMachineSpecificInputFields = () => {
+  // Auto-calculate financial values when machines or financial inputs change
+  useEffect(() => {
+    if (collectedMachineEntries.length > 0) {
+      // Calculate total amount to collect
+      const totalAmountToCollect = calculateTotalAmountToCollect(collectedMachineEntries);
+      
+      // Update amount to collect
+      setFinancials(prev => ({
+        ...prev,
+        amountToCollect: totalAmountToCollect.toString()
+      }));
+    } else {
+      // Reset to empty when no machines
+      setFinancials(prev => ({
+        ...prev,
+        amountToCollect: "",
+        balanceCorrection: ""
+      }));
+    }
+  }, [collectedMachineEntries]);
+
+  // Auto-calculate balance correction when amount to collect or collected amount changes
+  useEffect(() => {
+    const amountToCollect = Number(financials.amountToCollect) || 0;
+    const collectedAmount = Number(financials.collectedAmount) || 0;
+    
+    if (amountToCollect !== 0 || collectedAmount !== 0) {
+      const balanceCorrection = calculateBalanceCorrection(amountToCollect, collectedAmount);
+      setFinancials(prev => ({
+        ...prev,
+        balanceCorrection: balanceCorrection.toString()
+      }));
+    }
+  }, [financials.amountToCollect, financials.collectedAmount]);
+
+  const resetMachineSpecificInputFields = useCallback(() => {
     setCurrentCollectionTime(new Date());
     setCurrentMetersIn("");
     setCurrentMetersOut("");
     setCurrentMachineNotes("");
     setCurrentRamClear(false);
-  };
-
-  const resetFullForm = useCallback(() => {
-    setSelectedLocationId(undefined);
-    setSelectedLocationName("");
-    setLocationSearch("");
-    setMachinesOfSelectedLocation([]);
-    setSelectedMachineId(undefined);
-
-    resetMachineSpecificInputFields();
-    setCollectedMachineEntries([]);
-    setEditingEntryId(null);
-
-    setFinancials({
-      taxes: "",
-      advance: "",
-      variance: "",
-      varianceReason: "",
-      amountToCollect: "",
-      collectedAmount: "",
-      balanceCorrection: "",
-      balanceCorrectionReason: "",
-      previousBalance: "",
-      reasonForShortagePayment: "",
-    });
-    setPrevIn(null);
-    setPrevOut(null);
-    setPreviousCollectionTime(undefined);
   }, []);
 
-  useEffect(() => {
-    if (show && modalRef.current) {
-      gsap.fromTo(
-        modalRef.current,
-        { opacity: 0, scale: 0.95 },
-        { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }
-      );
-    } else if (!show && modalRef.current) {
-      gsap.to(modalRef.current, {
-        opacity: 0,
-        scale: 0.95,
-        duration: 0.2,
-        ease: "power2.in",
-        onComplete: resetFullForm,
-      });
-    }
-  }, [show, resetFullForm]);
 
-  const handleAddOrUpdateEntry = async () => {
+  useEffect(() => {
+    if (!show && !hasResetRef.current) {
+      // Reset form when modal is closed
+      hasResetRef.current = true;
+      
+      // Reset all state directly without calling resetFullForm to prevent infinite loop
+      setSelectedLocationId(undefined);
+      setSelectedLocationName("");
+      setLocationSearch("");
+      setMachinesOfSelectedLocation([]);
+      setSelectedMachineId(undefined);
+      setCurrentCollectionTime(new Date());
+      setCurrentMetersIn("");
+      setCurrentMetersOut("");
+      setCurrentMachineNotes("");
+      setCurrentRamClear(false);
+      setCollectedMachineEntries([]);
+      setEditingEntryId(null);
+      setFinancials({
+        taxes: "",
+        advance: "",
+        variance: "",
+        varianceReason: "",
+        amountToCollect: "",
+        collectedAmount: "",
+        balanceCorrection: "",
+        balanceCorrectionReason: "",
+        previousBalance: "",
+        reasonForShortagePayment: "",
+      });
+      setPrevIn(null);
+      setPrevOut(null);
+      setPreviousCollectionTime(undefined);
+    } else if (show) {
+      hasResetRef.current = false;
+    }
+  }, [show]);
+
+  const handleAddOrUpdateEntry = useCallback(async () => {
+    if (isProcessing) return; // Prevent multiple submissions
+    
     if (!selectedMachineId || !machineForDataEntry) {
       toast.error("Please select a machine first.");
       return;
@@ -248,18 +402,44 @@ export default function NewCollectionModal({
       toast.error("Meters Out must be a valid number.");
       return;
     }
-    if (!user?._id) {
+    if (!userId) {
       toast.error("User not found.");
       return;
     }
+
+    setIsProcessing(true);
 
     const metersIn = Number(currentMetersIn);
     const metersOut = Number(currentMetersOut);
 
     if (isNaN(metersIn) || isNaN(metersOut)) {
       toast.error("Invalid meter values");
+      setIsProcessing(false);
       return;
     }
+
+    // Calculate SAS metrics
+    const sasStartTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+    const sasEndTime = currentCollectionTime || new Date();
+    
+    let sasMetrics;
+    try {
+      const machineIdentifier = machineForDataEntry.serialNumber || machineForDataEntry.name || selectedMachineId;
+      sasMetrics = await calculateSasMetrics(machineIdentifier, sasStartTime, sasEndTime);
+    } catch (error) {
+      console.error('Error calculating SAS metrics:', error);
+      sasMetrics = {
+        drop: 0,
+        totalCancelledCredits: 0,
+        gross: 0,
+        jackpot: 0,
+        sasStartTime: sasStartTime.toISOString(),
+        sasEndTime: sasEndTime.toISOString()
+      };
+    }
+
+    // Calculate movement
+    const movement = calculateMovement(metersIn, metersOut);
 
     const entryData = {
       _id: uuidv4(), // Generate a unique ID
@@ -289,25 +469,21 @@ export default function NewCollectionModal({
         ? String(currentCollectionTime.getMinutes()).padStart(2, "0")
         : "",
       isCompleted: false,
-      collector: user._id,
+      collector: userId,
       location: selectedLocationName,
-      locationReportId: selectedLocationId,
-      // Add required nested objects
+      locationReportId: "", // Will be set when report is created
+      // Add calculated nested objects
       sasMeters: {
         machine: machineForDataEntry.name,
-        drop: 0,
-        totalCancelledCredits: 0,
-        gross: 0,
+        drop: sasMetrics.drop,
+        totalCancelledCredits: sasMetrics.totalCancelledCredits,
+        gross: sasMetrics.gross,
         gamesPlayed: 0,
-        jackpot: 0,
-        sasStartTime: "",
-        sasEndTime: "",
+        jackpot: sasMetrics.jackpot,
+        sasStartTime: sasMetrics.sasStartTime,
+        sasEndTime: sasMetrics.sasEndTime,
       },
-      movement: {
-        metersIn,
-        metersOut,
-        gross: metersOut - metersIn,
-      },
+      movement: movement,
     };
 
     try {
@@ -322,10 +498,9 @@ export default function NewCollectionModal({
       );
 
       toast.success("Machine added!");
-      await fetchInProgressCollections(user._id).then(
-        setCollectedMachineEntries
-      );
+      await fetchInProgressCollections(userId).then(setCollectedMachineEntries);
       resetMachineSpecificInputFields();
+      setEditingEntryId(null); // Clear editing state
     } catch (error) {
       // Log error for debugging in development
       if (process.env.NODE_ENV === "development") {
@@ -334,59 +509,95 @@ export default function NewCollectionModal({
       toast.error(
         "Failed to add machine. Please check the console for details."
       );
+    } finally {
+      setIsProcessing(false);
     }
-  };
+  }, [
+    isProcessing,
+    selectedMachineId,
+    machineForDataEntry,
+    currentMetersIn,
+    currentMetersOut,
+    currentCollectionTime,
+    currentMachineNotes,
+    currentRamClear,
+    prevIn,
+    prevOut,
+    selectedLocationName,
+    userId,
+    resetMachineSpecificInputFields,
+    collectionLogger,
+  ]);
 
-  const handleEditCollectedEntry = (_id: string) => {
-    const entryToEdit = collectedMachineEntries.find((e) => e._id === _id);
-    if (entryToEdit) {
-      if (selectedMachineId !== entryToEdit.machineCustomName) {
-        setSelectedMachineId(entryToEdit.machineCustomName);
-      }
-      setCurrentCollectionTime(new Date(entryToEdit.timestamp));
-      setCurrentMetersIn(String(entryToEdit.metersIn));
-      setCurrentMetersOut(String(entryToEdit.metersOut));
-      setCurrentMachineNotes(entryToEdit.notes || "");
-      setCurrentRamClear(false);
-      setEditingEntryId(_id);
-      toast.info(
-        `Editing ${entryToEdit.machineCustomName}. Make changes and click 'Update Entry'.`
-      );
-    }
-  };
-
-  const handleDeleteCollectedEntry = async (_id: string) => {
-    if (!user?._id) {
-      toast.error("User not found.");
-      return;
-    }
-    try {
-      const entryToDelete = collectedMachineEntries.find((e) => e._id === _id);
-      const entryData = entryToDelete ? { ...entryToDelete } : null;
-
-      await deleteMachineCollection(_id);
-
-      // Log the deletion activity
-      if (entryData) {
-        await collectionLogger.logDelete(
-          _id,
-          `${entryData.machineCustomName} at ${selectedLocationName}`,
-          entryData,
-          `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
+  const handleEditCollectedEntry = useCallback(
+    (_id: string) => {
+      if (isProcessing) return; // Prevent editing during processing
+      
+      const entryToEdit = collectedMachineEntries.find((e) => e._id === _id);
+      if (entryToEdit) {
+        if (selectedMachineId !== entryToEdit.machineCustomName) {
+          setSelectedMachineId(entryToEdit.machineCustomName);
+        }
+        setCurrentCollectionTime(new Date(entryToEdit.timestamp));
+        setCurrentMetersIn(String(entryToEdit.metersIn));
+        setCurrentMetersOut(String(entryToEdit.metersOut));
+        setCurrentMachineNotes(entryToEdit.notes || "");
+        setCurrentRamClear(entryToEdit.ramClear || false);
+        setEditingEntryId(_id);
+        toast.info(
+          `Editing ${entryToEdit.machineCustomName}. Make changes and click 'Update Entry'.`
         );
       }
+    },
+    [collectedMachineEntries, selectedMachineId, isProcessing]
+  );
 
-      toast.success("Machine deleted!");
-      await fetchInProgressCollections(user._id).then(
-        setCollectedMachineEntries
-      );
-    } catch {
-      toast.error("Failed to delete machine");
-    }
-  };
 
-  const handleCreateMultipleReports = async () => {
-    if (!user?._id) {
+  const handleDeleteCollectedEntry = useCallback(
+    async (_id: string) => {
+      if (isProcessing) return; // Prevent deletion during processing
+      
+      if (!userId) {
+        toast.error("User not found.");
+        return;
+      }
+      
+      setIsProcessing(true);
+      try {
+        const entryToDelete = collectedMachineEntries.find(
+          (e) => e._id === _id
+        );
+        const entryData = entryToDelete ? { ...entryToDelete } : null;
+
+        await deleteMachineCollection(_id);
+
+        // Log the deletion activity
+        if (entryData) {
+          await collectionLogger.logDelete(
+            _id,
+            `${entryData.machineCustomName} at ${selectedLocationName}`,
+            entryData,
+            `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
+          );
+        }
+
+        toast.success("Machine deleted!");
+        await fetchInProgressCollections(userId).then(
+          setCollectedMachineEntries
+        );
+      } catch {
+        toast.error("Failed to delete machine");
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [userId, collectedMachineEntries, selectedLocationName, collectionLogger, isProcessing]
+  );
+
+  const handleCreateMultipleReports = useCallback(async () => {
+    if (isProcessing) return; // Prevent multiple submissions
+    
+    if (!userId) {
       toast.error("User not found.");
       return;
     }
@@ -398,6 +609,12 @@ export default function NewCollectionModal({
       toast.error("Location not properly selected.");
       return;
     }
+
+    setIsProcessing(true);
+
+    // Generate a single locationReportId for all collections in this report
+    const reportId = uuidv4();
+
     const reportCreationPromises = collectedMachineEntries.map((entry) => {
       const machineEntry = {
         machineId: entry.machineId,
@@ -437,9 +654,9 @@ export default function NewCollectionModal({
         partnerProfit: 0,
         taxes: Number(financials.taxes) || 0,
         advance: Number(financials.advance) || 0,
-        collectorName: user?.emailAddress || "N/A",
+        collectorName: getCollectorName(),
         locationName: selectedLocationName,
-        locationReportId: uuidv4(),
+        locationReportId: reportId,
         location: selectedLocationId || "",
         totalDrop: 0,
         totalCancelled: 0,
@@ -499,7 +716,21 @@ export default function NewCollectionModal({
       }
     });
 
+    // Update existing collections with the correct locationReportId
+    if (successCount > 0) {
+      try {
+        await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+      } catch (error) {
+        console.error("Failed to update collections with report ID:", error);
+        toast.error("Reports created but failed to link collections");
+      }
+    }
+
     if (successCount === collectedMachineEntries.length) {
+      // Refresh the parent page data after successful creation
+      if (onRefresh) {
+        onRefresh();
+      }
       onClose();
     } else if (successCount > 0) {
       const successfulMachineInternalIds = results
@@ -511,23 +742,51 @@ export default function NewCollectionModal({
         prev.filter((e) => !successfulMachineInternalIds.includes(e._id))
       );
     }
-  };
+    
+    setIsProcessing(false);
+  }, [
+    isProcessing,
+    userId,
+    collectedMachineEntries,
+    selectedLocationId,
+    selectedLocationName,
+    financials,
+    getCollectorName,
+    onRefresh,
+    onClose,
+  ]);
 
-  const allFinancialFieldsFilled = Boolean(
-    financials.taxes.trim() !== "" &&
-      financials.advance.trim() !== "" &&
-      financials.variance.trim() !== "" &&
-      financials.varianceReason.trim() !== "" &&
-      financials.amountToCollect.trim() !== "" &&
-      financials.collectedAmount.trim() !== "" &&
-      financials.balanceCorrection.trim() !== "" &&
-      financials.balanceCorrectionReason.trim() !== "" &&
-      financials.previousBalance.trim() !== "" &&
-      financials.reasonForShortagePayment.trim() !== ""
-  );
-
-  const isCreateReportsEnabled =
-    collectedMachineEntries.length > 0 && allFinancialFieldsFilled;
+  // Validate that all required fields have values before enabling Create Report button
+  const isCreateReportsEnabled = useMemo(() => {
+    // Must have machines in the list
+    if (collectedMachineEntries.length === 0) return false;
+    
+    // Check that all collected machines have required meter values
+    const allMachinesHaveRequiredData = collectedMachineEntries.every(machine => 
+      machine.metersIn !== undefined && 
+      machine.metersIn !== null && 
+      machine.metersOut !== undefined && 
+      machine.metersOut !== null
+    );
+    
+    if (!allMachinesHaveRequiredData) return false;
+    
+    // Check that all required financial fields have values
+    const requiredFinancialFields = [
+      'variance',
+      'advance', 
+      'taxes',
+      'previousBalance',
+      'collectedAmount'
+    ];
+    
+    const allFinancialFieldsHaveValues = requiredFinancialFields.every(field => {
+      const value = financials[field as keyof typeof financials];
+      return value !== undefined && value !== null && value.toString().trim() !== '';
+    });
+    
+    return allFinancialFieldsHaveValues;
+  }, [collectedMachineEntries, financials]);
 
   if (!show) {
     return null;
@@ -543,8 +802,7 @@ export default function NewCollectionModal({
       }}
     >
       <DialogContent
-        ref={modalRef}
-        className="max-w-5xl h-[calc(100vh-4rem)] md:h-[90vh] p-0 flex flex-col bg-container"
+        className="max-w-5xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-4 md:p-6 pb-0">
@@ -554,12 +812,16 @@ export default function NewCollectionModal({
         </DialogHeader>
 
         <div className="flex-grow flex flex-col lg:flex-row overflow-hidden">
-          <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-4 flex flex-col space-y-3 overflow-y-auto">
+          {/* Mobile: Full width, Desktop: 1/4 width */}
+          <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
             <Select
               value={selectedLocationId}
               onValueChange={(value) => setSelectedLocationId(value)}
+              disabled={collectedMachineEntries.length > 0 || isProcessing}
             >
-              <SelectTrigger className="w-full bg-buttonActive text-white focus:ring-primary">
+              <SelectTrigger className={`w-full bg-buttonActive text-white focus:ring-primary ${
+                collectedMachineEntries.length > 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+              }`}>
                 <SelectValue placeholder="Select Location" />
               </SelectTrigger>
               <SelectContent>
@@ -619,16 +881,20 @@ export default function NewCollectionModal({
                         setSelectedMachineId(String(machine._id));
                       }}
                       disabled={
-                        editingEntryId !== null &&
+                        isProcessing ||
+                        (editingEntryId !== null &&
                         collectedMachineEntries.find(
                           (e) => e._id === editingEntryId
-                        )?.machineId !== machine._id
+                        )?.machineId !== machine._id)
                       }
                     >
                       {machine.name} (
-                      {(machine as Record<string, unknown>).serialNumber as string ||
-                        (machine as Record<string, unknown>).origSerialNumber as string ||
-                        (machine as Record<string, unknown>).machineId as string ||
+                      {((machine as Record<string, unknown>)
+                        .serialNumber as string) ||
+                        ((machine as Record<string, unknown>)
+                          .origSerialNumber as string) ||
+                        ((machine as Record<string, unknown>)
+                          .machineId as string) ||
                         "N/A"}
                       )
                       {collectedMachineEntries.find(
@@ -654,8 +920,9 @@ export default function NewCollectionModal({
             </div>
           </div>
 
-          <div className="w-full lg:w-2/4 p-4 flex flex-col space-y-3 overflow-y-auto">
-            {selectedMachineId && machineForDataEntry ? (
+          {/* Mobile: Full width, Desktop: 2/4 width */}
+          <div className="w-full lg:w-2/4 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
+            {(selectedMachineId && machineForDataEntry) || collectedMachineEntries.length > 0 ? (
               <>
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-grayHighlight">
@@ -671,12 +938,21 @@ export default function NewCollectionModal({
                   variant="default"
                   className="w-full bg-lighterBlueHighlight text-primary-foreground"
                 >
-                  {machineForDataEntry.name} (
-                  {(machineForDataEntry as Record<string, unknown>).serialNumber as string ||
-                    (machineForDataEntry as Record<string, unknown>).origSerialNumber as string ||
-                    (machineForDataEntry as Record<string, unknown>).machineId as string ||
-                    "N/A"}
-                  )
+                  {machineForDataEntry ? (
+                    <>
+                      {machineForDataEntry.name} (
+                      {((machineForDataEntry as Record<string, unknown>)
+                        .serialNumber as string) ||
+                        ((machineForDataEntry as Record<string, unknown>)
+                          .origSerialNumber as string) ||
+                        ((machineForDataEntry as Record<string, unknown>)
+                          .machineId as string) ||
+                        "N/A"}
+                      )
+                    </>
+                  ) : (
+                    "Select a machine to edit"
+                  )}
                 </Button>
 
                 <div className="flex items-center gap-2 mt-2">
@@ -686,22 +962,25 @@ export default function NewCollectionModal({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
                       Meters In:
                     </label>
-                    <Input
-                      type="text"
-                      placeholder="0"
-                      value={currentMetersIn}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^-?\d*\.?\d*$/.test(val) || val === "") {
-                          setCurrentMetersIn(val);
-                        }
-                      }}
-                    />
+                    <div onClick={handleDisabledFieldClick}>
+                      <Input
+                        type="text"
+                        placeholder="0"
+                        value={currentMetersIn}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^-?\d*\.?\d*$/.test(val) || val === "") {
+                            setCurrentMetersIn(val);
+                          }
+                        }}
+                        disabled={!machineForDataEntry || isProcessing}
+                      />
+                    </div>
                     <p className="text-xs text-grayHighlight mt-1">
                       Prev In: {prevIn !== null ? prevIn : "N/A"}
                     </p>
@@ -710,30 +989,34 @@ export default function NewCollectionModal({
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
                       Meters Out:
                     </label>
-                    <Input
-                      type="text"
-                      placeholder="0"
-                      value={currentMetersOut}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^-?\d*\.?\d*$/.test(val) || val === "") {
-                          setCurrentMetersOut(val);
-                        }
-                      }}
-                    />
+                    <div onClick={handleDisabledFieldClick}>
+                      <Input
+                        type="text"
+                        placeholder="0"
+                        value={currentMetersOut}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^-?\d*\.?\d*$/.test(val) || val === "") {
+                            setCurrentMetersOut(val);
+                          }
+                        }}
+                        disabled={!machineForDataEntry || isProcessing}
+                      />
+                    </div>
                     <p className="text-xs text-grayHighlight mt-1">
                       Prev Out: {prevOut !== null ? prevOut : "N/A"}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 mt-2">
+                <div className="flex items-center space-x-2 mt-2" onClick={handleDisabledFieldClick}>
                   <input
                     type="checkbox"
                     id="ramClearCheckbox"
                     checked={currentRamClear}
                     onChange={(e) => setCurrentRamClear(e.target.checked)}
                     className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    disabled={!machineForDataEntry || isProcessing}
                   />
                   <label
                     htmlFor="ramClearCheckbox"
@@ -747,42 +1030,35 @@ export default function NewCollectionModal({
                   <label className="block text-sm font-medium text-grayHighlight mb-1 mt-2">
                     Notes (for this machine):
                   </label>
-                  <Textarea
-                    placeholder="Machine-specific notes..."
-                    value={currentMachineNotes}
-                    onChange={(e) => setCurrentMachineNotes(e.target.value)}
-                    className="min-h-[60px]"
-                  />
+                  <div onClick={handleDisabledFieldClick}>
+                    <Textarea
+                      placeholder="Machine-specific notes..."
+                      value={currentMachineNotes}
+                      onChange={(e) => setCurrentMachineNotes(e.target.value)}
+                      className="min-h-[60px]"
+                      disabled={!machineForDataEntry || isProcessing}
+                    />
+                  </div>
                 </div>
 
                 <Button
-                  onClick={handleAddOrUpdateEntry}
+                  onClick={machineForDataEntry ? handleAddOrUpdateEntry : handleDisabledFieldClick}
                   className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={!machineForDataEntry || isProcessing}
                 >
-                  {editingEntryId
+                  {isProcessing 
+                    ? "Processing..." 
+                    : editingEntryId
                     ? "Update Entry in List"
                     : "Add Machine to List"}
                 </Button>
-                {editingEntryId && (
-                  <Button
-                    onClick={() => {
-                      setEditingEntryId(null);
-                      resetMachineSpecificInputFields();
-                      setSelectedMachineId(undefined);
-                    }}
-                    variant="outline"
-                    className="w-full mt-1"
-                  >
-                    Cancel Edit
-                  </Button>
-                )}
 
                 <hr className="my-4 border-gray-300" />
                 <p className="text-lg font-semibold text-center text-gray-700">
                   Shared Financials for Batch
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
                       Taxes:
@@ -796,6 +1072,7 @@ export default function NewCollectionModal({
                           e.target.value === "") &&
                         setFinancials({ ...financials, taxes: e.target.value })
                       }
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
@@ -814,6 +1091,7 @@ export default function NewCollectionModal({
                           advance: e.target.value,
                         })
                       }
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
@@ -832,6 +1110,7 @@ export default function NewCollectionModal({
                           variance: e.target.value,
                         })
                       }
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
@@ -848,29 +1127,24 @@ export default function NewCollectionModal({
                         })
                       }
                       className="min-h-[40px]"
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
-                      Amount To Collect:
+                      Amount To Collect: <span className="text-xs text-gray-400">(Auto-calculated)</span>
                     </label>
                     <Input
                       type="text"
                       placeholder="0"
                       value={financials.amountToCollect}
-                      onChange={(e) =>
-                        (/^\d*\.?\d*$/.test(e.target.value) ||
-                          e.target.value === "") &&
-                        setFinancials({
-                          ...financials,
-                          amountToCollect: e.target.value,
-                        })
-                      }
+                      readOnly
+                      className="bg-gray-100 cursor-not-allowed"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
-                      Collected Amount:
+                      Collected Amount: <span className="text-xs text-gray-400">(Optional)</span>
                     </label>
                     <Input
                       type="text"
@@ -884,24 +1158,19 @@ export default function NewCollectionModal({
                           collectedAmount: e.target.value,
                         })
                       }
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-grayHighlight mb-1">
-                      Balance Correction:
+                      Balance Correction: <span className="text-xs text-gray-400">(Auto-calculated)</span>
                     </label>
                     <Input
                       type="text"
                       placeholder="0"
                       value={financials.balanceCorrection}
-                      onChange={(e) =>
-                        (/^\d*\.?\d*$/.test(e.target.value) ||
-                          e.target.value === "") &&
-                        setFinancials({
-                          ...financials,
-                          balanceCorrection: e.target.value,
-                        })
-                      }
+                      readOnly
+                      className="bg-gray-100 cursor-not-allowed"
                     />
                   </div>
                   <div>
@@ -918,6 +1187,7 @@ export default function NewCollectionModal({
                         })
                       }
                       className="min-h-[40px]"
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
@@ -936,6 +1206,7 @@ export default function NewCollectionModal({
                           previousBalance: e.target.value,
                         })
                       }
+                      disabled={isProcessing}
                     />
                   </div>
                   <div>
@@ -952,6 +1223,7 @@ export default function NewCollectionModal({
                         })
                       }
                       className="min-h-[40px]"
+                      disabled={isProcessing}
                     />
                   </div>
                 </div>
@@ -966,11 +1238,26 @@ export default function NewCollectionModal({
             )}
           </div>
 
-          <div className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-300 p-4 flex flex-col space-y-2 overflow-y-auto bg-gray-50">
+          {/* Mobile: Full width, Desktop: 1/4 width */}
+          <div className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-300 p-3 md:p-4 flex flex-col space-y-2 overflow-y-auto bg-gray-50">
             <h3 className="text-lg font-semibold text-gray-700 mb-2 sticky top-0 bg-gray-50 py-1">
               Collected Machines ({collectedMachineEntries.length})
             </h3>
-            {collectedMachineEntries.length === 0 ? (
+            {isLoadingCollections ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <div className="flex justify-end gap-1">
+                      <Skeleton className="h-6 w-6 rounded" />
+                      <Skeleton className="h-6 w-6 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : collectedMachineEntries.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-10">
                 No machines added to the list yet.
               </p>
@@ -1005,6 +1292,7 @@ export default function NewCollectionModal({
                       size="icon"
                       className="h-6 w-6 p-0 hover:bg-gray-200"
                       onClick={() => handleEditCollectedEntry(entry._id)}
+                      disabled={isProcessing}
                     >
                       <Edit3 className="h-3.5 w-3.5 text-blue-600" />
                     </Button>
@@ -1013,6 +1301,7 @@ export default function NewCollectionModal({
                       size="icon"
                       className="h-6 w-6 p-0 hover:bg-gray-200"
                       onClick={() => handleDeleteCollectedEntry(entry._id)}
+                      disabled={isProcessing}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-red-600" />
                     </Button>
@@ -1027,11 +1316,13 @@ export default function NewCollectionModal({
           <Button
             onClick={handleCreateMultipleReports}
             className={`w-auto bg-button hover:bg-buttonActive text-base px-8 py-3 ${
-              !isCreateReportsEnabled ? "cursor-not-allowed" : "cursor-pointer"
+              !isCreateReportsEnabled || isProcessing ? "cursor-not-allowed" : "cursor-pointer"
             }`}
-            disabled={!isCreateReportsEnabled}
+            disabled={!isCreateReportsEnabled || isProcessing}
           >
-            CREATE REPORT(S) ({collectedMachineEntries.length})
+            {isProcessing 
+              ? "CREATING REPORTS..." 
+              : `CREATE REPORT(S) (${collectedMachineEntries.length})`}
           </Button>
         </DialogFooter>
       </DialogContent>

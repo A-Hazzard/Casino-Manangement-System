@@ -60,7 +60,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${montserrat.variable}`}
+      suppressHydrationWarning
+    >
       <body suppressHydrationWarning>
         <SidebarProvider>
           <GlobalSidebarWrapper />

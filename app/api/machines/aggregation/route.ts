@@ -9,8 +9,6 @@ import {
 } from "@/lib/types/machines";
 import { getDateRangeForTimePeriodAlt } from "@/app/api/lib/utils/dateUtils";
 
-// Date range helper function moved to @/app/api/lib/utils/dateUtils
-
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -42,10 +40,13 @@ export async function GET(req: NextRequest) {
 
     // We only want "active" locations
     const matchStage: MachineAggregationMatchStage = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
     if (locationId) {
-      matchStage._id = new mongoose.Types.ObjectId(locationId);
+      matchStage._id = locationId; // locationId is a string, not ObjectId
     }
 
     if (licensee) {
@@ -68,6 +69,15 @@ export async function GET(req: NextRequest) {
       },
       // Flatten machines
       { $unwind: { path: "$machines", preserveNullAndEmptyArrays: false } },
+      // Filter out deleted machines
+      {
+        $match: {
+          $or: [
+            { "machines.deletedAt": null },
+            { "machines.deletedAt": { $lt: new Date("2020-01-01") } },
+          ],
+        },
+      },
     ];
 
     // 3) If user typed a searchTerm
@@ -120,6 +130,13 @@ export async function GET(req: NextRequest) {
                 sumDrop: { $sum: "$movement.drop" },
                 sumOut: { $sum: "$movement.totalCancelledCredits" },
                 sumJackpot: { $sum: "$movement.jackpot" },
+                sumCancelledCredits: {
+                  $sum: "$movement.totalCancelledCredits",
+                },
+                sumCoinIn: { $sum: "$movement.coinIn" },
+                sumCoinOut: { $sum: "$movement.coinOut" },
+                sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
+                sumGamesWon: { $sum: "$movement.gamesWon" },
               },
             },
           ],
@@ -141,10 +158,25 @@ export async function GET(req: NextRequest) {
         locationId: "$_id",
         locationName: { $ifNull: ["$name", "(No Location)"] },
         assetNumber: { $ifNull: ["$machines.serialNumber", ""] },
+        serialNumber: { $ifNull: ["$machines.serialNumber", ""] },
         smbId: { $ifNull: ["$machines.relayId", ""] },
+        relayId: { $ifNull: ["$machines.relayId", ""] },
+        installedGame: { $ifNull: ["$machines.game", ""] },
+        game: { $ifNull: ["$machines.game", ""] },
+        status: { $ifNull: ["$machines.assetStatus", ""] },
+        assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
+        cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
+        accountingDenomination: {
+          $ifNull: ["$machines.gameConfig.accountingDenomination", "1"],
+        },
+        collectionMultiplier: { $literal: "1" }, // Default value
+        isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
         lastOnline: "$machines.lastActivity",
+        lastActivity: "$machines.lastActivity",
+        // Financial metrics from meter aggregation
         moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
         moneyOut: { $ifNull: ["$meterAgg.sumOut", 0] },
+        cancelledCredits: { $ifNull: ["$meterAgg.sumCancelledCredits", 0] },
         jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
         gross: {
           $subtract: [
@@ -152,6 +184,11 @@ export async function GET(req: NextRequest) {
             { $ifNull: ["$meterAgg.sumOut", 0] },
           ],
         },
+        // Additional metrics for comprehensive financial tracking
+        coinIn: { $ifNull: ["$meterAgg.sumCoinIn", 0] },
+        coinOut: { $ifNull: ["$meterAgg.sumCoinOut", 0] },
+        gamesPlayed: { $ifNull: ["$meterAgg.sumGamesPlayed", 0] },
+        gamesWon: { $ifNull: ["$meterAgg.sumGamesWon", 0] },
         timePeriod: { $literal: timePeriod },
       },
     });
@@ -166,7 +203,13 @@ export async function GET(req: NextRequest) {
       );
     } else {
       // Check if there are any gaming locations matching the filter
-      const locations = await GamingLocations.find(matchStage).lean();
+      const locations = await GamingLocations.find({
+        ...matchStage,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      }).lean();
 
       if (locations.length > 0) {
         // Check if these locations have machines
@@ -184,6 +227,15 @@ export async function GET(req: NextRequest) {
           { $unwind: { path: "$machines", preserveNullAndEmptyArrays: true } },
           // Only keep locations with machines
           { $match: { "machines._id": { $exists: true } } },
+          // Filter out deleted machines (same as main pipeline)
+          {
+            $match: {
+              $or: [
+                { "machines.deletedAt": null },
+                { "machines.deletedAt": { $lt: new Date("2020-01-01") } },
+              ],
+            },
+          },
           // Look up meters for each machine with time period filter
           {
             $lookup: {
@@ -208,6 +260,13 @@ export async function GET(req: NextRequest) {
                     sumDrop: { $sum: "$movement.drop" },
                     sumOut: { $sum: "$movement.totalCancelledCredits" },
                     sumJackpot: { $sum: "$movement.jackpot" },
+                    sumCancelledCredits: {
+                      $sum: "$movement.totalCancelledCredits",
+                    },
+                    sumCoinIn: { $sum: "$movement.coinIn" },
+                    sumCoinOut: { $sum: "$movement.coinOut" },
+                    sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
+                    sumGamesWon: { $sum: "$movement.gamesWon" },
                   },
                 },
               ],
@@ -222,10 +281,27 @@ export async function GET(req: NextRequest) {
               locationId: "$_id",
               locationName: { $ifNull: ["$name", "(No Location)"] },
               assetNumber: { $ifNull: ["$machines.serialNumber", ""] },
+              serialNumber: { $ifNull: ["$machines.serialNumber", ""] },
               smbId: { $ifNull: ["$machines.relayId", ""] },
+              relayId: { $ifNull: ["$machines.relayId", ""] },
+              installedGame: { $ifNull: ["$machines.game", ""] },
+              game: { $ifNull: ["$machines.game", ""] },
+              status: { $ifNull: ["$machines.assetStatus", ""] },
+              assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
+              cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
+              accountingDenomination: {
+                $ifNull: ["$machines.gameConfig.accountingDenomination", "1"],
+              },
+              collectionMultiplier: { $literal: "1" }, // Default value
+              isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
               lastOnline: "$machines.lastActivity",
+              lastActivity: "$machines.lastActivity",
+              // Financial metrics from meter aggregation
               moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
               moneyOut: { $ifNull: ["$meterAgg.sumOut", 0] },
+              cancelledCredits: {
+                $ifNull: ["$meterAgg.sumCancelledCredits", 0],
+              },
               jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
               gross: {
                 $subtract: [
@@ -233,6 +309,11 @@ export async function GET(req: NextRequest) {
                   { $ifNull: ["$meterAgg.sumOut", 0] },
                 ],
               },
+              // Additional metrics for comprehensive financial tracking
+              coinIn: { $ifNull: ["$meterAgg.sumCoinIn", 0] },
+              coinOut: { $ifNull: ["$meterAgg.sumCoinOut", 0] },
+              gamesPlayed: { $ifNull: ["$meterAgg.sumGamesPlayed", 0] },
+              gamesWon: { $ifNull: ["$meterAgg.sumGamesWon", 0] },
               timePeriod: { $literal: timePeriod },
             },
           },

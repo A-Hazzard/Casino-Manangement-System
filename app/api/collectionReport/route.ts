@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getAllCollectionReports,
   getMonthlyCollectionReportSummary,
   getMonthlyCollectionReportByLocation,
 } from "@/lib/helpers/collectionReport";
+import { getAllCollectionReportsWithMachineCounts } from "@/app/api/lib/helpers/collectionReportBackend";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
@@ -16,17 +16,31 @@ import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 export async function GET(req: NextRequest) {
   await connectDB();
   const { searchParams } = new URL(req.url);
-  
+
   // If ?locationsOnly is present, return locations with machines
   if (searchParams.get("locationsWithMachines")) {
     // Fetch all locations
-    const locations = await GamingLocations.find({}, "_id name").lean();
+    const locations = await GamingLocations.find(
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      },
+      "_id name"
+    ).lean();
     // For each location, fetch its machines
     const locationsWithMachines = await Promise.all(
       locations.map(async (loc) => {
         const machines = await Machine.find(
-          { gamingLocation: loc._id },
-          "_id serialNumber Custom.name"
+          {
+            gamingLocation: loc._id,
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date("1970-01-01") } },
+            ],
+          },
+          "_id serialNumber custom.name collectionMeters collectionTime"
         ).lean();
         return {
           _id: loc._id,
@@ -34,41 +48,51 @@ export async function GET(req: NextRequest) {
           machines: machines.map((m) => ({
             _id: m._id,
             serialNumber: m.serialNumber,
-            name: m.Custom?.name || m.serialNumber || "Unnamed Machine",
+            name: m.custom?.name || m.serialNumber || "Unnamed Machine",
+            collectionMeters: m.collectionMeters || {
+              metersIn: 0,
+              metersOut: 0,
+            },
+            collectionTime: m.collectionTime,
           })),
         };
       })
     );
     return NextResponse.json({ locations: locationsWithMachines });
   }
-  
-  const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || undefined;
+
+  const timePeriod =
+    (searchParams.get("timePeriod") as TimePeriod) || undefined;
   const startDateStr = searchParams.get("startDate");
   const endDateStr = searchParams.get("endDate");
   const locationName = searchParams.get("locationName") || undefined;
   const licencee = searchParams.get("licencee") || undefined;
-  
-  // If startDate and endDate are present AND no licencee is specified, treat as monthly aggregation
-  if (startDateStr && endDateStr && !licencee && !timePeriod) {
+
+  // If startDate and endDate are present AND no timePeriod is specified, treat as monthly aggregation
+  if (startDateStr && endDateStr && !timePeriod) {
     const startDate = new Date(startDateStr);
     const endDate = new Date(endDateStr);
+
+    // Use the updated monthly aggregation functions that now support licensee filtering
     const summary = await getMonthlyCollectionReportSummary(
       startDate,
       endDate,
-      locationName
+      locationName,
+      licencee
     );
     const details = await getMonthlyCollectionReportByLocation(
       startDate,
       endDate,
-      locationName
+      locationName,
+      licencee
     );
     return NextResponse.json({ summary, details });
   }
-  
+
   // Handle individual collection reports with time period or date filtering
   let startDate: Date | undefined;
   let endDate: Date | undefined;
-  
+
   if (timePeriod && timePeriod !== "Custom") {
     // Convert time period to date range
     const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
@@ -79,8 +103,8 @@ export async function GET(req: NextRequest) {
     startDate = new Date(startDateStr);
     endDate = new Date(endDateStr);
   }
-  
-  const reports = await getAllCollectionReports(licencee, startDate, endDate);
+
+  const reports = await getAllCollectionReportsWithMachineCounts(licencee, startDate, endDate);
   return NextResponse.json(reports);
 }
 

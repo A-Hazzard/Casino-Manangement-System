@@ -1,8 +1,5 @@
-import { Db, Document, ObjectId } from "mongodb";
-import {
-  AggregatedLocation,
-  LocationDateRange,
-} from "@/lib/types/location";
+import { Db, Document } from "mongodb";
+import { AggregatedLocation, LocationDateRange } from "@/lib/types/location";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 
 /**
@@ -31,13 +28,16 @@ export const getLocationsWithMetrics = async (
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
   // If a licencee is provided, prefetch location ids to constrain downstream queries
-  let licenseeLocationIds: ObjectId[] | null = null;
+  let licenseeLocationIds: string[] | null = null;
   if (licencee) {
     const locs = await db
       .collection("gaminglocations")
       .find(
         {
-          deletedAt: { $in: [null, new Date(-1)] },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
           "rel.licencee": licencee,
         },
         {
@@ -47,14 +47,17 @@ export const getLocationsWithMetrics = async (
         }
       )
       .toArray();
-    licenseeLocationIds = locs.map((l: { _id: ObjectId }) => l._id as ObjectId);
+    licenseeLocationIds = locs.map((l) => l._id.toString());
   }
 
   // Build the base pipeline with location matching
   const basePipeline: Document[] = [
     {
       $match: {
-        deletedAt: { $in: [null, new Date(-1)] },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
         ...(licenseeLocationIds && licenseeLocationIds.length > 0
           ? { _id: { $in: licenseeLocationIds } }
           : {}),
@@ -136,7 +139,10 @@ export const getLocationsWithMetrics = async (
             {
               $match: {
                 gamingLocation: location._id,
-                deletedAt: { $in: [null, new Date(-1)] },
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date("2020-01-01") } },
+                ],
               },
             },
             {
@@ -256,7 +262,10 @@ export const getLocationsWithMetrics = async (
                 {
                   $match: {
                     $expr: { $eq: ["$gamingLocation", "$$locationId"] },
-                    deletedAt: { $in: [null, new Date(-1)] },
+                    $or: [
+                      { deletedAt: null },
+                      { deletedAt: { $lt: new Date("2020-01-01") } },
+                    ],
                   },
                 },
                 {

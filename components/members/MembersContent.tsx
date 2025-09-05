@@ -35,7 +35,7 @@ import type { MembersView } from "@/lib/types/members";
  * Handles layout, navigation, and tab rendering
  */
 export default function MembersContent() {
-  const { selectedLicencee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { isAuthenticated } = useAuth();
 
   const { activeTab, availableTabs, handleTabClick } =
@@ -49,9 +49,10 @@ export default function MembersContent() {
         <PageLayout
           headerProps={{
             selectedLicencee,
-            setSelectedLicencee: () => {},
+            setSelectedLicencee,
             disabled: false,
           }}
+          hideLicenceeFilter={true}
           showToaster={false}
         >
           <div className="flex items-center justify-center min-h-[400px]">
@@ -102,9 +103,10 @@ export default function MembersContent() {
       <PageLayout
         headerProps={{
           selectedLicencee,
-          setSelectedLicencee: () => {},
+          setSelectedLicencee,
           disabled: false,
         }}
+        hideLicenceeFilter={true}
         showToaster={false}
       >
         {/* Navigation */}

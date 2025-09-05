@@ -50,6 +50,7 @@ export type LocationSortOption =
   | "locationName"
   | "moneyIn"
   | "moneyOut"
+  | "jackpot"
   | "gross"
   | "totalMachines";
 
@@ -102,15 +103,16 @@ export type LocationStore = {
     address: string;
     latitude: number;
     longitude: number;
+    licencee?: string;
   }) => Promise<void>;
 };
 
 export type LocationActionsState = {
-  selectedLocation: Partial<Location>;
+  selectedLocation: Partial<AggregatedLocation>;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
-  openEditModal: (_location: Partial<Location>) => void;
-  openDeleteModal: (_location: Partial<Location>) => void;
+  openEditModal: (_location: Partial<AggregatedLocation>) => void;
+  openDeleteModal: (_location: Partial<AggregatedLocation>) => void;
   closeEditModal: () => void;
   closeDeleteModal: () => void;
 };

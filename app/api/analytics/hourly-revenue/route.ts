@@ -57,7 +57,10 @@ export async function GET(request: NextRequest) {
         $match: {
           location: locationId,
           readAt: { $gte: start, $lte: end },
-          deletedAt: { $in: [null, new Date(-1)] },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
         },
       },
       {

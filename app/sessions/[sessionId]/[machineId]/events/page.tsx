@@ -106,7 +106,6 @@ export default function SessionEventsPage() {
       setPagination(data.data.pagination);
     } catch (err) {
       console.error("❌ Events Page Error:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
       toast.error("Failed to fetch events");
     } finally {
       setLoading(false);

@@ -2,7 +2,7 @@ import mongoose, { model, Schema } from "mongoose";
 
 const UserSchema = new Schema(
   {
-    _id: { type: String, default: () => new mongoose.Types.ObjectId().toHexString() },
+    _id: { type: String, required: true },
     isEnabled: { type: Boolean, default: true },
     roles: [{ type: String }],
     username: { type: String, required: true },
@@ -30,6 +30,7 @@ const UserSchema = new Schema(
     profilePicture: { type: String },
     resourcePermissions: { type: Schema.Types.Mixed },
     password: { type: String, required: true },
+    deletedAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
   },

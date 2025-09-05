@@ -203,8 +203,6 @@ function DashboardContent() {
         setSelectedLicencee,
         disabled: loadingChartData || refreshing,
       }}
-      showToaster={true}
-      toasterRichColors={true}
     >
       {/* Mobile layout for small screens */}
       <div className="block md:hidden">

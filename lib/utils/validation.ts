@@ -64,11 +64,12 @@ export function validateCollectionReportPayload(
     isNaN(payload.balanceCorrection)
   )
     errors.push("Balance correction is required and must be a number.");
-  if (!payload.balanceCorrectionReas)
-    errors.push("Balance correction reason is required.");
-  if (!payload.varianceReason) errors.push("Variance reason is required.");
-  if (!payload.reasonShortagePayment)
-    errors.push("Reason for shortage payment is required.");
+  // Text/textarea fields are now optional
+  // if (!payload.balanceCorrectionReas)
+  //   errors.push("Balance correction reason is required.");
+  // if (!payload.varianceReason) errors.push("Variance reason is required.");
+  // if (!payload.reasonShortagePayment)
+  //   errors.push("Reason for shortage payment is required.");
   return { isValid: errors.length === 0, errors };
 }
 

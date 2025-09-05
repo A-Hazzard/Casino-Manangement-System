@@ -111,6 +111,11 @@ export type CollectionReportMachineSummary = {
   _id: MongooseId;
   serialNumber: string;
   name: string;
+  collectionMeters?: {
+    metersIn: number;
+    metersOut: number;
+  };
+  collectionTime?: string | Date;
 };
 
 export type CollectionReportLocationWithMachines = {
@@ -124,10 +129,11 @@ export type MachineMetric = {
   id: string;
   machineId: string;
   dropCancelled: string;
-  meterGross: number;
+  metersGross: number;
   sasGross?: number | string;
   variation?: number | string;
-  sasTimes?: string;
+  sasStartTime?: string;
+  sasEndTime?: string;
   hasIssue?: boolean;
 };
 

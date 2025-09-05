@@ -4,6 +4,10 @@ import type { IScheduler } from "@/lib/types/api";
 // Define the Mongoose schema
 const SchedulerSchema: Schema = new Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+    },
     creator: { type: String, required: true },
     collector: { type: String, required: true },
     location: { type: String, required: true },

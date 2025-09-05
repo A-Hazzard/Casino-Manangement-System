@@ -18,10 +18,42 @@ import axios from "axios";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-
-
 import type { EditLocationModalProps } from "@/lib/types/components";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+
+type LocationDetails = {
+  _id: string;
+  name: string;
+  address?: {
+    street: string;
+    city: string;
+  };
+  country?: string;
+  profitShare?: number;
+  rel?: {
+    licencee: string;
+  };
+  isLocalServer?: boolean;
+  geoCoords?: {
+    latitude: number;
+    longitude: number;
+  };
+  billValidatorOptions?: {
+    denom1: boolean;
+    denom2: boolean;
+    denom5: boolean;
+    denom10: boolean;
+    denom20: boolean;
+    denom50: boolean;
+    denom100: boolean;
+    denom200: boolean;
+    denom500: boolean;
+    denom1000: boolean;
+    denom2000: boolean;
+    denom5000: boolean;
+    denom10000: boolean;
+  };
+};
 
 export default function EditLocationModal({
   onLocationUpdated,
@@ -31,6 +63,8 @@ export default function EditLocationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const [locationDetails, setLocationDetails] =
+    useState<LocationDetails | null>(null);
   const locationLogger = createActivityLogger("location");
 
   const [formData, setFormData] = useState({
@@ -43,26 +77,92 @@ export default function EditLocationModal({
     isLocalServer: false,
     latitude: "",
     longitude: "",
-    billValidatorOptions: [] as number[],
+    billValidatorOptions: {
+      denom1: false,
+      denom2: false,
+      denom5: false,
+      denom10: false,
+      denom20: false,
+      denom50: false,
+      denom100: false,
+      denom200: false,
+      denom500: false,
+      denom1000: false,
+      denom2000: false,
+      denom5000: false,
+      denom10000: false,
+    },
   });
+
+  // Fetch full location details when modal opens
+  const fetchLocationDetails = async (locationId: string) => {
+    try {
+      const response = await axios.get(`/api/locations/${locationId}`);
+      if (response.data.success) {
+        setLocationDetails(response.data.location);
+      }
+    } catch (error) {
+      console.error("Error fetching location details:", error);
+    }
+  };
 
   // Initialize form data when a location is selected
   useEffect(() => {
-    if (selectedLocation) {
+    if (selectedLocation && selectedLocation.location) {
+      // Fetch full location details to get billValidatorOptions and other fields
+      fetchLocationDetails(selectedLocation.location);
+
       setFormData({
         name: selectedLocation.locationName || "",
-        street: "",
-        city: "",
-        country: "Guyana",
-        profitShare: "50",
-        licencee: "",
+        street: "", // AggregatedLocation doesn't have address details
+        city: "", // AggregatedLocation doesn't have address details
+        country: "Guyana", // Default since AggregatedLocation doesn't have this
+        profitShare: "50", // Default since AggregatedLocation doesn't have this
+        licencee: "", // AggregatedLocation doesn't have this
         isLocalServer: selectedLocation.isLocalServer || false,
-        latitude: "8.909985",
-        longitude: "-58.186204",
-        billValidatorOptions: [],
+        latitude: "8.909985", // Default since AggregatedLocation doesn't have coordinates
+        longitude: "-58.186204", // Default since AggregatedLocation doesn't have coordinates
+        billValidatorOptions: {
+          denom1: false,
+          denom2: false,
+          denom5: false,
+          denom10: false,
+          denom20: false,
+          denom50: false,
+          denom100: false,
+          denom200: false,
+          denom500: false,
+          denom1000: false,
+          denom2000: false,
+          denom5000: false,
+          denom10000: false,
+        },
       });
     }
   }, [selectedLocation]);
+
+  // Update form data when location details are fetched
+  useEffect(() => {
+    if (locationDetails) {
+      setFormData((prev) => ({
+        ...prev,
+        name: locationDetails.name || prev.name,
+        street: locationDetails.address?.street || prev.street,
+        city: locationDetails.address?.city || prev.city,
+        country: locationDetails.country || prev.country,
+        profitShare:
+          locationDetails.profitShare?.toString() || prev.profitShare,
+        licencee: locationDetails.rel?.licencee || prev.licencee,
+        isLocalServer: locationDetails.isLocalServer || prev.isLocalServer,
+        latitude:
+          locationDetails.geoCoords?.latitude?.toString() || prev.latitude,
+        longitude:
+          locationDetails.geoCoords?.longitude?.toString() || prev.longitude,
+        billValidatorOptions:
+          locationDetails.billValidatorOptions || prev.billValidatorOptions,
+      }));
+    }
+  }, [locationDetails]);
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -118,21 +218,15 @@ export default function EditLocationModal({
     setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
-  const handleBillValidatorChange = (denom: number, checked: boolean) => {
+  const handleBillValidatorChange = (denom: string, checked: boolean) => {
     setFormData((prev) => {
-      if (checked) {
-        return {
-          ...prev,
-          billValidatorOptions: [...prev.billValidatorOptions, denom],
-        };
-      } else {
-        return {
-          ...prev,
-          billValidatorOptions: prev.billValidatorOptions.filter(
-            (d) => d !== denom
-          ),
-        };
-      }
+      const newBillValidatorOptions = { ...prev.billValidatorOptions };
+      newBillValidatorOptions[denom as keyof typeof newBillValidatorOptions] =
+        checked;
+      return {
+        ...prev,
+        billValidatorOptions: newBillValidatorOptions,
+      };
     });
   };
 
@@ -145,25 +239,24 @@ export default function EditLocationModal({
       return;
     }
 
-    if (!selectedLocation.name) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Location name is missing in the selected location");
-      }
+    if (!formData.name) {
+      toast.error("Location name is required");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Use locationName as identifier since _id might not be available
-      if (!selectedLocation.locationName) {
-        console.error("Location name is missing in the selected location");
+      // Use the location field from AggregatedLocation as identifier
+      const locationIdentifier = selectedLocation.location;
+
+      if (!locationIdentifier) {
+        toast.error("Location identifier not found");
         return;
       }
 
       const locationData = {
-        locationName: selectedLocation.locationName,
+        locationName: locationIdentifier,
         name: formData.name,
         address: {
           street: formData.street,
@@ -188,15 +281,11 @@ export default function EditLocationModal({
 
       // Log the update activity
       await locationLogger.logUpdate(
-        selectedLocation.locationName || selectedLocation._id || "unknown",
-        selectedLocation.locationName ||
-          selectedLocation.name ||
-          "Unknown Location",
+        locationIdentifier,
+        formData.name,
         previousData,
         locationData,
-        `Updated location: ${
-          selectedLocation.locationName || selectedLocation.name
-        }`
+        `Updated location: ${formData.name}`
       );
 
       toast.success("Location updated successfully");
@@ -204,6 +293,7 @@ export default function EditLocationModal({
       handleClose();
     } catch (error) {
       console.error("Error updating location:", error);
+      toast.error("Failed to update location");
     } finally {
       setLoading(false);
     }
@@ -278,26 +368,19 @@ export default function EditLocationModal({
               />
             </div>
 
-            {/* Line 2 */}
+            {/* City */}
             <div className="mb-4">
-              <Input
-                name="street"
-                value={formData.street}
-                onChange={handleInputChange}
-                placeholder="Line 2"
-                className="w-full bg-container border-border"
-              />
-            </div>
-
-            {/* City and Country */}
-            <div className="mb-4 grid grid-cols-2 gap-2">
               <Input
                 name="city"
                 value={formData.city}
                 onChange={handleInputChange}
                 placeholder="City"
-                className="bg-container border-border"
+                className="w-full bg-container border-border"
               />
+            </div>
+
+            {/* Country */}
+            <div className="mb-4">
               <Select
                 value={formData.country}
                 onValueChange={(value) => handleSelectChange("country", value)}
@@ -396,8 +479,11 @@ export default function EditLocationModal({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="billValidatorOptions"
-                    checked={formData.billValidatorOptions.length > 0}
+                    checked={Object.values(formData.billValidatorOptions).some(
+                      (checked) => checked
+                    )}
                     className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+                    disabled
                   />
                   <Label
                     htmlFor="billValidatorOptions"
@@ -409,14 +495,33 @@ export default function EditLocationModal({
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000,
-                ].map((denom) => (
+                  { denom: 1, label: "$1" },
+                  { denom: 2, label: "$2" },
+                  { denom: 5, label: "$5" },
+                  { denom: 10, label: "$10" },
+                  { denom: 20, label: "$20" },
+                  { denom: 50, label: "$50" },
+                  { denom: 100, label: "$100" },
+                  { denom: 200, label: "$200" },
+                  { denom: 500, label: "$500" },
+                  { denom: 1000, label: "$1,000" },
+                  { denom: 2000, label: "$2,000" },
+                  { denom: 5000, label: "$5,000" },
+                  { denom: 10000, label: "$10,000" },
+                ].map(({ denom, label }) => (
                   <div key={denom} className="flex items-center space-x-1">
                     <Checkbox
                       id={`denom-${denom}`}
-                      checked={formData.billValidatorOptions.includes(denom)}
+                      checked={
+                        formData.billValidatorOptions[
+                          `denom${denom}` as keyof typeof formData.billValidatorOptions
+                        ]
+                      }
                       onCheckedChange={(checked) =>
-                        handleBillValidatorChange(denom, checked === true)
+                        handleBillValidatorChange(
+                          `denom${denom}`,
+                          checked === true
+                        )
                       }
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
                     />
@@ -424,7 +529,7 @@ export default function EditLocationModal({
                       htmlFor={`denom-${denom}`}
                       className="text-xs font-medium"
                     >
-                      {denom} Denomination
+                      {label}
                     </Label>
                   </div>
                 ))}

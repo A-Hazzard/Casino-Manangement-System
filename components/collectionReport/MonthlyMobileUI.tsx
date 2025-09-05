@@ -7,9 +7,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronDown } from "lucide-react";
-import { DateRangePicker } from "@/components/ui/dateRangePicker";
-import { formatDateOnly } from "@/lib/utils/dateUtils";
+import { ChevronDown } from "lucide-react";
+import { MonthlyDatePicker } from "@/components/ui/MonthlyDatePicker";
+
 import type { MonthlyMobileUIProps } from "@/lib/types/componentProps";
 import {
   exportMonthlyReportPDF,
@@ -26,11 +26,12 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
   pendingRange,
   onPendingRangeChange,
   onApplyDateRange,
+  onSetLastMonth,
   monthlySummary,
   monthlyDetails,
   monthlyLoading,
 }) => {
-  const [showDatePicker, setShowDatePicker] = React.useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
 
@@ -47,17 +48,7 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
     setCurrentPage(pageNumber);
   };
 
-  const formattedDateRange = () => {
-    if (!pendingRange?.from) return "Select Date Range";
-    const fromDate = formatDateOnly(pendingRange.from.toISOString());
-    if (
-      !pendingRange.to ||
-      pendingRange.from.getTime() === pendingRange.to.getTime()
-    )
-      return fromDate;
-    const toDate = formatDateOnly(pendingRange.to.toISOString());
-    return `${fromDate} - ${toDate}`;
-  };
+
 
   return (
     <div className="md:hidden w-full px-2 sm:px-4 pb-4">
@@ -121,38 +112,18 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
           </div>
         </div>
 
-        <div className="relative">
-          <Button
-            variant="outline"
-            onClick={() => setShowDatePicker(true)}
-            className="w-full justify-between bg-gray-50 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-md focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 py-2 px-2.5 text-left font-normal truncate"
-          >
-            <span>{formattedDateRange()}</span>
-            <CalendarIcon className="h-4 w-4 text-gray-500" />
-          </Button>
-          {showDatePicker && (
-            <div className="absolute z-10 top-full mt-1 w-full left-0 right-0 flex justify-center">
-              <DateRangePicker
-                value={pendingRange}
-                onChange={onPendingRangeChange}
-                maxDate={new Date()}
-                className="w-full"
-                numberOfMonths={1}
-              />
-            </div>
-          )}
+        <div className="w-full">
+          <MonthlyDatePicker
+            value={pendingRange}
+            onChange={onPendingRangeChange}
+            onGo={onApplyDateRange}
+            onCancel={() => {
+              // Reset the pending range when canceling
+              onPendingRangeChange(undefined);
+            }}
+            onSetLastMonth={onSetLastMonth}
+          />
         </div>
-
-        <Button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 sm:py-2.5 rounded-md text-xs sm:text-sm"
-          onClick={() => {
-            onApplyDateRange();
-            setShowDatePicker(false);
-          }}
-          disabled={!pendingRange?.from || !pendingRange?.to || monthlyLoading}
-        >
-          {monthlyLoading ? "Applying..." : "Apply"}
-        </Button>
 
         {monthlyLoading ? (
           <div className="animate-pulse h-32 bg-gray-200 rounded-lg w-full" />

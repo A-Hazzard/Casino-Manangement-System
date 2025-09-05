@@ -75,6 +75,7 @@ export type EmptyStateProps = {
 export type UploadSmibDataModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onRefresh?: () => void;
 };
 
 // Reports component types
@@ -102,17 +103,14 @@ export type Option = Record<"value" | "label", string>;
 export type NewLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: () => void;
 };
 
 export type EditLocationModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
   onLocationUpdated?: () => void;
 };
 
 export type DeleteLocationModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
   onDelete: () => void;
 };
 
@@ -141,6 +139,7 @@ export type NewMovementModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: MachineMovementRecord) => void;
+  onRefresh?: () => void;
   locations?: { _id: string; name: string }[];
 };
 
@@ -400,12 +399,14 @@ export type StackedChartProps = {
   icon: React.ReactNode;
   data: Array<{
     hour: string;
-    [locationId: string]: {
-      handle: number;
-      winLoss: number;
-      jackpot: number;
-      plays: number;
-    } | string;
+    [locationId: string]:
+      | {
+          handle: number;
+          winLoss: number;
+          jackpot: number;
+          plays: number;
+        }
+      | string;
   }>;
   dataKey: "handle" | "winLoss" | "jackpot" | "plays";
   machines: string[]; // This will contain location IDs

@@ -55,7 +55,10 @@ export async function GET(req: NextRequest) {
 
     // Build machine filter for all queries
     const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // Add online status filter
@@ -94,7 +97,10 @@ export async function GET(req: NextRequest) {
 
     // Build location filter for licensee
     const locationMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // Add licencee filter if specified
@@ -564,7 +570,10 @@ const getAllMachines = async (
 
     // Build machine filter
     const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // Note: We don't filter by lastActivity date here to include all machines
@@ -774,7 +783,10 @@ const getOfflineMachines = async (
     // Build machine filter for offline machines
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
     const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
       lastActivity: { $exists: true, $lt: threeMinutesAgo },
     };
 

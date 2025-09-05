@@ -13,8 +13,14 @@ export async function GET(req: NextRequest) {
     if (licensee && licensee !== "all") {
       // Get locations that match the licensee
       const licenseeLocations = await GamingLocations.find(
-        { "rel.licencee": licensee },
-        { _id: 1 }
+        {
+          "rel.licencee": licensee,
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
+        },
+        { _id: 1, name: 1 }
       ).lean();
 
       const licenseeLocationIds = licenseeLocations.map((loc) =>
@@ -30,7 +36,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch all locations for lookup, sorted alphabetically by name
-    const locations = await GamingLocations.find({}, { _id: 1, name: 1 })
+    const locations = await GamingLocations.find(
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("1970-01-01") } },
+        ],
+      },
+      { _id: 1, name: 1 }
+    )
       .sort({ name: 1 })
       .lean();
     const idToName = Object.fromEntries(

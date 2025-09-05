@@ -2,6 +2,10 @@ import { Schema, model, models } from "mongoose";
 
 const MetersSchema = new Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+    },
     machine: { type: String, required: true },
     location: { type: String, required: true },
     locationSession: { type: String, required: true }, // Added based on example

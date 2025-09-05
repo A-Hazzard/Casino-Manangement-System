@@ -98,7 +98,15 @@ const createStore = () => {
         setTotals: (totals) => set({ totals }),
         setChartData: (chartData) => set({ chartData }),
         setGamingLocations: (gamingLocations) => set({ gamingLocations }),
-        setSelectedLicencee: (selectedLicencee) => set({ selectedLicencee }),
+        setSelectedLicencee: (selectedLicencee) => {
+          set({ selectedLicencee });
+          // Sync with currency store
+          if (typeof window !== "undefined") {
+            import("@/lib/store/currencyStore").then(({ useCurrencyStore }) => {
+              useCurrencyStore.getState().setSelectedLicensee(selectedLicencee);
+            });
+          }
+        },
         setCustomDateRange: (customDateRange) => set({ customDateRange }),
         setPendingCustomDateRange: (pendingCustomDateRange) =>
           set({ pendingCustomDateRange }),

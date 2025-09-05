@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
+import { getExchangeRates } from "@/lib/helpers/rates";
+import {
+  processResponseWithCurrency,
+  extractCurrencyParams,
+} from "@/lib/helpers/currencyConversion";
 
 // Removed auto-index creation to avoid conflicts and extra latency
 
@@ -11,6 +16,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "7d";
     const licencee = searchParams.get("licencee") || undefined;
+
+    // Extract currency conversion parameters
+    const { displayCurrency, licenseeName } =
+      extractCurrencyParams(searchParams);
 
     const showAllLocations = searchParams.get("showAllLocations") === "true";
 
@@ -39,11 +48,12 @@ export async function GET(req: NextRequest) {
       endDate = e;
     }
 
-    // console.log("🔍 API - timePeriod:", timePeriod);
-    // console.log("🔍 API - startDate:", startDate?.toISOString() || "All Time");
-    // console.log("🔍 API - endDate:", endDate?.toISOString() || "All Time");
-    // console.log("🔍 API - current system time:", new Date().toISOString());
-    // console.log("🔍 API - licencee:", licencee);
+    console.warn("🔍 API - timePeriod:", timePeriod);
+    console.warn("🔍 API - startDate:", startDate?.toISOString() || "All Time");
+    console.warn("🔍 API - endDate:", endDate?.toISOString() || "All Time");
+    console.warn("🔍 API - current system time:", new Date().toISOString());
+    console.warn("🔍 API - licencee:", licencee);
+    console.warn("🔍 API - showAllLocations:", showAllLocations);
 
     const db = await connectDB();
     if (!db) {
@@ -58,7 +68,10 @@ export async function GET(req: NextRequest) {
 
     // Build location filter for the aggregation
     const locationMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     if (licencee && licencee !== "all") {
@@ -82,7 +95,10 @@ export async function GET(req: NextRequest) {
             {
               $match: {
                 $expr: { $eq: ["$gamingLocation", "$$locationId"] },
-                deletedAt: { $in: [null, new Date(-1)] },
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date("2020-01-01") } },
+                ],
               },
             },
             {
@@ -98,17 +114,20 @@ export async function GET(req: NextRequest) {
           as: "machines",
         },
       },
-      // Stage 3: Lookup meters for each location (filtered by date)
+      // Stage 3: Lookup meters for each location
+      // When showAllLocations is true, get all meters; otherwise filter by date
       {
         $lookup: {
           from: "meters",
           let: { locationId: { $toString: "$_id" } },
           pipeline: [
             {
-              $match: {
-                $expr: { $eq: ["$location", "$$locationId"] },
-                readAt: { $gte: startDate, $lte: endDate },
-              },
+              $match: showAllLocations 
+                ? { $expr: { $eq: ["$location", "$$locationId"] } }
+                : {
+                    $expr: { $eq: ["$location", "$$locationId"] },
+                    readAt: { $gte: startDate, $lte: endDate },
+                  },
             },
             {
               $group: {
@@ -146,6 +165,7 @@ export async function GET(req: NextRequest) {
         },
       },
       // Stage 5: Filter locations based on showAllLocations parameter
+      // When showAllLocations is true, show all locations regardless of data
       ...(showAllLocations ? [] : [{ $match: { hasData: true } }]),
       // Stage 6: Calculate metrics
       {
@@ -269,12 +289,56 @@ export async function GET(req: NextRequest) {
     const totalCount = metadata.totalCount;
     const totalPages = Math.ceil(totalCount / limit);
 
+    // Debug: Log some sample data to understand the structure
+    console.warn("🔍 API - Total locations found:", totalCount);
+    console.warn("🔍 API - Paginated data length:", paginatedData.length);
+    
+    // Log locations with SAS machines
+    const locationsWithSas = paginatedData.filter((loc: Record<string, unknown>) => (loc.sasMachines as number) > 0);
+    console.warn("🔍 API - Locations with SAS machines:", locationsWithSas.length);
+    
+    if (paginatedData.length > 0) {
+      console.warn("🔍 API - Sample location data:", JSON.stringify({
+        location: paginatedData[0].location,
+        locationName: paginatedData[0].locationName,
+        sasMachines: paginatedData[0].sasMachines,
+        hasSasMachines: paginatedData[0].hasSasMachines,
+        totalMachines: paginatedData[0].totalMachines,
+        hasData: paginatedData[0].hasData,
+        machines: paginatedData[0].machines?.slice(0, 2) // First 2 machines for debugging
+      }, null, 2));
+      
+      // Log first few locations to see the pattern
+      console.warn("🔍 API - First 5 locations SAS info:", paginatedData.slice(0, 5).map((loc: Record<string, unknown>) => ({
+        location: loc.location,
+        locationName: loc.locationName,
+        sasMachines: loc.sasMachines,
+        hasSasMachines: loc.hasSasMachines,
+        totalMachines: loc.totalMachines
+      })));
+      
+      // Debug: Check if machines have isSasMachine field
+      const locationsWithMachines = paginatedData.filter((loc: Record<string, unknown>) => loc.machines && (loc.machines as unknown[]).length > 0);
+      if (locationsWithMachines.length > 0) {
+        const machines = locationsWithMachines[0].machines as Record<string, unknown>[];
+        console.warn("🔍 API - Sample machines with isSasMachine field:", machines.slice(0, 3).map((machine: Record<string, unknown>) => ({
+          _id: machine._id,
+          serialNumber: machine.serialNumber,
+          isSasMachine: machine.isSasMachine
+        })));
+      }
+    }
+
     const endTime = Date.now();
     const duration = endTime - startTime;
 
     console.warn("🔍 API - Request completed in", duration, "ms");
 
-    return NextResponse.json({
+    // Get exchange rates for currency conversion
+    const exchangeRates = await getExchangeRates();
+
+    // Process response with currency conversion
+    const response = {
       data: paginatedData,
       pagination: {
         page,
@@ -284,7 +348,16 @@ export async function GET(req: NextRequest) {
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
       },
-    });
+    };
+
+    const convertedResponse = processResponseWithCurrency(
+      response,
+      displayCurrency,
+      exchangeRates,
+      licenseeName
+    );
+
+    return NextResponse.json(convertedResponse);
   } catch (err: unknown) {
     console.error("Error in reports locations route:", err);
     return NextResponse.json(

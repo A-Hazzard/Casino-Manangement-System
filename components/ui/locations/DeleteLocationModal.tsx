@@ -29,23 +29,19 @@ export default function DeleteLocationModal({
   };
 
   const handleDelete = async () => {
-    if (!selectedLocation?._id) return;
+    if (!selectedLocation?.location) return;
 
     try {
       const locationData = { ...selectedLocation };
 
-      await axios.delete(`/api/locations?id=${selectedLocation._id}`);
+      await axios.delete(`/api/locations?id=${selectedLocation.location}`);
 
       // Log the deletion activity
       await locationLogger.logDelete(
-        selectedLocation._id,
-        selectedLocation.name ||
-          selectedLocation.locationName ||
-          "Unknown Location",
+        selectedLocation.location,
+        selectedLocation.locationName || "Unknown Location",
         locationData,
-        `Deleted location: ${
-          selectedLocation.name || selectedLocation.locationName
-        }`
+        `Deleted location: ${selectedLocation.locationName}`
       );
 
       toast.success("Location deleted successfully");
@@ -63,9 +59,9 @@ export default function DeleteLocationModal({
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription>
-            This will mark the location &quot;{selectedLocation?.name}&quot; as
-            deleted. The location will be hidden from the system but can be
-            restored if needed.
+            This will mark the location &quot;{selectedLocation?.locationName}
+            &quot; as deleted. The location will be hidden from the system but
+            can be restored if needed.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
 
     // Build location matching - show ALL locations for the licensee
     const locationMatch: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     if (search) {
@@ -40,7 +43,10 @@ export async function GET(request: NextRequest) {
               {
                 $match: {
                   $expr: { $eq: ["$gamingLocation", "$$id"] },
-                  deletedAt: { $in: [null, new Date(-1)] },
+                  $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
                 },
               },
               {

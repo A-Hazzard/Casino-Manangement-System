@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
 
     // Initialize matchStage with type
     const matchStage: MatchStage = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // Add licencee filter if provided (check both parameter names)

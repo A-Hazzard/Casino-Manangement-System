@@ -3,6 +3,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { ActivityLog } from "@/app/api/lib/models/activityLog";
 import { apiLogger } from "@/app/api/lib/utils/logger";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
+import { generateMongoId } from "@/lib/utils/id";
 
 /**
  * Extract client IP address from request headers with comprehensive fallback
@@ -39,7 +40,8 @@ function extractClientIP(request: NextRequest, fallbackIP?: string): string {
   }
 
   // Last resort - try to get from connection
-  const connection = (request as { connection?: { remoteAddress?: string } }).connection;
+  const connection = (request as { connection?: { remoteAddress?: string } })
+    .connection;
   if (connection?.remoteAddress) {
     return connection.remoteAddress;
   }
@@ -74,8 +76,12 @@ export async function POST(request: NextRequest) {
     // Get client IP from headers with comprehensive fallback
     const clientIP = extractClientIP(request, ipAddress);
 
+    // Generate a proper MongoDB ObjectId-style hex string for the activity log
+    const activityLogId = await generateMongoId();
+
     // Create activity log entry
     const activityLog = new ActivityLog({
+      _id: activityLogId,
       userId,
       username,
       action,
@@ -88,6 +94,20 @@ export async function POST(request: NextRequest) {
       ipAddress: clientIP,
       userAgent: userAgent || request.headers.get("user-agent"),
       timestamp: new Date(),
+      // Add missing fields with default values
+      actor: {
+        id: userId,
+        email: username,
+        role: "user",
+      },
+      actionType: action.toUpperCase(),
+      entityType: resource,
+      entity: {
+        id: resourceId,
+        name: resourceName,
+      },
+      changes: [],
+      description: details,
     });
 
     await activityLog.save();
@@ -135,6 +155,10 @@ export async function GET(request: NextRequest) {
     const ipAddress = searchParams.get("ipAddress");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const startTime = searchParams.get("startTime");
+    const endTime = searchParams.get("endTime");
+    const eventType = searchParams.get("eventType");
+    const type = searchParams.get("type");
 
     // Build query
     const query: Record<string, unknown> = {};
@@ -156,10 +180,40 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate && endDate) {
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+
+      // Add time filtering if provided
+      if (startTime) {
+        const [hours, minutes, seconds] = startTime.split(":").map(Number);
+        startDateTime.setHours(hours, minutes, seconds || 0, 0);
+      }
+
+      if (endTime) {
+        const [hours, minutes, seconds] = endTime.split(":").map(Number);
+        endDateTime.setHours(hours, minutes, seconds || 0, 999);
+      }
+
       query.timestamp = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: startDateTime,
+        $lte: endDateTime,
       };
+    }
+
+    if (eventType) {
+      query.resource = eventType;
+    }
+
+    if (type) {
+      // Map type to action
+      const typeMapping: Record<string, string> = {
+        General: "view",
+        Significant: "update",
+        Priority: "create",
+      };
+      if (typeMapping[type]) {
+        query.action = typeMapping[type];
+      }
     }
 
     // Get total count

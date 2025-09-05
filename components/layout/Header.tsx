@@ -14,6 +14,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logoutUser } from "@/lib/helpers/auth";
 import LicenceeSelect from "@/components/ui/LicenceeSelect";
+import CurrencySelector from "@/components/ui/CurrencySelector";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
 
 export default function Header({
   selectedLicencee,
@@ -29,6 +31,7 @@ export default function Header({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isOpen } = useSidebar();
+  const { displayCurrency } = useCurrencyStore();
 
   const {
     activeFilters,
@@ -54,7 +57,6 @@ export default function Header({
   const isMembersPath =
     pathname === "/members" || pathname.startsWith("/members/");
 
-
   // Check if the current path is related to sessions
   const isSessionsPath =
     pathname === "/sessions" || pathname.startsWith("/sessions/");
@@ -72,7 +74,10 @@ export default function Header({
         <div className="flex items-center justify-start">
           {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
           <SidebarTrigger
-            className={cn("md:hidden cursor-pointer text-foreground p-2 relative z-20", isOpen && "invisible")}
+            className={cn(
+              "md:hidden cursor-pointer text-foreground p-2 relative z-20",
+              isOpen && "invisible"
+            )}
             aria-label="Toggle sidebar"
           >
             <PanelLeft className="h-6 w-6" />
@@ -80,14 +85,18 @@ export default function Header({
           <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
           </h1>
+          <div className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+            {displayCurrency}
+          </div>
 
-          {(!hideOptions || hideLicenceeFilter === false) && (
-            <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start">
+          {!hideLicenceeFilter && (
+            <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start gap-2">
               <LicenceeSelect
                 selected={selectedLicencee || ""}
                 onChange={setSelectedLicencee || (() => {})}
                 disabled={disabled}
               />
+              <CurrencySelector />
             </div>
           )}
         </div>

@@ -110,6 +110,24 @@ export function formatNumber(value: number): string {
 }
 
 /**
+ * Formats a given number with currency conversion support.
+ * This function should be used in components that have access to the currency context.
+ *
+ * @param {number} value - The number to format.
+ * @param {string} currency - The currency code to format in.
+ * @returns {string} The formatted currency string.
+ */
+export function formatNumberWithCurrency(
+  value: number,
+  currency: string = "USD"
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+  }).format(value);
+}
+
+/**
  * Calculates the SAS Gross for a collection document.
  * @param col - The collection document.
  * @returns The SAS Gross (drop - totalCancelledCredits).

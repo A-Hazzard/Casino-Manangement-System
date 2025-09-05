@@ -20,15 +20,19 @@ const createStore = () => {
     createLocation: async (location) => {
       try {
         const locationLogger = createActivityLogger("location");
-        
+
         const response = await axios.post("/api/locations", {
           name: location.name,
           address: {
             street: location.address,
           },
+          country: "Trinidad and Tobago", // Default country
           geoCoords: {
             latitude: location.latitude,
             longitude: location.longitude,
+          },
+          rel: {
+            licencee: location.licencee || "",
           },
         });
 

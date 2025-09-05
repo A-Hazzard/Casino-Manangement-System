@@ -1,11 +1,14 @@
 # Collection Report Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025
 
 This page provides comprehensive financial collection management for the casino system, including collection reports, monthly summaries, and collector scheduling.
 
 - **File:** `app/collection-report/page.tsx`
 - **URL Pattern:** `/collection-report`
+
+**Note**: For complete system documentation, see the [Collection System Pages Documentation](./collection-system-pages.md).
 
 ## Main Features
 - **Collection Reports:**

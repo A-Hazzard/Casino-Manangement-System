@@ -1,9 +1,6 @@
 import axios from "axios";
-import {
-  NewCabinetFormData,
-  CabinetFormData,
-} from "../types/cabinets";
-import mongoose from "mongoose";
+import { NewCabinetFormData, CabinetFormData } from "../types/cabinets";
+
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
@@ -88,15 +85,14 @@ export const fetchCabinetById = async (
   timePeriod?: string
 ) => {
   try {
-    const params: Record<string, string> = { id: cabinetId };
+    // Use the main machines endpoint with time period filtering
+    let endpoint = `/api/machines/${cabinetId}`;
 
-    // Add timePeriod parameter if provided and not "All Time"
-    if (timePeriod && timePeriod !== "All Time") {
-      params.timePeriod = timePeriod;
+    if (timePeriod) {
+      endpoint += `?timePeriod=${encodeURIComponent(timePeriod)}`;
     }
 
-    const response = await axios.get("/api/machines", {
-      params,
+    const response = await axios.get(endpoint, {
       headers: getAuthHeaders(),
     });
 
@@ -122,38 +118,24 @@ export const createCabinet = async (
 ) => {
   try {
     const cabinetLogger = createActivityLogger("machine");
-    
+
     let apiData;
     let endpoint = "/api/machines";
 
     if ("serialNumber" in data) {
       apiData = data;
-      if (
-        data.gamingLocation &&
-        mongoose.Types.ObjectId.isValid(data.gamingLocation)
-      ) {
+
+      if (data.gamingLocation) {
         endpoint = `/api/locations/${data.gamingLocation}/cabinets`;
+      } else {
+        throw new Error("Gaming location is required to create a cabinet");
       }
     } else {
-      apiData = {
-        serialNumber: data.assetNumber,
-        game: data.installedGame,
-        gameType: "",
-        isCronosMachine: false,
-        accountingDenomination: data.accountingDenomination,
-        cabinetType: "",
-        assetStatus: data.status,
-        gamingLocation: data.location,
-        smibBoard: data.smbId,
-        collectionSettings: {
-          lastCollectionTime: new Date(),
-          lastMetersIn: "0",
-          lastMetersOut: "0",
-        },
-      };
-
-      if (data.location && mongoose.Types.ObjectId.isValid(data.location)) {
+      apiData = data;
+      if (data.location) {
         endpoint = `/api/locations/${data.location}/cabinets`;
+      } else {
+        throw new Error("Location is required to create a cabinet");
       }
     }
 
@@ -161,13 +143,27 @@ export const createCabinet = async (
 
     if (response.data && response.data.success) {
       // Log the cabinet creation activity
+      const cabinetId = response.data.data._id || "unknown";
+      const cabinetName =
+        "serialNumber" in apiData
+          ? apiData.serialNumber
+          : "assetNumber" in apiData
+          ? apiData.assetNumber
+          : "Unknown";
+      const gameName =
+        "game" in apiData
+          ? apiData.game
+          : "installedGame" in apiData
+          ? apiData.installedGame
+          : "Unknown";
+
       await cabinetLogger.logCreate(
-        response.data.data._id || apiData.serialNumber || "unknown",
-        `${apiData.game || apiData.serialNumber || "Unknown"} - ${apiData.serialNumber || "Unknown"}`,
+        cabinetId,
+        `${gameName} - ${cabinetName}`,
         apiData,
-        `Created new cabinet: ${apiData.game || apiData.serialNumber || "Unknown"} (${apiData.serialNumber || "Unknown"})`
+        `Created new cabinet: ${gameName} (${cabinetName})`
       );
-      
+
       return response.data.data;
     }
 
@@ -187,8 +183,26 @@ export const createCabinet = async (
 export const updateCabinet = async (data: CabinetFormData) => {
   try {
     const cabinetLogger = createActivityLogger("machine");
-    
-    const response = await axios.put("/api/machines", data);
+
+    // Get the machine data with gamingLocation from the new endpoint
+    const cabinetResponse = await axios.get(`/api/machines/${data.id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
+      throw new Error("Failed to fetch cabinet data");
+    }
+
+    const cabinet = cabinetResponse.data.data;
+    if (!cabinet.gamingLocation) {
+      throw new Error("Cabinet location not found");
+    }
+
+    const locationId = cabinet.gamingLocation;
+    const response = await axios.put(
+      `/api/locations/${locationId}/cabinets/${data.id}`,
+      data
+    );
 
     if (response.data && response.data.success) {
       // Log the cabinet update activity
@@ -197,9 +211,11 @@ export const updateCabinet = async (data: CabinetFormData) => {
         `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}`,
         data,
         data,
-        `Updated cabinet: ${data.installedGame || "Unknown"} (${data.assetNumber || "Unknown"})`
+        `Updated cabinet: ${data.installedGame || "Unknown"} (${
+          data.assetNumber || "Unknown"
+        })`
       );
-      
+
       return response.data.data;
     }
 
@@ -219,10 +235,25 @@ export const updateCabinet = async (data: CabinetFormData) => {
 export const deleteCabinet = async (cabinetId: string) => {
   try {
     const cabinetLogger = createActivityLogger("machine");
-    
-    const response = await axios.delete("/api/machines", {
-      params: { id: cabinetId },
+
+    // Get the machine data with gamingLocation from the new endpoint
+    const cabinetResponse = await axios.get(`/api/machines/${cabinetId}`, {
+      headers: getAuthHeaders(),
     });
+
+    if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
+      throw new Error("Failed to fetch cabinet data");
+    }
+
+    const cabinet = cabinetResponse.data.data;
+    if (!cabinet.gamingLocation) {
+      throw new Error("Cabinet location not found");
+    }
+
+    const locationId = cabinet.gamingLocation;
+    const response = await axios.delete(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`
+    );
 
     if (response.data && response.data.success) {
       // Log the cabinet deletion activity
@@ -232,7 +263,7 @@ export const deleteCabinet = async (cabinetId: string) => {
         { id: cabinetId },
         `Deleted cabinet with ID: ${cabinetId}`
       );
-      
+
       return true;
     }
 

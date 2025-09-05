@@ -160,7 +160,7 @@ export async function fetchAllGamingLocations(licensee?: string) {
     const locationsList = await getAllGamingLocations(licensee);
     if (locationsList && Array.isArray(locationsList)) {
       const formattedLocations = locationsList.map((loc) => ({
-        id: loc._id,
+        id: loc._id?.toString() || loc._id || "",
         name: loc.name || loc.locationName || "Unknown Location",
       }));
       // Sort alphabetically by name as additional safeguard
@@ -185,6 +185,14 @@ export async function fetchLocationDetailsById(
   licensee?: string
 ) {
   try {
+    // Handle empty or invalid location IDs
+    if (!locationId || locationId.trim() === "") {
+      return {
+        name: "Unknown Location",
+        data: null,
+      };
+    }
+
     const params: Record<string, string> = {};
     if (licensee) {
       params.licencee = licensee;
@@ -215,21 +223,32 @@ export async function fetchLocationDetailsById(
     const locations = response.data.locations || [];
 
     // Try multiple ways to find the location (ObjectId vs string)
-    let locationData = locations.find((loc: { _id: string | { toString(): string } }) => loc._id === locationId);
+    let locationData = locations.find(
+      (loc: { _id: string | { toString(): string } }) => loc._id === locationId
+    );
     if (!locationData) {
       locationData = locations.find(
-        (loc: { _id: string | { toString(): string } }) => loc._id.toString() === locationId
+        (loc: { _id: string | { toString(): string } }) =>
+          loc._id.toString() === locationId
       );
     }
     if (!locationData) {
       locationData = locations.find(
-        (loc: { _id: string | { toString(): string } }) => loc._id === locationId.toString()
+        (loc: { _id: string | { toString(): string } }) =>
+          loc._id === locationId.toString()
       );
     }
 
     if (!locationData) {
-      throw new Error("Location not found in licensee's locations");
+      // Location not found in current licensee's locations
+      // This could mean the location was deleted, moved to another licensee, or doesn't exist
+      console.warn(`Location ${locationId} not found in current licensee's locations`);
+      return {
+        name: "Location Not Found",
+        data: null,
+      };
     }
+    
     return {
       name: locationData.name || locationData.locationName || "Location",
       data: locationData,
@@ -238,7 +257,7 @@ export async function fetchLocationDetailsById(
     console.error("Error fetching location details:", err);
     // Return fallback data instead of throwing
     return {
-      name: locationId, // Use ID as fallback name
+      name: "Unknown Location",
       data: null,
     };
   }

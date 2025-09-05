@@ -46,11 +46,17 @@ export type Cabinet = {
   collectionMultiplier?: string;
   gameType?: string;
   isCronosMachine?: boolean;
+  // Financial metrics from aggregation API
   moneyIn?: number;
   moneyOut?: number;
-  jackpot?: number;
   cancelledCredits?: number;
+  jackpot?: number;
   gross?: number;
+  // Additional metrics for comprehensive financial tracking
+  coinIn?: number;
+  coinOut?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
   sasMeters?: SasMeters;
   online?: boolean;
   meterData?: {
@@ -127,6 +133,7 @@ export type CabinetFormData = {
   accountingDenomination: string;
   collectionMultiplier: string;
   status: string;
+  isCronosMachine: boolean;
 };
 
 export type NewCabinetFormData = {

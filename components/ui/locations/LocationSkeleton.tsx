@@ -11,8 +11,9 @@ export default function LocationSkeleton() {
               <th className="p-3 border border-[#00b517] text-sm">
                 LOCATION NAME
               </th>
-              <th className="p-3 border border-[#00b517] text-sm">MONEY IN</th>
-              <th className="p-3 border border-[#00b517] text-sm">MONEY OUT</th>
+              <th className="p-3 border border-[#00b517] text-sm">HANDLE</th>
+              <th className="p-3 border border-[#00b517] text-sm">CANCELLED</th>
+              <th className="p-3 border border-[#00b517] text-sm">JACKPOT</th>
               <th className="p-3 border border-[#00b517] text-sm">GROSS</th>
               <th className="p-3 border border-[#00b517] text-sm">ACTIONS</th>
             </tr>
@@ -20,7 +21,7 @@ export default function LocationSkeleton() {
           <tbody>
             {Array.from({ length: 8 }).map((_, idx) => (
               <tr key={idx}>
-                {Array.from({ length: 5 }).map((__, colIdx) => (
+                {Array.from({ length: 6 }).map((__, colIdx) => (
                   <td
                     key={colIdx}
                     className="p-3 bg-white border-2 border-gray-200 h-10"

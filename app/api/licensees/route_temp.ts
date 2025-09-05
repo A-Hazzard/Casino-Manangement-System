@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Licencee } from "@/app/api/lib/models/licencee";
+import { generateMongoId } from "@/lib/utils/id";
 
 export async function GET() {
   await connectDB();
@@ -68,13 +69,23 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Generate a proper MongoDB ObjectId-style hex string for the licensee
+    const licenseeId = await generateMongoId();
+
     const licensee = await Licencee.create({
+      _id: licenseeId,
       name,
       description,
       country,
-      startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+      startDate:
+        startDate !== undefined
+          ? startDate
+            ? new Date(startDate)
+            : null
+          : undefined,
       expiryDate: expiryDate ? new Date(expiryDate) : undefined,
       lastEdited: new Date(),
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
 
     return new Response(JSON.stringify({ success: true, licensee }), {
@@ -111,7 +122,12 @@ export async function PUT(request: NextRequest) {
         name,
         description,
         country,
-        startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+        startDate:
+          startDate !== undefined
+            ? startDate
+              ? new Date(startDate)
+              : null
+            : undefined,
         expiryDate: expiryDate ? new Date(expiryDate) : undefined,
         lastEdited: new Date(),
       },

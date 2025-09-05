@@ -53,14 +53,10 @@ export default function LoginPage() {
       } else {
         const backendMsg =
           response.message || "Invalid email or password. Please try again.";
-        setMessage(backendMsg);
-        setMessageType("error");
         toast.error(backendMsg);
       }
     } catch {
       const fallbackMsg = "An unexpected error occurred. Please try again.";
-      setMessage(fallbackMsg);
-      setMessageType("error");
       toast.error(fallbackMsg);
     } finally {
       setLoading(false);

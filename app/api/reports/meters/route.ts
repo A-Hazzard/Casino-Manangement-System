@@ -46,7 +46,10 @@ export async function GET(req: NextRequest) {
 
     // Build query filter for machines
     const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // Add location filter if specific locations are selected
@@ -90,7 +93,10 @@ export async function GET(req: NextRequest) {
     const locationsData = await db
       .collection("gaminglocations")
       .find({
-        deletedAt: { $in: [null, new Date(-1)] },
+        $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
       })
       .project({ _id: 1, name: 1, gameDayOffset: 1 })
       .toArray();

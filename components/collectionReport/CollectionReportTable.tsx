@@ -28,25 +28,25 @@ export default function CollectionReportTable({
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {data?.map((row, index) => (
             <tr
-              key={`${row.collector}-${row.location}-${row.time}-${index}`}
+              key={`${row?.collector || 'unknown'}-${row?.location || 'unknown'}-${row?.time || 'unknown'}-${index}`}
               className="border-b hover:bg-lighterGreenHighlight"
             >
-              <td className="px-4 py-2">{row.collector}</td>
-              <td className="px-4 py-2">{row.location}</td>
-              <td className="px-4 py-2">{row.gross}</td>
-              <td className="px-4 py-2">{row.machines}</td>
-              <td className="px-4 py-2">{row.collected}</td>
-              <td className="px-4 py-2">{row.uncollected}</td>
-              <td className="px-4 py-2">{row.locationRevenue}</td>
-              <td className="px-4 py-2">{row.time}</td>
+              <td className="px-4 py-2">{row?.collector || '-'}</td>
+              <td className="px-4 py-2">{row?.location || '-'}</td>
+              <td className="px-4 py-2">{row?.gross || 0}</td>
+              <td className="px-4 py-2">{row?.machines || '0/0'}</td>
+              <td className="px-4 py-2">{row?.collected || 0}</td>
+              <td className="px-4 py-2">{row?.uncollected || '-'}</td>
+              <td className="px-4 py-2">{row?.locationRevenue || 0}</td>
+              <td className="px-4 py-2">{row?.time || '-'}</td>
               <td className="px-4 py-2">
                 <button
                   className="flex items-center justify-center text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent"
                   onClick={() =>
                     router.push(
-                      `/collection-report/report/${row.locationReportId}`
+                      `/collection-report/report/${row?.locationReportId || ''}`
                     )
                   }
                   aria-label="View Details"

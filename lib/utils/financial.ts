@@ -55,12 +55,10 @@ export function calculateCabinetFinancialTotals(
 
   const totals = cabinets.reduce(
     (acc, cabinet) => {
-      // Use calculatedMetrics if available, otherwise fall back to direct properties
-      const moneyIn =
-        cabinet.calculatedMetrics?.moneyIn || cabinet.moneyIn || 0;
-      const moneyOut =
-        cabinet.calculatedMetrics?.moneyOut || cabinet.moneyOut || 0;
-      // Calculate gross as moneyIn - moneyOut, or use direct gross property if available
+      // Use the financial metrics directly from the aggregation API
+      const moneyIn = cabinet.moneyIn || 0;
+      const moneyOut = cabinet.moneyOut || 0;
+      // Gross is calculated as moneyIn - moneyOut according to financial metrics guide
       const gross = cabinet.gross || moneyIn - moneyOut;
 
       return {

@@ -5,12 +5,6 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { LocationTableProps } from "@/lib/types/location";
 
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
 import React from "react";
 import editIcon from "@/public/editIcon.svg";
 import deleteIcon from "@/public/deleteIcon.svg";
@@ -37,10 +31,10 @@ const LocationTable: React.FC<LocationTableProps> = ({
           ref={tableRef}
           className="table-fixed w-full border-collapse text-center"
         >
-          <thead className="bg-button text-white">
+          <thead className="bg-[#00b517] text-white">
             <tr>
               <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
                 onClick={() => onSort("locationName")}
               >
                 <span>LOCATION NAME</span>
@@ -51,10 +45,10 @@ const LocationTable: React.FC<LocationTableProps> = ({
                 )}
               </th>
               <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
                 onClick={() => onSort("moneyIn")}
               >
-                <span>MONEY IN</span>
+                <span>HANDLE</span>
                 {sortOption === "moneyIn" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
@@ -62,10 +56,10 @@ const LocationTable: React.FC<LocationTableProps> = ({
                 )}
               </th>
               <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
                 onClick={() => onSort("moneyOut")}
               >
-                <span>MONEY OUT</span>
+                <span>CANCELLED</span>
                 {sortOption === "moneyOut" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
@@ -73,7 +67,18 @@ const LocationTable: React.FC<LocationTableProps> = ({
                 )}
               </th>
               <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+                onClick={() => onSort("jackpot")}
+              >
+                <span>JACKPOT</span>
+                {sortOption === "jackpot" && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
+                    {sortOrder === "desc" ? "▼" : "▲"}
+                  </span>
+                )}
+              </th>
+              <th
+                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
                 onClick={() => onSort("gross")}
               >
                 <span>GROSS</span>
@@ -83,7 +88,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                   </span>
                 )}
               </th>
-              <th className="p-3 border border-border text-sm">ACTIONS</th>
+              <th className="p-3 border border-[#00b517] text-sm">ACTIONS</th>
             </tr>
           </thead>
           <tbody>
@@ -97,58 +102,61 @@ const LocationTable: React.FC<LocationTableProps> = ({
                   }
                 }}
               >
-                <td className="p-3 bg-container border border-border text-sm text-left hover:bg-accent">
-                  <div>{loc.locationName}</div>
-                  <div className="mt-1 inline-flex text-primary-foreground text-[10px] leading-tight">
-                    <span className="bg-blueHighlight px-1 py-0.5 rounded-l-full">
-                      {loc.totalMachines} MACHINES
-                    </span>
-                    <span className="bg-button px-1 py-0.5 rounded-r-full">
-                      {loc.onlineMachines} ONLINE
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-left hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">
+                      {loc.locationName || "Unknown Location"}
                     </span>
                   </div>
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  {formatCurrency(loc.moneyIn ?? 0)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  {formatCurrency(loc.moneyIn || 0)}
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  {formatCurrency(loc.moneyOut ?? 0)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  {formatCurrency(loc.moneyOut || 0)}
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  <span
-                    className={((loc.gross ?? 0) < 0
-                      ? "text-destructive font-semibold"
-                      : "text-button font-semibold"
-                    ).trim()}
-                  >
-                    {formatCurrency(loc.gross ?? 0)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  {formatCurrency(loc.jackpot || 0)}
+                </td>
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  <span className="text-green-600 font-semibold">
+                    {formatCurrency(loc.gross || 0)}
                   </span>
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="ghost"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         onAction("edit", loc);
                       }}
-                      className="p-1 hover:bg-buttonActive/10 text-buttonActive"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
-                      <Image src={editIcon} alt="Edit" width={20} height={20} />
+                      <Image
+                        src={editIcon}
+                        alt="Edit"
+                        width={16}
+                        height={16}
+                        className="w-4 h-4"
+                      />
                     </Button>
                     <Button
                       variant="ghost"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         onAction("delete", loc);
                       }}
-                      className="p-1 hover:bg-destructive/10 text-destructive"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
                       <Image
                         src={deleteIcon}
                         alt="Delete"
-                        width={20}
-                        height={20}
+                        width={16}
+                        height={16}
+                        className="w-4 h-4"
                       />
                     </Button>
                   </div>
@@ -158,62 +166,6 @@ const LocationTable: React.FC<LocationTableProps> = ({
           </tbody>
         </table>
       </div>
-
-      {/* Pagination Controls */}
-      {locations.length > 10 && (
-        <div className="mt-6 flex items-center justify-center space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              // First page logic would be handled by the parent component
-            }}
-            className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-          >
-            <DoubleArrowLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              // Previous page logic
-            }}
-            className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-
-          {/* Page numbers would be generated here */}
-          <Button className="bg-buttonActive text-white px-3 py-1 scale-105">
-            1
-          </Button>
-
-          <Button className="bg-gray-300 text-black px-3 py-1 hover:bg-gray-400">
-            2
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              // Next page logic
-            }}
-            className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              // Last page logic
-            }}
-            className="bg-gray-300 text-black p-2 hover:bg-gray-400 transition-colors"
-          >
-            <DoubleArrowRightIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </>
   );
 };

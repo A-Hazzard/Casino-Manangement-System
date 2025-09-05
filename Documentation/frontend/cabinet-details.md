@@ -1,311 +1,346 @@
-# Cabinet Details Page
+# Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-This page provides comprehensive detailed information and configuration management for a single cabinet (slot machine), including SMIB settings, metrics, and real-time status monitoring.
+This document explains how the Cabinet Details page works, including collection history, denominations, and SMIB configuration.
 
-- **File:** `app/cabinets/[slug]/page.tsx`
-- **URL Pattern:** `/cabinets/[slug]` where `[slug]` is the cabinet ID
+## Overview
 
-## Main Features
-- **Cabinet Information:**
-  - Display cabinet serial number, manufacturer, game type, and location
-  - Real-time online/offline status with animated indicators
-  - Last activity tracking and connectivity monitoring
-- **SMIB Configuration:**
-  - Expandable SMIB (Slot Machine Interface Board) configuration section
-  - Communication mode settings (SAS, Non-SAS, IGT)
-  - Firmware version management and display
-  - Network settings and MQTT topic configuration
-  - Advanced settings for machine-specific configurations
-- **Metrics and Analytics:**
-  - Time period filtering (Today, Yesterday, Last 7 days, 30 days, Custom)
-  - Multiple metrics tabs: Metrics, Live Metrics, Bill Validator, Activity Log, Collection History
-  - Real-time performance data and historical trends
-  - Detailed accounting and financial metrics
-- **Configuration Management:**
-  - Edit cabinet information and settings
-  - SMIB firmware updates and rollback capabilities
-  - Network configuration and connectivity monitoring
-  - Advanced communication protocol settings
-- **Responsive Design:**
-  - Separate desktop and mobile layouts
-  - Touch-friendly controls for mobile devices
-  - Adaptive tab navigation for different screen sizes
+The Cabinet Details page (`app/cabinets/[slug]/page.tsx`) provides comprehensive information about individual slot machines/cabinets, including real-time status, financial metrics, and configuration settings.
 
-## Technical Architecture
+## Page Structure
 
-### Core Components
-- **Main Page:** `app/cabinets/[slug]/page.tsx` - Entry point with comprehensive cabinet management
-- **Layout Components:**
-  - `components/layout/Header.tsx` - Top navigation with licensee selector
-  - `components/layout/Sidebar.tsx` - Persistent navigation sidebar
-- **Cabinet Information Components:**
-  - `components/ui/skeletons/CabinetDetailSkeletons.tsx` - Loading and error states
-  - `components/cabinetDetails/AccountingDetails.tsx` - Detailed metrics and analytics
-- **SMIB Configuration Components:**
-  - Expandable SMIB configuration section with network and communication settings
-  - Firmware version display and management
-  - MQTT topic configuration display
-- **Modal Components:**
-  - `components/ui/cabinets/EditCabinetModal.tsx` - Edit cabinet modal
-  - `components/ui/cabinets/DeleteCabinetModal.tsx` - Delete cabinet modal
-- **Shared Components:**
-  - `components/ui/RefreshButton.tsx` - Data refresh button
+### **Header Section**
+- **Cabinet Name**: Displays serial number, original serial number, or machine ID
+- **Edit Button**: Allows modification of cabinet details
+- **Status Indicators**: Online/offline status, location information
+- **Refresh Button**: Updates all data in real-time
 
-### State Management
-- **Dashboard Store:** `lib/store/dashboardStore.ts` - Shared state for licensee and date filters
-- **Cabinet Actions Store:** `lib/store/cabinetActionsStore.ts` - Modal state management
-- **Local State:** React `useState` hooks for complex UI state
-- **Key State Properties:**
-  - `cabinet` - Cabinet details and configuration data
-  - `loading`, `metricsLoading`, `refreshing` - Loading states
-  - `error` - Error handling state
-  - `smibConfigExpanded` - SMIB configuration expansion state
-  - `isOnline` - Real-time online status
-  - `activeMetricsFilter` - Time period filter selection
-  - `activeMetricsTabContent` - Metrics tab selection
-  - `communicationMode`, `firmwareVersion` - SMIB configuration states
-  - `isFilterChangeInProgress` - Filter change loading state
+### **SMIB Configuration Section**
+- **Expandable Panel**: Click to reveal detailed configuration
+- **Communication Mode**: SAS, non-SAS, or IGT protocols
+- **Firmware Version**: Current SMIB firmware running
+- **Network Settings**: WiFi configuration and MQTT settings
+- **Machine Control**: Restart, lock/unlock functionality
 
-### Data Flow
-1. **Initial Load:** Fetches cabinet details and configuration data
-2. **Status Monitoring:** Real-time online/offline status updates
-3. **Metrics Filtering:** Updates metrics data based on time period selection
-4. **SMIB Configuration:** Manages expandable configuration section
-5. **Real-time Updates:** Refreshes data and status when needed
-6. **Error Handling:** Graceful degradation with retry mechanisms
+### **Metrics Tabs**
+- **Range Metrics**: Time-based financial performance
+- **Live Metrics**: Real-time machine status
+- **Bill Validator**: Denomination tracking and bill acceptance
+- **Activity Log**: Machine events and commands
+- **Collection History**: Financial collection records
 
-### API Integration
+## Collection History - How It Works
 
-#### Cabinet Management Endpoints
-- **GET `/api/machines/[id]`** - Fetches cabinet details
-  - Parameters: `id` (cabinet ID)
-  - Returns: `CabinetDetail` with complete cabinet information
-- **PUT `/api/machines/[id]`** - Updates cabinet metrics data
-  - Parameters: `id`, `timePeriod`
-  - Returns: Updated cabinet metrics data
+### **What is Collection History?**
+Collection history tracks all money collected from the machine over time, providing a complete audit trail of financial transactions.
 
-#### Data Processing
-- **Cabinets Helper:** `lib/helpers/cabinets.ts` - Core cabinet utilities
-  - `fetchCabinetById()` - Fetches cabinet details by ID
-  - `updateCabinetMetricsData()` - Updates cabinet metrics for time period
-- **Cabinet Details Helper:** `lib/helpers/cabinetDetails.ts` - Cabinet-specific utilities
-  - Cabinet metrics calculation and formatting
-  - SMIB configuration processing
-
-### Key Dependencies
-
-#### Frontend Libraries
-- **React Hooks:** `useState`, `useEffect`, `useCallback`, `useRef` - State management
-- **Next.js:** `useRouter`, `usePathname` - Navigation and routing
-- **Framer Motion:** Animation library for smooth transitions
-- **GSAP:** Advanced animations for UI interactions
-- **Radix UI Icons:** `ArrowLeftIcon`, `ChevronDownIcon`, `Pencil2Icon` - UI icons
-- **Lucide React:** Additional UI icons
-- **Date-fns:** `differenceInMinutes` - Date calculations for online status
-
-#### Type Definitions
-- **Cabinet Types:** `lib/types/cabinets.ts` - Cabinet-related types
-  - `CabinetDetail`, `TimePeriod`
-- **Shared Types:** `@shared/types` - Core type definitions
-
-#### Utility Functions
-- **Date Utils:** Date manipulation and formatting utilities
-- **Animation Utils:** GSAP and Framer Motion utilities for smooth animations
-
-### Component Hierarchy
+### **Collection Process Flow**
 ```
-CabinetDetailPage (app/cabinets/[slug]/page.tsx)
-├── Sidebar (components/layout/Sidebar.tsx)
-├── Header (components/layout/Header.tsx)
-├── Refresh Button
-├── Back Button
-├── Cabinet Info Header
-│   ├── Cabinet Name and Edit Button
-│   ├── Manufacturer and Game Type
-│   └── Location and Online Status
-├── SMIB Configuration Section
-│   ├── Expandable Configuration Panel
-│   ├── Communication Mode Settings
-│   ├── Firmware Version Display
-│   ├── Network Settings
-│   └── MQTT Topic Configuration
-├── Time Period Filters
-│   ├── Desktop Filter Buttons
-│   └── Mobile Filter Dropdown
-├── Metrics Tabs (Mobile)
-│   └── Horizontal Tab Slider
-├── Accounting Details
-│   └── AccountingDetails (components/cabinetDetails/AccountingDetails.tsx)
-└── Modals
-    ├── EditCabinetModal (components/ui/cabinets/EditCabinetModal.tsx)
-    └── DeleteCabinetModal (components/ui/cabinets/DeleteCabinetModal.tsx)
+1. Player Gaming Session → 2. Session Ends → 3. Staff Collection → 4. Collection Recorded → 5. Report Generated
 ```
 
-### Business Logic
-- **Cabinet Management:** Complete cabinet information and configuration management
-- **Real-time Monitoring:** Live status tracking and connectivity monitoring
-- **SMIB Configuration:** Advanced SMIB settings and firmware management
-- **Metrics Analytics:** Comprehensive performance metrics and historical data
-- **Time-based Filtering:** Flexible time period selection for metrics analysis
-- **Error Recovery:** Graceful error handling with retry mechanisms
-
-### Animation & UX Features
-- **Framer Motion Animations:** Smooth transitions for all UI interactions
-- **GSAP Animations:** Advanced animations for configuration sections
-- **Loading States:** Comprehensive loading indicators and skeleton loaders
-- **Responsive Design:** Separate mobile and desktop layouts
-- **Status Animations:** Animated online/offline status indicators
-- **Expandable Sections:** Smooth expand/collapse animations for SMIB configuration
-
-### Error Handling
-- **API Failures:** Graceful degradation with user-friendly error messages
-- **Loading States:** Comprehensive loading indicators
-- **Network Issues:** Retry logic and error recovery
-- **Invalid Data:** Validation and fallback handling
-- **Status Monitoring:** Automatic retry for connectivity issues
-
-### Performance Optimizations
-- **Memoization:** `useCallback` for expensive operations
-- **Conditional Rendering:** Efficient component rendering based on data availability
-- **Debounced Filtering:** Prevents excessive API calls during filter changes
-- **Efficient Animations:** Optimized animation performance
-- **Data Caching:** Client-side caching of frequently accessed data
-
-### Security Features
-- **Input Validation:** Comprehensive validation for all form inputs
-- **API Authentication:** Secure API calls with proper error handling
-- **Data Sanitization:** Safe handling of user input
-- **Access Control:** Role-based access to cabinet operations
-- **Configuration Security:** Secure SMIB configuration management
-
-## Data Flow
-- Fetches cabinet details and configuration from the backend
-- Uses Zustand for shared state (licensee, modals)
-- Handles real-time status monitoring and metrics updates
-- Provides comprehensive SMIB configuration management
-- Supports time-based metrics filtering and analysis
-
-## Financial Calculations Analysis
-
-### Cabinet Details Metrics vs Financial Metrics Guide
-
-**Current Implementation Analysis (via AccountingDetails.tsx):**
-
-#### **Cabinet Financial Metrics ✅**
-- **Current Implementation**: Uses `AccountingDetails` component with meter data
-- **Data Source**: Individual cabinet meter readings from `meters` collection
-- **Time Period Filtering**: Today, Yesterday, Last 7 days, 30 days, Custom
-- **Financial Guide**: Uses standard meter fields ✅ **MATCHES**
-
-#### **Cabinet Money In (Drop) ✅**
-- **Current Implementation**: 
-  ```javascript
-  moneyIn = Σ(movement.drop) for cabinet within time period
-  ```
-- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
-- **Business Context**: Total physical cash inserted into specific cabinet
-- **Display**: AccountingDetails shows formatted money in values
-
-#### **Cabinet Money Out (Cancelled Credits) ✅**
-- **Current Implementation**: 
-  ```javascript
-  moneyOut = Σ(movement.totalCancelledCredits) for cabinet within time period
-  ```
-- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
-- **Business Context**: Total credits cancelled/paid out from specific cabinet
-- **Display**: AccountingDetails shows formatted money out values
-
-#### **Cabinet Gross Revenue ✅**
-- **Current Implementation**: 
-  ```javascript
-  gross = moneyIn - moneyOut
-  ```
-- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
-- **Mathematical Formula**: Standard gross calculation for individual cabinet
-
-#### **Cabinet Live Metrics ✅**
-- **Current Implementation**: Real-time SAS meter data from `machine.sasMeters`
-- **Data Source**: Live meter readings from machine's SAS connection
-- **Fields**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`, `jackpot`, `gamesPlayed`
-- **Financial Guide**: Uses standard SAS meter fields ✅ **MATCHES**
-
-#### **Cabinet Collection History ✅**
-- **Current Implementation**: Historical collection data from `collectionMetersHistory`
-- **Data Source**: Collection-to-collection meter changes
-- **Calculation**: Shows meter deltas between collection periods
-- **Financial Guide**: Uses standard collection methodology ✅ **MATCHES**
-
-#### **Cabinet Activity Log ✅**
-- **Current Implementation**: Machine events from `machineevents` collection
-- **Data Source**: Event logs for specific cabinet
-- **Business Logic**: Detailed audit trail of cabinet activity
-- ✅ **OPERATIONAL** - Standard event logging (not financial calculation)
-
-### Mathematical Formulas Summary
-
-#### **Cabinet Time-Period Metrics**
-```
-Cabinet Money In = Σ(movement.drop) WHERE machine = cabinetId AND readAt BETWEEN startDate AND endDate
-Cabinet Money Out = Σ(movement.totalCancelledCredits) WHERE machine = cabinetId AND readAt BETWEEN startDate AND endDate
-Cabinet Gross Revenue = Cabinet Money In - Cabinet Money Out
+### **Collection Data Structure**
+```typescript
+Collection {
+  _id: "collection_001",
+  machineId: "slot_machine_456",
+  location: "casino_main_floor",
+  collector: "staff_member_123",
+  timestamp: "2024-12-20 17:00:00",
+  
+  // Financial Data
+  metersIn: 800,        // Money in machine when collection started
+  metersOut: 600,       // Money in machine when collection finished
+  gross: 200,           // Money collected (800 - 600)
+  
+  // SAS Meters (Slot Accounting System)
+  sasMeters: {
+    drop: 800,          // Total money players put in
+    gamesPlayed: 25,    // Total games played
+    jackpot: 100        // Current jackpot amount
+  },
+  
+  // Movement Data
+  movement: {
+    metersIn: 800,      // Money movement tracking
+    metersOut: 600,
+    gross: 200
+  }
+}
 ```
 
-#### **Cabinet Live Metrics**
+### **Collection History Display**
+- **Date/Time**: When collection occurred
+- **Collector**: Staff member who performed collection
+- **Amount Collected**: Gross amount taken from machine
+- **Machine Status**: Meters before and after collection
+- **Variance**: Any discrepancies in expected vs actual amounts
+
+## Denominations and Bill Validator
+
+### **Bill Validator System**
+The bill validator accepts various denominations and tracks them separately for financial accuracy.
+
+### **Supported Denominations**
+```typescript
+BillMeters {
+  dollar1: 0,      // $1 bills accepted
+  dollar2: 0,      // $2 bills accepted
+  dollar5: 0,      // $5 bills accepted
+  dollar10: 0,     // $10 bills accepted
+  dollar20: 0,     // $20 bills accepted
+  dollar50: 0,     // $50 bills accepted
+  dollar100: 0,    // $100 bills accepted
+  dollar500: 0,    // $500 bills accepted
+  dollar1000: 0,   // $1000 bills accepted
+  dollar2000: 0,   // $2000 bills accepted
+  dollar5000: 0,   // $5000 bills accepted
+  dollarTotal: 0,  // Total of all denominations
+  dollarTotalUnknown: 0  // Unrecognized bills
+}
 ```
-Live Money In = machine.sasMeters.drop (current reading)
-Live Money Out = machine.sasMeters.totalCancelledCredits (current reading)
-Live Coin In = machine.sasMeters.coinIn (current reading)
-Live Coin Out = machine.sasMeters.coinOut (current reading)
-Live Games Played = machine.sasMeters.gamesPlayed (current reading)
-Live Jackpot = machine.sasMeters.jackpot (current reading)
+
+### **Bill Tracking During Sessions**
+```typescript
+MachineSession {
+  startBillMeters: {
+    // Bill counts when session started
+    dollar1: 100, dollar5: 50, dollar20: 25
+  },
+  endBillMeters: {
+    // Bill counts when session ended
+    dollar1: 95, dollar5: 48, dollar20: 23
+  }
+}
 ```
 
-#### **Cabinet Collection Calculations**
+### **Denomination Analysis**
+- **Most Popular**: Which denominations players prefer
+- **Acceptance Rate**: Success/failure of bill validation
+- **Revenue Distribution**: How money flows through different denominations
+
+## SMIB Configuration
+
+### **What is SMIB?**
+SMIB (Slot Machine Interface Board) is the communication interface between the slot machine and the casino management system.
+
+### **Communication Modes**
+```typescript
+SMIBConfig {
+  coms: {
+    comsMode: 0,        // 0 = SAS, 1 = non-SAS, 2 = IGT
+    comsRateMs: 100,    // Communication rate in milliseconds
+    comsRTE: 1,         // Real-time events enabled
+    comsGPC: 0          // Game protocol configuration
+  }
+}
 ```
-Collection Period Drop = End Collection Drop - Start Collection Drop
-Collection Period Cancelled = End Collection Cancelled - Start Collection Cancelled
-Collection Net Win = Collection Period Drop - Collection Period Cancelled
+
+### **Network Configuration**
+```typescript
+SMIBConfig {
+  net: {
+    netMode: 1,                    // 1 = WiFi client mode
+    netStaSSID: "Casino_WiFi",    // WiFi network name
+    netStaPwd: "password123",     // WiFi password
+    netStaChan: 6                 // WiFi channel
+  }
+}
 ```
 
-#### **Cabinet Status Calculation**
+### **MQTT Configuration**
+```typescript
+SMIBConfig {
+  mqtt: {
+    mqttSecure: 0,                // TLS encryption (0 = off, 1 = on)
+    mqttQOS: 1,                   // Quality of service level
+    mqttURI: "mqtt.casino.com",   // MQTT broker address
+    mqttSubTopic: "smib/commands", // Topic for receiving commands
+    mqttPubTopic: "smib/events",   // Topic for publishing events
+    mqttCfgTopic: "smib/config",   // Topic for configuration updates
+    mqttIdleTimeS: 30             // Idle timeout in seconds
+  }
+}
 ```
-Cabinet Online = lastActivity >= (currentTime - 3 minutes)
-Cabinet Status = assetStatus field value
-Cabinet Last Activity = lastActivity timestamp
+
+## Machine Events and Activity Log
+
+### **Event Types Tracked**
+```typescript
+MachineEvent {
+  sequence: [
+    {
+      message: {
+        typ: "BILL_ACCEPTED",     // Event type
+        rly: "relay_123",         // Relay identifier
+        mac: "00:11:22:33:44:55", // Machine MAC address
+        tkn: "token_abc",         // Security token
+        pyd: "payload_data"       // Event payload
+      },
+      description: "Bill validator accepted $20", // Human-readable description
+      logLevel: "INFO",           // Log level (INFO, WARN, ERROR)
+      success: true,              // Operation success status
+      createdAt: "2024-12-20 10:30:00" // Timestamp
+    }
+  ]
+}
 ```
 
-### Data Validation & Error Handling
+### **Common Event Categories**
+- **Bill Validation**: Bill acceptance/rejection events
+- **Game Events**: Bet placement, wins, losses
+- **Machine Commands**: Lock/unlock, restart, configuration changes
+- **Communication**: Network connectivity, MQTT messages
+- **Error Events**: Hardware failures, communication errors
 
-#### **Input Validation ✅**
-- **Cabinet ID**: Validates MongoDB ObjectId format
-- **Time Period**: Validates date range selections
-- **Meter Data**: Validates numeric meter values
-- **Configuration**: Validates SMIB configuration parameters
+## Financial Metrics and Calculations
 
-#### **Data Integrity ✅**
-- **Null Handling**: Uses fallback values for missing meter data
-- **Historical Data**: Maintains meter reading history integrity
-- **Real-time Sync**: Ensures live metrics reflect current cabinet state
-- **Collection Validation**: Validates collection period calculations
+### **Drop vs Gross**
+- **Drop**: Total money players put into the machine
+- **Gross**: Money collected by staff during collections
+- **Net**: Drop minus gross (money still in machine)
 
-### Required Verification
+### **Variance Calculation**
+```typescript
+Variance = Expected Collection - Actual Collection
+Expected = Previous Balance + Drop - Current Balance
+Actual = Amount Collected
+```
 
-**Cabinet details calculations align with the financial metrics guide:**
+### **Theoretical vs Actual RTP**
+- **Theoretical RTP**: Expected return-to-player percentage
+- **Actual RTP**: Real return based on actual play data
+- **Variance**: Difference between theoretical and actual
 
-1. **Meter Aggregations**: Use standard drop and cancelled credits fields ✅
-2. **Gross Revenue**: Standard calculation (drop - cancelled credits) ✅
-3. **Live Metrics**: Use standard SAS meter fields ✅
-4. **Collection History**: Standard collection methodology ✅
-5. **Time Period Filtering**: Standard date range aggregation ✅
+## Real-Time Monitoring
 
-**Note**: Cabinet details calculations correctly implement the financial metrics guide for individual cabinet analysis.
+### **Online/Offline Status**
+- **Online**: Machine has communicated within last 3 minutes
+- **Offline**: No communication for more than 3 minutes
+- **Status Updates**: Real-time communication monitoring
 
-## UI
-- Clean, modern design with Tailwind CSS
-- Expandable configuration sections for detailed management
-- Responsive design optimized for all device types
-- Animated status indicators and smooth transitions
-- Accessible controls and intuitive navigation
-- Visual feedback for all user interactions 
+### **Live Metrics**
+- **Current Credits**: Player's current credit balance
+- **Games Played**: Total games in current session
+- **Last Activity**: Timestamp of last machine action
+- **Bill Validator Status**: Current bill acceptance state
+
+### **Alert System**
+- **Low Balance**: Machine running low on credits
+- **Bill Validator Full**: Bill storage needs emptying
+- **Communication Issues**: Network or protocol problems
+- **Hardware Errors**: Mechanical or electronic failures
+
+## Configuration Management
+
+### **Remote Configuration Updates**
+- **Communication Mode**: Switch between SAS/non-SAS/IGT
+- **Firmware Updates**: Remote SMIB firmware upgrades
+- **Network Settings**: WiFi configuration changes
+- **MQTT Settings**: Broker and topic configuration
+
+### **Machine Control Commands**
+- **Restart**: Reboot the SMIB system
+- **Lock Machine**: Prevent player access
+- **Unlock Machine**: Restore player access
+- **Reset Meters**: Clear current session data
+
+### **Batch Operations**
+- **Apply to All**: Apply configuration to all machines at location
+- **Location-wide Updates**: Synchronize settings across multiple machines
+- **Rollback Capability**: Revert to previous configuration if needed
+
+## Data Relationships
+
+### **Machine → Sessions → Events → Collections**
+```
+Machine (machines.ts)
+├── MachineSession (machineSessions.ts) - Player gaming sessions
+│   ├── startMeters - Initial machine state
+│   ├── endMeters - Final machine state
+│   └── MachineEvent (machineEvents.ts) - Session activity log
+├── Collection (collections.ts) - Money collection records
+│   ├── metersIn - Machine state before collection
+│   ├── metersOut - Machine state after collection
+│   └── sasMeters - Financial calculations
+└── CollectionReport (collectionReport.ts) - Aggregated financial data
+```
+
+### **Query Patterns**
+```typescript
+// Get machine collection history
+const collections = await Collection.find({ machineId: machineId })
+
+// Get machine events for a session
+const events = await MachineEvent.find({ 
+  machine: machineId, 
+  currentSession: sessionId 
+})
+
+// Get machine financial summary
+const summary = await Collection.aggregate([
+  { $match: { machineId: machineId } },
+  { $group: { 
+    _id: null, 
+    totalCollected: { $sum: "$sasMeters.gross" },
+    totalDrop: { $sum: "$sasMeters.drop" }
+  }}
+])
+```
+
+## Performance Considerations
+
+### **Indexing Strategy**
+- **Machine-based queries**: Index on `machineId` and `timestamp`
+- **Session-based queries**: Index on `currentSession` and `date`
+- **Location-based queries**: Index on `location` and `timestamp`
+- **Financial queries**: Index on `metersIn`, `metersOut`, `gross`
+
+### **Data Aggregation**
+- **Real-time calculations**: Use embedded documents for current state
+- **Historical analysis**: Use aggregation pipelines for complex queries
+- **Caching strategy**: Cache frequently accessed metrics
+- **Data retention**: Archive old data for performance
+
+## Security and Compliance
+
+### **Access Control**
+- **User Permissions**: Role-based access to machine controls
+- **Audit Logging**: Track all configuration changes
+- **Secure Communication**: Encrypted MQTT and network traffic
+- **Token Validation**: Secure authentication for remote commands
+
+### **Compliance Requirements**
+- **Financial Accuracy**: Precise tracking of all money movements
+- **Audit Trail**: Complete history of all machine activities
+- **Regulatory Reporting**: Automated generation of compliance reports
+- **Data Integrity**: Validation of all financial calculations
+
+## Troubleshooting
+
+### **Common Issues**
+- **Communication Failures**: Check network connectivity and MQTT settings
+- **Configuration Errors**: Verify parameter ranges and format
+- **Financial Discrepancies**: Review collection procedures and meter readings
+- **Performance Issues**: Check database indexes and query optimization
+
+### **Debug Tools**
+- **Event Logs**: Detailed machine activity records
+- **Network Diagnostics**: Connectivity and protocol testing
+- **Financial Reconciliation**: Compare expected vs actual amounts
+- **System Health**: Monitor machine status and performance metrics
+
+## Future Enhancements
+
+### **Planned Features**
+- **Predictive Analytics**: Machine performance forecasting
+- **Automated Collections**: Smart collection scheduling
+- **Advanced Reporting**: Enhanced financial and operational insights
+- **Mobile Integration**: Mobile app for machine monitoring
+
+### **Integration Opportunities**
+- **Accounting Systems**: Direct financial data export
+- **Security Systems**: Integration with casino surveillance
+- **Player Management**: Enhanced player tracking and rewards
+- **Regulatory Systems**: Automated compliance reporting 

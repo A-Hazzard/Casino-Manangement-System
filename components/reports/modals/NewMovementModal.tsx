@@ -91,6 +91,7 @@ export default function NewMovementModal({
   isOpen,
   onClose,
   onSubmit,
+  onRefresh,
 }: NewMovementModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -157,6 +158,11 @@ export default function NewMovementModal({
       // Call the callback to update parent component
       if (onSubmit) {
         onSubmit(newMovement);
+      }
+
+      // Refresh the parent page data after successful creation
+      if (onRefresh) {
+        onRefresh();
       }
 
       toast.success("Movement request created successfully!");

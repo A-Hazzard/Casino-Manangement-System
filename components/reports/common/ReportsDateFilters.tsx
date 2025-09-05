@@ -7,6 +7,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useReportsStore } from "@/lib/store/reportsStore";
+import CurrencyFilter from "@/components/filters/CurrencyFilter";
 
 /**
  * Reports Date Filters Component
@@ -23,13 +24,16 @@ export default function ReportsDateFilters() {
     loadingChartData,
     loadingTopPerforming,
     refreshing,
+    selectedLicencee,
   } = useDashBoardStore();
 
   const { setDateRange, activeView } = useReportsStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [selectedSingleDate, setSelectedSingleDate] = useState<Date | undefined>(undefined);
-  
+  const [selectedSingleDate, setSelectedSingleDate] = useState<
+    Date | undefined
+  >(undefined);
+
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {
     const baseButtons = [
@@ -156,6 +160,11 @@ export default function ReportsDateFilters() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 w-full">
+      {/* Currency Filter */}
+      <div className="flex items-center gap-2">
+        <CurrencyFilter selectedLicensee={selectedLicencee} />
+      </div>
+
       {/* Mobile: Select dropdown */}
       <div className="w-full md:hidden">
         <select

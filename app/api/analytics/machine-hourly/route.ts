@@ -103,6 +103,17 @@ export async function GET(req: NextRequest) {
           },
           jackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } },
           plays: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+          // Add proper financial metrics according to financial-metrics-guide.md
+          drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+          totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+          gross: { 
+            $sum: { 
+              $subtract: [
+                { $ifNull: ["$movement.drop", 0] },
+                { $ifNull: ["$movement.totalCancelledCredits", 0] }
+              ]
+            }
+          },
         },
       } as PipelineStage,
       { $sort: { "_id.hour": 1, "_id.machine": 1 } } as PipelineStage,
@@ -116,6 +127,9 @@ export async function GET(req: NextRequest) {
           winLoss: 1,
           jackpot: 1,
           plays: 1,
+          drop: 1,
+          totalCancelledCredits: 1,
+          gross: 1,
         },
       } as PipelineStage
     );

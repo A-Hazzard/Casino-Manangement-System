@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
 
     // Build match stage for machines
     const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     // If licensee is specified, we need to filter machines by their location's licensee
@@ -35,7 +38,10 @@ export async function GET(request: NextRequest) {
         .find(
           {
             "rel.licencee": effectiveLicensee,
-            deletedAt: { $in: [null, new Date(-1)] },
+            $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
           },
           { projection: { _id: 1 } }
         )

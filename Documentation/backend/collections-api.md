@@ -1,10 +1,13 @@
 # Collections API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025
 
 ## Overview
 
-The Collections API manages collection reports, meter data synchronization, and collector information for gaming machines across different locations.
+The Collections API manages individual machine collections, meter data synchronization, and collector information for gaming machines across different locations. This API works in conjunction with the Collection Reports API to provide a complete collection management system.
+
+**Note**: For comprehensive collection report functionality, see the [Collection System API Documentation](./collection-system-api.md).
 
 ## API Endpoints
 

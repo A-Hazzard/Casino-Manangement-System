@@ -24,14 +24,19 @@ import { Button } from "@/components/ui/button";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-// import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  MachineHourlyChartsSkeleton,
+  RevenueAnalysisChartsSkeleton, 
+  TopMachinesTableSkeleton,
+  SummaryCardsSkeleton,
+  MainContentSkeleton
+} from "@/components/ui/skeletons/ReportsSkeletons";
 // import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
 import { 
-  handleLocationSelectLocations,
   handleExportSASEvaluation as handleExportSASEvaluationHelper
 } from "@/lib/helpers/reportsPage";
 
@@ -135,7 +140,10 @@ export default function LocationsTab() {
 
   const { selectedDateRange } = useReportsStore();
 
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  // Separate state management for each tab
+  const [selectedSasLocations, setSelectedSasLocations] = useState<string[]>([]);
+  const [selectedRevenueLocations, setSelectedRevenueLocations] = useState<string[]>([]);
+  
   const [metricsOverview, setMetricsOverview] =
     useState<LocationMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
@@ -172,6 +180,19 @@ export default function LocationsTab() {
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // Independent loading states for each tab (currently unused but available for future use)
+  // const [sasLoading, setSasLoading] = useState(false);
+  // const [revenueLoading, setRevenueLoading] = useState(false);
+  
+  // Helper function to set current selected locations based on active tab
+  const setCurrentSelectedLocations = useCallback((locations: string[]) => {
+    if (activeTab === "sas-evaluation") {
+      setSelectedSasLocations(locations);
+    } else {
+      setSelectedRevenueLocations(locations);
+    }
+  }, [activeTab]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -306,6 +327,18 @@ export default function LocationsTab() {
         const { data: locationData } = response.data;
 
         console.warn(`🔍 Location data from API: ${locationData.length}`);
+        
+        // Debug: Log sample data to understand the structure
+        if (locationData.length > 0) {
+          console.warn("🔍 Sample location data from API:", JSON.stringify({
+            location: locationData[0].location,
+            locationName: locationData[0].locationName,
+            sasMachines: locationData[0].sasMachines,
+            hasSasMachines: locationData[0].hasSasMachines,
+            totalMachines: locationData[0].totalMachines,
+            machines: locationData[0].machines?.slice(0, 2) // First 2 machines for debugging
+          }, null, 2));
+        }
 
         // Normalize location data
         const normalizedLocations = locationData.map((loc: Record<string, unknown>) => ({
@@ -316,12 +349,21 @@ export default function LocationsTab() {
         }));
 
         // Store locations for dropdown selection (always all locations)
+        console.warn("🔍 Frontend - Setting allLocationsForDropdown with", normalizedLocations.length, "locations");
+        console.warn("🔍 Frontend - Sample normalized location:", normalizedLocations[0] ? {
+          location: normalizedLocations[0].location,
+          locationName: normalizedLocations[0].locationName,
+          sasMachines: normalizedLocations[0].sasMachines,
+          hasSasMachines: normalizedLocations[0].hasSasMachines,
+          totalMachines: normalizedLocations[0].totalMachines
+        } : "No locations");
         setAllLocationsForDropdown(normalizedLocations);
 
         // Filter data based on selected locations if any are selected
-        const filteredData = selectedLocations.length > 0 
+        const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
+        const filteredData = currentSelectedLocations.length > 0 
           ? normalizedLocations.filter((loc: Record<string, unknown>) => 
-              selectedLocations.includes(loc.location as string)
+              currentSelectedLocations.includes(loc.location as string)
             )
           : normalizedLocations;
 
@@ -332,7 +374,7 @@ export default function LocationsTab() {
         setTotalCount(normalizedLocations.length);
 
         // Calculate metrics overview (use filtered data if locations are selected)
-        const dataForMetrics = selectedLocations.length > 0 ? filteredData : normalizedLocations;
+        const dataForMetrics = currentSelectedLocations.length > 0 ? filteredData : normalizedLocations;
         const overview = dataForMetrics.reduce(
           (acc: Record<string, unknown>, loc: Record<string, unknown>) => {
             (acc.totalGross as number) += (loc.gross as number) || 0;
@@ -355,7 +397,7 @@ export default function LocationsTab() {
         setMetricsLoading(false);
 
         // Get top 5 locations for overview (use filtered data if locations are selected)
-        const dataForTopLocations = selectedLocations.length > 0 ? filteredData : normalizedLocations;
+        const dataForTopLocations = currentSelectedLocations.length > 0 ? filteredData : normalizedLocations;
         const sorted = dataForTopLocations
           .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.gross as number) || 0) - ((a.gross as number) || 0))
           .slice(0, 5)
@@ -421,13 +463,15 @@ export default function LocationsTab() {
       customDateRange?.startDate,
       customDateRange?.endDate,
       fetchGamingLocationsAsync,
-      selectedLocations,
+      selectedSasLocations,
+      selectedRevenueLocations,
     ]
   );
 
   // Function to fetch top machines data
   const fetchTopMachines = useCallback(async () => {
-    if (selectedLocations.length === 0) {
+    const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
+    if (currentSelectedLocations.length === 0) {
       setTopMachinesData([]);
       return;
     }
@@ -484,7 +528,7 @@ export default function LocationsTab() {
       // Filter machines by selected locations and sort by netWin
       const filteredMachines = machinesData
         .filter((machine: MachineData) => 
-          selectedLocations.includes(machine.locationId)
+          currentSelectedLocations.includes(machine.locationId)
         )
         .sort((a: MachineData, b: MachineData) => b.netWin - a.netWin)
         .slice(0, 5);
@@ -497,11 +541,12 @@ export default function LocationsTab() {
     } finally {
       setTopMachinesLoading(false);
     }
-  }, [selectedLocations, selectedLicencee, activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+  }, [selectedSasLocations, selectedRevenueLocations, activeTab, selectedLicencee, activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
 
   // Function to fetch machine hourly data
   const fetchMachineHourlyData = useCallback(async () => {
-    if (selectedLocations.length === 0) {
+    const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
+    if (currentSelectedLocations.length === 0) {
       setMachineHourlyData(null);
       return;
     }
@@ -509,7 +554,7 @@ export default function LocationsTab() {
     setMachineHourlyLoading(true);
     try {
       const params: Record<string, string> = {
-        locationIds: selectedLocations.join(","),
+        locationIds: currentSelectedLocations.join(","),
       };
 
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -561,15 +606,16 @@ export default function LocationsTab() {
     } finally {
       setMachineHourlyLoading(false);
     }
-  }, [selectedLocations, selectedLicencee, activeMetricsFilter, customDateRange]);
+  }, [selectedSasLocations, selectedRevenueLocations, activeTab, selectedLicencee, activeMetricsFilter, customDateRange]);
 
   // Consolidated useEffect to handle all data fetching
   useEffect(() => {
+    const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
     // Fetch location data when filters change or when locations are selected
-    fetchLocationDataAsync(selectedLocations.length > 0 ? selectedLocations : undefined);
+    fetchLocationDataAsync(currentSelectedLocations.length > 0 ? currentSelectedLocations : undefined);
     
     // Fetch additional data only when locations are selected
-    if (selectedLocations.length > 0) {
+    if (currentSelectedLocations.length > 0) {
       fetchTopMachines();
       fetchMachineHourlyData();
     } else {
@@ -583,7 +629,8 @@ export default function LocationsTab() {
     activeMetricsFilter,
     customDateRange?.startDate,
     customDateRange?.endDate,
-    selectedLocations,
+    selectedSasLocations,
+    selectedRevenueLocations,
   ]);
 
   // Initialize from URL
@@ -610,12 +657,15 @@ export default function LocationsTab() {
   // Filter displayed data when selectedLocations changes
   useEffect(() => {
     if (allLocationsForDropdown.length > 0) {
-      const filteredData = selectedLocations.length > 0 
+      const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
+      const filteredData = currentSelectedLocations.length > 0 
         ? allLocationsForDropdown.filter((loc) => 
-            selectedLocations.includes(loc.location as string)
+            currentSelectedLocations.includes(loc.location as string)
           )
         : allLocationsForDropdown;
 
+      console.warn(`🔍 Filtering locations - allLocationsForDropdown: ${allLocationsForDropdown.length}, filteredData: ${filteredData.length}, selectedLocations: ${currentSelectedLocations.length}`);
+      
       setPaginatedLocations(filteredData);
       setTotalCount(filteredData.length);
       setCurrentPage(1);
@@ -661,7 +711,7 @@ export default function LocationsTab() {
         })) as TopLocation[];
       setTopLocations(sorted);
     }
-  }, [selectedLocations, allLocationsForDropdown]);
+  }, [selectedSasLocations, selectedRevenueLocations, activeTab, allLocationsForDropdown]);
 
   // Debug effect to log state changes
   useEffect(() => {
@@ -677,12 +727,13 @@ export default function LocationsTab() {
   ]);
 
   const handleLocationSelect = (locationIds: string[]) => {
-    handleLocationSelectLocations(locationIds, setSelectedLocations);
+    setCurrentSelectedLocations(locationIds);
   };
 
   const handleExportSASEvaluation = async () => {
+    const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
     await handleExportSASEvaluationHelper(
-      selectedLocations,
+      currentSelectedLocations,
       paginatedLocations,
       topLocations,
       selectedDateRange,
@@ -694,15 +745,16 @@ export default function LocationsTab() {
 
   const handleExportRevenueAnalysis = async () => {
     try {
+      const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
       const filteredData =
-        selectedLocations.length > 0
+        currentSelectedLocations.length > 0
           ? paginatedLocations.filter((loc) => {
               // Find the corresponding topLocation to get the correct locationId
               const topLocation = topLocations.find(
                 (tl) => tl.locationName === loc.locationName
               );
               return topLocation
-                ? selectedLocations.includes(topLocation.locationId)
+                ? currentSelectedLocations.includes(topLocation.locationId)
                 : false;
             })
           : paginatedLocations;
@@ -761,7 +813,7 @@ export default function LocationsTab() {
               : `${activeMetricsFilter}`,
           tab: "Revenue Analysis",
           selectedLocations:
-            selectedLocations.length > 0 ? selectedLocations.length : "All",
+            currentSelectedLocations.length > 0 ? currentSelectedLocations.length : "All",
         },
       };
 
@@ -852,9 +904,10 @@ export default function LocationsTab() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    const currentSelectedLocations = activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations;
                     fetchLocationDataAsync(
-                      selectedLocations.length > 0
-                        ? selectedLocations
+                      currentSelectedLocations.length > 0
+                        ? currentSelectedLocations
                         : undefined
                     );
                   }}
@@ -950,7 +1003,7 @@ export default function LocationsTab() {
                     : 50,
                 revenue: location.gross,
               }))}
-              selectedLocations={selectedLocations}
+              selectedLocations={activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations}
               onLocationSelect={handleLocationSelect}
               aggregates={paginatedLocations}
               gamingLocations={gamingLocations}
@@ -997,7 +1050,7 @@ export default function LocationsTab() {
                     <CasinoLocationCard
                       key={location.locationId}
                       location={location}
-                      isSelected={selectedLocations.includes(
+                      isSelected={(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(
                         location.locationId
                       )}
                       isComparisonSelected={isItemSelected(location)}
@@ -1066,18 +1119,25 @@ export default function LocationsTab() {
                         </div>
                       ) : (
                         <LocationMultiSelect
-                          locations={allLocationsForDropdown
-                            .filter((loc) => loc.sasMachines > 0) // Only locations with SAS machines for SAS Evaluation
-                            .map((loc) => ({
+                          locations={(() => {
+                            const sasLocations = allLocationsForDropdown.filter((loc) => loc.sasMachines > 0);
+                            console.warn(`🔍 SAS Evaluation - allLocationsForDropdown: ${allLocationsForDropdown.length}, sasLocations: ${sasLocations.length}`);
+                            console.warn("🔍 SAS Evaluation - sasLocations:", sasLocations.map(loc => ({
+                              location: loc.location,
+                              locationName: loc.locationName,
+                              sasMachines: loc.sasMachines
+                            })));
+                            return sasLocations.map((loc) => ({
                               id: loc.location,
                               name: loc.locationName,
                               sasEnabled: loc.sasMachines > 0,
-                            }))}
-                          selectedLocations={selectedLocations}
+                            }));
+                          })()}
+                          selectedLocations={activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations}
                           onSelectionChange={(newSelection) => {
                             // Limit to 5 selections
                             if (newSelection.length <= 5) {
-                              setSelectedLocations(newSelection);
+                              setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
                                 "Maximum 5 locations can be selected"
@@ -1092,7 +1152,7 @@ export default function LocationsTab() {
                     <div className="flex items-end">
                       <Button
                         variant="outline"
-                        onClick={() => setSelectedLocations([])}
+                        onClick={() => setCurrentSelectedLocations([])}
                         className="w-full"
                       >
                         Clear Selection
@@ -1100,9 +1160,9 @@ export default function LocationsTab() {
                     </div>
                     <div className="flex items-end">
                       <div className="text-sm text-gray-600">
-                        {selectedLocations.length > 0
-                          ? `${selectedLocations.length} location${
-                              selectedLocations.length > 1 ? "s" : ""
+                        {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                          ? `${(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length} location${
+                              (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 1 ? "s" : ""
                             } selected`
                           : "Please select locations to view data"}
                       </div>
@@ -1111,8 +1171,10 @@ export default function LocationsTab() {
                 </CardContent>
               </Card>
 
-              {/* Only show data when locations are selected and initial load is complete */}
-              {selectedLocations.length > 0 && isInitialLoadComplete ? (
+              {/* Show skeleton loaders only when locations are selected and data is loading */}
+              {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0 && !isInitialLoadComplete ? (
+                <MainContentSkeleton />
+              ) : (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0 && isInitialLoadComplete ? (
                 <>
                   {/* Enhanced Location Table */}
                   <Card>
@@ -1129,14 +1191,14 @@ export default function LocationsTab() {
                     <CardContent>
                       <EnhancedLocationTable
                         key={`enhanced-table-${activeTab}-${paginatedLocations.length}`}
-                        locations={(selectedLocations.length > 0
+                        locations={((activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                           ? paginatedLocations.filter((loc) => {
                               // Find the corresponding topLocation to get the correct locationId
                               const topLocation = topLocations.find(
                                 (tl) => tl.locationName === loc.locationName
                               );
                               return topLocation
-                                ? selectedLocations.includes(
+                                ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(
                                     topLocation.locationId
                                   )
                                 : false;
@@ -1189,14 +1251,17 @@ export default function LocationsTab() {
                   </Card>
 
                   {/* Summary Cards for SAS Evaluation - Only show when more than 1 location selected */}
-                  {selectedLocations.length > 1 && (
+                  {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 1 && (
+                    locationsLoading ? (
+                      <SummaryCardsSkeleton />
+                    ) : (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <Card>
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
-                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                              ? paginatedLocations.filter((loc) => (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(loc.location))
                               : [];
                             const totalGross = filteredLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0);
                             return totalGross.toLocaleString();
@@ -1214,8 +1279,8 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
-                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                              ? paginatedLocations.filter((loc) => (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(loc.location))
                               : [];
                             const totalDrop = filteredLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0);
                             return totalDrop.toLocaleString();
@@ -1233,8 +1298,8 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
-                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                              ? paginatedLocations.filter((loc) => (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(loc.location))
                               : [];
                             const totalCancelledCredits = filteredLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0);
                             return totalCancelledCredits.toLocaleString();
@@ -1252,8 +1317,8 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                     {(() => {
-                            const filteredLocations = selectedLocations.length > 0
-                              ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                              ? paginatedLocations.filter((loc) => (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(loc.location))
                               : [];
                             const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
                             const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
@@ -1266,8 +1331,8 @@ export default function LocationsTab() {
                         <Progress
                           value={
                             (() => {
-                              const filteredLocations = selectedLocations.length > 0
-                                ? paginatedLocations.filter((loc) => selectedLocations.includes(loc.location))
+                              const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                                ? paginatedLocations.filter((loc) => (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(loc.location))
                                 : [];
                               const onlineMachines = filteredLocations.reduce((sum, loc) => sum + (loc.onlineMachines || 0), 0);
                               const totalMachines = filteredLocations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
@@ -1279,15 +1344,13 @@ export default function LocationsTab() {
                       </CardContent>
                     </Card>
                   </div>
+                    )
                   )}
 
                                      {/* Machine Hourly Charts - Stacked by Machine */}
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                      {machineHourlyLoading ? (
-                       <div className="col-span-2 flex items-center justify-center py-8">
-                         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                         <span>Loading machine hourly data...</span>
-                       </div>
+                       <MachineHourlyChartsSkeleton />
                      ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
                       <>
                         {/* Handle Chart */}
@@ -1354,10 +1417,7 @@ export default function LocationsTab() {
                     </CardHeader>
                     <CardContent>
                       {topMachinesLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                          <span>Loading top machines...</span>
-                        </div>
+                        <TopMachinesTableSkeleton />
                       ) : (
                         <>
                       {/* Desktop Table View */}
@@ -1529,17 +1589,6 @@ export default function LocationsTab() {
 
 
                 </>
-              ) : !isInitialLoadComplete ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="text-gray-500 text-lg mb-2">
-                      Loading Data...
-                    </div>
-                    <div className="text-gray-400 text-sm">
-                      Please wait while we fetch location data
-                    </div>
-                  </CardContent>
-                </Card>
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
@@ -1609,16 +1658,25 @@ export default function LocationsTab() {
                         </div>
                       ) : (
                         <LocationMultiSelect
-                          locations={allLocationsForDropdown.map((loc) => ({
-                            id: loc.location,
-                            name: loc.locationName,
-                            sasEnabled: loc.hasSasMachines,
-                          }))}
-                          selectedLocations={selectedLocations}
+                          locations={(() => {
+                            console.warn(`🔍 Revenue Analysis - allLocationsForDropdown: ${allLocationsForDropdown.length}`);
+                            console.warn("🔍 Revenue Analysis - allLocationsForDropdown:", allLocationsForDropdown.map(loc => ({
+                              location: loc.location,
+                              locationName: loc.locationName,
+                              sasMachines: loc.sasMachines,
+                              hasSasMachines: loc.hasSasMachines
+                            })));
+                            return allLocationsForDropdown.map((loc) => ({
+                              id: loc.location,
+                              name: loc.locationName,
+                              sasEnabled: loc.hasSasMachines,
+                            }));
+                          })()}
+                          selectedLocations={activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations}
                           onSelectionChange={(newSelection) => {
                             // Limit to 5 selections
                             if (newSelection.length <= 5) {
-                              setSelectedLocations(newSelection);
+                              setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
                                 "Maximum 5 locations can be selected"
@@ -1633,7 +1691,7 @@ export default function LocationsTab() {
                     <div className="flex items-end">
                       <Button
                         variant="outline"
-                        onClick={() => setSelectedLocations([])}
+                        onClick={() => setCurrentSelectedLocations([])}
                         className="w-full"
                       >
                         Clear Selection
@@ -1641,9 +1699,9 @@ export default function LocationsTab() {
                     </div>
                     <div className="flex items-end">
                       <div className="text-sm text-gray-600">
-                        {selectedLocations.length > 0
-                          ? `${selectedLocations.length} location${
-                              selectedLocations.length > 1 ? "s" : ""
+                        {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
+                          ? `${(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length} location${
+                              (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 1 ? "s" : ""
                             } selected`
                           : "Please select locations to view data"}
                       </div>
@@ -1652,21 +1710,23 @@ export default function LocationsTab() {
                 </CardContent>
               </Card>
 
-              {/* Only show data when locations are selected and initial load is complete */}
-              {selectedLocations.length > 0 && isInitialLoadComplete ? (
+              {/* Show skeleton loaders only when locations are selected and data is loading */}
+              {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0 && !isInitialLoadComplete ? (
+                <MainContentSkeleton />
+              ) : (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0 && isInitialLoadComplete ? (
                 <>
                   {/* Revenue Analysis Table */}
                   <RevenueAnalysisTable
                     key={`revenue-table-${activeTab}-${paginatedLocations.length}`}
                     locations={
-                      selectedLocations.length > 0
+                      (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                         ? paginatedLocations.filter((loc) => {
                             // Find the corresponding topLocation to get the correct locationId
                             const topLocation = topLocations.find(
                               (tl) => tl.locationName === loc.locationName
                             );
                             return topLocation
-                              ? selectedLocations.includes(
+                              ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(
                                   topLocation.locationId
                                 )
                               : false;
@@ -1681,19 +1741,22 @@ export default function LocationsTab() {
                   />
 
                   {/* Summary Cards for Revenue Analysis - Only show when more than 1 location selected */}
-                  {selectedLocations.length > 1 && (
+                  {(activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 1 && (
+                    locationsLoading ? (
+                      <SummaryCardsSkeleton />
+                    ) : (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <Card>
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                           ? paginatedLocations.filter((loc) => {
                               const topLocation = topLocations.find(
                                 (tl) => tl.locationName === loc.locationName
                               );
                               return topLocation
-                                    ? selectedLocations.includes(topLocation.locationId)
+                                    ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(topLocation.locationId)
                                 : false;
                             })
                           : [];
@@ -1714,13 +1777,13 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                               ? paginatedLocations.filter((loc) => {
                                   const topLocation = topLocations.find(
                                     (tl) => tl.locationName === loc.locationName
                                   );
                                   return topLocation
-                                    ? selectedLocations.includes(topLocation.locationId)
+                                    ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(topLocation.locationId)
                                     : false;
                                 })
                               : [];
@@ -1741,13 +1804,13 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-black break-words">
                           ${(() => {
-                            const filteredLocations = selectedLocations.length > 0
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                               ? paginatedLocations.filter((loc) => {
                                   const topLocation = topLocations.find(
                                     (tl) => tl.locationName === loc.locationName
                                   );
                                   return topLocation
-                                    ? selectedLocations.includes(topLocation.locationId)
+                                    ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(topLocation.locationId)
                                     : false;
                                 })
                               : [];
@@ -1768,13 +1831,13 @@ export default function LocationsTab() {
                       <CardContent className="p-4">
                         <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                           {(() => {
-                            const filteredLocations = selectedLocations.length > 0
+                            const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                               ? paginatedLocations.filter((loc) => {
                                   const topLocation = topLocations.find(
                                     (tl) => tl.locationName === loc.locationName
                                   );
                                   return topLocation
-                                    ? selectedLocations.includes(topLocation.locationId)
+                                    ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(topLocation.locationId)
                                     : false;
                                 })
                               : [];
@@ -1789,13 +1852,13 @@ export default function LocationsTab() {
                         <Progress
                           value={
                             (() => {
-                              const filteredLocations = selectedLocations.length > 0
+                              const filteredLocations = (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).length > 0
                                 ? paginatedLocations.filter((loc) => {
                                     const topLocation = topLocations.find(
                                       (tl) => tl.locationName === loc.locationName
                                     );
                                     return topLocation
-                                      ? selectedLocations.includes(topLocation.locationId)
+                                      ? (activeTab === "sas-evaluation" ? selectedSasLocations : selectedRevenueLocations).includes(topLocation.locationId)
                                       : false;
                                   })
                                 : [];
@@ -1809,108 +1872,84 @@ export default function LocationsTab() {
                       </CardContent>
                     </Card>
                   </div>
+                    )
                   )}
 
-                                     {/* Machine Hourly Charts - Stacked by Location for Revenue Analysis */}
-                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                     {machineHourlyLoading ? (
-                       <div className="col-span-2 flex items-center justify-center py-8">
-                         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                         <span>Loading machine hourly data...</span>
-                       </div>
-                     ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
+                  {/* Revenue Analysis Charts - Handle, Win/Loss, and Jackpot */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {machineHourlyLoading ? (
+                      <RevenueAnalysisChartsSkeleton />
+                    ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
                       <>
-                                                 {/* Handle Chart */}
-                         <StackedChart
-                           title="Handle"
-                           icon={<BarChart3 className="h-5 w-5" />}
-                           data={machineHourlyData.hourlyTrends}
-                            dataKey="handle"
-                           machines={machineHourlyData.locations}
-                           colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
-                           formatter={(value) => `$${value.toLocaleString()}`}
-                           locationNames={(() => {
-                             const locationNameMap: Record<string, string> = {};
-                             gamingLocations.forEach(loc => {
-                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
-                                 const locationId = loc._id?.toString() || '';
-                                 const locationName = (loc.name || loc.locationName || locationId) as string;
-                                 locationNameMap[locationId] = locationName;
-                               }
-                             });
-                             return locationNameMap;
-                           })()}
-                         />
+                        {/* Handle Chart */}
+                        <StackedChart
+                          title="Handle"
+                          icon={<BarChart3 className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="handle"
+                          machines={machineHourlyData.locations}
+                          colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            gamingLocations.forEach(loc => {
+                              if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                const locationId = loc._id?.toString() || '';
+                                const locationName = (loc.name || loc.locationName || locationId) as string;
+                                locationNameMap[locationId] = locationName;
+                              }
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
 
-                                                 {/* Win/Loss Chart */}
-                         <StackedChart
-                           title="Win/Loss"
-                           icon={<TrendingUp className="h-5 w-5" />}
-                           data={machineHourlyData.hourlyTrends}
-                           dataKey="winLoss"
-                           machines={machineHourlyData.locations}
-                           colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
-                           formatter={(value) => `$${value.toLocaleString()}`}
-                           locationNames={(() => {
-                             const locationNameMap: Record<string, string> = {};
-                             gamingLocations.forEach(loc => {
-                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
-                                 const locationId = loc._id?.toString() || '';
-                                 const locationName = (loc.name || loc.locationName || locationId) as string;
-                                 locationNameMap[locationId] = locationName;
-                               }
-                             });
-                             return locationNameMap;
-                           })()}
-                         />
+                        {/* Win/Loss Chart */}
+                        <StackedChart
+                          title="Win/Loss"
+                          icon={<TrendingUp className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="winLoss"
+                          machines={machineHourlyData.locations}
+                          colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            gamingLocations.forEach(loc => {
+                              if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                const locationId = loc._id?.toString() || '';
+                                const locationName = (loc.name || loc.locationName || locationId) as string;
+                                locationNameMap[locationId] = locationName;
+                              }
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
 
-                         {/* Jackpot Chart */}
-                         <StackedChart
-                           title="Jackpot"
-                            icon={<Trophy className="h-5 w-5" />}
-                           data={machineHourlyData.hourlyTrends}
-                            dataKey="jackpot"
-                           machines={machineHourlyData.locations}
-                           colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
-                           formatter={(value) => `$${value.toLocaleString()}`}
-                           locationNames={(() => {
-                             const locationNameMap: Record<string, string> = {};
-                             gamingLocations.forEach(loc => {
-                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
-                                 const locationId = loc._id?.toString() || '';
-                                 const locationName = (loc.name || loc.locationName || locationId) as string;
-                                 locationNameMap[locationId] = locationName;
-                               }
-                             });
-                             return locationNameMap;
-                           })()}
-                         />
-
-                         {/* Plays Chart */}
-                         <StackedChart
-                           title="Plays"
-                            icon={<Activity className="h-5 w-5" />}
-                           data={machineHourlyData.hourlyTrends}
-                            dataKey="plays"
-                           machines={machineHourlyData.locations}
-                           colors={["#8b5cf6", "#ef4444", "#10b981", "#3b82f6", "#f59e0b"]}
-                           formatter={(value) => value.toLocaleString()}
-                           locationNames={(() => {
-                             const locationNameMap: Record<string, string> = {};
-                             gamingLocations.forEach(loc => {
-                               if (typeof loc === 'object' && loc !== null && '_id' in loc) {
-                                 const locationId = loc._id?.toString() || '';
-                                 const locationName = (loc.name || loc.locationName || locationId) as string;
-                                 locationNameMap[locationId] = locationName;
-                               }
-                             });
-                             return locationNameMap;
-                           })()}
-                          />
-                        </>
+                        {/* Jackpot Chart */}
+                        <StackedChart
+                          title="Jackpot"
+                          icon={<Trophy className="h-5 w-5" />}
+                          data={machineHourlyData.hourlyTrends}
+                          dataKey="jackpot"
+                          machines={machineHourlyData.locations}
+                          colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
+                          formatter={(value) => `$${value.toLocaleString()}`}
+                          locationNames={(() => {
+                            const locationNameMap: Record<string, string> = {};
+                            gamingLocations.forEach(loc => {
+                              if (typeof loc === 'object' && loc !== null && '_id' in loc) {
+                                const locationId = loc._id?.toString() || '';
+                                const locationName = (loc.name || loc.locationName || locationId) as string;
+                                locationNameMap[locationId] = locationName;
+                              }
+                            });
+                            return locationNameMap;
+                          })()}
+                        />
+                      </>
                     ) : (
-                      <div className="col-span-2 text-center py-8 text-muted-foreground">
-                        Select locations to view machine hourly data
+                      <div className="col-span-3 text-center py-8 text-muted-foreground">
+                        Select locations to view revenue analysis data
                       </div>
                     )}
                   </div>
@@ -1928,10 +1967,7 @@ export default function LocationsTab() {
                       </CardHeader>
                       <CardContent>
                         {topMachinesLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                            <span>Loading top machines...</span>
-                          </div>
+                          <TopMachinesTableSkeleton />
                         ) : (
                           <>
                             {/* Desktop Table View */}
@@ -2101,17 +2137,6 @@ export default function LocationsTab() {
                     </CardContent>
                   </Card>
                 </>
-              ) : !isInitialLoadComplete ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="text-gray-500 text-lg mb-2">
-                      Loading Data...
-                    </div>
-                    <div className="text-gray-400 text-sm">
-                      Please wait while we fetch location data
-                    </div>
-                  </CardContent>
-                </Card>
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">

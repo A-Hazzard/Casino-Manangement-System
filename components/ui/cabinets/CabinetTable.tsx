@@ -35,10 +35,10 @@ export default function CabinetTable({
         ref={tableRef}
         className="table-fixed w-full border-collapse text-center"
       >
-        <thead className="bg-button text-white">
+        <thead className="bg-[#00b517] text-white">
           <tr>
             <th
-              className="p-3 border border-border border-t-0 text-sm cursor-pointer relative"
+              className="p-3 border border-[#00b517] text-sm cursor-pointer relative"
               onClick={() => onColumnSort("assetNumber" as CabinetSortOption)}
             >
               <span>ASSET NUMBER</span>
@@ -49,10 +49,10 @@ export default function CabinetTable({
               )}
             </th>
             <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+              className="p-3 border border-[#00b517] text-sm cursor-pointer relative"
               onClick={() => onColumnSort("moneyIn" as CabinetSortOption)}
             >
-              <span>MONEY IN</span>
+              <span>HANDLE</span>
               {sortOption === "moneyIn" && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                   {sortOrder === "desc" ? "▼" : "▲"}
@@ -60,12 +60,10 @@ export default function CabinetTable({
               )}
             </th>
             <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
-              onClick={() =>
-                onColumnSort("moneyOut" as CabinetSortOption)
-              }
+              className="p-3 border border-[#00b517] text-sm cursor-pointer relative"
+              onClick={() => onColumnSort("moneyOut" as CabinetSortOption)}
             >
-              <span>CANCELLED CREDITS</span>
+              <span>CANCELLED</span>
               {sortOption === "moneyOut" && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                   {sortOrder === "desc" ? "▼" : "▲"}
@@ -73,7 +71,7 @@ export default function CabinetTable({
               )}
             </th>
             <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+              className="p-3 border border-[#00b517] text-sm cursor-pointer relative"
               onClick={() => onColumnSort("jackpot" as CabinetSortOption)}
             >
               <span>JACKPOT</span>
@@ -84,7 +82,7 @@ export default function CabinetTable({
               )}
             </th>
             <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+              className="p-3 border border-[#00b517] text-sm cursor-pointer relative"
               onClick={() => onColumnSort("gross" as CabinetSortOption)}
             >
               <span>GROSS</span>
@@ -94,9 +92,7 @@ export default function CabinetTable({
                 </span>
               )}
             </th>
-            <th className="p-3 border border-border border-t-0  text-sm">
-              ACTIONS
-            </th>
+            <th className="p-3 border border-[#00b517] text-sm">ACTIONS</th>
           </tr>
         </thead>
         <tbody>
@@ -120,59 +116,51 @@ export default function CabinetTable({
                   }
                 }}
               >
-                <td className="p-3 bg-container border border-border text-sm text-left hover:bg-grayHighlight/20">
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-left hover:bg-accent">
                   <div className="font-medium">
                     {cab.assetNumber || "(No Asset #)"}
                   </div>
-                  <div className="text-xs text-grayHighlight mt-1">
+                  <div className="text-xs text-gray-600 mt-1">
                     {cab.game || "(No Game Name)"}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-gray-500 mt-1">
                     SMIB: {cab.smbId || "N/A"}
                   </div>
-                  <div className="mt-2 flex flex-col space-y-1">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full self-start ${
-                        isOnline
-                          ? "bg-green-100 text-button"
-                          : "bg-red-100 text-destructive"
-                      } flex items-center gap-1`}
-                    >
-                      {isOnline ? (
-                        <MobileIcon className="w-3 h-3" />
-                      ) : (
-                        <Cross1Icon className="w-3 h-3" />
-                      )}
-                      {isOnline ? "Online" : "Offline"}
-                    </span>
-                    <span
-                      className="text-xs text-muted-foreground flex items-center gap-1"
-                      title={`Last seen: ${lastOnlineText}`}
-                    >
-                      <ClockIcon className="w-3 h-3" /> {lastOnlineText}
-                    </span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block w-fit ${
+                      isOnline
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    } flex items-center gap-1`}
+                  >
+                    {isOnline ? (
+                      <MobileIcon className="w-3 h-3" />
+                    ) : (
+                      <Cross1Icon className="w-3 h-3" />
+                    )}
+                    {isOnline ? "Online" : "Offline"}
+                  </span>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <ClockIcon className="w-3 h-3" /> {lastOnlineText}
                   </div>
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.moneyIn)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  {formatCurrency(cab.moneyIn)}
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.moneyOut)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  {formatCurrency(cab.moneyOut)}
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.jackpot)}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  <span
-                    className={((cab.gross || 0) < 0
-                      ? "text-destructive font-semibold"
-                      : "text-button font-semibold"
-                    ).trim()}
-                  >
-                    ${formatCurrency(cab.gross)}
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  <span className="font-semibold">
+                    {formatCurrency(cab.jackpot)}
                   </span>
                 </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                  <span className="text-green-600 font-semibold">
+                    {formatCurrency(cab.gross)}
+                  </span>
+                </td>
+                <td className="p-3 bg-white border-2 border-gray-200 text-sm hover:bg-accent">
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="ghost"
@@ -180,9 +168,9 @@ export default function CabinetTable({
                         e.stopPropagation();
                         onEdit(cab);
                       }}
-                      className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
-                      <Image src={IMAGES.editIcon} alt="Edit" width={20} height={20} />
+                      <Image src={IMAGES.editIcon} alt="Edit" width={16} height={16} className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -190,13 +178,14 @@ export default function CabinetTable({
                         e.stopPropagation();
                         onDelete(cab);
                       }}
-                      className="p-1 hover:bg-destructive/10 text-destructive"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
                       <Image
                         src={IMAGES.deleteIcon}
                         alt="Delete"
-                        width={20}
-                        height={20}
+                        width={16}
+                        height={16}
+                        className="w-4 h-4"
                       />
                     </Button>
                   </div>

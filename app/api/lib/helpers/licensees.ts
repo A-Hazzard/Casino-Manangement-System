@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { Licencee } from "../models/licencee";
-import { ObjectId } from "mongodb";
 import { logActivity, calculateChanges } from "./activityLogger";
 import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import { generateUniqueLicenseKey } from "../utils/licenseKey";
+import { generateMongoId } from "@/lib/utils/id";
 
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
@@ -35,7 +35,12 @@ export function formatLicenseesForResponse(
  */
 export async function getAllLicensees() {
   return await Licencee.find(
-    { deletedAt: { $in: [null, new Date(-1)] } },
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    },
     {
       _id: 1,
       name: 1,
@@ -70,7 +75,7 @@ export async function createLicensee(
 ) {
   const { name, description, country, startDate, expiryDate } = data;
   const currentUser = await getUserFromServer();
-  const newId = new ObjectId().toString();
+  const newId = await generateMongoId();
   const licenseKey = await generateUniqueLicenseKey();
 
   const finalStartDate = startDate ? new Date(startDate) : new Date();

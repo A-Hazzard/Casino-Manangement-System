@@ -3,6 +3,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { Firmware } from "@/app/api/lib/models/firmware";
 import { GridFSBucket } from "mongodb";
 import { Readable } from "stream";
+import { generateMongoId } from "@/lib/utils/id";
 
 /**
  * GET /api/firmwares
@@ -12,7 +13,12 @@ export async function GET() {
   try {
     await connectDB();
 
-    const firmwares = await Firmware.find({ deletedAt: null })
+    const firmwares = await Firmware.find({
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -84,14 +90,24 @@ export async function POST(request: NextRequest) {
       stream.pipe(uploadStream).on("error", reject).on("finish", resolve);
     });
 
+    // Generate a proper MongoDB ObjectId-style hex string for the firmware
+    const firmwareId = await generateMongoId();
+
     // Create firmware document
     const firmware = new Firmware({
+      _id: firmwareId,
       product,
       version,
       versionDetails: versionDetails || "",
       fileId,
       fileName,
       fileSize,
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
+      // Add missing fields with default values
+      releaseDate: new Date(),
+      description: versionDetails || "",
+      downloadUrl: "",
+      checksum: "",
     });
 
     await firmware.save();

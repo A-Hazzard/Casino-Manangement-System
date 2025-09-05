@@ -18,6 +18,7 @@ export type Location = {
   profitShare: number;
   isLocalServer?: boolean;
   geoCoords?: GeoCoordinates;
+  billValidatorOptions?: number[];
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date;

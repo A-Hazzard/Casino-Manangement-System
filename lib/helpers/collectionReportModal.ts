@@ -1,6 +1,5 @@
 import { gsap } from "gsap";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import type {
   CollectionDocument,
@@ -150,7 +149,7 @@ export function createMachineEntryData(params: {
   const metersOut = Number(params.currentMetersOut);
 
   return {
-    _id: uuidv4(),
+    _id: "", // Will be set by the database
     machineId: params.selectedMachineId,
     machineName: params.machineForDataEntry.name,
     machineCustomName: params.selectedMachineId,
@@ -290,7 +289,7 @@ export function createCollectionReportPayload(
     advance: Number(financials.advance) || 0,
     collectorName: userEmail || "N/A",
     locationName: selectedLocationName,
-    locationReportId: uuidv4(),
+    locationReportId: selectedLocationId || "",
     location: selectedLocationId || "",
     totalDrop: 0,
     totalCancelled: 0,
@@ -393,5 +392,72 @@ export async function processMultipleReports(
     successCount,
     totalCount: collectedMachineEntries.length,
     successfulIds,
+  };
+}
+
+/**
+ * Creates collection document payload for data entry
+ * @param params - Collection data entry parameters
+ * @returns Partial collection document
+ */
+export function createCollectionDocumentPayload(params: {
+  currentMetersIn: string;
+  currentMetersOut: string;
+  currentCollectionTime: string;
+  currentMachineNotes: string;
+  currentRamClear: boolean;
+  prevIn: number;
+  prevOut: number;
+  selectedMachineId: string;
+  machineForDataEntry: {
+    name: string;
+    serialNumber: string;
+  };
+  userId: string;
+  selectedLocationName: string;
+  selectedLocationId: string | undefined;
+}): Partial<CollectionDocument> {
+  const metersIn = Number(params.currentMetersIn);
+  const metersOut = Number(params.currentMetersOut);
+
+  return {
+    _id: "", // Will be set by the database
+    machineId: params.selectedMachineId,
+    machineName: params.machineForDataEntry.name,
+    machineCustomName: params.selectedMachineId,
+    serialNumber: params.machineForDataEntry.serialNumber,
+    timestamp: params.currentCollectionTime
+      ? new Date(params.currentCollectionTime)
+      : new Date(),
+    metersIn,
+    metersOut,
+    prevIn: params.prevIn || 0,
+    prevOut: params.prevOut || 0,
+    softMetersIn: metersIn,
+    softMetersOut: metersOut,
+    notes: params.currentMachineNotes,
+    ramClear: params.currentRamClear,
+    isCompleted: false,
+    collector: params.userId,
+    location: params.selectedLocationName,
+    locationReportId: params.selectedLocationId || "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    __v: 0,
+    sasMeters: {
+      machine: params.machineForDataEntry.name,
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      gamesPlayed: 0,
+      jackpot: 0,
+      sasStartTime: "",
+      sasEndTime: "",
+    },
+    movement: {
+      metersIn,
+      metersOut,
+      gross: metersOut - metersIn,
+    },
   };
 }

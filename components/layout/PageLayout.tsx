@@ -43,8 +43,10 @@ export default function PageLayout({
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   // Use headerProps if provided, otherwise use default store values
-  const headerSelectedLicencee = headerProps?.selectedLicencee ?? selectedLicencee;
-  const headerSetSelectedLicencee = headerProps?.setSelectedLicencee ?? setSelectedLicencee;
+  const headerSelectedLicencee =
+    headerProps?.selectedLicencee ?? selectedLicencee;
+  const headerSetSelectedLicencee =
+    headerProps?.setSelectedLicencee ?? setSelectedLicencee;
   const headerDisabled = headerProps?.disabled ?? false;
   const headerContainerPaddingMobile = headerProps?.containerPaddingMobile;
 
@@ -67,12 +69,8 @@ export default function PageLayout({
         </main>
       </div>
       {showToaster && (
-        <Toaster 
-          position={toasterPosition} 
-          richColors={toasterRichColors}
-        />
+        <Toaster position={toasterPosition} richColors={toasterRichColors} />
       )}
     </>
   );
 }
-

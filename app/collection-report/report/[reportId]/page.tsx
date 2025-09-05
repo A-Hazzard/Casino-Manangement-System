@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import {
@@ -12,6 +12,14 @@ import {
 } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { SyncButton } from "@/components/ui/RefreshButton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Layout components
 
@@ -31,7 +39,6 @@ import { syncMetersForReport } from "@/lib/helpers/collectionReportDetailPageDat
 import { validateCollectionReportData } from "@/lib/utils/validation";
 import {
   animateDesktopTabTransition,
-  generateMachineMetricsData,
   calculateLocationTotal,
   calculateSasMetricsTotals,
 } from "@/lib/helpers/collectionReportDetailPage";
@@ -44,6 +51,8 @@ import type { CollectionDocument } from "@/lib/types/collections";
 
 export default function CollectionReportPage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
@@ -51,9 +60,16 @@ export default function CollectionReportPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Initialize activeTab from URL or default to "Machine Metrics"
   const [activeTab, setActiveTab] = useState<
     "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
-  >("Machine Metrics");
+  >(() => {
+    const section = searchParams?.get("section");
+    if (section === "location") return "Location Metrics";
+    if (section === "sas") return "SAS Metrics Compare";
+    if (section === "machine") return "Machine Metrics";
+    return "Machine Metrics"; // default
+  });
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
@@ -84,9 +100,40 @@ export default function CollectionReportPage() {
       .catch(() => setCollections([]));
   }, [reportId]);
 
+  // Keep state in sync with URL changes (for browser back/forward)
+  useEffect(() => {
+    const section = searchParams?.get("section");
+    if (section === "location" && activeTab !== "Location Metrics") {
+      setActiveTab("Location Metrics");
+    } else if (section === "sas" && activeTab !== "SAS Metrics Compare") {
+      setActiveTab("SAS Metrics Compare");
+    } else if (section === "machine" && activeTab !== "Machine Metrics") {
+      setActiveTab("Machine Metrics");
+    } else if (!section && activeTab !== "Machine Metrics") {
+      setActiveTab("Machine Metrics");
+    }
+  }, [searchParams, activeTab]);
+
   useEffect(() => {
     animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare") => {
+    setActiveTab(tab);
+    
+    // Update URL based on tab selection
+    const sectionMap: Record<string, string> = {
+      "Machine Metrics": "machine",
+      "Location Metrics": "location", 
+      "SAS Metrics Compare": "sas",
+    };
+
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.set("section", sectionMap[tab]);
+    const newUrl = `/collection-report/report/${reportId}?${params.toString()}`;
+    router.push(newUrl, { scroll: false });
+  };
 
   const handleSync = async () => {
     setRefreshing(true);
@@ -94,7 +141,7 @@ export default function CollectionReportPage() {
     try {
       // First sync the meters
       await syncMetersForReport(reportId);
-      
+
       // Then refresh the data
       const data = await fetchCollectionReportById(reportId);
       if (!validateCollectionReportData(data)) {
@@ -133,14 +180,14 @@ export default function CollectionReportPage() {
         showToaster={false}
       >
         <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-            <p className="text-xl text-red-600 mb-4">Error: {error}</p>
-            <Link href="/collection-report" legacyBehavior>
-              <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
-            </Link>
-          </div>
+          <p className="text-xl text-red-600 mb-4">Error: {error}</p>
+          <Link href="/collection-report" legacyBehavior>
+            <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
+              <ArrowLeft size={18} className="mr-2" />
+              Back to Collections
+            </a>
+          </Link>
+        </div>
       </PageLayout>
     );
   }
@@ -159,14 +206,14 @@ export default function CollectionReportPage() {
         showToaster={false}
       >
         <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-            <p className="text-xl text-gray-700 mb-4">Report not found.</p>
-            <Link href="/collection-report" legacyBehavior>
-              <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
-            </Link>
-          </div>
+          <p className="text-xl text-gray-700 mb-4">Report not found.</p>
+          <Link href="/collection-report" legacyBehavior>
+            <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
+              <ArrowLeft size={18} className="mr-2" />
+              Back to Collections
+            </a>
+          </Link>
+        </div>
       </PageLayout>
     );
   }
@@ -177,7 +224,7 @@ export default function CollectionReportPage() {
     label: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare";
   }) => (
     <button
-      onClick={() => !loading && setActiveTab(label)}
+      onClick={() => !loading && handleTabChange(label)}
       disabled={loading}
       className={`px-4 py-3 text-sm font-medium rounded-md transition-colors w-full text-left ${
         activeTab === label
@@ -189,11 +236,15 @@ export default function CollectionReportPage() {
     </button>
   );
 
-  const {
-    metricsData,
-    totalPages: machineTotalPages,
-    hasData,
-  } = generateMachineMetricsData(collections, machinePage, ITEMS_PER_PAGE);
+  // Use resolved machine data from backend instead of generating from raw collections
+  const metricsData = reportData?.machineMetrics || [];
+  const machineTotalPages = Math.ceil(metricsData.length / ITEMS_PER_PAGE);
+  const hasData = metricsData.length > 0;
+  
+  // Apply pagination to the resolved machine data
+  const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedMetricsData = metricsData.slice(startIndex, endIndex);
 
   const MachineMetricsContent = ({ loading }: { loading: boolean }) => {
     if (loading) {
@@ -227,21 +278,19 @@ export default function CollectionReportPage() {
           <h2 className="text-xl font-bold text-center my-4">
             Machine Metrics
           </h2>
-          {metricsData.map((metric) => (
+          {paginatedMetricsData.map((metric) => (
             <div
               key={metric.id}
               className="bg-white rounded-lg shadow-md overflow-hidden"
             >
               <div className="bg-lighterBlueHighlight text-white p-3">
-                <h3 className="font-semibold">
-                  Machine ID: {metric.machineCustomName}
-                </h3>
+                <h3 className="font-semibold">{metric.machineId}</h3>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Dropped / Cancelled</span>
                   <span className="font-medium text-gray-800">
-                    {metric.droppedCancelled}
+                    {metric.dropCancelled}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -274,56 +323,49 @@ export default function CollectionReportPage() {
           ))}
         </div>
         <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto pb-6">
-          <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  MACHINE ID
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-button hover:bg-button">
+                <TableHead className="text-white font-semibold">
+                  MACHINE
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   DROP/CANCELLED
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   METER GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   SAS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   VARIATION
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   SAS TIMES
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {metricsData.map((metric) => (
-                <tr
-                  key={metric.id}
-                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
-                >
-                  <td className="p-3 whitespace-nowrap">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedMetricsData.map((metric) => (
+                <TableRow key={metric.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">
                     <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                      {metric.machineCustomName}
+                      {metric.machineId}
                     </span>
-                  </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {metric.droppedCancelled}
-                  </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {metric.metersGross}
-                  </td>
-                  <td className="p-3 whitespace-nowrap">{metric.sasGross}</td>
-                  <td className="p-3 whitespace-nowrap">{metric.variation}</td>
-                  <td className="p-3 whitespace-nowrap text-xs">
+                  </TableCell>
+                  <TableCell>{metric.dropCancelled}</TableCell>
+                  <TableCell>{metric.metersGross}</TableCell>
+                  <TableCell>{metric.sasGross}</TableCell>
+                  <TableCell>{metric.variation}</TableCell>
+                  <TableCell className="text-xs">
                     <div>{metric.sasStartTime}</div>
                     <div>{metric.sasEndTime}</div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <div className="mt-6 flex items-center justify-center space-x-2">
             <Button
               variant="outline"
@@ -422,22 +464,34 @@ export default function CollectionReportPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Meters Gross</span>
-                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.metersGross)}`}>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.metersGross
+                  )}`}
+                >
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Variation</span>
-                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.variation)}`}>
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
+                <span className="text-gray-600">SAS Gross</span>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.sasGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">SAS Gross</span>
-                <span className={`font-medium ${getFinancialColorClass(reportData?.locationMetrics?.sasGross)}`}>
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
+                <span className="text-gray-600">Variation</span>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.variation
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </span>
               </div>
@@ -449,7 +503,11 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variance</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.variance) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.variance) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
                       reportData?.locationMetrics?.variance ||
                       0}
@@ -463,7 +521,11 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount To Collect</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountToCollect) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.amountToCollect) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
                       reportData?.locationMetrics?.amountToCollect ||
                       0}
@@ -471,7 +533,11 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Collected Amount</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.collectedAmount) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.collectedAmount) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
                       reportData?.locationMetrics?.collectedAmount ||
                       0}
@@ -483,7 +549,11 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Location Revenue</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.locationRevenue) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.locationRevenue) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
                       reportData?.locationMetrics?.locationRevenue ||
                       0}
@@ -491,7 +561,12 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Uncollected</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountUncollected) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.amountUncollected) ||
+                        0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
                       reportData?.locationMetrics?.amountUncollected ||
                       0}
@@ -515,7 +590,11 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Taxes</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.taxes) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.taxes) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
                       reportData?.locationMetrics?.taxes ||
                       0}
@@ -523,7 +602,11 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Advance</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.advance) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.advance) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
                       reportData?.locationMetrics?.advance ||
                       0}
@@ -531,7 +614,13 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Previous Balance Owed</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.previousBalanceOwed) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(
+                        reportData?.locationMetrics?.previousBalanceOwed
+                      ) || 0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
                       reportData?.locationMetrics?.previousBalanceOwed ||
                       0}
@@ -539,7 +628,12 @@ export default function CollectionReportPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Balance Owed</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.currentBalanceOwed) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.currentBalanceOwed) ||
+                        0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
                       reportData?.locationMetrics?.currentBalanceOwed ||
                       0}
@@ -551,7 +645,12 @@ export default function CollectionReportPage() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Balance Correction</span>
-                  <span className={`font-medium ${getFinancialColorClass(Number(reportData?.locationMetrics?.balanceCorrection) || 0)}`}>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.balanceCorrection) ||
+                        0
+                    )}`}
+                  >
                     {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
                       reportData?.locationMetrics?.balanceCorrection ||
                       0}
@@ -586,22 +685,34 @@ export default function CollectionReportPage() {
               </tr>
               <tr className="border-b border-gray-200">
                 <td className="p-3 font-medium text-gray-700">Meters Gross</td>
-                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.metersGross)}`}>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.metersGross
+                  )}`}
+                >
                   {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
                     "0"}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="p-3 font-medium text-gray-700">Variation</td>
-                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.variation)}`}>
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
+                <td className="p-3 font-medium text-gray-700">SAS Gross</td>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.sasGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
                     "0"}
                 </td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-gray-700">SAS Gross</td>
-                <td className={`p-3 text-right ${getFinancialColorClass(reportData?.locationMetrics?.sasGross)}`}>
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
+                <td className="p-3 font-medium text-gray-700">Variation</td>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.variation
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
                     "0"}
                 </td>
               </tr>
@@ -615,7 +726,11 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Variance</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.variance) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.variance) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
                         reportData?.locationMetrics?.variance ||
                         0}
@@ -629,7 +744,12 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Amount To Collect</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountToCollect) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.amountToCollect) ||
+                          0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
                         reportData?.locationMetrics?.amountToCollect ||
                         0}
@@ -637,7 +757,12 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr>
                     <td className="p-3 text-gray-700">Collected Amount</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.collectedAmount) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.collectedAmount) ||
+                          0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
                         reportData?.locationMetrics?.collectedAmount ||
                         0}
@@ -651,7 +776,12 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Location Revenue</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.locationRevenue) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.locationRevenue) ||
+                          0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
                         reportData?.locationMetrics?.locationRevenue ||
                         0}
@@ -659,7 +789,13 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Amount Uncollected</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.amountUncollected) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.amountUncollected
+                        ) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
                         reportData?.locationMetrics?.amountUncollected ||
                         0}
@@ -685,7 +821,11 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Taxes</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.taxes) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.taxes) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
                         reportData?.locationMetrics?.taxes ||
                         0}
@@ -693,7 +833,11 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Advance</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.advance) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.advance) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
                         reportData?.locationMetrics?.advance ||
                         0}
@@ -701,7 +845,13 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Previous Balance Owed</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.previousBalanceOwed) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.previousBalanceOwed
+                        ) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
                         reportData?.locationMetrics?.previousBalanceOwed ||
                         0}
@@ -709,7 +859,13 @@ export default function CollectionReportPage() {
                   </tr>
                   <tr>
                     <td className="p-3 text-gray-700">Current Balance Owed</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.currentBalanceOwed) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.currentBalanceOwed
+                        ) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
                         reportData?.locationMetrics?.currentBalanceOwed ||
                         0}
@@ -723,7 +879,13 @@ export default function CollectionReportPage() {
                 <tbody>
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Balance Correction</td>
-                    <td className={`p-3 text-right ${getFinancialColorClass(Number(reportData?.locationMetrics?.balanceCorrection) || 0)}`}>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.balanceCorrection
+                        ) || 0
+                      )}`}
+                    >
                       {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
                         reportData?.locationMetrics?.balanceCorrection ||
                         0}
@@ -786,19 +948,31 @@ export default function CollectionReportPage() {
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Drop Total</span>
-                <span className={`font-medium ${getFinancialColorClass(totalSasDrop)}`}>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasDrop
+                  )}`}
+                >
                   {totalSasDrop.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Cancelled Total</span>
-                <span className={`font-medium ${getFinancialColorClass(totalSasCancelled)}`}>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasCancelled
+                  )}`}
+                >
                   {totalSasCancelled.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross Total</span>
-                <span className={`font-medium ${getFinancialColorClass(totalSasGross)}`}>
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasGross
+                  )}`}
+                >
                   {totalSasGross.toLocaleString()}
                 </span>
               </div>
@@ -822,7 +996,11 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Drop Total
                 </td>
-                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasDrop)}`}>
+                <td
+                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
+                    totalSasDrop
+                  )}`}
+                >
                   {totalSasDrop.toLocaleString()}
                 </td>
               </tr>
@@ -830,7 +1008,11 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Cancelled Total
                 </td>
-                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasCancelled)}`}>
+                <td
+                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
+                    totalSasCancelled
+                  )}`}
+                >
                   {totalSasCancelled.toLocaleString()}
                 </td>
               </tr>
@@ -838,7 +1020,11 @@ export default function CollectionReportPage() {
                 <td className="p-3 whitespace-nowrap font-medium">
                   SAS Gross Total
                 </td>
-                <td className={`p-3 whitespace-nowrap ${getFinancialColorClass(totalSasGross)}`}>
+                <td
+                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
+                    totalSasGross
+                  )}`}
+                >
                   {totalSasGross.toLocaleString()}
                 </td>
               </tr>
@@ -874,87 +1060,90 @@ export default function CollectionReportPage() {
       mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
       showToaster={false}
     >
+      <div className="px-2 lg:px-6 pt-6 hidden lg:block">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Link href="/collection-report">
+              <Button
+                variant="ghost"
+                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+              >
+                <ArrowLeft size={18} className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">Collection Report Details</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <SyncButton
+              onClick={handleSync}
+              isSyncing={refreshing}
+              label="Sync Meters"
+              disabled={loading || refreshing}
+            />
+          </div>
+        </div>
+      </div>
 
-        <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Link href="/collection-report">
-                <Button
-                  variant="ghost"
-                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
-                >
-                  <ArrowLeft size={18} className="h-5 w-5" />
-                </Button>
-              </Link>
-              <h1 className="text-2xl font-bold">Collection Report Details</h1>
+      <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
+        <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
+          <div className="text-center py-2 lg:py-4 px-4">
+            <div className="lg:hidden text-xs text-gray-500 mb-2">
+              COLLECTION REPORT
             </div>
-            <div className="flex items-center gap-2">
+            <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
+              {reportData.locationName}
+            </h1>
+            <p className="text-sm lg:text-base text-gray-600 mb-4">
+              Report ID: {reportData.reportId}
+            </p>
+            {(() => {
+              const locationTotal = calculateLocationTotal(collections);
+              const textColorClass =
+                locationTotal < 0 ? "text-red-600" : "text-green-600";
+              return (
+                <p className={`text-lg font-semibold`}>
+                  Location Total:{" "}
+                  <span className={textColorClass}>
+                    {formatCurrency(locationTotal)}
+                  </span>
+                </p>
+              );
+            })()}
+            <div className="lg:hidden mt-4">
               <SyncButton
                 onClick={handleSync}
                 isSyncing={refreshing}
                 label="Sync Meters"
                 disabled={loading || refreshing}
+                className="w-full justify-center"
               />
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
-          <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
-            <div className="text-center py-2 lg:py-4 px-4">
-              <div className="lg:hidden text-xs text-gray-500 mb-2">
-                COLLECTION REPORT
-              </div>
-              <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
-                {reportData.locationName}
-              </h1>
-              <p className="text-sm lg:text-base text-gray-600 mb-4">
-                Report ID: {reportData.reportId}
-              </p>
-              {(() => {
-                const locationTotal = calculateLocationTotal(collections);
-                const textColorClass = locationTotal < 0 ? "text-red-600" : "text-green-600";
-                return (
-                  <p className={`text-lg font-semibold`}>
-                    Location Total: <span className={textColorClass}>{formatCurrency(locationTotal)}</span>
-                  </p>
-                );
-              })()}
-              <div className="lg:hidden mt-4">
-                <SyncButton
-                  onClick={handleSync}
-                  isSyncing={refreshing}
-                  label="Sync Meters"
-                  disabled={loading || refreshing}
-                  className="w-full justify-center"
-                />
-              </div>
+      <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
+        <div className="lg:w-1/4 mb-6 lg:mb-0">
+          <div className="space-y-2 bg-white p-3 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Report Sections
+            </h3>
+            <div className="space-y-2">
+              <TabButton label="Machine Metrics" />
+              <TabButton label="Location Metrics" />
+              <TabButton label="SAS Metrics Compare" />
             </div>
           </div>
         </div>
-
-        <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
-          <div className="lg:w-1/4 mb-6 lg:mb-0">
-            <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Report Sections
-              </h3>
-              <div className="space-y-2">
-                <TabButton label="Machine Metrics" />
-                <TabButton label="Location Metrics" />
-                <TabButton label="SAS Metrics Compare" />
-              </div>
-            </div>
-          </div>
-          <div className="lg:w-3/4" ref={tabContentRef}>
-            {renderDesktopTabContent()}
-          </div>
+        <div className="lg:w-3/4" ref={tabContentRef}>
+          {renderDesktopTabContent()}
         </div>
-        <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
-          <MachineMetricsContent loading={false} />
-          <LocationMetricsContent loading={false} />
-          <SASMetricsCompareContent loading={false} />
-        </div>
+      </div>
+      <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
+        <MachineMetricsContent loading={false} />
+        <LocationMetricsContent loading={false} />
+        <SASMetricsCompareContent loading={false} />
+      </div>
     </PageLayout>
   );
 }

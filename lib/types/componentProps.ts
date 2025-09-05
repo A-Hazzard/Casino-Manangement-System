@@ -196,6 +196,7 @@ export type NewCollectionModalProps = {
   show: boolean;
   onClose: () => void;
   locations: CollectionReportLocationWithMachines[];
+  onRefresh?: () => void;
 };
 
 // Collection Report UI Props Types
@@ -270,6 +271,7 @@ export type MonthlyMobileUIProps = {
   pendingRange?: RDPDateRange;
   onPendingRangeChange: (range?: RDPDateRange) => void;
   onApplyDateRange: () => void;
+  onSetLastMonth: () => void;
   monthlySummary: MonthlyReportSummary;
   monthlyDetails: MonthlyReportDetailsRow[];
   monthlyLoading: boolean;

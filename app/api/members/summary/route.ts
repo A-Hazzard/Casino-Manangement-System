@@ -69,12 +69,16 @@ export async function GET(request: NextRequest) {
       // console.log("API - Members Summary - Filtering by licencee:", licencee);
 
       // Get locations for this licencee
-      const locations = await GamingLocations.find({
-        "rel.licencee": licencee,
-        deletedAt: { $exists: false },
-      })
-        .select({ _id: 1 })
-        .lean();
+      const locations = await GamingLocations.find(
+        {
+          "rel.licencee": licencee,
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
+        },
+        { _id: 1, name: 1 }
+      ).lean();
 
       const locationIds = locations.map((loc) => loc._id);
       // console.log("API - Members Summary - Found location IDs:", locationIds);
@@ -260,8 +264,9 @@ export async function GET(request: NextRequest) {
     // Calculate summary statistics
     const summaryStats = {
       totalMembers: totalCount,
-      totalLocations: new Set(memberSummary.map((m: Record<string, unknown>) => m.gamingLocation))
-        .size,
+      totalLocations: new Set(
+        memberSummary.map((m: Record<string, unknown>) => m.gamingLocation)
+      ).size,
       recentMembers: memberSummary.filter((m: Record<string, unknown>) => {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);

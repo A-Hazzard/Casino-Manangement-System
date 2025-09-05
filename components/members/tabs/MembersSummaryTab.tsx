@@ -55,7 +55,6 @@ export default function MembersSummaryTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const {
-    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -64,9 +63,6 @@ export default function MembersSummaryTab() {
   const fetchLocations = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (selectedLicencee) {
-        params.append("licencee", selectedLicencee);
-      }
 
       const response = await axios.get(`/api/machines/locations?${params}`);
       const data = response.data;
@@ -80,7 +76,7 @@ export default function MembersSummaryTab() {
       console.error("Error fetching locations:", error);
       setLocations([]);
     }
-  }, [selectedLicencee]);
+  }, []);
 
   useEffect(() => {
     fetchLocations();
@@ -92,7 +88,6 @@ export default function MembersSummaryTab() {
       setError(null);
 
       const params = new URLSearchParams({
-        licencee: selectedLicencee || "",
         page: currentPage.toString(),
         limit: "10",
       });
@@ -154,7 +149,6 @@ export default function MembersSummaryTab() {
       setLoading(false);
     }
   }, [
-    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     searchTerm,

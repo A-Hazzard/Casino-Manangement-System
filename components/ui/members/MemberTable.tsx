@@ -107,7 +107,6 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   </span>
                 )}
               </th>
-              <th className="p-3 border border-border text-sm">DETAILS</th>
               <th className="p-3 border border-border text-sm">ACTIONS</th>
             </tr>
           </thead>
@@ -178,10 +177,6 @@ const MemberTable: React.FC<MemberTableProps> = ({
                         onAction("edit", member);
                       }}
                     />
-                  </div>
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
-                  <div className="flex items-center justify-center">
                     <Image
                       src={deleteIcon}
                       alt="Delete"
