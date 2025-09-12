@@ -113,13 +113,13 @@ export default function CabinetCard(props: CabinetCardProps) {
       {/* Financial Data - Simple List Layout */}
       <div className="text-xs xs:text-xs sm:text-sm">
         <div className="flex justify-between py-1">
-          <span className="truncate flex-1 pr-2">Wager</span>
+          <span className="truncate flex-1 pr-2">Money In</span>
           <span className="text-right flex-shrink-0">
             {formatCurrency(props.moneyIn || 0)}
           </span>
         </div>
         <div className="flex justify-between py-1">
-          <span className="truncate flex-1 pr-2">Cancelled Credits</span>
+          <span className="truncate flex-1 pr-2">Money Out</span>
           <span className="text-right flex-shrink-0">
             {formatCurrency(props.cancelledCredits || 0)}
           </span>

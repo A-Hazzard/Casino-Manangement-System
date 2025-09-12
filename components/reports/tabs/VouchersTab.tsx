@@ -8,7 +8,7 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle,
-  XCircle,
+  // XCircle,
   DollarSign,
   Percent,
   Clock,
@@ -39,125 +39,8 @@ import { exportData } from "@/lib/utils/exportUtils";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
-import type { VoucherMetrics } from "@/lib/types/reports";
+// import type { VoucherMetrics } from "@/lib/types/reports";
 
-// Sample data - would come from API in real implementation
-const sampleVoucherMetrics: VoucherMetrics = {
-  totalVouchersIssued: 25840,
-  totalVouchersRedeemed: 23256,
-  totalVoucherValue: 1284567.5,
-  redemptionRate: 89.9,
-  averageVoucherValue: 49.72,
-  expiredVouchers: 1876,
-  fraudulentVouchers: 42,
-  vouchersByLocation: [
-    {
-      locationId: "LOC001",
-      locationName: "Main Casino Floor",
-      issued: 8456,
-      redeemed: 7892,
-      value: 420567.8,
-    },
-    {
-      locationId: "LOC002",
-      locationName: "VIP Gaming Area",
-      issued: 3245,
-      redeemed: 3156,
-      value: 285432.1,
-    },
-    {
-      locationId: "LOC003",
-      locationName: "Sports Bar Gaming",
-      issued: 4567,
-      redeemed: 4123,
-      value: 198765.4,
-    },
-    {
-      locationId: "LOC004",
-      locationName: "Hotel Gaming Lounge",
-      issued: 5234,
-      redeemed: 4876,
-      value: 234567.9,
-    },
-    {
-      locationId: "LOC005",
-      locationName: "Poker Room",
-      issued: 4338,
-      redeemed: 3209,
-      value: 145234.3,
-    },
-  ],
-};
-
-const recentVoucherActivity = [
-  {
-    id: "V001234",
-    amount: 125.5,
-    status: "redeemed",
-    location: "Main Casino Floor",
-    timestamp: "2 minutes ago",
-    type: "cashout",
-  },
-  {
-    id: "V001235",
-    amount: 75.25,
-    status: "issued",
-    location: "VIP Gaming Area",
-    timestamp: "5 minutes ago",
-    type: "promotional",
-  },
-  {
-    id: "V001236",
-    amount: 200.0,
-    status: "flagged",
-    location: "Sports Bar Gaming",
-    timestamp: "8 minutes ago",
-    type: "cashout",
-  },
-  {
-    id: "V001237",
-    amount: 50.0,
-    status: "redeemed",
-    location: "Hotel Gaming Lounge",
-    timestamp: "12 minutes ago",
-    type: "cashout",
-  },
-  {
-    id: "V001238",
-    amount: 300.75,
-    status: "expired",
-    location: "Main Casino Floor",
-    timestamp: "15 minutes ago",
-    type: "promotional",
-  },
-];
-
-const fraudAlerts = [
-  {
-    id: "FA001",
-    voucherId: "V001236",
-    amount: 200.0,
-    reason: "Duplicate redemption attempt",
-    severity: "high",
-    location: "Sports Bar Gaming",
-  },
-  {
-    id: "FA002",
-    voucherId: "V001189",
-    amount: 150.25,
-    reason: "Invalid security code",
-    severity: "medium",
-    location: "Main Casino Floor",
-  },
-  {
-    id: "FA003",
-    voucherId: "V001145",
-    amount: 75.5,
-    reason: "Expired voucher redemption",
-    severity: "low",
-    location: "VIP Gaming Area",
-  },
-];
 
 export default function VouchersTab() {
   const {
@@ -173,12 +56,18 @@ export default function VouchersTab() {
   const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
-    // Load voucher metrics when component mounts
+    // TODO: Implement actual API call to fetch voucher metrics from MongoDB
+    // This should fetch real voucher data from the database
     setLoading(true);
-    setTimeout(() => {
-      updateVoucherMetrics(sampleVoucherMetrics);
-      setLoading(false);
-    }, 1000);
+    // Placeholder for actual API call
+    // fetchVoucherMetrics().then(data => {
+    //   updateVoucherMetrics(data);
+    //   setLoading(false);
+    // }).catch(error => {
+    //   console.error('Error fetching voucher metrics:', error);
+    //   setLoading(false);
+    // });
+    setLoading(false);
   }, [updateVoucherMetrics, setLoading, selectedDateRange]);
 
   const handleExportData = async () => {
@@ -193,13 +82,7 @@ export default function VouchersTab() {
           "Total Value",
           "Redemption Rate",
         ],
-        data: metrics.vouchersByLocation.map((location) => [
-          location.locationName,
-          location.issued.toLocaleString(),
-          location.redeemed.toLocaleString(),
-          `$${location.value.toLocaleString()}`,
-          `${((location.redeemed / location.issued) * 100).toFixed(1)}%`,
-        ]),
+        data: [], // TODO: Replace with actual voucher location data from MongoDB
         summary: [
           {
             label: "Total Vouchers Issued",
@@ -241,11 +124,20 @@ export default function VouchersTab() {
     }
   };
 
-  const handleInvestigateFraud = (alertId: string) => {
-    toast.info(`Investigating fraud alert ${alertId}`);
-  };
+  // const handleInvestigateFraud = (alertId: string) => {
+  //   toast.info(`Investigating fraud alert ${alertId}`);
+  // };
 
-  const metrics = voucherMetrics || sampleVoucherMetrics;
+  const metrics = voucherMetrics || {
+    totalVouchersIssued: 0,
+    totalVouchersRedeemed: 0,
+    totalVoucherValue: 0,
+    redemptionRate: 0,
+    averageVoucherValue: 0,
+    expiredVouchers: 0,
+    fraudulentVouchers: 0,
+    vouchersByLocation: []
+  };
 
   const kpiCards = [
     {
@@ -637,7 +529,7 @@ export default function VouchersTab() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-semibold">Location</th>
+                      <th className="text-center p-3 font-semibold">Location</th>
                       <th className="text-right p-3 font-semibold">Issued</th>
                       <th className="text-right p-3 font-semibold">Redeemed</th>
                       <th className="text-right p-3 font-semibold">Rate</th>
@@ -727,63 +619,10 @@ export default function VouchersTab() {
                 </div>
 
                 <div className="space-y-3">
-                  {recentVoucherActivity.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-2 rounded-full ${
-                            activity.status === "redeemed"
-                              ? "bg-green-100"
-                              : activity.status === "issued"
-                              ? "bg-blue-100"
-                              : activity.status === "flagged"
-                              ? "bg-red-100"
-                              : "bg-yellow-100"
-                          }`}
-                        >
-                          {activity.status === "redeemed" ? (
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          ) : activity.status === "issued" ? (
-                            <Receipt className="w-4 h-4 text-blue-600" />
-                          ) : activity.status === "flagged" ? (
-                            <AlertTriangle className="w-4 h-4 text-red-600" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-yellow-600" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold">{activity.id}</p>
-                          <p className="text-sm text-gray-600">
-                            {activity.location}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">
-                          ${activity.amount.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {activity.timestamp}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          activity.status === "redeemed"
-                            ? "default"
-                            : activity.status === "issued"
-                            ? "secondary"
-                            : activity.status === "flagged"
-                            ? "destructive"
-                            : "outline"
-                        }
-                      >
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  ))}
+                  {/* TODO: Replace with actual voucher activity data from MongoDB */}
+                  <div className="text-center py-8 text-muted-foreground">
+                    No voucher activity data available - MongoDB implementation pending
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -803,7 +642,11 @@ export default function VouchersTab() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {fraudAlerts.map((alert) => (
+                {/* TODO: Replace with actual fraud alert data from MongoDB */}
+                <div className="text-center py-8 text-muted-foreground">
+                  No fraud alerts available - MongoDB implementation pending
+                </div>
+                {/* {[].map((alert) => (
                   <div
                     key={alert.id}
                     className={`p-4 border-l-4 rounded-lg ${
@@ -864,7 +707,7 @@ export default function VouchersTab() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                ))} */}
               </div>
             </CardContent>
           </Card>

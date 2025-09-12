@@ -7,10 +7,10 @@ import {
 } from "@/lib/types";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
 import { RADIAN } from "@/lib/constants/uiConstants";
-import { switchFilter } from "@/lib/utils/metrics";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
 import { TimePeriod } from "@/app/api/lib/types";
+import { fetchMetricsData } from "@/lib/helpers/dashboard";
 
 /**
  * Renders a customized label for pie chart visualization
@@ -51,42 +51,6 @@ export const loadGamingLocations = async (
   setGamingLocations(validLocations);
 };
 
-/**
- * Fetches metrics data based on active filter and licensee
- */
-export const fetchMetricsData = async (
-  activeMetricsFilter: TimePeriod,
-  customDateRange: { startDate: Date; endDate: Date },
-  selectedLicencee: string | undefined,
-  setTotals: (totals: dashboardData | null) => void,
-  setChartData: (data: dashboardData[]) => void,
-  setActiveFilters: (filters: ActiveFilters) => void,
-  setShowDatePicker: (show: boolean) => void
-) => {
-  if (selectedLicencee) {
-    await switchFilter(
-      activeMetricsFilter,
-      setTotals,
-      setChartData,
-      activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
-      activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
-      selectedLicencee,
-      setActiveFilters,
-      setShowDatePicker
-    );
-  } else {
-    await switchFilter(
-      activeMetricsFilter,
-      setTotals,
-      setChartData,
-      activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
-      activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
-      undefined,
-      setActiveFilters,
-      setShowDatePicker
-    );
-  }
-};
 
 /**
  * Fetches top performing data based on active tab and filter
@@ -97,6 +61,12 @@ export const fetchTopPerformingDataHelper = async (
   setTopPerformingData: (data: TopPerformingData[]) => void,
   setLoadingTopPerforming: (loading: boolean) => void
 ) => {
+  // Only fetch data if there's a valid filter
+  if (!activePieChartFilter) {
+    setTopPerformingData([]);
+    return;
+  }
+
   try {
     setLoadingTopPerforming(true);
     const data = await fetchTopPerformingData(activeTab, activePieChartFilter);

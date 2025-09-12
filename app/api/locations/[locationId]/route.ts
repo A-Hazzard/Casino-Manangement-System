@@ -58,17 +58,34 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const licencee = url.searchParams.get("licencee");
     const searchTerm = url.searchParams.get("search");
-    const timePeriod =
-      (url.searchParams.get("timePeriod") as TimePeriod) || "Today";
+    const timePeriod = url.searchParams.get("timePeriod") as TimePeriod;
     const customStartDate = url.searchParams.get("startDate");
     const customEndDate = url.searchParams.get("endDate");
+
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      return NextResponse.json(
+        { error: "timePeriod parameter is required" },
+        { status: 400 }
+      );
+    }
 
     // Calculate date range for filtering meters
     let startDate: Date | undefined, endDate: Date | undefined;
 
     if (timePeriod === "Custom" && customStartDate && customEndDate) {
-      startDate = new Date(customStartDate);
-      endDate = new Date(customEndDate);
+      // Parse custom dates and apply timezone handling
+      // The frontend sends dates that represent the start and end of the day in Trinidad time, already converted to UTC
+      const customStart = new Date(customStartDate);
+      let customEnd = new Date(customEndDate);
+      
+      // The end date from frontend represents the start of the end day in Trinidad time
+      // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
+      customEnd = new Date(customEnd.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
+      
+      // Use the dates as-is since they're already in the correct UTC format
+      startDate = customStart;
+      endDate = customEnd;
     } else {
       const dateRange = getDatesForTimePeriod(timePeriod);
       startDate = dateRange.startDate;
@@ -150,7 +167,7 @@ export async function GET(request: NextRequest) {
               // Add date filtering based on timePeriod
               ...(startDate && endDate
                 ? {
-                    createdAt: {
+                    readAt: {
                       $gte: startDate,
                       $lte: endDate,
                     },
@@ -198,6 +215,13 @@ export async function GET(request: NextRequest) {
         lastOnline: "$machines.lastActivity",
         game: "$machines.game",
         installedGame: "$machines.game",
+        manufacturer: {
+          $ifNull: [
+            "$machines.manufacturer",
+            "$machines.manuf",
+            "Unknown Manufacturer",
+          ],
+        },
         cabinetType: "$machines.cabinetType",
         assetStatus: "$machines.assetStatus",
         status: "$machines.assetStatus",

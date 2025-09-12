@@ -33,7 +33,7 @@ export const CabinetTableSkeleton: React.FC = () => (
           </th>
           <th className="relative p-3 text-sm text-center">
             <div className="flex items-center justify-center">
-              <span className="font-semibold">CANCELLED CREDITS</span>
+              <span className="font-semibold">MONEY OUT</span>
               <div className="w-4 h-4 ml-1 text-white">
                 <ChevronDownIcon className="w-full h-full" />
               </div>

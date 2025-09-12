@@ -14,12 +14,12 @@ const ActivityLogSchema = new Schema(
     action: {
       type: String,
       required: true,
-      enum: ["create", "update", "delete", "view"],
+      enum: ["create", "update", "delete", "view", "download"],
     },
     resource: {
       type: String,
       required: true,
-      enum: ["user", "licensee", "member", "location", "machine", "session"],
+      enum: ["user", "licensee", "member", "location", "machine", "session", "collection", "firmware"],
     },
     resourceId: { type: String, required: true },
     resourceName: { type: String },

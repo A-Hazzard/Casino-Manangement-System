@@ -71,7 +71,7 @@ export function CabinetTableSkeleton() {
               <span>MONEY IN</span>
             </th>
             <th className="p-3 border border-border border-t-0 text-sm">
-              <span>CANCELLED CREDITS</span>
+              <span>MONEY OUT</span>
             </th>
             <th className="p-3 border border-border border-t-0 text-sm">
               <span>JACKPOT</span>

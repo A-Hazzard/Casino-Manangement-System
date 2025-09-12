@@ -10,24 +10,41 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Chip from "@/components/ui/common/Chip";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { createMovementRequest } from "@/lib/helpers/movementRequests";
-import { validateEmail } from "@/lib/utils/validation";
 import type { MovementRequest } from "@/lib/types/movementRequests";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import type { Cabinet } from "@/lib/types/cabinets";
 import type { NewMovementModalProps } from "@/lib/types/components";
+import type { MachineMovementRecord } from "@/lib/types/reports";
+import { generateMongoId } from "@/lib/utils/id";
+import { useUserStore } from "@/lib/store/userStore";
+import axios from "axios";
 
 const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   isOpen,
   onClose,
+  onSubmit,
+  onRefresh,
   locations: propLocations,
 }) => {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
+  );
+  const [users, setUsers] = useState<
+    { _id: string; name: string; email: string }[]
+  >([]);
+  const [movementType, setMovementType] = useState<"Machine" | "SMIB">(
+    "Machine"
   );
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
@@ -42,8 +59,8 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Create activity logger for movement request operations
-  const movementLogger = createActivityLogger("session");
+  // Get current user from store
+  const { user: currentUser } = useUserStore();
 
   // Use prop locations or fetch if not provided
   useEffect(() => {
@@ -60,11 +77,45 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
     }
   }, [propLocations]);
 
+  // Fetch users for email dropdown
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get("/api/users");
+        if (response.data.users) {
+          setUsers(response.data.users);
+        }
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // Close cabinet dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".cabinet-dropdown-container")) {
+        setCabinetDropdownOpen(false);
+      }
+    };
+
+    if (cabinetDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return undefined;
+  }, [cabinetDropdownOpen]);
+
   // Fetch cabinets for selected from location
   useEffect(() => {
     if (fromLocation) {
       setLoadingCabinets(true);
-      fetchCabinetsForLocation(fromLocation)
+      // Use "All" as the default timePeriod to get all available machines
+      fetchCabinetsForLocation(fromLocation, undefined, "All")
         .then((cabs) => {
           setCabinets(cabs);
           setAvailableCabinets(cabs);
@@ -118,15 +169,14 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   // Validation
   const validate = () => {
     const errs: { [key: string]: string } = {};
+    if (!movementType) errs.movementType = "Movement type is required.";
     if (!fromLocation) errs.fromLocation = "From location is required.";
     if (!selectedCabinets.length)
-      errs.selectedCabinets = "Select at least one machine.";
+      errs.selectedCabinets = `Select at least one ${movementType.toLowerCase()}.`;
     if (!toLocation) errs.toLocation = "Destination location is required.";
     if (toLocation && toLocation === fromLocation)
       errs.toLocation = "Destination must be different from source.";
-    if (!requestTo) errs.requestTo = "Recipient email is required.";
-    else if (!validateEmail(requestTo))
-      errs.requestTo = "Enter a valid email address.";
+    if (!requestTo) errs.requestTo = "Recipient user is required.";
     return errs;
   };
 
@@ -145,10 +195,41 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
     if (Object.keys(errs).length > 0) return;
     setSubmitting(true);
     try {
-      // Compose the request payload (simplified, adjust as needed)
+      // Get current logged-in user from store
+      const createdBy = currentUser?.emailAddress || "unknown";
+
+      // Get location names for the payload
+      const fromLocationName =
+        locations.find((loc) => loc.id === fromLocation)?.name || fromLocation;
+      const toLocationName =
+        locations.find((loc) => loc.id === toLocation)?.name || toLocation;
+
+      // Generate a proper MongoDB ObjectId-style hex string for the movement request
+      const movementRequestId = await generateMongoId();
+
+      // Compose the request payload with all required fields
       const payload: Partial<MovementRequest> = {
-        locationFrom: fromLocation,
-        locationTo: toLocation,
+        // Generate a unique ID for the movement request
+        _id: movementRequestId,
+
+        // Financial fields (set to 0 for movement requests)
+        variance: 0,
+        previousBalance: 0,
+        currentBalance: 0,
+        amountToCollect: 0,
+        amountCollected: 0,
+        amountUncollected: 0,
+        partnerProfit: 0,
+        taxes: 0,
+        advance: 0,
+
+        // Location fields
+        locationName: fromLocationName,
+        locationFrom: fromLocationName,
+        locationTo: toLocationName,
+        locationId: fromLocation,
+
+        // Request details
         requestTo,
         reason: notes,
         cabinetIn: selectedCabinets
@@ -158,27 +239,54 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
           )
           .join(","),
         status: "pending",
-        createdBy: "", // Fill with current user if available
-        movementType: "cabinet",
+        createdBy: createdBy,
+        movementType: movementType.toLowerCase(),
         installationType: "move",
         timestamp: new Date(),
-        // Add other required fields as needed
+
+        // Timestamp fields
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
       const createdRequest = await createMovementRequest(
-        payload as Omit<MovementRequest, "_id" | "createdAt" | "updatedAt">
+        payload as MovementRequest
       );
-      
-      // Log the movement request creation activity
-      await movementLogger.logCreate(
-        createdRequest._id || "unknown",
-        `Movement Request: ${fromLocation} to ${toLocation}`,
-        payload,
-        `Created movement request from ${fromLocation} to ${toLocation} for ${selectedCabinets.length} machines`
-      );
-      
+
+      // Call the onSubmit callback if provided
+      if (onSubmit) {
+        // Convert MovementRequest to MachineMovementRecord format
+        const machineMovementRecord: MachineMovementRecord = {
+          id: createdRequest._id,
+          machineId: selectedCabinets[0]?._id || "",
+          machineName: selectedCabinets[0]?.installedGame || selectedCabinets[0]?.game || "Unknown Machine",
+          fromLocationId: fromLocation,
+          fromLocationName: fromLocationName,
+          toLocationId: toLocation,
+          toLocationName: toLocationName,
+          moveDate: new Date().toISOString(),
+          reason: notes,
+          status: "pending",
+          notes: notes,
+          movedBy: createdBy,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        onSubmit(machineMovementRecord);
+      }
+
+      // Call the onRefresh callback if provided
+      if (onRefresh) {
+        onRefresh();
+      }
+
       onClose();
-    } catch {
-      setErrors({ submit: "Failed to create movement request." });
+    } catch (error) {
+      console.error("Movement request creation error:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to create movement request.";
+      setErrors({ submit: errorMessage });
     } finally {
       setSubmitting(false);
     }
@@ -193,56 +301,162 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
           </DialogTitle>
         </DialogHeader>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
-          {/* Left Column: Selection */}
+          {/* Left Column */}
           <div className="flex flex-col gap-4">
+            {/* Movement Type */}
             <div>
-              <label
-                htmlFor="fromLocationModal"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                From Location <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Please Select Movement Type{" "}
+                <span className="text-red-500">*</span>
               </label>
-              <select
-                id="fromLocationModal"
-                value={fromLocation}
-                onChange={(e) => setFromLocation(e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+              <Select
+                value={movementType}
+                onValueChange={(value: "Machine" | "SMIB") =>
+                  setMovementType(value)
+                }
               >
-                <option value="" disabled>
-                  Select source location
-                </option>
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full border-gray-300 focus:ring-buttonActive focus:border-buttonActive">
+                  <SelectValue placeholder="Select movement type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Machine">Machine</SelectItem>
+                  <SelectItem value="SMIB">SMIB</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.movementType && (
+                <div className="text-red-500 text-xs mt-1">
+                  {errors.movementType}
+                </div>
+              )}
+            </div>
+
+            {/* From Location */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Please Select Location It Is Coming From{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={fromLocation || undefined}
+                onValueChange={setFromLocation}
+              >
+                <SelectTrigger className="w-full border-gray-300 focus:ring-buttonActive focus:border-buttonActive">
+                  <SelectValue placeholder="Select source location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.fromLocation && (
                 <div className="text-red-500 text-xs mt-1">
                   {errors.fromLocation}
                 </div>
               )}
             </div>
+
+            {/* To Location */}
             <div>
-              <label
-                htmlFor="cabinetSearchModal"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Search Machines <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Please Select Location It Is Going To{" "}
+                <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
+              <Select
+                value={toLocation || undefined}
+                onValueChange={setToLocation}
+                disabled={!selectedCabinets.length}
+              >
+                <SelectTrigger className="w-full border-gray-300 focus:ring-buttonActive focus:border-buttonActive">
+                  <SelectValue placeholder="Location Is It Going To" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations
+                    .filter((loc) => loc.id !== fromLocation)
+                    .map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {errors.toLocation && (
+                <div className="text-red-500 text-xs mt-1">
+                  {errors.toLocation}
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes
+              </label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="border-gray-300 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
+                placeholder="Please Enter Notes"
+              />
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="flex flex-col gap-4">
+            {/* Request To */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Request To: <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={requestTo || undefined}
+                onValueChange={setRequestTo}
+                disabled={!toLocation}
+              >
+                <SelectTrigger className="w-full border-gray-300 focus:ring-buttonActive focus:border-buttonActive">
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users
+                    .filter((user) => user.email && user.email.trim() !== "")
+                    .map((user) => (
+                      <SelectItem key={user._id} value={user.email}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {user.name || user.email}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {user.email}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {errors.requestTo && (
+                <div className="text-red-500 text-xs mt-1">
+                  {errors.requestTo}
+                </div>
+              )}
+            </div>
+
+            {/* Cabinet/SMIB Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Please Select a {movementType} to be Moved{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="relative cabinet-dropdown-container">
                 <Input
-                  id="cabinetSearchModal"
-                  placeholder="Search by machine name, serial #, asset #, or ID..."
+                  placeholder={`Select ${movementType}`}
                   value={cabinetSearch}
                   onChange={(e) => {
                     setCabinetSearch(e.target.value);
                     setCabinetDropdownOpen(true);
                   }}
                   onFocus={() => setCabinetDropdownOpen(true)}
-                  onBlur={() =>
-                    setTimeout(() => setCabinetDropdownOpen(false), 150)
-                  }
                   disabled={!fromLocation}
                   className="border-gray-300 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
                   autoComplete="off"
@@ -252,7 +466,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                     {loadingCabinets ? (
                       <div className="px-4 py-2 text-sm text-gray-400 text-center">
-                        Loading machines...
+                        Loading {movementType.toLowerCase()}s...
                       </div>
                     ) : availableCabinets.length > 0 ? (
                       availableCabinets.map((cab) => {
@@ -260,10 +474,16 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                           cab.installedGame ||
                           cab.game ||
                           cab.assetNumber ||
-                          (cab as Record<string, unknown>).serialNumber as string || (cab as Record<string, unknown>).origSerialNumber as string ||
+                          ((cab as Record<string, unknown>)
+                            .serialNumber as string) ||
+                          ((cab as Record<string, unknown>)
+                            .origSerialNumber as string) ||
                           "Unknown Machine";
                         const identifier =
-                          (cab as Record<string, unknown>).serialNumber as string || (cab as Record<string, unknown>).origSerialNumber as string ||
+                          ((cab as Record<string, unknown>)
+                            .serialNumber as string) ||
+                          ((cab as Record<string, unknown>)
+                            .origSerialNumber as string) ||
                           cab.assetNumber ||
                           cab.smibBoard ||
                           cab.relayId ||
@@ -298,27 +518,24 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                     ) : (
                       <div className="px-4 py-2 text-sm text-gray-400 text-center">
                         {cabinetSearch
-                          ? "No machines match your search."
-                          : "No machines available at this location."}
+                          ? `No ${movementType.toLowerCase()}s match your search.`
+                          : `No ${movementType.toLowerCase()}s available at this location.`}
                       </div>
                     )}
                   </div>
                 )}
               </div>
+              {errors.selectedCabinets && (
+                <div className="text-red-500 text-xs mt-1">
+                  {errors.selectedCabinets}
+                </div>
+              )}
             </div>
-            {errors.selectedCabinets && (
-              <div className="text-red-500 text-xs mt-1">
-                {errors.selectedCabinets}
-              </div>
-            )}
-          </div>
 
-          {/* Right Column: Selected & Destination */}
-          <div className="flex flex-col gap-4">
+            {/* Selected Items */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Selected Machines ({selectedCabinets.length}){" "}
-                <span className="text-red-500">*</span>
+                Selected {movementType}s ({selectedCabinets.length})
               </label>
               <div className="border rounded-md p-3 h-40 overflow-y-auto bg-gray-50 min-h-[60px]">
                 {selectedCabinets.length > 0 ? (
@@ -327,7 +544,10 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                       cab.installedGame ||
                       cab.game ||
                       cab.assetNumber ||
-                      (cab as Record<string, unknown>).serialNumber as string || (cab as Record<string, unknown>).origSerialNumber as string ||
+                      ((cab as Record<string, unknown>)
+                        .serialNumber as string) ||
+                      ((cab as Record<string, unknown>)
+                        .origSerialNumber as string) ||
                       "Unknown Machine";
                     return (
                       <Chip
@@ -340,80 +560,31 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                   })
                 ) : (
                   <p className="text-sm text-gray-400 text-center py-2">
-                    No machines selected.
+                    No {movementType.toLowerCase()}s selected.
                   </p>
                 )}
               </div>
             </div>
-            <div>
-              <label
-                htmlFor="toLocationModal"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Moving To (Destination Location){" "}
-                <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="toLocationModal"
-                value={toLocation}
-                onChange={(e) => setToLocation(e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-                disabled={!selectedCabinets.length}
-              >
-                <option value="" disabled>
-                  Select destination location
-                </option>
-                {locations
-                  .filter((loc) => loc.id !== fromLocation)
-                  .map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </option>
-                  ))}
-              </select>
-              {errors.toLocation && (
-                <div className="text-red-500 text-xs mt-1">
-                  {errors.toLocation}
-                </div>
-              )}
-            </div>
-            <div>
-              <label
-                htmlFor="requestToModal"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Request To (Email) <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="requestToModal"
-                type="email"
-                value={requestTo}
-                onChange={(e) => setRequestTo(e.target.value)}
-                className="border-gray-300 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
-                disabled={!toLocation}
-                placeholder="Enter recipient's email"
-              />
-              {errors.requestTo && (
-                <div className="text-red-500 text-xs mt-1">
-                  {errors.requestTo}
-                </div>
-              )}
-            </div>
-            <div>
-              <label
-                htmlFor="notesModal"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Notes (Optional)
-              </label>
-              <Textarea
-                id="notesModal"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="border-gray-300 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
-                placeholder="Add any notes (optional)"
-              />
-            </div>
+
+            {/* SMIB Machine Selection (conditional) */}
+            {movementType === "SMIB" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Please Select Cabinet Is Coming To{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <Select value="" onValueChange={() => {}}>
+                  <SelectTrigger className="w-full border-blue-300 focus:ring-buttonActive focus:border-buttonActive">
+                    <SelectValue placeholder="Cabinet Is Coming To" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="placeholder">
+                      Select destination cabinet
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter className="p-6 border-t border-gray-200 flex justify-end gap-2">
@@ -425,9 +596,9 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
           <Button
             onClick={handleSubmit}
             disabled={submitting}
-            className="bg-button text-white"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold uppercase"
           >
-            {submitting ? "Submitting..." : "Submit Request"}
+            {submitting ? "Submitting..." : "CREATE MOVEMENT REQUEST"}
           </Button>
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>

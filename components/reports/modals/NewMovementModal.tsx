@@ -34,47 +34,7 @@ import { cn } from "@/lib/utils";
 import type { NewMovementModalProps } from "@/lib/types/components";
 import type { MachineMovementRecord } from "@/lib/types/reports";
 
-// Sample data
-const sampleMachines = [
-  {
-    id: "MAC001",
-    name: "Lucky Stars Deluxe",
-    currentLocation: "Main Casino Floor",
-    currentLocationId: "LOC001",
-  },
-  {
-    id: "MAC002",
-    name: "Diamond Rush Pro",
-    currentLocation: "VIP Gaming Area",
-    currentLocationId: "LOC002",
-  },
-  {
-    id: "MAC003",
-    name: "Golden Jackpot",
-    currentLocation: "Sports Bar Gaming",
-    currentLocationId: "LOC003",
-  },
-  {
-    id: "MAC004",
-    name: "Mega Fortune",
-    currentLocation: "Main Casino Floor",
-    currentLocationId: "LOC001",
-  },
-  {
-    id: "MAC005",
-    name: "Royal Flush",
-    currentLocation: "Hotel Gaming Lounge",
-    currentLocationId: "LOC004",
-  },
-];
-
-const sampleLocations = [
-  { id: "LOC001", name: "Main Casino Floor" },
-  { id: "LOC002", name: "VIP Gaming Area" },
-  { id: "LOC003", name: "Sports Bar Gaming" },
-  { id: "LOC004", name: "Hotel Gaming Lounge" },
-  { id: "LOC005", name: "Outdoor Terrace" },
-];
+// TODO: Replace with MongoDB data fetching
 
 const movementReasons = [
   "Performance optimization",
@@ -94,6 +54,9 @@ export default function NewMovementModal({
   onRefresh,
 }: NewMovementModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [_isLoading, _setIsLoading] = useState(false);
+  const [machines, _setMachines] = useState<unknown[]>([]);
+  const [locations, _setLocations] = useState<unknown[]>([]);
   const [formData, setFormData] = useState({
     machineId: "",
     toLocationId: "",
@@ -104,12 +67,13 @@ export default function NewMovementModal({
     priority: "medium",
   });
 
-  const selectedMachine = sampleMachines.find(
-    (m) => m.id === formData.machineId
-  );
-  const selectedToLocation = sampleLocations.find(
-    (l) => l.id === formData.toLocationId
-  );
+  // TODO: Implement proper data fetching from MongoDB
+  const selectedMachine = machines.find(
+    (m: unknown) => (m as any).id === formData.machineId // eslint-disable-line @typescript-eslint/no-explicit-any
+  ) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const selectedToLocation = locations.find(
+    (l: unknown) => (l as any).id === formData.toLocationId // eslint-disable-line @typescript-eslint/no-explicit-any
+  ) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,16 +185,25 @@ export default function NewMovementModal({
                   <SelectValue placeholder="Select machine to move" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sampleMachines.map((machine) => (
-                    <SelectItem key={machine.id} value={machine.id}>
-                      <div>
-                        <div className="font-medium">{machine.name}</div>
-                        <div className="text-sm text-gray-500">
-                          Current: {machine.currentLocation}
-                        </div>
-                      </div>
+                  {machines.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No machines available - MongoDB implementation pending
                     </SelectItem>
-                  ))}
+                  ) : (
+                    machines.map((machine: unknown) => {
+                      const m = machine as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+                      return (
+                        <SelectItem key={m.id} value={m.id}>
+                          <div>
+                            <div className="font-medium">{m.name}</div>
+                            <div className="text-sm text-gray-500">
+                              Current: {m.currentLocation}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -249,11 +222,20 @@ export default function NewMovementModal({
                   <SelectValue placeholder="Select destination" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sampleLocations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
+                  {locations.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No locations available - MongoDB implementation pending
                     </SelectItem>
-                  ))}
+                  ) : (
+                    locations.map((location: unknown) => {
+                      const l = location as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+                      return (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.name}
+                        </SelectItem>
+                      );
+                    })
+                  )}
                 </SelectContent>
               </Select>
             </div>

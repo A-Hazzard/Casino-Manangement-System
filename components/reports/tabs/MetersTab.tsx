@@ -26,6 +26,7 @@ import { exportData } from "@/lib/utils/exportUtils";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import { Input } from "@/components/ui/input";
+import { MetersTabSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
 import type {
   MetersReportData,
   MetersReportResponse,
@@ -303,64 +304,7 @@ export default function MetersTab() {
     }
   }, [selectedLocations, selectedDateRange, fetchMetersData]);
 
-  // Skeleton loader component
-  const MetersTableSkeleton = () => (
-    <div className="space-y-4">
-      {/* Desktop Skeleton */}
-      <div className="hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                {[...Array(10)].map((_, index) => (
-                  <th key={index} className="px-4 py-3 text-left">
-                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {[...Array(5)].map((_, rowIndex) => (
-                <tr key={rowIndex}>
-                  {[...Array(10)].map((_, colIndex) => (
-                    <td key={colIndex} className="px-4 py-3 whitespace-nowrap">
-                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile Skeleton */}
-      <div className="md:hidden space-y-4">
-        {[...Array(5)].map((_, index) => (
-          <div
-            key={index}
-            className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
-              </div>
-              <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[...Array(7)].map((_, metricIndex) => (
-                <div key={metricIndex} className="space-y-1">
-                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  // Skeleton loader component - now imported from ReportsSkeletons
 
   return (
     <div className="space-y-6">
@@ -456,20 +400,7 @@ export default function MetersTab() {
           </CardContent>
         </Card>
       ) : loading ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Meters Data
-            </CardTitle>
-            <CardDescription>
-              Loading meters data for selected locations...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MetersTableSkeleton />
-          </CardContent>
-        </Card>
+        <MetersTabSkeleton />
       ) : error ? (
         <Card>
           <CardContent className="p-8 text-center">
@@ -533,34 +464,34 @@ export default function MetersTab() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Machine ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Meters In
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Money Won
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Jackpot
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Bill In
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Voucher Out
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Hand Paid Cancelled Credits
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Games Played
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                   </tr>

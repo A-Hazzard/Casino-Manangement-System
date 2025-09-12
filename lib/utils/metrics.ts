@@ -97,15 +97,26 @@ export async function switchFilter(
 }
 
 /**
- * Formats a given number as a localized USD currency string.
+ * Formats a given number as a localized USD currency string with smart decimal handling.
  *
  * @param {number} value - The number to format.
  * @returns {string} The formatted currency string in USD.
  */
 export function formatNumber(value: number): string {
+  if (isNaN(value)) {
+    return "$0";
+  }
+
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
 }
 
@@ -121,9 +132,20 @@ export function formatNumberWithCurrency(
   value: number,
   currency: string = "USD"
 ): string {
+  if (isNaN(value)) {
+    return "$0";
+  }
+
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
 }
 
@@ -140,9 +162,18 @@ export function calculateSasGross(col: CollectionDocument): number {
 /**
  * Calculates the variation for a collection document.
  * @param col - The collection document.
- * @returns The variation (Meter Gross - SAS Gross).
+ * @returns The variation (Meter Gross - SAS Gross) or "No SAS Data" if SAS data is missing.
  */
-export function calculateVariation(col: CollectionDocument): number {
+export function calculateVariation(col: CollectionDocument): number | string {
+  // Check if SAS data exists - if not, return "No SAS Data"
+  if (
+    !col.sasMeters ||
+    col.sasMeters.gross === undefined ||
+    col.sasMeters.gross === null ||
+    col.sasMeters.gross === 0
+  ) {
+    return "No SAS Data";
+  }
   return (col.movement.gross || 0) - calculateSasGross(col);
 }
 

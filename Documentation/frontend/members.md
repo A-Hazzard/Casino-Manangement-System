@@ -1,11 +1,31 @@
 # Members Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [Member Management](#member-management)
+- [Session Tracking](#session-tracking)
+- [Machine Event Monitoring](#machine-event-monitoring)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Security Features](#security-features)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
 
-This page provides comprehensive member management for the casino system, including member profiles, session tracking, and machine event monitoring.
+## Overview
 
+The Members page provides comprehensive member management for the casino system, including member profiles, session tracking, and machine event monitoring. This page serves as the central hub for managing casino members and their gaming activities.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### File Information
 - **File:** `app/members/page.tsx`
 - **URL Pattern:** `/members`
+- **Component Type:** Member Management Page
+- **Authentication:** Required
 
 ## Main Features
 - **Member Management:**

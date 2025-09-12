@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 // Components
 import MembersContent from "@/components/members/MembersContent";
+import { MembersPageSkeleton } from "@/components/ui/skeletons/MembersSkeletons";
 
 /**
  * Members Page
@@ -18,7 +19,7 @@ import MembersContent from "@/components/members/MembersContent";
  */
 export default function MembersPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<MembersPageSkeleton />}>
       <MembersContent />
     </Suspense>
   );

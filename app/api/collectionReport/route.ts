@@ -6,6 +6,9 @@ import {
 import { getAllCollectionReportsWithMachineCounts } from "@/app/api/lib/helpers/collectionReportBackend";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import { logActivity } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import type { TimePeriod } from "@/app/api/lib/types";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
@@ -27,7 +30,7 @@ export async function GET(req: NextRequest) {
           { deletedAt: { $lt: new Date("2020-01-01") } },
         ],
       },
-      "_id name"
+      "_id name previousCollectionTime profitShare"
     ).lean();
     // For each location, fetch its machines
     const locationsWithMachines = await Promise.all(
@@ -45,6 +48,8 @@ export async function GET(req: NextRequest) {
         return {
           _id: loc._id,
           name: loc.name,
+          previousCollectionTime: loc.previousCollectionTime,
+          profitShare: loc.profitShare,
           machines: machines.map((m) => ({
             _id: m._id,
             serialNumber: m.serialNumber,
@@ -171,9 +176,11 @@ export async function POST(req: NextRequest) {
     const created = await CollectionReport.create(doc);
 
     // After creating the report, update collectionMeters for each machine
+    // and update gaming location's previousCollectionTime
     if (body.machines && Array.isArray(body.machines)) {
       for (const m of body.machines) {
         if (m.machineId) {
+          // Update machine collection meters (without collectionTime)
           await Machine.findByIdAndUpdate(
             m.machineId,
             {
@@ -190,7 +197,66 @@ export async function POST(req: NextRequest) {
               err
             );
           });
+
+          // Update gaming location's previousCollectionTime
+          const machine = await Machine.findById(m.machineId).lean();
+          if (machine) {
+            const machineData = machine as Record<string, unknown>;
+            const gamingLocationId = machineData.gamingLocation as string;
+            
+            if (gamingLocationId) {
+              const { GamingLocations } = await import("@/app/api/lib/models/gaminglocations");
+              await GamingLocations.findByIdAndUpdate(
+                gamingLocationId,
+                {
+                  $set: {
+                    previousCollectionTime: new Date(m.collectionTime || body.timestamp), // Use machine collection time or fallback to report timestamp
+                    updatedAt: new Date(),
+                  },
+                },
+                { new: true }
+              ).catch((err) => {
+                console.error(
+                  `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
+                  err
+                );
+              });
+            }
+          }
         }
+      }
+    }
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "locationName", oldValue: null, newValue: body.locationName },
+          { field: "collectorName", oldValue: null, newValue: body.collectorName },
+          { field: "amountCollected", oldValue: null, newValue: body.amountCollected },
+          { field: "amountToCollect", oldValue: null, newValue: body.amountToCollect },
+          { field: "variance", oldValue: null, newValue: body.variance },
+          { field: "partnerProfit", oldValue: null, newValue: body.partnerProfit },
+          { field: "taxes", oldValue: null, newValue: body.taxes },
+          { field: "machines", oldValue: null, newValue: body.machines?.length || 0 },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "collection",
+          { id: created._id.toString(), name: `${body.locationName} - ${body.collectorName}` },
+          createChanges,
+          `Created collection report for ${body.locationName} by ${body.collectorName} (${body.machines?.length || 0} machines, $${body.amountCollected} collected)`,
+          getClientIP(req) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
       }
     }
 

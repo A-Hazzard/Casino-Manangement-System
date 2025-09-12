@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { MachineSession } from "@/app/api/lib/models/machineSessions";
 
+// Helper function to calculate ISO week number
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -54,20 +63,21 @@ export async function GET(
             .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
         }
 
-        // Calculate handle (total money in) - using startBillMeters.dollarTotal + startMeters.drop
-        const handle =
-          (session.startBillMeters?.dollarTotal || 0) +
-          (session.startMeters?.drop || 0);
+        // Calculate handle (total bets placed) - using movement.coinIn from financial guide
+        const handle = session.endMeters?.movement?.coinIn || 0;
 
-        // Calculate cancelled credits from endMeters
-        const cancelledCredits = session.endMeters?.totalCancelledCredits || 0;
+        // Calculate money in (physical cash inserted) from endMeters using financial guide
+        const moneyIn = session.endMeters?.movement?.drop || 0;
 
-        // Calculate jackpot from endMeters
-        const jackpot = session.endMeters?.jackpot || 0;
+        // Calculate money out (manual payouts) from endMeters using financial guide
+        const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
 
-        // Calculate coin in/out from endMeters
-        const coinIn = session.endMeters?.coinIn || 0;
-        const coinOut = session.endMeters?.coinOut || 0;
+        // Calculate jackpot from endMeters using movement field
+        const jackpot = session.endMeters?.movement?.jackpot || 0;
+
+        // Calculate coin in/out from endMeters using movement fields
+        const coinIn = session.endMeters?.movement?.coinIn || 0;
+        const coinOut = session.endMeters?.movement?.coinOut || 0;
 
         // Calculate won/less (coin out - coin in)
         const wonLess = coinOut - coinIn;
@@ -82,16 +92,26 @@ export async function GET(
           _id: session._id,
           sessionId: session._id,
           machineId: session.machineId,
-          time: session.startTime,
+          time: session.startTime 
+            ? new Date(session.startTime).toLocaleString("en-US", {
+                day: "numeric",
+                month: "short", 
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+              })
+            : "N/A",
           sessionLength,
           handle,
-          cancelledCredits,
+          moneyIn,
+          moneyOut,
           jackpot,
           won,
           bet,
           wonLess,
           points: session.points || 0,
-          gamesPlayed: session.gamesPlayed || 0,
+          gamesPlayed: session.endMeters?.movement?.gamesPlayed || 0,
           gamesWon: session.gamesWon || 0,
           coinIn,
           coinOut,
@@ -129,7 +149,7 @@ export async function GET(
           switch (filter) {
             case "day":
               groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "short",
+                month: "long",
                 day: "numeric",
                 year: "numeric",
               });
@@ -140,11 +160,15 @@ export async function GET(
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               weekStart.setDate(sessionDate.getDate() - daysToSubtract);
               weekStart.setHours(0, 0, 0, 0);
-              groupKey = weekStart.toLocaleDateString("en-US", {
-                month: "short",
+              
+              // Calculate week number (ISO week number)
+              const weekNumber = getWeekNumber(weekStart);
+              
+              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString("en-US", {
+                month: "long",
                 day: "numeric",
                 year: "numeric",
-              });
+              })}`;
               break;
             case "month":
               groupKey = sessionDate.toLocaleDateString("en-US", {
@@ -154,7 +178,7 @@ export async function GET(
               break;
             default:
               groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "short",
+                month: "long",
                 day: "numeric",
                 year: "numeric",
               });
@@ -165,10 +189,11 @@ export async function GET(
               _id: groupKey,
               sessionId: groupKey,
               machineId: "N/A",
-              time: sessionDate,
+              time: groupKey,
               sessionLength: "N/A",
               handle: 0,
-              cancelledCredits: 0,
+              moneyIn: 0,
+              moneyOut: 0,
               jackpot: 0,
               won: 0,
               bet: 0,
@@ -187,27 +212,26 @@ export async function GET(
           const group = groupedSessions.get(groupKey);
 
           // Calculate session metrics
-          const handle =
-            (session.startBillMeters?.dollarTotal || 0) +
-            (session.startMeters?.drop || 0);
-          const cancelledCredits =
-            session.endMeters?.totalCancelledCredits || 0;
-          const jackpot = session.endMeters?.jackpot || 0;
-          const coinIn = session.endMeters?.coinIn || 0;
-          const coinOut = session.endMeters?.coinOut || 0;
+          const handle = session.endMeters?.movement?.coinIn || 0;
+          const moneyIn = session.endMeters?.movement?.drop || 0;
+          const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+          const jackpot = session.endMeters?.movement?.jackpot || 0;
+          const coinIn = session.endMeters?.movement?.coinIn || 0;
+          const coinOut = session.endMeters?.movement?.coinOut || 0;
           const wonLess = coinOut - coinIn;
           const bet = coinIn;
           const won = coinOut;
 
           // Sum up all metrics
           group.handle += handle;
-          group.cancelledCredits += cancelledCredits;
+          group.moneyIn += moneyIn;
+          group.moneyOut += moneyOut;
           group.jackpot += jackpot;
           group.won += won;
           group.bet += bet;
           group.wonLess += wonLess;
           group.points += session.points || 0;
-          group.gamesPlayed += session.gamesPlayed || 0;
+          group.gamesPlayed += session.endMeters?.movement?.gamesPlayed || 0;
           group.gamesWon += session.gamesWon || 0;
           group.coinIn += coinIn;
           group.coinOut += coinOut;
@@ -303,20 +327,21 @@ export async function GET(
             .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
         }
 
-        // Calculate handle (total money in) - using startBillMeters.dollarTotal + startMeters.drop
-        const handle =
-          (session.startBillMeters?.dollarTotal || 0) +
-          (session.startMeters?.drop || 0);
+        // Calculate handle (total bets placed) - using movement.coinIn from financial guide
+        const handle = session.endMeters?.movement?.coinIn || 0;
 
-        // Calculate cancelled credits from endMeters
-        const cancelledCredits = session.endMeters?.totalCancelledCredits || 0;
+        // Calculate money in (physical cash inserted) from endMeters using financial guide
+        const moneyIn = session.endMeters?.movement?.drop || 0;
 
-        // Calculate jackpot from endMeters
-        const jackpot = session.endMeters?.jackpot || 0;
+        // Calculate money out (manual payouts) from endMeters using financial guide
+        const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
 
-        // Calculate coin in/out from endMeters
-        const coinIn = session.endMeters?.coinIn || 0;
-        const coinOut = session.endMeters?.coinOut || 0;
+        // Calculate jackpot from endMeters using movement field
+        const jackpot = session.endMeters?.movement?.jackpot || 0;
+
+        // Calculate coin in/out from endMeters using movement fields
+        const coinIn = session.endMeters?.movement?.coinIn || 0;
+        const coinOut = session.endMeters?.movement?.coinOut || 0;
 
         // Calculate won/less (coin out - coin in)
         const wonLess = coinOut - coinIn;
@@ -331,16 +356,26 @@ export async function GET(
           _id: session._id,
           sessionId: session._id,
           machineId: session.machineId,
-          time: session.startTime,
+          time: session.startTime 
+            ? new Date(session.startTime).toLocaleString("en-US", {
+                day: "numeric",
+                month: "short", 
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+              })
+            : "N/A",
           sessionLength,
           handle,
-          cancelledCredits,
+          moneyIn,
+          moneyOut,
           jackpot,
           won,
           bet,
           wonLess,
           points: session.points || 0,
-          gamesPlayed: session.gamesPlayed || 0,
+          gamesPlayed: session.endMeters?.movement?.gamesPlayed || 0,
           gamesWon: session.gamesWon || 0,
           coinIn,
           coinOut,
@@ -359,7 +394,7 @@ export async function GET(
           switch (filter) {
             case "day":
               groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "short",
+                month: "long",
                 day: "numeric",
                 year: "numeric",
               });
@@ -370,11 +405,15 @@ export async function GET(
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               weekStart.setDate(sessionDate.getDate() - daysToSubtract);
               weekStart.setHours(0, 0, 0, 0);
-              groupKey = weekStart.toLocaleDateString("en-US", {
-                month: "short",
+              
+              // Calculate week number (ISO week number)
+              const weekNumber = getWeekNumber(weekStart);
+              
+              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString("en-US", {
+                month: "long",
                 day: "numeric",
                 year: "numeric",
-              });
+              })}`;
               break;
             case "month":
               groupKey = sessionDate.toLocaleDateString("en-US", {
@@ -384,7 +423,7 @@ export async function GET(
               break;
             default:
               groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "short",
+                month: "long",
                 day: "numeric",
                 year: "numeric",
               });
@@ -395,10 +434,11 @@ export async function GET(
               _id: groupKey,
               sessionId: groupKey,
               machineId: "N/A",
-              time: sessionDate,
+              time: groupKey,
               sessionLength: "N/A",
               handle: 0,
-              cancelledCredits: 0,
+              moneyIn: 0,
+              moneyOut: 0,
               jackpot: 0,
               won: 0,
               bet: 0,
@@ -417,27 +457,26 @@ export async function GET(
           const group = groupedSessions.get(groupKey);
 
           // Calculate session metrics
-          const handle =
-            (session.startBillMeters?.dollarTotal || 0) +
-            (session.startMeters?.drop || 0);
-          const cancelledCredits =
-            session.endMeters?.totalCancelledCredits || 0;
-          const jackpot = session.endMeters?.jackpot || 0;
-          const coinIn = session.endMeters?.coinIn || 0;
-          const coinOut = session.endMeters?.coinOut || 0;
+          const handle = session.endMeters?.movement?.coinIn || 0;
+          const moneyIn = session.endMeters?.movement?.drop || 0;
+          const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+          const jackpot = session.endMeters?.movement?.jackpot || 0;
+          const coinIn = session.endMeters?.movement?.coinIn || 0;
+          const coinOut = session.endMeters?.movement?.coinOut || 0;
           const wonLess = coinOut - coinIn;
           const bet = coinIn;
           const won = coinOut;
 
           // Sum up all metrics
           group.handle += handle;
-          group.cancelledCredits += cancelledCredits;
+          group.moneyIn += moneyIn;
+          group.moneyOut += moneyOut;
           group.jackpot += jackpot;
           group.won += won;
           group.bet += bet;
           group.wonLess += wonLess;
           group.points += session.points || 0;
-          group.gamesPlayed += session.gamesPlayed || 0;
+          group.gamesPlayed += session.endMeters?.movement?.gamesPlayed || 0;
           group.gamesWon += session.gamesWon || 0;
           group.coinIn += coinIn;
           group.coinOut += coinOut;

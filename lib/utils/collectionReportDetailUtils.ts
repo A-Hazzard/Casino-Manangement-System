@@ -38,7 +38,16 @@ export function generateMachineMetricsData(
     }`,
     metersGross: (collection.movement?.gross ?? 0).toLocaleString(),
     sasGross: (collection.sasMeters?.gross ?? 0).toLocaleString(),
-    variation: (collection.movement?.gross ?? 0).toLocaleString(),
+    variation:
+      !collection.sasMeters ||
+      collection.sasMeters.gross === undefined ||
+      collection.sasMeters.gross === null ||
+      collection.sasMeters.gross === 0
+        ? "No SAS Data"
+        : (
+            (collection.movement?.gross ?? 0) -
+            (collection.sasMeters?.gross ?? 0)
+          ).toLocaleString(),
     sasStartTime: collection.sasMeters?.sasStartTime || "-",
     sasEndTime: collection.sasMeters?.sasEndTime || "-",
   }));
@@ -99,7 +108,9 @@ export function formatCurrency(amount: number): string {
 /**
  * Validate collection report data
  */
-export function validateCollectionReportData(data: Record<string, unknown>): boolean {
+export function validateCollectionReportData(
+  data: Record<string, unknown>
+): boolean {
   return !!(
     data &&
     typeof data === "object" &&

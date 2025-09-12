@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor, TrendingUp, Trophy } from "lucide-react";
+import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,12 +37,17 @@ import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { StackedChart } from "@/components/ui/StackedChart";
-import { 
-  RevenueAnalysisChartsSkeleton,
+import {
   ChartNoData,
-  MainContentSkeleton
+  ChartSkeleton,
+  MachinesOverviewSkeleton,
+  MachinesEvaluationSkeleton,
+  MachinesOfflineSkeleton
 } from "@/components/ui/skeletons/ReportsSkeletons";
+import { MachineEvaluationSummary } from "@/components/ui/MachineEvaluationSummary";
+import { ManufacturerPerformanceChart } from "@/components/ui/ManufacturerPerformanceChart";
+import { GamesPerformanceChart } from "@/components/ui/GamesPerformanceChart";
+import { GamesPerformanceRevenueChart } from "@/components/ui/GamesPerformanceRevenueChart";
 import type {
   MachineData,
   MachinesApiResponse,
@@ -74,7 +79,7 @@ const SortableHeader = ({
   
   return (
     <th 
-      className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+      className="text-center p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
       onClick={() => onSort(sortKey)}
     >
       <div className="flex items-center gap-1">
@@ -107,15 +112,35 @@ export default function MachinesTab() {
   const [offlineMachines, setOfflineMachines] = useState<MachineData[]>([]); // Offline machines only
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
   
-  // Machine hourly data for charts
-  const [machineHourlyData, setMachineHourlyData] = useState<{
-    locations: string[];
-    hourlyTrends: Array<{
-      hour: string;
-      [key: string]: string | { handle: number; winLoss: number; jackpot: number; plays: number };
-    }>;
-  } | null>(null);
-  const [machineHourlyLoading, setMachineHourlyLoading] = useState(false);
+
+  
+  // Manufacturer performance data
+  const [manufacturerData, setManufacturerData] = useState<Array<{
+    manufacturer: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+  }>>([]);
+  const [manufacturerLoading] = useState(false);
+  
+  // Games performance data
+  const [gamesData, setGamesData] = useState<Array<{
+    gameName: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+  }>>([]);
+  const [gamesLoading] = useState(false);
+  
+  // Summary calculations
+  const [percOfTopMachines, setPercOfTopMachines] = useState(0);
+  const [percOfTopMachCoinIn, setPercOfTopMachCoinIn] = useState(0);
   const [locations, setLocations] = useState<{ id: string; name: string; sasEnabled: boolean }[]>(
     []
   );
@@ -228,6 +253,7 @@ export default function MachinesTab() {
       setStatsLoading(true);
       const params: Record<string, string> = {
         type: "stats",
+        timePeriod: activeMetricsFilter || "Today",
       };
 
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -255,7 +281,7 @@ export default function MachinesTab() {
     } finally {
       setStatsLoading(false);
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeMetricsFilter]);
 
   // Fetch overview machines (paginated)
   const fetchOverviewMachines = useCallback(
@@ -268,6 +294,7 @@ export default function MachinesTab() {
           type: "overview",
           page: page.toString(),
           limit: "10",
+          timePeriod: activeMetricsFilter || "Today",
         };
 
         if (selectedLicencee && selectedLicencee !== "all") {
@@ -309,7 +336,7 @@ export default function MachinesTab() {
         setOverviewLoading(false);
       }
     },
-    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, overviewSelectedLocation]
+    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, overviewSelectedLocation, activeMetricsFilter]
   );
 
   // Fetch all machines for performance analysis (loads on tab switch)
@@ -318,6 +345,7 @@ export default function MachinesTab() {
 
       const params: Record<string, string> = {
         type: "all",
+        timePeriod: activeMetricsFilter || "Today",
       };
 
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -351,7 +379,7 @@ export default function MachinesTab() {
     } finally {
 
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, evaluationSelectedLocation]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, evaluationSelectedLocation, activeMetricsFilter]);
 
   // Fetch offline machines (loads on tab switch)
   const fetchOfflineMachines = useCallback(async () => {
@@ -359,6 +387,7 @@ export default function MachinesTab() {
       setOfflineLoading(true);
       const params: Record<string, string> = {
         type: "offline",
+        timePeriod: activeMetricsFilter || "Today",
       };
 
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -394,7 +423,7 @@ export default function MachinesTab() {
     } finally {
       setOfflineLoading(false);
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, offlineSelectedLocation]);
+  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, offlineSelectedLocation, activeMetricsFilter]);
 
 
   // Handle search with backend fallback for overview tab
@@ -587,6 +616,184 @@ export default function MachinesTab() {
     });
   }, [evaluationData, evaluationSearchTerm, evaluationSelectedLocation]);
 
+  // Process data for charts (based on Angular logic)
+  const processedManufacturerData = useMemo(() => {
+    if (!filteredEvaluationData.length) return [];
+
+    // Get all machines for the selected location (not filtered by search)
+    const locationMachines = evaluationData.filter((machine) => 
+      evaluationSelectedLocation === "all" || 
+      evaluationSelectedLocation === machine.locationId
+    );
+
+    // Group by manufacturer using ALL location machines (not filtered by search)
+    const groupByManufacturer = locationMachines.reduce((acc, machine) => {
+      const manufacturer = machine.manufacturer || 'Other';
+      if (!acc[manufacturer]) {
+        acc[manufacturer] = [];
+      }
+      acc[manufacturer].push(machine);
+      return acc;
+    }, {} as Record<string, typeof locationMachines>);
+
+    // Calculate total metrics across all machines for percentage calculations
+    const totalMetrics = locationMachines.reduce((acc, machine) => ({
+      coinIn: acc.coinIn + (machine.coinIn || 0),
+      netWin: acc.netWin + (machine.netWin || 0),
+      drop: acc.drop + (machine.drop || 0),
+      gross: acc.gross + (machine.gross || 0),
+      cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+    }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+
+    const activeMachinesNumber = locationMachines.length;
+
+    return Object.keys(groupByManufacturer).map((manufacturer) => {
+      const machines = groupByManufacturer[manufacturer];
+      const floorPositions = (machines.length / activeMachinesNumber) * 100;
+      
+      const totals = machines.reduce((acc, machine) => ({
+        coinIn: acc.coinIn + (machine.coinIn || 0),
+        netWin: acc.netWin + (machine.netWin || 0),
+        drop: acc.drop + (machine.drop || 0),
+        gross: acc.gross + (machine.gross || 0),
+        cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+      }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+
+      return {
+        manufacturer,
+        floorPositions,
+        rawTotals: totals,
+        totalMetrics, // Include total metrics for percentage calculations
+      };
+    });
+  }, [filteredEvaluationData, evaluationData, evaluationSelectedLocation]);
+
+  const processedGamesData = useMemo(() => {
+    if (!filteredEvaluationData.length) return [];
+
+    // Get all machines for the selected location (not filtered by search)
+    const locationMachines = evaluationData.filter((machine) => 
+      evaluationSelectedLocation === "all" || 
+      evaluationSelectedLocation === machine.locationId
+    );
+
+    // Group by game name using ALL location machines (not filtered by search)
+    const groupByGameName = locationMachines.reduce((acc, machine) => {
+      const gameName = machine.gameTitle || 'Other';
+      if (!acc[gameName]) {
+        acc[gameName] = [];
+      }
+      acc[gameName].push(machine);
+      return acc;
+    }, {} as Record<string, typeof locationMachines>);
+
+    // Calculate total metrics across all machines for percentage calculations
+    const totalMetrics = locationMachines.reduce((acc, machine) => ({
+      coinIn: acc.coinIn + (machine.coinIn || 0),
+      netWin: acc.netWin + (machine.netWin || 0),
+      drop: acc.drop + (machine.drop || 0),
+      gross: acc.gross + (machine.gross || 0),
+      cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+    }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+
+    const activeMachinesNumber = locationMachines.length;
+
+    return Object.keys(groupByGameName).map((gameName) => {
+      const machines = groupByGameName[gameName];
+      const floorPositions = (machines.length / activeMachinesNumber) * 100;
+      
+      const totals = machines.reduce((acc, machine) => ({
+        coinIn: acc.coinIn + (machine.coinIn || 0),
+        netWin: acc.netWin + (machine.netWin || 0),
+        drop: acc.drop + (machine.drop || 0),
+        gross: acc.gross + (machine.gross || 0),
+        cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+      }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+
+      return {
+        gameName,
+        floorPositions,
+        rawTotals: totals,
+        totalMetrics, // Include total metrics for percentage calculations
+      };
+    });
+  }, [filteredEvaluationData, evaluationData, evaluationSelectedLocation]);
+
+  // Calculate percentages for manufacturer data
+  const manufacturerDataWithPercentages = useMemo(() => {
+    if (!processedManufacturerData.length) return [];
+
+    // Use the total metrics from the first item (all items have the same totalMetrics)
+    const totalMetrics = processedManufacturerData[0]?.totalMetrics || {
+      coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0
+    };
+
+    return processedManufacturerData.map(item => ({
+      manufacturer: item.manufacturer,
+      floorPositions: item.floorPositions,
+      totalHandle: totalMetrics.coinIn > 0 ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100 : 0,
+      totalWin: totalMetrics.netWin > 0 ? (item.rawTotals.netWin / totalMetrics.netWin) * 100 : 0,
+      totalDrop: totalMetrics.drop > 0 ? (item.rawTotals.drop / totalMetrics.drop) * 100 : 0,
+      totalCancelledCredits: totalMetrics.cancelledCredits > 0 ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) * 100 : 0,
+      totalGross: totalMetrics.gross > 0 ? (item.rawTotals.gross / totalMetrics.gross) * 100 : 0,
+    }));
+  }, [processedManufacturerData]);
+
+  // Calculate percentages for games data
+  const gamesDataWithPercentages = useMemo(() => {
+    if (!processedGamesData.length) return [];
+
+    // Use the total metrics from the first item (all items have the same totalMetrics)
+    const totalMetrics = processedGamesData[0]?.totalMetrics || {
+      coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0
+    };
+
+    return processedGamesData.map(item => ({
+      gameName: item.gameName,
+      floorPositions: item.floorPositions,
+      totalHandle: totalMetrics.coinIn > 0 ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100 : 0,
+      totalWin: totalMetrics.netWin > 0 ? (item.rawTotals.netWin / totalMetrics.netWin) * 100 : 0,
+      totalDrop: totalMetrics.drop > 0 ? (item.rawTotals.drop / totalMetrics.drop) * 100 : 0,
+      totalCancelledCredits: totalMetrics.cancelledCredits > 0 ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) * 100 : 0,
+      totalGross: totalMetrics.gross > 0 ? (item.rawTotals.gross / totalMetrics.gross) * 100 : 0,
+    }));
+  }, [processedGamesData]);
+
+  // Calculate summary percentages (based on Angular logic)
+  const summaryCalculations = useMemo(() => {
+    if (!filteredEvaluationData.length) return { percOfTopMachines: 0, percOfTopMachCoinIn: 0 };
+
+    const HOURS_PER_DAY = 24;
+    const AVG_CONTRIBUTE_RATIO = 0.75;
+    const machinesNumber = filteredEvaluationData.length;
+    
+    const coinInTotal = filteredEvaluationData.reduce((sum, machine) => {
+      return sum + ((machine.coinIn || 0) / HOURS_PER_DAY);
+    }, 0);
+    
+    const avgLocationHandle = (coinInTotal / machinesNumber) * AVG_CONTRIBUTE_RATIO;
+    const machinesMoreThanAvg = filteredEvaluationData.filter(machine => 
+      ((machine.coinIn || 0) / HOURS_PER_DAY) >= avgLocationHandle
+    );
+    
+    const topMachinesCoinInTotal = machinesMoreThanAvg.reduce((sum, machine) => {
+      return sum + ((machine.coinIn || 0) / HOURS_PER_DAY);
+    }, 0);
+    
+    const percOfTopMachines = (machinesMoreThanAvg.length / machinesNumber) * 100;
+    const percOfTopMachCoinIn = coinInTotal > 0 ? (topMachinesCoinInTotal / coinInTotal) * 100 : 0;
+
+    return { percOfTopMachines, percOfTopMachCoinIn };
+  }, [filteredEvaluationData]);
+
+  // Update chart data and summary when calculations change
+  useEffect(() => {
+    setManufacturerData(manufacturerDataWithPercentages);
+    setGamesData(gamesDataWithPercentages);
+    setPercOfTopMachines(summaryCalculations.percOfTopMachines);
+    setPercOfTopMachCoinIn(summaryCalculations.percOfTopMachCoinIn);
+  }, [manufacturerDataWithPercentages, gamesDataWithPercentages, summaryCalculations]);
+
 
 
 
@@ -602,24 +809,28 @@ export default function MachinesTab() {
       setEvaluationLoading(true);
 
       try {
-        // 1. Load stats first (fastest)
+        // 1. Load stats first (fastest) - show immediately when ready
         await fetchMachineStats();
+        setStatsLoading(false);
 
-        // 2. Load overview data (paginated, fast)
+        // 2. Load overview data (paginated, fast) - show immediately when ready
         await fetchOverviewMachines(1);
+        setOverviewLoading(false);
 
-        // 3. Load locations data
+        // 3. Load locations data - show immediately when ready
         await fetchLocationsData();
 
-        // 4. Always load all machines data for evaluation tab
+        // 4. Always load all machines data for evaluation tab - show immediately when ready
         await fetchAllMachines();
-      } finally {
-        // Clear loading states
+        setEvaluationLoading(false);
+        setOfflineLoading(false);
+      } catch (error) {
+        // Clear all loading states on error
         setStatsLoading(false);
         setOverviewLoading(false);
-  
         setOfflineLoading(false);
         setEvaluationLoading(false);
+        throw error;
       }
     };
 
@@ -657,50 +868,9 @@ export default function MachinesTab() {
     if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "") {
       fetchAllMachines();
     }
-  }, [evaluationSelectedLocation, activeTab, fetchAllMachines]);
+  }, [evaluationSelectedLocation, activeTab, fetchAllMachines, selectedDateRange?.start, selectedDateRange?.end]);
 
-  // Separate useEffect for machine hourly data that depends on allMachines
-  useEffect(() => {
-    if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "" && allMachines.length > 0) {
-      const fetchData = async () => {
-        try {
-          setMachineHourlyLoading(true);
-          
-          // Get machine IDs for the selected location
-          const locationMachines = allMachines.filter(machine => 
-            machine.locationId === evaluationSelectedLocation
-          );
-          
-          if (locationMachines.length === 0) {
-            setMachineHourlyData(null);
-            return;
-          }
 
-          const machineIds = locationMachines.map(machine => machine.machineId).join(',');
-          
-          const response = await axios.get(`/api/analytics/machine-hourly`, {
-            params: {
-              machineIds,
-              timePeriod: 'Today',
-              startDate: selectedDateRange?.start,
-              endDate: selectedDateRange?.end,
-              licencee: selectedLicencee
-            }
-          });
-
-          setMachineHourlyData(response.data);
-        } catch (error) {
-          console.error("Failed to fetch machine hourly data:", error);
-          toast.error("Failed to load machine performance data");
-          setMachineHourlyData(null);
-        } finally {
-          setMachineHourlyLoading(false);
-        }
-      };
-      
-      fetchData();
-    }
-  }, [evaluationSelectedLocation, activeTab, allMachines, selectedDateRange, selectedLicencee]);
 
   useEffect(() => {
     if (activeTab === "offline" && offlineSelectedLocation) {
@@ -850,7 +1020,7 @@ export default function MachinesTab() {
           offlineDurationFormatted: formatOfflineDuration(offlineDurationHours),
         };
       })
-      .sort((a, b) => b.offlineDurationHours - a.offlineDurationHours);
+      .sort((a, b) => a.offlineDurationHours - b.offlineDurationHours);
 
     // Update pagination info
     const totalCount = allOfflineMachines.length;
@@ -1087,10 +1257,7 @@ export default function MachinesTab() {
             </CardHeader>
             <CardContent>
               {overviewLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                  <span>Loading overview machines...</span>
-                </div>
+                <MachinesOverviewSkeleton />
               ) : (
                 <>
                   {/* Desktop Table View */}
@@ -1102,31 +1269,31 @@ export default function MachinesTab() {
                           <thead className="border-b bg-muted/50">
                             <tr>
                               {/* Select column removed */}
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Machine
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Location
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Type
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Gross
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Drop
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Hold %
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Games
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Status
                               </th>
-                              <th className="text-left p-3 font-medium">
+                              <th className="text-center p-3 font-medium">
                                 Actions
                               </th>
                             </tr>
@@ -1504,6 +1671,7 @@ export default function MachinesTab() {
                 selectedLocation={evaluationSelectedLocation}
                 onSelectionChange={setEvaluationSelectedLocation}
                 placeholder="Select Location"
+                includeAllOption={false}
               />
             </div>
             <div className="flex gap-2">
@@ -1522,7 +1690,7 @@ export default function MachinesTab() {
             </div>
           </div>
           {evaluationLoading ? (
-            <MainContentSkeleton />
+            <MachinesEvaluationSkeleton />
           ) : !evaluationSelectedLocation || evaluationSelectedLocation === "" ? (
             <Card>
               <CardContent className="p-8 text-center">
@@ -1540,142 +1708,59 @@ export default function MachinesTab() {
             </Card>
           ) : (
             <>
-              
-
-
-
-              {/* Machine Performance Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                {machineHourlyLoading ? (
-                  <RevenueAnalysisChartsSkeleton />
-                ) : machineHourlyData && machineHourlyData.locations && machineHourlyData.locations.length > 0 ? (
-                  <>
-                    {/* Handle Chart */}
-                    {(() => {
-                      const hasHandleData = machineHourlyData.hourlyTrends.some(item => 
-                        machineHourlyData.locations.some(locationId => {
-                          const locationData = item[locationId];
-                          return typeof locationData === 'object' && locationData !== null && locationData.handle > 0;
-                        })
-                      );
-                      
-                      return hasHandleData ? (
-                        <StackedChart
-                          title="Handle"
-                          icon={<BarChart3 className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="handle"
-                          machines={machineHourlyData.locations}
-                          colors={["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"]}
-                          formatter={(value) => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            locations.forEach(loc => {
-                              locationNameMap[loc.id] = loc.name;
-                            });
-                            return locationNameMap;
-                          })()}
-                        />
-                      ) : (
-                        <ChartNoData
-                          title="Handle"
-                          icon={<BarChart3 className="h-5 w-5" />}
-                          message="No handle data available for the selected location"
-                        />
-                      );
-                    })()}
-
-                    {/* Win/Loss Chart */}
-                    {(() => {
-                      const hasWinLossData = machineHourlyData.hourlyTrends.some(item => 
-                        machineHourlyData.locations.some(locationId => {
-                          const locationData = item[locationId];
-                          return typeof locationData === 'object' && locationData !== null && locationData.winLoss !== 0;
-                        })
-                      );
-                      
-                      return hasWinLossData ? (
-                        <StackedChart
-                          title="Win/Loss"
-                          icon={<TrendingUp className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="winLoss"
-                          machines={machineHourlyData.locations}
-                          colors={["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"]}
-                          formatter={(value) => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            locations.forEach(loc => {
-                              locationNameMap[loc.id] = loc.name;
-                            });
-                            return locationNameMap;
-                          })()}
-                        />
-                      ) : (
-                        <ChartNoData
-                          title="Win/Loss"
-                          icon={<TrendingUp className="h-5 w-5" />}
-                          message="No win/loss data available for the selected location"
-                        />
-                      );
-                    })()}
-
-                    {/* Jackpot Chart */}
-                    {(() => {
-                      const hasJackpotData = machineHourlyData.hourlyTrends.some(item => 
-                        machineHourlyData.locations.some(locationId => {
-                          const locationData = item[locationId];
-                          return typeof locationData === 'object' && locationData !== null && locationData.jackpot > 0;
-                        })
-                      );
-                      
-                      return hasJackpotData ? (
-                        <StackedChart
-                          title="Jackpot"
-                          icon={<Trophy className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="jackpot"
-                          machines={machineHourlyData.locations}
-                          colors={["#f59e0b", "#ef4444", "#10b981", "#3b82f6", "#8b5cf6"]}
-                          formatter={(value) => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            locations.forEach(loc => {
-                              locationNameMap[loc.id] = loc.name;
-                            });
-                            return locationNameMap;
-                          })()}
-                        />
-                      ) : (
-                        <ChartNoData
-                          title="Jackpot"
-                          icon={<Trophy className="h-5 w-5" />}
-                          message="No jackpot data available for the selected location"
-                        />
-                      );
-                    })()}
-                  </>
+              {/* Manufacturers Performance Chart */}
+              <div className="mb-6">
+                {manufacturerLoading ? (
+                  <ChartSkeleton />
+                ) : manufacturerData && manufacturerData.length > 0 ? (
+                  <ManufacturerPerformanceChart data={manufacturerData} />
                 ) : (
-                  <>
-                    {/* No Data Charts */}
-                    <ChartNoData
-                      title="Handle"
-                      icon={<BarChart3 className="h-5 w-5" />}
-                      message="No handle data available for the selected location"
-                    />
-                    <ChartNoData
-                      title="Win/Loss"
-                      icon={<TrendingUp className="h-5 w-5" />}
-                      message="No win/loss data available for the selected location"
-                    />
-                    <ChartNoData
-                      title="Jackpot"
-                      icon={<Trophy className="h-5 w-5" />}
-                      message="No jackpot data available for the selected location"
-                    />
-                  </>
+                  <ChartNoData
+                    title="Manufacturers Performance"
+                    icon={<BarChart3 className="h-5 w-5" />}
+                    message="No manufacturer performance data available for the selected location"
+                  />
                 )}
               </div>
+
+              {/* Summary Section */}
+              <div className="mb-6">
+                <MachineEvaluationSummary 
+                  percOfTopMachines={percOfTopMachines}
+                  percOfTopMachCoinIn={percOfTopMachCoinIn}
+                />
+              </div>
+
+              {/* Games Performance Chart */}
+              <div className="mb-6">
+                {gamesLoading ? (
+                  <ChartSkeleton />
+                ) : gamesData && gamesData.length > 0 ? (
+                  <GamesPerformanceChart data={gamesData} />
+                ) : (
+                  <ChartNoData
+                    title="Games Performance"
+                    icon={<BarChart3 className="h-5 w-5" />}
+                    message="No games performance data available for the selected location"
+                  />
+                )}
+              </div>
+
+              {/* Games Performance Revenue Chart */}
+              <div className="mb-6">
+                {gamesLoading ? (
+                  <ChartSkeleton />
+                ) : gamesData && gamesData.length > 0 ? (
+                  <GamesPerformanceRevenueChart data={gamesData} />
+                ) : (
+                  <ChartNoData
+                    title="Games Performance Revenue"
+                    icon={<BarChart3 className="h-5 w-5" />}
+                    message="No games revenue data available for the selected location"
+                  />
+                )}
+              </div>
+
 
           {/* Top 5 Machines Table */}
           <Card>
@@ -1734,7 +1819,7 @@ export default function MachinesTab() {
                         currentSort={sortConfig} 
                         onSort={handleSort}
                       >
-                        Win/Loss
+                        Net Win
                       </SortableHeader>
                       <SortableHeader 
                         sortKey="jackpot" 
@@ -1864,7 +1949,7 @@ export default function MachinesTab() {
                           <span className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Win/Loss:</span>
+                          <span className="text-muted-foreground">Net Win:</span>
                           <span className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
                             ${machine.netWin.toLocaleString()}
                           </span>
@@ -1900,7 +1985,7 @@ export default function MachinesTab() {
                           <p className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Win/Loss:</span>
+                          <span className="text-muted-foreground">Net Win:</span>
                           <p className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
                             ${machine.netWin.toLocaleString()}
                           </p>
@@ -1949,7 +2034,7 @@ export default function MachinesTab() {
             </CardHeader>
             <CardContent>
               {offlineLoading ? (
-                <MainContentSkeleton />
+                <MachinesOfflineSkeleton />
               ) : (
                 <>
                   <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -1985,19 +2070,19 @@ export default function MachinesTab() {
                       <table className="w-full">
                         <thead className="border-b bg-muted/50">
                           <tr>
-                            <th className="text-left p-3 font-medium">
+                            <th className="text-center p-3 font-medium">
                               Machine
                             </th>
-                            <th className="text-left p-3 font-medium">
+                            <th className="text-center p-3 font-medium">
                               Location
                             </th>
-                            <th className="text-left p-3 font-medium">
+                            <th className="text-center p-3 font-medium">
                               Last Activity
                             </th>
-                            <th className="text-left p-3 font-medium">
+                            <th className="text-center p-3 font-medium">
                               Offline Duration
                             </th>
-                            <th className="text-left p-3 font-medium">
+                            <th className="text-center p-3 font-medium">
                               Actions
                             </th>
                           </tr>

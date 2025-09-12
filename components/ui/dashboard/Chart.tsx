@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { formatTime, formatDisplayDate } from "@/shared/utils/dateFormat";
 import { ChartProps } from "@/lib/types/componentProps";
-import { ChartSkeleton } from "@/components/ui/SkeletonLoader";
+import { DashboardChartSkeleton } from "@/components/ui/skeletons/DashboardSkeletons";
 
 export default function Chart({
   loadingChartData,
@@ -20,7 +20,7 @@ export default function Chart({
   // Chart data received for rendering
 
   if (loadingChartData) {
-    return <ChartSkeleton />;
+    return <DashboardChartSkeleton />;
   }
 
   if (!chartData || chartData.length === 0) {

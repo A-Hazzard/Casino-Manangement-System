@@ -8,7 +8,7 @@ type ReportsNavigationProps = {
   availableTabs: ReportTab[];
   activeView: ReportView;
   onTabChange: (tabId: ReportView) => void;
-  isLoading: boolean;
+  _isLoading: boolean;
   realTimeMetrics?: {
     activeTerminals: number;
   } | null;
@@ -22,7 +22,7 @@ export default function ReportsNavigation({
   availableTabs,
   activeView,
   onTabChange,
-  isLoading,
+  _isLoading,
   realTimeMetrics,
 }: ReportsNavigationProps) {
   // Filter out dashboard tab for navigation (it's not shown in tabs)
@@ -31,7 +31,7 @@ export default function ReportsNavigation({
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
       {/* Desktop Navigation */}
-      <nav className="hidden md:flex space-x-8 overflow-x-auto px-6">
+      <nav className="hidden md:flex space-x-8 px-6">
         {visibleTabs.map((tab) => (
           <motion.button
             key={tab.id}
@@ -46,7 +46,6 @@ export default function ReportsNavigation({
             `}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isLoading}
           >
             <span className="text-lg">{tab.icon}</span>
             <span>{tab.label}</span>
@@ -65,7 +64,6 @@ export default function ReportsNavigation({
           value={activeView}
           onChange={(e) => onTabChange(e.target.value as ReportView)}
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-          disabled={isLoading}
         >
           {visibleTabs.map((tab) => (
             <option key={tab.id} value={tab.id}>

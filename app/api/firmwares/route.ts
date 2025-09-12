@@ -4,21 +4,32 @@ import { Firmware } from "@/app/api/lib/models/firmware";
 import { GridFSBucket } from "mongodb";
 import { Readable } from "stream";
 import { generateMongoId } from "@/lib/utils/id";
+import { logActivity } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 /**
  * GET /api/firmwares
  * Fetches all firmware documents with file metadata
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    const firmwares = await Firmware.find({
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
-      ],
-    })
+    const { searchParams } = new URL(request.url);
+    const includeDeleted = searchParams.get("includeDeleted") === "true";
+
+    let query = {};
+    if (!includeDeleted) {
+      query = {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      };
+    }
+
+    const firmwares = await Firmware.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -111,6 +122,36 @@ export async function POST(request: NextRequest) {
     });
 
     await firmware.save();
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "product", oldValue: null, newValue: product },
+          { field: "version", oldValue: null, newValue: version },
+          { field: "versionDetails", oldValue: null, newValue: versionDetails || "" },
+          { field: "fileName", oldValue: null, newValue: fileName },
+          { field: "fileSize", oldValue: null, newValue: fileSize },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "Firmware",
+          { id: firmwareId, name: `${product} v${version}` },
+          createChanges,
+          `Uploaded new firmware "${product} v${version}" (${fileName})`,
+          getClientIP(request) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
 
     return NextResponse.json(firmware, { status: 201 });
   } catch (error) {

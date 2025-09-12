@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
               "$gamingLocation",
             ],
           },
-          // Calculate win/loss from sessions
+          // Calculate financial metrics from sessions using correct fields from financial guide
           totalMoneyIn: {
             $reduce: {
               input: "$sessions",
@@ -226,11 +226,26 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          totalHandle: {
+            $reduce: {
+              input: "$sessions",
+              initialValue: 0,
+              in: {
+                $add: [
+                  "$$value",
+                  {
+                    $ifNull: [{ $toDouble: "$$this.endMeters.movement.coinIn" }, 0],
+                  },
+                ],
+              },
+            },
+          },
         },
       },
       {
         $addFields: {
           winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
+          grossRevenue: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
         },
       },
       {
@@ -250,8 +265,10 @@ export async function GET(request: NextRequest) {
           locationName: 1,
           gamingLocation: 1,
           winLoss: 1,
+          grossRevenue: 1,
           totalMoneyIn: 1,
           totalMoneyOut: 1,
+          totalHandle: 1,
         },
       },
       {

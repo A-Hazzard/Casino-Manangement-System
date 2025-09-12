@@ -122,12 +122,15 @@ export type CollectionReportLocationWithMachines = {
   _id: MongooseId;
   name: string;
   machines: CollectionReportMachineSummary[];
+  previousCollectionTime?: string | Date;
+  profitShare?: number;
 };
 
 // Types for Collection Report Page
 export type MachineMetric = {
   id: string;
   machineId: string;
+  actualMachineId?: string;
   dropCancelled: string;
   metersGross: number;
   sasGross?: number | string;

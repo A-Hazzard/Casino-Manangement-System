@@ -1,8 +1,41 @@
 # Pages Overview
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
 
-This document provides a comprehensive overview of all pages in the Dynamic1 Casino Management System and their documentation status.
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Main Pages](#main-pages)
+3. [Collection System Pages](#collection-system-pages)
+4. [Redirect Pages](#redirect-pages)
+5. [Page Relationships](#page-relationships)
+6. [Navigation Structure](#navigation-structure)
+7. [Authentication Requirements](#authentication-requirements)
+8. [Documentation Status](#documentation-status)
+
+## Overview
+
+This document provides a comprehensive overview of all pages in the Evolution One Casino Management System. It serves as a central reference for understanding the system's page structure, functionality, and user interface organization.
+
+### Key Principles
+- **User Experience**: Intuitive navigation and consistent interface design
+- **Functionality**: Complete feature coverage across all system components
+- **Security**: Role-based access control and authentication requirements
+- **Performance**: Optimized page loading and real-time data updates
+
+### System Architecture
+- **Next.js 15**: Modern React framework with App Router
+- **TypeScript**: Strong typing for all page components and data
+- **Tailwind CSS**: Responsive design with consistent styling
+- **Real-time Updates**: Live data synchronization across all pages
+
+### Page Categories
+- **Main Pages**: Core system functionality and navigation
+- **Collection System**: Financial collection and reporting pages
+- **Administration**: User management and system administration
+- **Analytics**: Reporting and performance analysis pages
 
 ## Main Pages
 

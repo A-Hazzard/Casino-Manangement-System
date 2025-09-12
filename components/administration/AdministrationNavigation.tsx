@@ -21,8 +21,8 @@ export default function AdministrationNavigation({
 }: Props) {
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
-      {/* Desktop */}
-      <nav className="hidden xl:flex space-x-8 overflow-x-auto px-6">
+      {/* Desktop - md: and above */}
+      <nav className="hidden md:flex space-x-8 px-6">
         {tabs.map((tab) => (
           <motion.button
             key={tab.id}
@@ -43,8 +43,8 @@ export default function AdministrationNavigation({
         ))}
       </nav>
 
-      {/* Mobile */}
-      <div className="xl:hidden px-4 py-2">
+      {/* Mobile - below md: */}
+      <div className="md:hidden px-4 py-2">
         <select
           value={activeSection}
           onChange={(e) => onChange(e.target.value as AdministrationSection)}

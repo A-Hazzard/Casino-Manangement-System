@@ -3,6 +3,7 @@ import { connectDB } from "../../lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
 import { Meters } from "@/app/api/lib/models/meters";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { trinidadTimeToUtc } from "../../lib/utils/timezone";
 
 /**
  * GET /api/machines/[id]
@@ -16,7 +17,19 @@ export async function GET(
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const timePeriod = searchParams.get("timePeriod") || "Today";
+    const timePeriod = searchParams.get("timePeriod");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    
+    console.warn("[DEBUG] API received parameters:", { id, timePeriod, startDateParam, endDateParam });
+    
+    // Only proceed if timePeriod or custom date range is provided
+    if (!timePeriod && !startDateParam && !endDateParam) {
+      return NextResponse.json(
+        { error: "timePeriod or startDate/endDate parameters are required" },
+        { status: 400 }
+      );
+    }
 
     await connectDB();
 
@@ -62,66 +75,94 @@ export async function GET(
     let startDate: Date, endDate: Date;
     const now = new Date();
 
-    switch (timePeriod) {
-      case "Today":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() + 1
-        );
-        break;
-      case "Yesterday":
-        startDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 1
-        );
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "7d":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        endDate = now;
-        break;
-      case "30d":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        endDate = now;
-        break;
-      case "All Time":
-      default:
-        startDate = new Date(0); // Beginning of time
-        endDate = now;
-        break;
+    // Handle custom date range first
+    if (startDateParam && endDateParam) {
+      // Convert Trinidad time to UTC for database queries
+      startDate = trinidadTimeToUtc(new Date(startDateParam));
+      endDate = trinidadTimeToUtc(new Date(endDateParam));
+    } else if (timePeriod) {
+      // Handle predefined time periods
+      switch (timePeriod) {
+        case "Today":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1
+          );
+          break;
+        case "Yesterday":
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() - 1
+          );
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "7d":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          endDate = now;
+          break;
+        case "30d":
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          endDate = now;
+          break;
+        case "All Time":
+        default:
+          startDate = new Date(0); // Beginning of time
+          endDate = now;
+          break;
+      }
+    } else {
+      // Fallback to Today if no parameters provided
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1
+      );
     }
 
-    // Fetch financial metrics from meters collection according to financial-metrics-guide.md
-    const financialMetrics = await Meters.aggregate([
+    // Fetch financial metrics from meters collection using aggregation for date filtering
+    console.warn("[DEBUG] Querying meters with date range:", { startDate, endDate });
+    
+    // Aggregate all meter readings within the specified date range
+    const meterAggregation = await Meters.aggregate([
       {
         $match: {
           machine: id,
-          readAt: { $gte: startDate, $lte: endDate },
-        },
+          readAt: { $gte: startDate, $lte: endDate }
+        }
       },
       {
         $group: {
           _id: null,
-          sumDrop: { $sum: "$movement.drop" },
-          sumOut: { $sum: "$movement.totalCancelledCredits" },
-          sumJackpot: { $sum: "$movement.jackpot" },
-          sumCancelledCredits: { $sum: "$movement.totalCancelledCredits" },
-          sumCoinIn: { $sum: "$movement.coinIn" },
-          sumCoinOut: { $sum: "$movement.coinOut" },
-          sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
-          sumGamesWon: { $sum: "$movement.gamesWon" },
-        },
-      },
+          totalMoneyIn: { $sum: "$movement.drop" },
+          totalMoneyOut: { $sum: "$movement.totalCancelledCredits" },
+          totalJackpot: { $sum: "$movement.jackpot" },
+          totalCoinIn: { $sum: "$movement.coinIn" },
+          totalCoinOut: { $sum: "$movement.coinOut" },
+          totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
+          totalGamesWon: { $sum: "$movement.gamesWon" },
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
-    // Extract financial metrics or use defaults
-    const metrics = financialMetrics[0] || {};
-    const moneyIn = metrics.sumDrop || 0;
-    const moneyOut = metrics.sumOut || 0;
+    console.warn("[DEBUG] Meter aggregation result:", meterAggregation);
+
+    // Extract aggregated values
+    const aggregatedData = meterAggregation[0] || {};
+    const moneyIn = aggregatedData.totalMoneyIn || 0;
+    const moneyOut = aggregatedData.totalMoneyOut || 0;
+    const jackpot = aggregatedData.totalJackpot || 0;
+    const coinIn = aggregatedData.totalCoinIn || 0;
+    const coinOut = aggregatedData.totalCoinOut || 0;
+    const gamesPlayed = aggregatedData.totalGamesPlayed || 0;
+    const gamesWon = aggregatedData.totalGamesWon || 0;
     const gross = moneyIn - moneyOut;
+
+    console.warn("[DEBUG] Calculated metrics:", { moneyIn, moneyOut, jackpot, coinIn, coinOut, gamesPlayed, gamesWon, gross });
 
     // Transform the data to match frontend expectations
     const transformedMachine = {
@@ -147,14 +188,16 @@ export async function GET(
       // Financial metrics from meters collection according to financial-metrics-guide.md
       moneyIn,
       moneyOut,
-      cancelledCredits: metrics.sumCancelledCredits || 0,
-      jackpot: metrics.sumJackpot || 0,
+      cancelledCredits: moneyOut, // Same as moneyOut (totalCancelledCredits)
+      jackpot,
       gross,
       // Additional metrics for comprehensive financial tracking
-      coinIn: metrics.sumCoinIn || 0,
-      coinOut: metrics.sumCoinOut || 0,
-      gamesPlayed: metrics.sumGamesPlayed || 0,
-      gamesWon: metrics.sumGamesWon || 0,
+      coinIn,
+      coinOut,
+      gamesPlayed,
+      gamesWon,
+      // Add handle (same as coinIn for betting activity)
+      handle: coinIn,
       // SAS meters fallback
       sasMeters: machine.sasMeters || {},
       // Collection meters
@@ -171,7 +214,7 @@ export async function GET(
       tasks: machine.tasks || {},
       curProcess: machine.curProcess || {},
       protocols: machine.protocols || [],
-      manufacturer: machine.manufacturer,
+      manufacturer: machine.manufacturer || machine.manuf,
       validationId: machine.validationId,
       sequenceNumber: machine.sequenceNumber,
       isSasMachine: machine.isSasMachine,

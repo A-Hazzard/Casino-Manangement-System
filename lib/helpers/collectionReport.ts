@@ -98,7 +98,8 @@ export async function getAllCollectionReports(
           error
         );
         // Fallback to the original machinesCollected field
-        collectedMachines = parseInt((doc.machinesCollected as string) || "0") || 0;
+        collectedMachines =
+          parseInt((doc.machinesCollected as string) || "0") || 0;
       }
 
       return {
@@ -114,6 +115,8 @@ export async function getAllCollectionReports(
             ? (doc.amountUncollected as number).toString()
             : (doc.amountUncollected as string) || "-",
         locationRevenue: (doc.partnerProfit as number) || 0,
+        variation: (doc.variation as number) || "No SAS Data",
+        balance: (doc.currentBalance as number) || 0,
         time: (() => {
           const ts = doc.timestamp;
           if (ts) {
@@ -315,14 +318,19 @@ export async function getMonthlyCollectionReportSummary(
 
   const result = await CollectionReport.aggregate(pipeline);
   const agg = result[0] || {};
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return "-";
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
   return {
-    drop: agg.drop !== undefined ? agg.drop.toString() : "-",
-    cancelledCredits:
-      agg.cancelledCredits !== undefined
-        ? agg.cancelledCredits.toString()
-        : "-",
-    gross: agg.gross !== undefined ? agg.gross.toString() : "-",
-    sasGross: agg.sasGross !== undefined ? agg.sasGross.toString() : "-",
+    drop: formatSmartDecimal(agg.drop),
+    cancelledCredits: formatSmartDecimal(agg.cancelledCredits),
+    gross: formatSmartDecimal(agg.gross),
+    sasGross: formatSmartDecimal(agg.sasGross),
   };
 }
 
@@ -399,12 +407,20 @@ export async function getMonthlyCollectionReportByLocation(
   }
 
   const result = await CollectionReport.aggregate(pipeline);
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return "-";
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
   return result.map((row) => ({
     location: row._id || "-",
-    drop: row.drop !== undefined ? row.drop.toString() : "-",
-    win: row.win !== undefined ? row.win.toString() : "-",
-    gross: row.gross !== undefined ? row.gross.toString() : "-",
-    sasGross: row.sasGross !== undefined ? row.sasGross.toString() : "-",
+    drop: formatSmartDecimal(row.drop),
+    win: formatSmartDecimal(row.win),
+    gross: formatSmartDecimal(row.gross),
+    sasGross: formatSmartDecimal(row.sasGross),
   }));
 }
 
@@ -484,6 +500,17 @@ export async function createCollectionReport(
   payload: CreateCollectionReportPayload
 ) {
   const { data } = await axios.post("/api/collectionReport", payload);
+  return data;
+}
+
+export async function updateCollectionReport(
+  reportId: string,
+  payload: Partial<CreateCollectionReportPayload>
+) {
+  const { data } = await axios.patch(
+    `/api/collection-report/${reportId}`,
+    payload
+  );
   return data;
 }
 
@@ -691,38 +718,46 @@ export async function calculateSasMetrics(
 }> {
   try {
     // Query meters collection for the machine and time period
-    const response = await axios.get('/api/metrics/meters', {
+    const response = await axios.get("/api/metrics/meters", {
       params: {
+        timePeriod: "Custom",
         machine: machineIdentifier,
         startDate: sasStartTime.toISOString(),
-        endDate: sasEndTime.toISOString()
-      }
+        endDate: sasEndTime.toISOString(),
+      },
     });
 
     const meters = response.data || [];
 
     // Calculate totals from movement objects
-    const totals = meters.reduce((acc: {
-      drop: number;
-      totalCancelledCredits: number;
-      gross: number;
-      jackpot: number;
-    }, meter: {
-      movement?: {
-        drop?: number;
-        totalCancelledCredits?: number;
-        gross?: number;
-        jackpot?: number;
-      };
-    }) => {
-      const movement = meter.movement || {};
-      return {
-        drop: acc.drop + (movement.drop || 0),
-        totalCancelledCredits: acc.totalCancelledCredits + (movement.totalCancelledCredits || 0),
-        gross: acc.gross + (movement.gross || 0),
-        jackpot: acc.jackpot + (movement.jackpot || 0)
-      };
-    }, { drop: 0, totalCancelledCredits: 0, gross: 0, jackpot: 0 });
+    const totals = meters.reduce(
+      (
+        acc: {
+          drop: number;
+          totalCancelledCredits: number;
+          gross: number;
+          jackpot: number;
+        },
+        meter: {
+          movement?: {
+            drop?: number;
+            totalCancelledCredits?: number;
+            gross?: number;
+            jackpot?: number;
+          };
+        }
+      ) => {
+        const movement = meter.movement || {};
+        return {
+          drop: acc.drop + (movement.drop || 0),
+          totalCancelledCredits:
+            acc.totalCancelledCredits + (movement.totalCancelledCredits || 0),
+          gross: acc.gross + (movement.gross || 0),
+          jackpot: acc.jackpot + (movement.jackpot || 0),
+        };
+      },
+      { drop: 0, totalCancelledCredits: 0, gross: 0, jackpot: 0 }
+    );
 
     return {
       drop: totals.drop,
@@ -730,10 +765,10 @@ export async function calculateSasMetrics(
       gross: totals.gross,
       jackpot: totals.jackpot,
       sasStartTime: sasStartTime.toISOString(),
-      sasEndTime: sasEndTime.toISOString()
+      sasEndTime: sasEndTime.toISOString(),
     };
   } catch (error) {
-    console.error('Error calculating SAS metrics:', error);
+    console.error("Error calculating SAS metrics:", error);
     // Return zero values if calculation fails
     return {
       drop: 0,
@@ -741,7 +776,7 @@ export async function calculateSasMetrics(
       gross: 0,
       jackpot: 0,
       sasStartTime: sasStartTime.toISOString(),
-      sasEndTime: sasEndTime.toISOString()
+      sasEndTime: sasEndTime.toISOString(),
     };
   }
 }
@@ -752,7 +787,10 @@ export async function calculateSasMetrics(
  * @param metersOut - Current meters out value
  * @returns Movement object with calculated gross
  */
-export function calculateMovement(metersIn: number, metersOut: number): {
+export function calculateMovement(
+  metersIn: number,
+  metersOut: number
+): {
   metersIn: number;
   metersOut: number;
   gross: number;
@@ -760,7 +798,7 @@ export function calculateMovement(metersIn: number, metersOut: number): {
   return {
     metersIn,
     metersOut,
-    gross: metersIn - metersOut
+    gross: metersIn - metersOut,
   };
 }
 
@@ -768,22 +806,49 @@ export function calculateMovement(metersIn: number, metersOut: number): {
  * Calculate amount to collect for a single machine
  * @param metersIn - Current meters in value
  * @param prevIn - Previous meters in value
+ * @param metersOut - Current meters out value
+ * @param prevOut - Previous meters out value
+ * @param profitShare - Profit share percentage (e.g., 50 for 50%)
  * @returns Amount to collect for this machine
  */
-export function calculateAmountToCollectForMachine(metersIn: number, prevIn: number): number {
+export function calculateAmountToCollectForMachine(
+  metersIn: number,
+  prevIn: number,
+  metersOut: number = 0,
+  prevOut: number = 0,
+  profitShare: number = 50
+): number {
   const drop = metersIn - prevIn;
-  return drop / 2;
+  const cancelledCredits = metersOut - prevOut;
+  const gross = drop - cancelledCredits;
+  
+  // Calculate partner profit: gross * profitShare / 100
+  const partnerProfit = Math.floor(gross * profitShare / 100);
+  
+  // Amount to collect = gross - partner profit
+  return gross - partnerProfit;
 }
 
 /**
  * Calculate total amount to collect for all machines in the collection
  * @param collectedMachines - Array of collected machine entries
+ * @param profitShare - Profit share percentage from gaming location (e.g., 50 for 50%)
  * @returns Total amount to collect
  */
-export function calculateTotalAmountToCollect(collectedMachines: CollectionDocument[]): number {
+export function calculateTotalAmountToCollect(
+  collectedMachines: CollectionDocument[],
+  profitShare: number = 50
+): number {
   return collectedMachines.reduce((total, machine) => {
     const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
-    return total + (drop / 2);
+    const cancelledCredits = (machine.metersOut || 0) - (machine.prevOut || 0);
+    const gross = drop - cancelledCredits;
+    
+    // Calculate partner profit: gross * profitShare / 100
+    const partnerProfit = Math.floor(gross * profitShare / 100);
+    
+    // Amount to collect = gross - partner profit
+    return total + (gross - partnerProfit);
   }, 0);
 }
 
@@ -793,7 +858,10 @@ export function calculateTotalAmountToCollect(collectedMachines: CollectionDocum
  * @param collectedAmount - Amount actually collected
  * @returns Balance correction value
  */
-export function calculateBalanceCorrection(amountToCollect: number, collectedAmount: number): number {
+export function calculateBalanceCorrection(
+  amountToCollect: number,
+  collectedAmount: number
+): number {
   return collectedAmount - amountToCollect;
 }
 
@@ -821,15 +889,19 @@ export function calculateAdvancedFinancials(
   balanceCorrection: number;
 } {
   // Calculate total movement data for all machines
-  const totalMovementData = collectedMachines.reduce((sum, machine) => {
-    const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
-    const cancelledCredits = (machine.metersOut || 0) - (machine.prevOut || 0);
-    return {
-      drop: sum.drop + drop,
-      cancelledCredits: sum.cancelledCredits + cancelledCredits,
-      gross: sum.gross + (drop - cancelledCredits)
-    };
-  }, { drop: 0, cancelledCredits: 0, gross: 0 });
+  const totalMovementData = collectedMachines.reduce(
+    (sum, machine) => {
+      const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
+      const cancelledCredits =
+        (machine.metersOut || 0) - (machine.prevOut || 0);
+      return {
+        drop: sum.drop + drop,
+        cancelledCredits: sum.cancelledCredits + cancelledCredits,
+        gross: sum.gross + (drop - cancelledCredits),
+      };
+    },
+    { drop: 0, cancelledCredits: 0, gross: 0 }
+  );
 
   // Extract financial values
   const taxes = Number(financials.taxes) || 0;
@@ -840,12 +912,14 @@ export function calculateAdvancedFinancials(
   const profitShare = 50; // Default profit share percentage
 
   // Calculate partner profit
-  const partnerProfit = Math.floor(
-    (totalMovementData.gross - variance - advance) * profitShare / 100
-  ) - taxes;
+  const partnerProfit =
+    Math.floor(
+      ((totalMovementData.gross - variance - advance) * profitShare) / 100
+    ) - taxes;
 
   // Calculate amount to collect
-  const amountToCollect = totalMovementData.gross - variance - advance - partnerProfit;
+  const amountToCollect =
+    totalMovementData.gross - variance - advance - partnerProfit;
   const finalAmountToCollect = amountToCollect + previousBalance;
 
   // Calculate balance correction
@@ -857,6 +931,6 @@ export function calculateAdvancedFinancials(
     totalGross: totalMovementData.gross,
     partnerProfit,
     amountToCollect: finalAmountToCollect,
-    balanceCorrection
+    balanceCorrection,
   };
 }

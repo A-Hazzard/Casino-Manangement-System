@@ -25,41 +25,8 @@ export default function PaymentHistoryModal({
 }: PaymentHistoryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced dummy payment data matching the design requirements
-  const payments: Payment[] = [
-    {
-      id: "1",
-      type: "Monthly Subscription Payment",
-      datePaid: "10/06/2025",
-      nextBilling: "10/22/2025",
-      amount: "$1,200",
-      status: "completed",
-    },
-    {
-      id: "2",
-      type: "Monthly Subscription Payment",
-      datePaid: "09/06/2025",
-      nextBilling: "10/08/2025",
-      amount: "$1,200",
-      status: "overdue",
-    },
-    {
-      id: "3",
-      type: "Monthly Subscription Payment",
-      datePaid: "08/06/2025",
-      nextBilling: "10/07/2025",
-      amount: "$1,200",
-      status: "cancelled",
-    },
-    {
-      id: "4",
-      type: "Monthly Subscription Payment",
-      datePaid: "07/06/2025",
-      nextBilling: "08/06/2025",
-      amount: "$1,200",
-      status: "completed",
-    },
-  ];
+  // TODO: Replace with MongoDB data fetching
+  const payments: Payment[] = [];
 
   useEffect(() => {
     if (open && modalRef.current) {

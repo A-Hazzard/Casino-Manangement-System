@@ -1,8 +1,47 @@
-## Evolution One CMS - Engineering Guidelines
+# Engineering Guidelines
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
 
-This document is the single source of truth for how this system is structured and the standards contributors must follow. Newcomers should read this first.
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Folder Structure](#folder-structure)
+3. [TypeScript Discipline](#typescript-discipline)
+4. [Component Architecture](#component-architecture)
+5. [State Management](#state-management)
+6. [API Design](#api-design)
+7. [Database Design](#database-design)
+8. [Security Guidelines](#security-guidelines)
+9. [Performance Standards](#performance-standards)
+10. [Testing Requirements](#testing-requirements)
+11. [Code Quality](#code-quality)
+12. [Documentation Standards](#documentation-standards)
+
+## Overview
+
+This document serves as the comprehensive engineering guidelines for the Evolution One CMS system. It establishes the standards, practices, and architectural principles that all contributors must follow to ensure code quality, maintainability, and system reliability.
+
+### Key Principles
+- **Code Quality**: Maintainable, readable, and well-documented code
+- **Type Safety**: Comprehensive TypeScript implementation with strict typing
+- **Performance**: Optimized code with efficient algorithms and data structures
+- **Security**: Secure coding practices and proper authentication/authorization
+- **Scalability**: Architecture that supports growth and expansion
+
+### System Architecture
+- **Next.js 15**: Modern React framework with App Router
+- **TypeScript**: Strong typing for all components and APIs
+- **MongoDB**: Document-based database with Mongoose ODM
+- **Tailwind CSS**: Utility-first CSS framework for styling
+- **JWT Authentication**: Secure authentication with role-based access control
+
+### Development Standards
+- **Modular Design**: Clear separation of concerns and reusable components
+- **API-First**: RESTful API design with comprehensive documentation
+- **Testing**: Comprehensive testing with manual and automated validation
+- **Documentation**: Complete documentation for all system components
 
 ### Folder purposes
 

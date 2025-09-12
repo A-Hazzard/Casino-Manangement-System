@@ -1,11 +1,30 @@
 # Login Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [Authentication Flow](#authentication-flow)
+- [Security Features](#security-features)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
+- [Accessibility](#accessibility)
 
-This page provides secure authentication for users accessing the casino management system.
+## Overview
 
+The Login page provides secure authentication for users accessing the casino management system. This page serves as the entry point for all authenticated users and implements robust security measures.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### File Information
 - **File:** `app/(auth)/login/page.tsx`
 - **URL Pattern:** `/login`
+- **Component Type:** Authentication Page
+- **Authentication:** Not Required (Public Access)
 
 ## Main Features
 - **Login Form:**

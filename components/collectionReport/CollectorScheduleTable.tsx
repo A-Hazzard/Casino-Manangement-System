@@ -1,4 +1,13 @@
 import React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { formatDateString } from "@/lib/utils/dateUtils";
 import { CollectorScheduleTableProps } from "@/lib/types/componentProps";
 
@@ -28,19 +37,19 @@ export default function CollectorScheduleTable({
   }
 
   return (
-    <div className="hidden md:block overflow-x-auto bg-white shadow w-full min-w-0 max-w-[90vw]">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button">
-          <tr>
-            <th className="px-4 py-2 text-white font-bold">COLLECTOR</th>
-            <th className="px-4 py-2 text-white font-bold">LOCATION</th>
-            <th className="px-4 py-2 text-white font-bold">START TIME</th>
-            <th className="px-4 py-2 text-white font-bold">END TIME</th>
-            <th className="px-4 py-2 text-white font-bold">DURATION</th>
-            <th className="px-4 py-2 text-white font-bold">STATUS</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow w-full min-w-0 max-w-[90vw]">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">COLLECTOR</TableHead>
+            <TableHead className="text-white font-semibold">LOCATION</TableHead>
+            <TableHead className="text-white font-semibold">START TIME</TableHead>
+            <TableHead className="text-white font-semibold">END TIME</TableHead>
+            <TableHead className="text-white font-semibold">DURATION</TableHead>
+            <TableHead className="text-white font-semibold">STATUS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((schedule, index) => {
             const startTime = new Date(schedule.startTime);
             const endTime = new Date(schedule.endTime);
@@ -50,42 +59,50 @@ export default function CollectorScheduleTable({
             ).toFixed(1);
 
             return (
-              <tr
+              <TableRow
                 key={schedule._id || index}
-                className="border-b hover:bg-gray-50"
+                className="hover:bg-gray-50"
               >
-                <td className="px-4 py-2 font-bold">
+                <TableCell className="font-medium">
                   {schedule.collector || schedule.collectorName}
-                </td>
-                <td className="px-4 py-2">
+                </TableCell>
+                <TableCell>
                   {schedule.location || schedule.locationName}
-                </td>
-                <td className="px-4 py-2">
+                </TableCell>
+                <TableCell>
                   {formatDateString(schedule.startTime)}
-                </td>
-                <td className="px-4 py-2">
+                </TableCell>
+                <TableCell>
                   {formatDateString(schedule.endTime)}
-                </td>
-                <td className="px-4 py-2">{duration} hours</td>
-                <td className="px-4 py-2 capitalize">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
+                </TableCell>
+                <TableCell>{duration} hours</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
                       schedule.status === "scheduled" ||
                       schedule.status === "in-progress"
-                        ? "bg-yellow-100 text-yellow-800"
+                        ? "secondary"
                         : schedule.status === "completed"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
+                        ? "default"
+                        : "destructive"
+                    }
+                    className={
+                      schedule.status === "scheduled" ||
+                      schedule.status === "in-progress"
+                        ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                        : schedule.status === "completed"
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : "bg-red-100 text-red-800 hover:bg-red-200"
+                    }
                   >
                     {schedule.status}
-                  </span>
-                </td>
-              </tr>
+                  </Badge>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

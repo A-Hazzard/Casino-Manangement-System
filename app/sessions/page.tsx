@@ -17,6 +17,7 @@ import { useSessions } from "@/lib/hooks/useSessions";
 import SessionsFilters from "@/components/sessions/SessionsFilters";
 import SessionsTable from "@/components/sessions/SessionsTable";
 import SessionsPagination from "@/components/sessions/SessionsPagination";
+import { SessionsPageSkeleton } from "@/components/ui/skeletons/SessionsSkeletons";
 
 // Constants
 import { SESSIONS_ANIMATIONS } from "@/lib/constants/sessions";
@@ -102,12 +103,7 @@ export default function SessionsPage() {
             />
 
             {/* Loading State */}
-            {loading && (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-500">Loading sessions...</p>
-              </div>
-            )}
+            {loading && <SessionsPageSkeleton />}
 
             {/* Error State */}
             {error && (

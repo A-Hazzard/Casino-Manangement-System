@@ -14,3 +14,17 @@ export async function fetchCollectionsByLocationReportId(
   );
   return data as CollectionDocument[];
 }
+
+/**
+ * Updates an existing collection document.
+ * @param collectionId - The ID of the collection to update.
+ * @param updateData - The data to update the collection with.
+ * @returns Promise resolving to the updated CollectionDocument.
+ */
+export async function updateCollection(
+  collectionId: string,
+  updateData: Partial<CollectionDocument>
+): Promise<CollectionDocument> {
+  const { data } = await axios.patch(`/api/collections/${collectionId}`, updateData);
+  return data as CollectionDocument;
+}

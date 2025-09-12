@@ -1,13 +1,43 @@
 # Sessions API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Base URLs](#base-urls)
+3. [Endpoints](#endpoints)
+4. [Data Models](#data-models)
+5. [Business Logic](#business-logic)
+6. [Error Handling](#error-handling)
+7. [Security Features](#security-features)
+8. [Performance Considerations](#performance-considerations)
 
 ## Overview
-The Sessions API manages gaming session data across all machines and members. It provides comprehensive session tracking, analytics, and event management for the gaming system.
 
-## Base URL
+The Sessions API provides comprehensive gaming session management for the Evolution One CMS system. It handles session tracking, analytics, event management, and financial calculations with real-time monitoring and detailed reporting capabilities.
+
+### Key Features
+- **Session Tracking**: Complete gaming session lifecycle management
+- **Event Management**: Detailed event logging and analysis
+- **Financial Analytics**: Win/loss calculations and performance metrics
+- **Real-time Monitoring**: Live session status and activity tracking
+- **Advanced Filtering**: Comprehensive search and filtering capabilities
+
+### System Integration
+- **Member Management**: Integration with member profiles and history
+- **Machine Management**: Connection to machine status and performance
+- **Financial Systems**: Integration with collection and reporting systems
+- **Analytics**: Real-time data for dashboard and reporting features
+
+## Base URLs
+
 ```
 /api/sessions
+/api/sessions/[sessionId]
+/api/sessions/[sessionId]/[machineId]/events
 ```
 
 ## Endpoints

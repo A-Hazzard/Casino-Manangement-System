@@ -4,24 +4,19 @@ import { ExitIcon } from "@radix-ui/react-icons";
 import { PanelLeft } from "lucide-react";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { filterValueMap } from "@/lib/constants/uiConstants";
-import { handleFilterChange } from "@/lib/utils/metrics";
-import { ActiveFilters } from "@/shared/types";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logoutUser } from "@/lib/helpers/auth";
 import LicenceeSelect from "@/components/ui/LicenceeSelect";
-import CurrencySelector from "@/components/ui/CurrencySelector";
-import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { fetchMetricsData } from "@/lib/helpers/dashboard";
 
 export default function Header({
   selectedLicencee,
   pageTitle,
   setSelectedLicencee,
-  hideOptions,
+  hideOptions: _hideOptions,
   hideLicenceeFilter,
   containerPaddingMobile,
   disabled = false,
@@ -31,15 +26,43 @@ export default function Header({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isOpen } = useSidebar();
-  const { displayCurrency } = useCurrencyStore();
-
-  const {
-    activeFilters,
-    setActiveFilters,
-    activeMetricsFilter,
-    setActiveMetricsFilter,
+  const { 
+    activeMetricsFilter, 
+    customDateRange, 
+    setTotals, 
+    setChartData, 
+    setActiveFilters, 
     setShowDatePicker,
+    setLoadingChartData 
   } = useDashBoardStore();
+
+  // Wrapper function to handle licensee changes
+  const handleLicenseeChange = async (newLicensee: string) => {
+    if (setSelectedLicencee) {
+      setSelectedLicencee(newLicensee);
+    }
+    
+    // If we're on the dashboard and have an active filter, refresh data
+    if (pathname === "/" && activeMetricsFilter) {
+      setLoadingChartData(true);
+      try {
+        await fetchMetricsData(
+          activeMetricsFilter,
+          customDateRange,
+          newLicensee,
+          setTotals,
+          setChartData,
+          setActiveFilters,
+          setShowDatePicker
+        );
+      } catch (error) {
+        console.error("Error refreshing data after licensee change:", error);
+      } finally {
+        setLoadingChartData(false);
+      }
+    }
+  };
+
 
   // Check if the current path is related to locations
   const isLocationPath =
@@ -69,7 +92,7 @@ export default function Header({
 
   return (
     <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
-      <header className="flex flex-col p-0 w-full lg:pt-6 lg:pl-4">
+      <header className="flex flex-col p-0 w-full">
         {/* Menu Button and Main Title Row */}
         <div className="flex items-center justify-start">
           {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
@@ -85,18 +108,14 @@ export default function Header({
           <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
           </h1>
-          <div className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-            {displayCurrency}
-          </div>
 
           {!hideLicenceeFilter && (
             <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start gap-2">
               <LicenceeSelect
                 selected={selectedLicencee || ""}
-                onChange={setSelectedLicencee || (() => {})}
+                onChange={handleLicenseeChange}
                 disabled={disabled}
               />
-              <CurrencySelector />
             </div>
           )}
         </div>
@@ -290,9 +309,9 @@ export default function Header({
         </AnimatePresence>
 
         {pageTitle && (
-          <div className="flex flex-col space-y-6 xl:flex-row items-center justify-between">
+          <div className="flex flex-col space-y-6 xl:flex-row">
             <div className="flex flex-col space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              <h1 className="mb-2 text-2xl sm:text-3xl font-bold text-gray-800">
                 {pageTitle}
               </h1>
               {isSpecificLocationPath && (
@@ -301,55 +320,6 @@ export default function Header({
                 </p>
               )}
             </div>
-            {!hideOptions && (
-              <div className="hidden md:flex flex-wrap gap-2">
-                <Button
-                  onClick={() => {
-                    setActiveFilters({
-                      Today: true,
-                      Yesterday: false,
-                      last7days: false,
-                      last30days: false,
-                      Custom: false,
-                    });
-                    setActiveMetricsFilter("Today");
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "text-xs",
-                    activeFilters.Today && activeMetricsFilter === "Today"
-                      ? "bg-buttonActive text-white border-buttonActive"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  )}
-                >
-                  All
-                </Button>
-                {Object.entries(filterValueMap).map(([key, value]) => (
-                  <Button
-                    key={key}
-                    onClick={() =>
-                      handleFilterChange(
-                        key as keyof ActiveFilters,
-                        setActiveFilters,
-                        setShowDatePicker,
-                        setActiveMetricsFilter
-                      )
-                    }
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "text-xs",
-                      activeFilters[key as keyof ActiveFilters]
-                        ? "bg-buttonActive text-white border-buttonActive"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                    )}
-                  >
-                    {value}
-                  </Button>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </header>

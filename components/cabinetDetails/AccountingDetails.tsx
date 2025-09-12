@@ -7,14 +7,63 @@ import {
   containerVariants,
   itemVariants,
 } from "@/lib/constants/animationVariants";
-import { BillValidatorTable } from "./BillValidatorTable";
+// import { BillValidatorTableV2 } from "./BillValidatorTableV2"; // Removed - using BillValidatorTableWithFilters instead
+import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters";
 import ActivityLogSkeleton from "./ActivityLogSkeleton";
 import { ActivityLogTable } from "./ActivityLogTable";
 import { CollectionHistoryTable } from "./CollectionHistoryTable";
 import CollectionHistorySkeleton from "./CollectionHistorySkeleton";
+import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import type { MachineEvent } from "./ActivityLogTable";
+import type { TimePeriod } from "@/app/api/lib/types";
 
 import type { MachineDocument } from "@/shared/types";
+import type { Cabinet } from "@/lib/types/cabinets";
+
+// Bill Meters data type
+type BillMetersData = {
+  dollar1?: number;
+  dollar2?: number;
+  dollar5?: number;
+  dollar10?: number;
+  dollar20?: number;
+  dollar50?: number;
+  dollar100?: number;
+  dollar500?: number;
+  dollar1000?: number;
+  dollar2000?: number;
+  dollar5000?: number;
+  dollarTotal?: number;
+  dollarTotalUnknown?: number;
+};
+
+// Bill Meters data type - moved to shared types
+// type BillMetersData = {
+//   dollar1?: number;
+//   dollar2?: number;
+//   dollar5?: number;
+//   dollar10?: number;
+//   dollar20?: number;
+//   dollar50?: number;
+//   dollar100?: number;
+//   dollar500?: number;
+//   dollar1000?: number;
+//   dollar2000?: number;
+//   dollar5000?: number;
+//   dollarTotal?: number;
+//   dollarTotalUnknown?: number;
+// };
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 // Type for collection data from machine's embedded collectionMetersHistory
 type CollectionData = {
@@ -98,13 +147,242 @@ const ConfigurationsSkeleton = () => (
   </div>
 );
 
+// Collection Settings Content Component
+const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
+  cabinet,
+}) => {
+  const [isEditCollection, setIsEditCollection] = useState(false);
+  const [isUpdatingCollection, setIsUpdatingCollection] = useState(false);
+  const [collectionMetersIn, setCollectionMetersIn] = useState<string>("0");
+  const [collectionMetersOut, setCollectionMetersOut] = useState<string>("0");
+  const [collectionDate, setCollectionDate] = useState<Date | null>(null);
+  const [collectionHour, setCollectionHour] = useState<number>(0);
+  const [collectorDenomination, setCollectorDenomination] =
+    useState<string>("1");
+
+  // Hour options for collection time
+  const hourOptions = Array.from({ length: 24 }, (_, i) => ({
+    text: `${i.toString().padStart(2, "0")}:00`,
+    value: i,
+  }));
+
+  // Initialize collection settings from cabinet data
+  React.useEffect(() => {
+    if (cabinet.collectionMeters) {
+      setCollectionMetersIn(String(cabinet.collectionMeters.metersIn || 0));
+      setCollectionMetersOut(String(cabinet.collectionMeters.metersOut || 0));
+    }
+    if (cabinet.collectionTime) {
+      const lastColTime = new Date(cabinet.collectionTime as string | Date);
+      setCollectionDate(lastColTime);
+      setCollectionHour(lastColTime.getHours());
+    }
+    if (cabinet.collectorDenomination) {
+      setCollectorDenomination(String(cabinet.collectorDenomination));
+    }
+  }, [cabinet]);
+
+  // Handle collection settings save
+  const handleSaveCollectionSettings = async () => {
+    if (!isEditCollection) {
+      setIsEditCollection(true);
+      return;
+    }
+
+    if (!collectionDate) {
+      toast.error("Please select last collection time and save again.");
+      return;
+    }
+
+    setIsUpdatingCollection(true);
+    try {
+      // Create the collection time with the selected hour
+      const prevCollectionTime = new Date(collectionDate);
+      prevCollectionTime.setHours(collectionHour, 0, 0, 0);
+
+      // Update cabinet data
+      const updateData = {
+        collectionMeters: {
+          metersIn: parseInt(collectionMetersIn) || 0,
+          metersOut: parseInt(collectionMetersOut) || 0,
+        },
+        collectionTime: prevCollectionTime.toISOString(),
+        collectorDenomination: parseFloat(collectorDenomination) || 1,
+      };
+
+      // Make API call to update cabinet
+      const response = await fetch(`/api/cabinets/${cabinet._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update collection settings");
+      }
+
+      setIsEditCollection(false);
+      toast.success("Collection settings updated successfully!");
+    } catch (error) {
+      console.error("Error saving collection settings:", error);
+      toast.error("Failed to save collection settings");
+    } finally {
+      setIsUpdatingCollection(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold mb-6 text-gray-800">
+          Collection Settings
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {/* Last Meters In */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="metersIn"
+              className="text-sm font-medium text-gray-700"
+            >
+              Last Meters In
+            </Label>
+            <Input
+              id="metersIn"
+              type="number"
+              value={collectionMetersIn}
+              onChange={(e) => setCollectionMetersIn(e.target.value)}
+              disabled={!isEditCollection}
+              className="w-full"
+              placeholder="0"
+            />
+          </div>
+
+          {/* Last Meters Out */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="metersOut"
+              className="text-sm font-medium text-gray-700"
+            >
+              Last Meters Out
+            </Label>
+            <Input
+              id="metersOut"
+              type="number"
+              value={collectionMetersOut}
+              onChange={(e) => setCollectionMetersOut(e.target.value)}
+              disabled={!isEditCollection}
+              className="w-full"
+              placeholder="0"
+            />
+          </div>
+
+          {/* Collection Date */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="collectionDate"
+              className="text-sm font-medium text-gray-700"
+            >
+              Last Collection Date
+            </Label>
+            <Input
+              id="collectionDate"
+              type="date"
+              value={
+                collectionDate ? collectionDate.toISOString().split("T")[0] : ""
+              }
+              onChange={(e) =>
+                setCollectionDate(
+                  e.target.value ? new Date(e.target.value) : null
+                )
+              }
+              disabled={!isEditCollection}
+              className="w-full"
+            />
+          </div>
+
+          {/* Collection Hour */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="collectionHour"
+              className="text-sm font-medium text-gray-700"
+            >
+              Collection Hour
+            </Label>
+            <Select
+              value={collectionHour.toString()}
+              onValueChange={(value) => setCollectionHour(parseInt(value))}
+              disabled={!isEditCollection}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select hour" />
+              </SelectTrigger>
+              <SelectContent>
+                {hourOptions.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value.toString()}
+                  >
+                    {option.text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Collector Denomination */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="denomination"
+              className="text-sm font-medium text-gray-700"
+            >
+              Collector Denomination
+            </Label>
+            <Input
+              id="denomination"
+              type="number"
+              step="0.01"
+              value={collectorDenomination}
+              onChange={(e) => setCollectorDenomination(e.target.value)}
+              disabled={!isEditCollection}
+              className="w-full"
+              placeholder="1.00"
+            />
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSaveCollectionSettings}
+            disabled={isUpdatingCollection}
+            className="bg-buttonActive hover:bg-buttonActive/90 text-white px-6 py-2"
+          >
+            {isUpdatingCollection ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Saving...
+              </div>
+            ) : isEditCollection ? (
+              "Save"
+            ) : (
+              "Edit"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Export the component as both default and named export
 export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   cabinet,
   loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
-  activeMetricsFilter,
 }: AccountingDetailsProps) => {
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
@@ -119,6 +397,60 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     string | null
   >(null);
   const [activityLogError, setActivityLogError] = useState<string | null>(null);
+
+  // Separate date filter states for Activity Log and Bill Validator
+  const [activityLogDateRange, setActivityLogDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [activityLogTimePeriod, setActivityLogTimePeriod] = useState<TimePeriod>("7d");
+  const [billValidatorDateRange, setBillValidatorDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [billValidatorTimePeriod, setBillValidatorTimePeriod] = useState<TimePeriod>("7d");
+  const [billValidatorTimeRange, setBillValidatorTimeRange] = useState<{ startTime: string; endTime: string } | undefined>();
+
+
+  // Convert billMeters data to bills array format
+  const convertBillMetersToBills = (billMeters: BillMetersData) => {
+    const bills: Array<{
+      denomination: number;
+      quantity: number;
+      timestamp: string;
+      location: string;
+      machineId: string;
+    }> = [];
+    
+    const denominationMap: Array<{ key: keyof BillMetersData; value: number }> = [
+      { key: 'dollar1', value: 1 },
+      { key: 'dollar2', value: 2 },
+      { key: 'dollar5', value: 5 },
+      { key: 'dollar10', value: 10 },
+      { key: 'dollar20', value: 20 },
+      { key: 'dollar50', value: 50 },
+      { key: 'dollar100', value: 100 },
+      { key: 'dollar500', value: 500 },
+      { key: 'dollar1000', value: 1000 },
+      { key: 'dollar2000', value: 2000 },
+      { key: 'dollar5000', value: 5000 },
+    ];
+
+    denominationMap.forEach(({ key, value }) => {
+      const quantity = billMeters[key] || 0;
+      if (quantity > 0) {
+        bills.push({
+          denomination: value,
+          quantity: quantity,
+          timestamp: machine?.lastActivity ? new Date(machine.lastActivity).toISOString() : new Date().toISOString(),
+          location: cabinet?.locationName || "Unknown",
+          machineId: cabinet?._id || "Unknown",
+        });
+      }
+    });
+
+    return bills;
+  };
+
+  // Debug logging for filter states
+  console.warn("Activity Log Filters:", { activityLogDateRange, activityLogTimePeriod });
+  console.warn("Bill Validator Filters:", { billValidatorDateRange, billValidatorTimePeriod, billValidatorTimeRange });
+  console.warn("Machine billMeters data:", machine?.billMeters);
+  console.warn("Converted bills data:", machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []);
 
   useEffect(() => {
     async function loadData() {
@@ -180,26 +512,41 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
             setCollectionHistoryError(null);
           }
 
-          // Fetch activity log data - no time filtering, show all events
-          setActivityLogLoading(true);
-          setActivityLogError(null);
-          try {
-            const eventsRes = await axios.get(
-              `/api/machines/by-id/events?id=${cabinet._id}`
-            );
-            const eventsData = eventsRes.data;
-            setActivityLog(eventsData.events || []);
+          // Only fetch activity log data when Activity Log tab is active
+          if (activeMetricsTabContent === "Activity Log") {
+            setActivityLogLoading(true);
             setActivityLogError(null);
-          } catch (error) {
-            console.error("Failed to fetch machine events:", error);
-            setActivityLog([]);
-            setActivityLogError(
-              error instanceof Error
-                ? error.message
-                : "Failed to fetch activity log"
-            );
-          } finally {
-            setActivityLogLoading(false);
+            try {
+              // Build query parameters for date filtering
+              const params = new URLSearchParams();
+              params.append("id", cabinet._id);
+              
+              // Add date range parameters if custom date range is selected
+              if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
+                params.append("startDate", activityLogDateRange.from.toISOString());
+                params.append("endDate", activityLogDateRange.to.toISOString());
+              } else if (activityLogTimePeriod && activityLogTimePeriod !== "All Time") {
+                // Add time period parameter for predefined periods
+                params.append("timePeriod", activityLogTimePeriod);
+              }
+              
+              const eventsRes = await axios.get(
+                `/api/machines/by-id/events?${params.toString()}`
+              );
+              const eventsData = eventsRes.data;
+              setActivityLog(eventsData.events || []);
+              setActivityLogError(null);
+            } catch (error) {
+              console.error("Failed to fetch machine events:", error);
+              setActivityLog([]);
+              setActivityLogError(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to fetch activity log"
+              );
+            } finally {
+              setActivityLogLoading(false);
+            }
           }
         }
       } catch (error) {
@@ -211,7 +558,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
       }
     }
     loadData();
-  }, [cabinet, activeMetricsFilter]); // Depend on cabinet and activeMetricsFilter
+  }, [cabinet, activeMetricsTabContent, activityLogTimePeriod, activityLogDateRange]); // Depend on cabinet, activeMetricsTabContent, and filter states
 
   return (
     <motion.div
@@ -241,6 +588,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
             "Bill Validator",
             "Activity Log",
             "Collection History",
+            "Collection Settings",
             "Configurations",
           ].map((menuItem, idx) => (
             <motion.button
@@ -297,7 +645,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      {/* Handle (Money In) */}
+                      {/* Money In */}
                       <motion.div
                         className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
                         variants={itemVariants}
@@ -308,15 +656,15 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         transition={{ type: "spring", stiffness: 300 }}
                       >
                         <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4 truncate">
-                          Handle
+                          Money In
                         </h4>
                         <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.drop ??
-                                  cabinet?.meterData?.movement?.drop ??
+                                cabinet?.moneyIn ??
+                                  cabinet?.sasMeters?.drop ??
                                   0
                               )
                             )}
@@ -342,9 +690,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.totalCancelledCredits ??
-                                  cabinet?.meterData?.movement
-                                    ?.totalCancelledCredits ??
+                                cabinet?.moneyOut ??
+                                  cabinet?.sasMeters?.totalCancelledCredits ??
                                   0
                               )
                             )}
@@ -367,18 +714,15 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          {(() => {
-                            const drop = Number(cabinet?.sasMeters?.drop ?? 0);
-                            const tcc = Number(
-                              cabinet?.sasMeters?.totalCancelledCredits ?? 0
-                            );
-                            const grossValue = drop - tcc;
-                            return (
-                              <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                                {formatCurrency(Number(grossValue))}
-                              </p>
-                            );
-                          })()}
+                          <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
+                            {formatCurrency(
+                              Number(
+                                cabinet?.gross ??
+                                  Number(cabinet?.moneyIn ?? 0) -
+                                    Number(cabinet?.moneyOut ?? 0)
+                              )
+                            )}
+                          </p>
                         </div>
                       </motion.div>
 
@@ -400,8 +744,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.jackpot ??
-                                  cabinet?.meterData?.movement?.jackpot ??
+                                cabinet?.jackpot ??
+                                  cabinet?.sasMeters?.jackpot ??
                                   0
                               )
                             )}
@@ -440,8 +784,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           <p className="text-center text-base md:text-xl font-bold">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.coinIn ??
-                                  cabinet?.meterData?.movement?.coinIn ??
+                                cabinet?.coinIn ??
+                                  cabinet?.handle ??
+                                  cabinet?.sasMeters?.coinIn ??
                                   0
                               )
                             )}
@@ -467,8 +812,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           <p className="text-center text-base md:text-xl font-bold">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.coinOut ??
-                                  cabinet?.meterData?.movement?.coinOut ??
+                                cabinet?.coinOut ??
+                                  cabinet?.sasMeters?.coinOut ??
                                   0
                               )
                             )}
@@ -549,8 +894,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold">
-                            {cabinet?.sasMeters?.gamesPlayed ??
-                              cabinet?.meterData?.movement?.gamesPlayed ??
+                            {cabinet?.gamesPlayed ??
+                              cabinet?.sasMeters?.gamesPlayed ??
                               0}
                           </p>
                         </div>
@@ -572,8 +917,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold">
-                            {cabinet?.sasMeters?.gamesWon ??
-                              cabinet?.meterData?.movement?.gamesWon ??
+                            {cabinet?.gamesWon ??
+                              cabinet?.sasMeters?.gamesWon ??
                               0}
                           </p>
                         </div>
@@ -592,84 +937,61 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <div className="w-full max-w-xl mx-auto">
-                        {/* Current Balance */}
-                        <div className="mb-4 text-center">
-                          <p className="text-lg font-semibold">
-                            Current Balance:{" "}
-                            {formatCurrency(
-                              Number(machine?.billValidator?.balance || 0)
-                            )}
-                          </p>
-                        </div>
-
-                        {/* Bill Validator Table */}
-                        <BillValidatorTable
-                          bills={
-                            machine &&
-                            machine.billValidator &&
-                            typeof machine.billValidator === "object" &&
-                            "notes" in machine.billValidator &&
-                            Array.isArray(machine.billValidator.notes)
-                              ? machine.billValidator.notes.map(
-                                  (note: Record<string, unknown>) => ({
-                                    denomination: note.denomination as number,
-                                    quantity: note.quantity as number,
-                                    subtotal:
-                                      (note.denomination as number) *
-                                      (note.quantity as number),
-                                  })
-                                ) || []
-                              : []
-                          }
+                      <div className="w-full max-w-4xl mx-auto">
+                        {/* Bill Validator Table with Filters */}
+                        <BillValidatorTableWithFilters
+                          bills={machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []}
+                          onDateRangeChange={setBillValidatorDateRange}
+                          onTimePeriodChange={setBillValidatorTimePeriod}
+                          onTimeRangeChange={setBillValidatorTimeRange}
+                          dateRange={billValidatorDateRange}
+                          timePeriod={billValidatorTimePeriod}
+                          timeRange={billValidatorTimeRange}
+                          loading={loading}
                         />
                       </div>
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === "Activity Log" ? (
-                  activityLogLoading ? (
-                    <ActivityLogSkeleton />
-                  ) : activityLogError ? (
-                    <motion.div
-                      key="activity-log-error"
-                      className="bg-container p-6 rounded-lg shadow h-48 flex flex-col items-center justify-center w-full"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      <p className="text-red-500 text-center mb-2">
-                        Failed to load activity log
-                      </p>
-                      <p className="text-grayHighlight text-center text-sm">
-                        {activityLogError}
-                      </p>
-                    </motion.div>
-                  ) : activityLog.length > 0 ? (
-                    <motion.div
-                      key="activity-log"
-                      className="bg-container p-6 rounded-lg shadow w-full"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4 }}
-                    >
+                  <motion.div
+                    key="activity-log"
+                    className="bg-container p-6 rounded-lg shadow w-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    {/* Activity Log Date Filter - Always show */}
+                    <div className="mb-6">
+                      <ActivityLogDateFilter
+                        onDateRangeChange={setActivityLogDateRange}
+                        onTimePeriodChange={setActivityLogTimePeriod}
+                        disabled={activityLogLoading}
+                      />
+                    </div>
+                    
+                    {/* Activity Log Content */}
+                    {activityLogLoading ? (
+                      <ActivityLogSkeleton />
+                    ) : activityLogError ? (
+                      <div className="h-48 flex flex-col items-center justify-center w-full">
+                        <p className="text-red-500 text-center mb-2">
+                          Failed to load activity log
+                        </p>
+                        <p className="text-grayHighlight text-center text-sm">
+                          {activityLogError}
+                        </p>
+                      </div>
+                    ) : activityLog.length > 0 ? (
                       <ActivityLogTable data={activityLog as MachineEvent[]} />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="activity-log-empty"
-                      className="bg-container p-6 rounded-lg shadow h-48 flex items-center justify-center w-full"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      <p className="text-grayHighlight text-center">
-                        No activity log data found for this machine.
-                      </p>
-                    </motion.div>
-                  )
+                    ) : (
+                      <div className="h-48 flex items-center justify-center w-full">
+                        <p className="text-grayHighlight text-center">
+                          No activity log data found for this machine.
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
                 ) : activeMetricsTabContent === "Collection History" ? (
                   loading ? (
                     <CollectionHistorySkeleton />
@@ -714,6 +1036,17 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       </p>
                     </motion.div>
                   )
+                ) : activeMetricsTabContent === "Collection Settings" ? (
+                  <motion.div
+                    key="collection-settings"
+                    className="w-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <CollectionSettingsContent cabinet={cabinet} />
+                  </motion.div>
                 ) : activeMetricsTabContent === "Configurations" ? (
                   loading ? (
                     <ConfigurationsSkeleton />

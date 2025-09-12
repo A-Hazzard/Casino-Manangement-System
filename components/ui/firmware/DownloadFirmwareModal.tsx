@@ -55,7 +55,10 @@ export const DownloadFirmwareModal = ({
     try {
       const response = await axios.get(
         `/api/firmwares/${selectedFirmware._id}/download`,
-        { responseType: "blob" }
+        { 
+          responseType: "blob",
+          withCredentials: true
+        }
       );
       const blob = response.data;
       const url = window.URL.createObjectURL(blob);

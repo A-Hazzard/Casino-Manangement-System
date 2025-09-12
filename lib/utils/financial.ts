@@ -19,7 +19,7 @@ export type FinancialTotals = {
 export function calculateLocationFinancialTotals(
   locations: AggregatedLocation[]
 ): FinancialTotals | null {
-  if (!locations || locations.length === 0) {
+  if (!locations || !Array.isArray(locations) || locations.length === 0) {
     return null;
   }
 
@@ -49,7 +49,7 @@ export function calculateLocationFinancialTotals(
 export function calculateCabinetFinancialTotals(
   cabinets: Cabinet[]
 ): FinancialTotals | null {
-  if (!cabinets || cabinets.length === 0) {
+  if (!cabinets || !Array.isArray(cabinets) || cabinets.length === 0) {
     return null;
   }
 

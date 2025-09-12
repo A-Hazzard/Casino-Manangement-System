@@ -339,7 +339,7 @@ export default function EnhancedLocationTable({
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("locationName")}
                     >
                       <div className="flex items-center gap-1">
@@ -348,7 +348,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("sasStatus")}
                     >
                       <div className="flex items-center gap-1">
@@ -357,7 +357,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("totalMachines")}
                     >
                       <div className="flex items-center gap-1">
@@ -366,7 +366,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("moneyIn")}
                     >
                       <div className="flex items-center gap-1">
@@ -375,7 +375,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("moneyOut")}
                     >
                       <div className="flex items-center gap-1">
@@ -384,7 +384,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("gross")}
                     >
                       <div className="flex items-center gap-1">
@@ -393,17 +393,17 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("holdPercentage")}
                     >
                       <div className="flex items-center gap-1">
                         Hold %{getSortIcon("holdPercentage")}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Games Played
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Avg. Wager per Game
                     </th>
                   </tr>

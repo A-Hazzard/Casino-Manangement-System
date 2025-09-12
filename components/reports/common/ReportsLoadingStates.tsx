@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Bell } from "lucide-react";
+import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
 
 type LoadingOverlayProps = {
   isLoading: boolean;
@@ -44,14 +45,7 @@ export function LoadingOverlay({ isLoading }: LoadingOverlayProps) {
  * Loading state while authentication is being checked
  */
 export function AuthLoadingState({}: AuthLoadingProps) {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-buttonActive" />
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    </div>
-  );
+  return <ReportsPageSkeleton />;
 }
 
 /**

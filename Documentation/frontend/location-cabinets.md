@@ -1,11 +1,31 @@
 # Location Cabinets Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [Location Selection](#location-selection)
+- [Cabinet Management](#cabinet-management)
+- [Filtering and Sorting](#filtering-and-sorting)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Security Features](#security-features)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
 
-This page displays all cabinets (slot machines) assigned to a specific casino location with comprehensive filtering, sorting, and management capabilities.
+## Overview
 
+The Location Cabinets page displays all cabinets (slot machines) assigned to a specific casino location with comprehensive filtering, sorting, and management capabilities. This page provides detailed cabinet management for individual casino locations.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### File Information
 - **File:** `app/locations/[slug]/page.tsx`
 - **URL Pattern:** `/locations/[slug]` where `[slug]` is the location ID
+- **Component Type:** Location-Specific Cabinet Management Page
+- **Authentication:** Required
 
 ## Main Features
 - **Location Selection:**

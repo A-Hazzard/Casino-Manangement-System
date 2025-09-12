@@ -1,13 +1,13 @@
 import {
-  KpiMetric,
+  // KpiMetric,
   CasinoLocation,
   GamingMachine,
   TimePeriod,
   DateRange,
-  ChartDataPoint,
+  // ChartDataPoint,
   PerformanceStatus,
 } from "@/lib/types/reports";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { startOfDay, endOfDay, subDays } from "date-fns";
 import axios from "axios";
 
 /**
@@ -104,13 +104,25 @@ export const formatPercentage = (value: number): string => {
  */
 export const formatLargeNumber = (value: number): string => {
   if (value >= 1000000000) {
-    return (value / 1000000000).toFixed(1) + "B";
+    const billions = value / 1000000000;
+    const hasDecimals = billions % 1 !== 0;
+    const decimalPart = billions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return billions.toFixed(hasSignificantDecimals ? 1 : 0) + "B";
   }
   if (value >= 1000000) {
-    return (value / 1000000).toFixed(1) + "M";
+    const millions = value / 1000000;
+    const hasDecimals = millions % 1 !== 0;
+    const decimalPart = millions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return millions.toFixed(hasSignificantDecimals ? 1 : 0) + "M";
   }
   if (value >= 1000) {
-    return (value / 1000).toFixed(1) + "K";
+    const thousands = value / 1000;
+    const hasDecimals = thousands % 1 !== 0;
+    const decimalPart = thousands % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return thousands.toFixed(hasSignificantDecimals ? 1 : 0) + "K";
   }
   return value.toString();
 };
@@ -191,249 +203,6 @@ export const getPerformanceStatus = (actualHold: number): PerformanceStatus => {
   return "poor";
 };
 
-/**
- * Generate mock analytics data for development
- * @returns Mock analytics data
- */
-export const generateMockAnalyticsData = () => {
-  const locations: CasinoLocation[] = [
-    {
-      id: "1",
-      name: "Red Dragon Casino",
-      region: "North",
-      address: "123 Casino Blvd, Las Vegas, NV",
-      isActive: true,
-      totalHandle: 2500000,
-      totalWin: 200000,
-      actualHold: 8.0,
-      gamesPlayed: 125000,
-      averageWager: 20,
-      totalJackpot: 50000,
-      performance: "good",
-      coordinates: { lat: 36.1699, lng: -115.1398 },
-    },
-    {
-      id: "2",
-      name: "Strikey's Funhouse",
-      region: "South",
-      address: "456 Gaming Ave, Las Vegas, NV",
-      isActive: true,
-      totalHandle: 1800000,
-      totalWin: 108000,
-      actualHold: 6.0,
-      gamesPlayed: 90000,
-      averageWager: 20,
-      totalJackpot: 25000,
-      performance: "average",
-      coordinates: { lat: 36.1147, lng: -115.1728 },
-    },
-    {
-      id: "3",
-      name: "Ocean's Edge Gaming",
-      region: "West",
-      address: "789 Slots St, Las Vegas, NV",
-      isActive: true,
-      totalHandle: 3200000,
-      totalWin: 288000,
-      actualHold: 9.0,
-      gamesPlayed: 160000,
-      averageWager: 20,
-      totalJackpot: 75000,
-      performance: "good",
-      coordinates: { lat: 36.1215, lng: -115.1739 },
-    },
-  ];
-
-  const machines: GamingMachine[] = [
-    {
-      id: "M001",
-      gameTitle: "Dragon Link",
-      manufacturer: "Aristocrat",
-      locationId: "1",
-      totalHandle: 50000,
-      totalWin: 5000,
-      actualHold: 10.0,
-      gamesPlayed: 2500,
-      isActive: true,
-      installDate: "2023-01-15",
-      lastActivity: "2023-10-27T10:00:00Z",
-      coinIn: 50000,
-      coinOut: 45000,
-      totalCancelledCredits: 500,
-      totalHandPaidCancelledCredits: 100,
-      totalWonCredits: 5000,
-      drop: 2500,
-      jackpot: 1000,
-      currentCredits: 0,
-      gamesWon: 250,
-    },
-    {
-      id: "M002",
-      gameTitle: "Wheel of Fortune",
-      manufacturer: "IGT",
-      locationId: "1",
-      totalHandle: 75000,
-      totalWin: 7000,
-      actualHold: 9.3,
-      gamesPlayed: 3000,
-      isActive: true,
-      installDate: "2023-02-01",
-      lastActivity: "2023-10-27T10:05:00Z",
-      coinIn: 75000,
-      coinOut: 68000,
-      totalCancelledCredits: 700,
-      totalHandPaidCancelledCredits: 200,
-      totalWonCredits: 7000,
-      drop: 3000,
-      jackpot: 1500,
-      currentCredits: 0,
-      gamesWon: 300,
-    },
-    {
-      id: "M003",
-      gameTitle: "88 Fortunes",
-      manufacturer: "Scientific Games",
-      locationId: "2",
-      totalHandle: 80000,
-      totalWin: 5000,
-      actualHold: 6.25,
-      gamesPlayed: 4000,
-      isActive: false,
-      installDate: "2023-01-30",
-      lastActivity: "2023-10-26T14:00:00Z",
-      coinIn: 80000,
-      coinOut: 75000,
-      totalCancelledCredits: 800,
-      totalHandPaidCancelledCredits: 300,
-      totalWonCredits: 5000,
-      drop: 4000,
-      jackpot: 2000,
-      currentCredits: 0,
-      gamesWon: 400,
-    },
-    {
-      id: "M004",
-      gameTitle: "Buffalo Gold",
-      manufacturer: "Aristocrat",
-      locationId: "2",
-      totalHandle: 110000,
-      totalWin: 10000,
-      actualHold: 9.1,
-      gamesPlayed: 5500,
-      isActive: true,
-      installDate: "2023-03-01",
-      lastActivity: "2023-10-27T11:00:00Z",
-      coinIn: 110000,
-      coinOut: 100000,
-      totalCancelledCredits: 1000,
-      totalHandPaidCancelledCredits: 400,
-      totalWonCredits: 10000,
-      drop: 5500,
-      jackpot: 3000,
-      currentCredits: 0,
-      gamesWon: 550,
-    },
-    {
-      id: "M005",
-      gameTitle: "Cleopatra",
-      manufacturer: "IGT",
-      locationId: "3",
-      totalHandle: 200000,
-      totalWin: 20000,
-      actualHold: 10.0,
-      gamesPlayed: 10000,
-      isActive: true,
-      installDate: "2023-01-10",
-      lastActivity: "2023-10-27T12:00:00Z",
-      coinIn: 200000,
-      coinOut: 180000,
-      totalCancelledCredits: 2000,
-      totalHandPaidCancelledCredits: 500,
-      totalWonCredits: 20000,
-      drop: 10000,
-      jackpot: 5000,
-      currentCredits: 0,
-      gamesWon: 1000,
-    },
-    {
-      id: "M006",
-      gameTitle: "China Shores",
-      manufacturer: "Konami",
-      locationId: "3",
-      totalHandle: 180000,
-      totalWin: 15000,
-      actualHold: 8.3,
-      gamesPlayed: 9000,
-      isActive: true,
-      installDate: "2023-02-15",
-      lastActivity: "2023-10-27T13:00:00Z",
-      coinIn: 180000,
-      coinOut: 165000,
-      totalCancelledCredits: 1500,
-      totalHandPaidCancelledCredits: 600,
-      totalWonCredits: 15000,
-      drop: 9000,
-      jackpot: 4000,
-      currentCredits: 0,
-      gamesWon: 900,
-    },
-  ];
-
-  const kpiMetrics: KpiMetric[] = [
-    {
-      label: "Total Handle",
-      title: "Total Handle",
-      value: 7500000,
-      previousValue: 7200000,
-      format: "currency",
-      trend: "up",
-      change: 4.2,
-    },
-    {
-      label: "Total Win",
-      title: "Total Win",
-      value: 596000,
-      previousValue: 580000,
-      format: "currency",
-      trend: "up",
-      change: 2.8,
-    },
-    {
-      label: "Actual Hold",
-      title: "Actual Hold",
-      value: 7.95,
-      previousValue: 8.06,
-      format: "percentage",
-      trend: "down",
-      change: 0.11,
-    },
-    {
-      label: "Games Played",
-      title: "Games Played",
-      value: 375000,
-      previousValue: 360000,
-      format: "number",
-      trend: "up",
-      change: 4.2,
-    },
-  ];
-
-  const performanceTrends: ChartDataPoint[] = Array.from(
-    { length: 30 },
-    (_, i) => ({
-      date: format(subDays(new Date(), 29 - i), "yyyy-MM-dd"),
-      value: Math.floor(Math.random() * 100000) + 200000,
-      label: format(subDays(new Date(), 29 - i), "MMM dd"),
-    })
-  );
-
-  return {
-    locations,
-    kpiMetrics,
-    performanceTrends,
-    machines,
-  };
-};
 
 /**
  * Filter locations based on search criteria
@@ -516,10 +285,10 @@ export const fetchReportsLocations = async (
       params.licencee = selectedLicencee;
     }
 
-    if (customDateRange?.start && customDateRange?.end) {
+    if (timePeriod === "Custom" && customDateRange?.start && customDateRange?.end) {
       params.startDate = customDateRange.start.toISOString();
       params.endDate = customDateRange.end.toISOString();
-      delete params.timePeriod;
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
     }
 
     const response = await axios.get("/api/reports/locations", { params });
@@ -548,10 +317,10 @@ export const fetchAllReportsLocations = async (
       params.licencee = selectedLicencee;
     }
 
-    if (customDateRange?.start && customDateRange?.end) {
+    if (timePeriod === "Custom" && customDateRange?.start && customDateRange?.end) {
       params.startDate = customDateRange.start.toISOString();
       params.endDate = customDateRange.end.toISOString();
-      delete params.timePeriod;
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
     }
 
     const response = await axios.get("/api/reports/locations", { params });

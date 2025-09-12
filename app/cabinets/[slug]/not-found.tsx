@@ -1,11 +1,9 @@
 "use client"; // Need client for hooks
 
-import Link from "next/link";
 import Header from "@/components/layout/Header";
-
-import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { usePathname } from "next/navigation";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 export default function CabinetDetailNotFound() {
   const pathname = usePathname();
@@ -24,27 +22,14 @@ export default function CabinetDetailNotFound() {
             hideOptions={true}
             hideLicenceeFilter={false}
           />
-          <div className="text-center">
-            <h1 className="text-6xl font-bold text-buttonActive mb-4">404</h1>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Cabinet Not Found
-            </h2>
-            <p className="text-gray-500 mb-6">
-              The cabinet with ID{" "}
-              <code className="bg-gray-200 px-1 rounded">{slug}</code> could not
-              be found for the selected licensee.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/cabinets">
-                <Button variant="outline">Back to Cabinets</Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button className="bg-buttonActive hover:bg-buttonActive/90">
-                  Go to Dashboard
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <NotFoundError
+            title="Cabinet Not Found"
+            message={`The cabinet with ID "${slug}" could not be found for the selected licensee.`}
+            resourceType="cabinet"
+            showRetry={false}
+            customBackText="Back to Cabinets"
+            customBackHref="/cabinets"
+          />
         </main>
       </div>
     </>

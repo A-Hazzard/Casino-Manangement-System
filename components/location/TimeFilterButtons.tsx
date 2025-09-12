@@ -18,6 +18,7 @@ const filterOptions = [
   { label: "Last 7 days", value: "7d" as TimePeriod },
   { label: "30 days", value: "30d" as TimePeriod },
   { label: "Custom", value: "Custom" as TimePeriod },
+  { label: "All Time", value: "All Time" as TimePeriod },
 ];
 
 export default function TimeFilterButtons({
@@ -33,7 +34,7 @@ export default function TimeFilterButtons({
 
   return (
     <motion.div
-      className="mb-6 overflow-x-auto no-scrollbar"
+      className="mb-6 no-scrollbar"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}

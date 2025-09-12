@@ -1,11 +1,12 @@
 "use client";
 import DeleteUserModal from "@/components/administration/DeleteUserModal";
-import RolesPermissionsModal from "@/components/administration/RolesPermissionsModal";
 import SearchFilterBar from "@/components/administration/SearchFilterBar";
 import UserCard from "@/components/administration/UserCard";
 import UserCardSkeleton from "@/components/administration/UserCardSkeleton";
 import UserTable from "@/components/administration/UserTable";
 import UserTableSkeleton from "@/components/administration/UserTableSkeleton";
+import LicenseeCardSkeleton from "@/components/administration/LicenseeCardSkeleton";
+import LicenseeTableSkeleton from "@/components/administration/LicenseeTableSkeleton";
 import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { IMAGES } from "@/lib/constants/images";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
-import UserDetailsModal from "@/components/administration/UserDetailsModal";
+import UserModal from "@/components/administration/UserModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
 import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/helpers/licensees";
 import type { Licensee } from "@/lib/types/licensee";
 import LicenseeSearchBar from "@/components/administration/LicenseeSearchBar";
+import ActivityLogsTable from "@/components/administration/ActivityLogsTable";
 import ActivityLogModal from "@/components/administration/ActivityLogModal";
 import PaymentHistoryModal from "@/components/administration/PaymentHistoryModal";
 import UserActivityLogModal from "@/components/administration/UserActivityLogModal";
@@ -87,6 +89,7 @@ function AdministrationPageContent() {
   const getActiveSectionFromURL = useCallback((): AdministrationSection => {
     const section = searchParams.get("section");
     if (section === "licensees") return "licensees";
+    if (section === "activity-logs") return "activity-logs";
     return "users";
   }, [searchParams]);
 
@@ -102,15 +105,12 @@ function AdministrationPageContent() {
     key: SortKey;
     direction: "ascending" | "descending";
   } | null>(null);
-  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<User | null>(
     null
   );
-  const [isUserDetailsModalOpen, setIsUserDetailsModalOpen] = useState(false);
-  const [selectedUserForDetails, setSelectedUserForDetails] =
-    useState<User | null>(null);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [addUserStep, setAddUserStep] = useState<1 | 2>(1);
   const [addUserForm, setAddUserForm] = useState<AddUserForm>({
@@ -209,10 +209,25 @@ function AdministrationPageContent() {
 
   const requestSort = administrationUtils.createSortHandler(sortConfig, setSortConfig, setCurrentPage);
 
-  const handleEditUser = (user: User) => {
-    // Open full user details editing by default
-    setSelectedUserForDetails(user);
-    setIsUserDetailsModalOpen(true);
+  const handleEditUser = async (user: User) => {
+    // Set loading state and open modal first
+    setIsUserModalOpen(true);
+    setSelectedUser(null); // Set to null initially to trigger loading state
+    
+    try {
+      // Fetch detailed user information
+      const response = await axios.get(`/api/users/${user._id}`);
+      if (response.data.success) {
+        setSelectedUser(response.data.user);
+      } else {
+        toast.error("Failed to load user details");
+        setIsUserModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user details:", error);
+      toast.error("Failed to load user details");
+      setIsUserModalOpen(false);
+    }
   };
 
   const handleDeleteUser = (user: User) => {
@@ -240,10 +255,10 @@ function AdministrationPageContent() {
         selectedUser.username,
         previousData,
         newData,
-        `Updated user roles and permissions for ${selectedUser.username}`
+        `Updated user profile and permissions for ${selectedUser.username}`
       );
 
-      setIsRolesModalOpen(false);
+      setIsUserModalOpen(false);
       setSelectedUser(null);
       // Refresh users with licensee filter
       const usersData = await fetchUsers(selectedLicencee);
@@ -255,10 +270,6 @@ function AdministrationPageContent() {
     }
   };
 
-  const handleShowUserDetails = (user: User) => {
-    setSelectedUserForDetails(user);
-    setIsUserDetailsModalOpen(true);
-  };
 
   // Add User modal handlers
   const openAddUserModal = () => {
@@ -614,13 +625,21 @@ function AdministrationPageContent() {
   };
 
   const renderSectionContent = () => {
+    if (activeSection === "activity-logs") {
+      return <ActivityLogsTable />;
+    }
+
     if (activeSection === "licensees") {
       if (isLicenseesLoading) {
         return (
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
-            <div className="loader mb-4" />
-            <p className="text-gray-600">Loading licensees...</p>
-          </div>
+          <>
+            <div className="block xl:hidden">
+              <LicenseeCardSkeleton />
+            </div>
+            <div className="hidden xl:block">
+              <LicenseeTableSkeleton />
+            </div>
+          </>
         );
       }
       return (
@@ -630,18 +649,20 @@ function AdministrationPageContent() {
             setSearchValue={setLicenseeSearchValue}
             onActivityLogClick={() => setIsActivityLogModalOpen(true)}
           />
-          <div className="block xl:hidden space-y-3 mt-6">
+          <div className="block xl:hidden">
             {paginatedLicensees.length > 0 ? (
-              paginatedLicensees.map((licensee) => (
-                <LicenseeCard
-                  key={licensee._id}
-                  licensee={licensee}
-                  onEdit={handleOpenEditLicensee}
-                  onDelete={handleOpenDeleteLicensee}
-                  onPaymentHistory={handlePaymentHistory}
-                  onTogglePaymentStatus={handleTogglePaymentStatus}
-                />
-              ))
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                {paginatedLicensees.map((licensee) => (
+                  <LicenseeCard
+                    key={licensee._id}
+                    licensee={licensee}
+                    onEdit={handleOpenEditLicensee}
+                    onDelete={handleOpenDeleteLicensee}
+                    onPaymentHistory={handlePaymentHistory}
+                    onTogglePaymentStatus={handleTogglePaymentStatus}
+                  />
+                ))}
+              </div>
             ) : (
               <p className="text-center text-gray-500 py-4">
                 No licensees found.
@@ -731,8 +752,13 @@ function AdministrationPageContent() {
     if (isLoading) {
       return (
         <>
-          <div className="block xl:hidden md:block">
-            <UserCardSkeleton />
+          <div className="block xl:hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <UserCardSkeleton />
+              <UserCardSkeleton />
+              <UserCardSkeleton />
+              <UserCardSkeleton />
+            </div>
           </div>
           <div className="hidden xl:block">
             <UserTableSkeleton />
@@ -752,17 +778,18 @@ function AdministrationPageContent() {
           setSearchDropdownOpen={setSearchDropdownOpen}
           onActivityLogClick={() => setIsUserActivityLogModalOpen(true)}
         />
-        <div className="block xl:hidden md:block space-y-3 mt-4">
+        <div className="block xl:hidden md:block">
           {paginatedUsers.length > 0 ? (
-            paginatedUsers.map((user) => (
-              <UserCard
-                key={user.username}
-                user={user}
-                onEdit={handleEditUser}
-                onMenu={handleShowUserDetails}
-                onDelete={handleDeleteUser}
-              />
-            ))
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {paginatedUsers.map((user) => (
+                <UserCard
+                  key={user.username}
+                  user={user}
+                  onEdit={handleEditUser}
+                  onDelete={handleDeleteUser}
+                />
+              ))}
+            </div>
           ) : (
             <p className="text-center text-gray-500 py-4">
               No users found matching your criteria.
@@ -776,7 +803,6 @@ function AdministrationPageContent() {
               sortConfig={sortConfig}
               requestSort={requestSort}
               onEdit={handleEditUser}
-              onMenu={handleShowUserDetails}
               onDelete={handleDeleteUser}
             />
           ) : (
@@ -790,13 +816,13 @@ function AdministrationPageContent() {
           totalPages={totalPages}
           setCurrentPage={setCurrentPage}
         />
-        <RolesPermissionsModal
-          open={isRolesModalOpen}
+        <UserModal
+          open={isUserModalOpen}
+          user={selectedUser}
           onClose={() => {
-            setIsRolesModalOpen(false);
+            setIsUserModalOpen(false);
             setSelectedUser(null);
           }}
-          user={selectedUser}
           onSave={handleSaveUser}
         />
         <DeleteUserModal
@@ -836,49 +862,6 @@ function AdministrationPageContent() {
             }
             setIsDeleteModalOpen(false);
             setSelectedUserToDelete(null);
-          }}
-        />
-        <UserDetailsModal
-          open={isUserDetailsModalOpen}
-          user={selectedUserForDetails}
-          onClose={() => {
-            setIsUserDetailsModalOpen(false);
-            setSelectedUserForDetails(null);
-          }}
-          onSave={async (profileData) => {
-            if (!selectedUserForDetails) return;
-
-            const previousData = { ...selectedUserForDetails };
-            const updateData = {
-              _id: selectedUserForDetails._id,
-              ...profileData,
-            };
-
-            try {
-              // Call the API to update user profile
-              await axios.put("/api/users", updateData);
-
-              // Log the profile update activity
-              await userLogger.logUpdate(
-                selectedUserForDetails._id,
-                selectedUserForDetails.username,
-                previousData,
-                updateData,
-                `Updated profile for user: ${selectedUserForDetails.username}`
-              );
-
-              // Close modal and refresh users
-              setIsUserDetailsModalOpen(false);
-              setSelectedUserForDetails(null);
-
-              // Refresh users list
-              const usersData = await fetchUsers();
-              setAllUsers(usersData);
-              toast.success("User profile updated successfully");
-            } catch (error) {
-              console.error("Failed to update user profile:", error);
-              toast.error("Failed to update user profile");
-            }
           }}
         />
         <AddUserDetailsModal
@@ -934,7 +917,7 @@ function AdministrationPageContent() {
                 />
                 <span>Add User</span>
               </Button>
-            ) : (
+            ) : activeSection === "licensees" ? (
               <Button
                 onClick={handleOpenAddLicensee}
                 className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
@@ -947,7 +930,7 @@ function AdministrationPageContent() {
                 />
                 <span>Add Licensee</span>
               </Button>
-            )}
+            ) : null}
           </div>
 
           {/* Section Navigation */}
@@ -973,7 +956,7 @@ function AdministrationPageContent() {
 
 export default function AdministrationPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<UserTableSkeleton />}>
       <AdministrationPageContent />
     </Suspense>
   );

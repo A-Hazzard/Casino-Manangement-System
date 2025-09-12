@@ -165,10 +165,13 @@ export const handleAnalyticsExport = async (
         },
         {
           label: "Average Performance",
-          value: `${(
-            performanceData.reduce((sum, m) => sum + m.current, 0) /
-            performanceData.length
-          ).toFixed(1)}%`,
+          value: `${(() => {
+            const percentage = (performanceData.reduce((sum, item) => sum + item.current, 0) / performanceData.length);
+            const hasDecimals = percentage % 1 !== 0;
+            const decimalPart = percentage % 1;
+            const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+            return percentage.toFixed(hasSignificantDecimals ? 1 : 0);
+          })()}%`,
         },
         { label: "Anomalies Detected", value: anomalyData.length },
       ],
@@ -357,7 +360,8 @@ export const chartConfig = {
       case "date":
         return new Date(value).toLocaleDateString();
       case "currency":
-        return `$${(Number(value) / 1000).toFixed(0)}K`;
+        const thousands = Number(value) / 1000;
+        return `$${thousands.toFixed(0)}K`;
       case "percentage":
         return `${value}%`;
       default:

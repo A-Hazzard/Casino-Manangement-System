@@ -2,27 +2,39 @@
 
 import React, { useEffect, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
+import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw } from "lucide-react";
 
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { 
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+} from "@radix-ui/react-icons";
 import { formatCurrency } from "@/lib/utils";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import Link from "next/link";
 import LocationInfoSkeleton from "@/components/location/LocationInfoSkeleton";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
 import { fetchLocationDetails, fetchCabinets } from "@/lib/helpers/locations";
 import MetricsSummary from "@/components/locationDetails/MetricsSummary";
-import CabinetFilterBar from "@/components/locationDetails/CabinetFilterBar";
-import CabinetGrid from "@/components/locationDetails/CabinetGrid";
+import CabinetTable from "@/components/ui/cabinets/CabinetTable";
+import CabinetCard from "@/components/ui/cabinets/CabinetCard";
 import { TimePeriod } from "@/lib/types/api";
 import RefreshButton from "@/components/ui/RefreshButton";
 import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { fetchLocationDetailsById } from "@/lib/helpers/locations";
+import { CabinetSortOption } from "@/lib/types/cabinets";
+import { mapToCabinetProps } from "@/lib/utils/cabinet";
+import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 
 export default function LocationDetailsPage() {
   const params = useParams();
@@ -42,9 +54,15 @@ export default function LocationDetailsPage() {
   const [filteredCabinets, setFilteredCabinets] = useState<
     ExtendedCabinetDetail[]
   >([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const itemsPerPage = 12;
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
+  
+  // Sorting state
+  const [sortOption, setSortOption] = useState<CabinetSortOption>("moneyIn");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  
+  // Cabinet actions store
+  const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // State for AccountingDetails
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
@@ -55,6 +73,55 @@ export default function LocationDetailsPage() {
 
   // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Floating refresh button state
+  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
+
+  // Handle cabinet updates
+  const handleCabinetUpdated = () => {
+    // Refresh the data when a cabinet is updated
+    handleRefresh();
+  };
+
+  // Sorting and pagination logic
+  const handleColumnSort = (column: CabinetSortOption) => {
+    if (sortOption === column) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortOption(column);
+      setSortOrder("desc");
+    }
+  };
+
+  const sorted = [...filteredCabinets].sort((a, b) => {
+    const order = sortOrder === "desc" ? -1 : 1;
+    const aValue = a[sortOption] || 0;
+    const bValue = b[sortOption] || 0;
+    return (aValue > bValue ? 1 : -1) * order;
+  });
+
+  const paginatedCabinets = sorted.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+  const totalPages = Math.ceil(sorted.length / itemsPerPage);
+
+  // Edit and delete handlers
+  const handleEdit = (cabinet: ExtendedCabinetDetail) => {
+    openEditModal(cabinet);
+  };
+
+  const handleDelete = (cabinet: ExtendedCabinetDetail) => {
+    openDeleteModal(cabinet);
+  };
+
+  // Transform cabinet for table props
+  const transformCabinet = (cabinet: ExtendedCabinetDetail) => {
+    return mapToCabinetProps(cabinet, {
+      onEdit: () => handleEdit(cabinet),
+      onDelete: () => handleDelete(cabinet),
+    });
+  };
 
   // Effect to handle licensee changes - refetch locations and update selection
   useEffect(() => {
@@ -97,6 +164,16 @@ export default function LocationDetailsPage() {
 
   // Use helpers to fetch data
   useEffect(() => {
+    // Only proceed if we have a valid activeMetricsFilter - no fallback
+    if (!activeMetricsFilter) {
+      console.warn("⚠️ No activeMetricsFilter available in location details, skipping data fetch");
+      setCabinets([]);
+      setFilteredCabinets([]);
+      setSelectedCabinet(null);
+      setMetricsLoading(false);
+      return;
+    }
+    
     setMetricsLoading(true);
 
     const initializePage = async () => {
@@ -136,6 +213,17 @@ export default function LocationDetailsPage() {
     setRefreshing(true);
     setMetricsLoading(true);
     try {
+      // Only proceed if we have a valid activeMetricsFilter - no fallback
+      if (!activeMetricsFilter) {
+        console.warn("⚠️ No activeMetricsFilter available during refresh in location details, skipping data fetch");
+        setCabinets([]);
+        setFilteredCabinets([]);
+        setSelectedCabinet(null);
+        setMetricsLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
       // Fetch location details and cabinets in parallel
       const [location, cabinets] = await Promise.all([
         fetchLocationDetails(slug, selectedLicencee),
@@ -158,10 +246,22 @@ export default function LocationDetailsPage() {
     }
   };
 
+  // Handle scroll to show/hide floating refresh button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      setShowFloatingRefresh(scrollTop > 200);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <>
 
-      <EditCabinetModal />
+      <EditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
       <DeleteCabinetModal />
 
       <PageLayout
@@ -316,21 +416,157 @@ export default function LocationDetailsPage() {
           {!locationInfo && (
             <MetricsSummary location={locationInfo} cabinets={cabinets} />
           )}
-          <CabinetFilterBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            cabinets={cabinets}
-            setFilteredCabinets={setFilteredCabinets}
-            setCurrentPage={setCurrentPage}
-          />
-          <CabinetGrid
-            filteredCabinets={filteredCabinets}
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            router={router}
-          />
+          {/* Search and Filter Bar */}
+          <div className="flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+            <div className="relative flex-1 max-w-md min-w-0">
+              <input
+                type="text"
+                placeholder="Search machines..."
+                className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Cabinet Table and Cards - Exact same as cabinets page */}
+          {filteredCabinets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-md">
+              <div className="text-gray-500 text-lg mb-2">No Data Available</div>
+              <div className="text-gray-400 text-sm text-center">
+                {searchTerm
+                  ? "No cabinets match your search criteria."
+                  : "No cabinets available for this location."}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View with green header and border styling */}
+              <div className="hidden md:block">
+                <CabinetTable
+                  cabinets={paginatedCabinets.map(transformCabinet)}
+                  sortOption={sortOption}
+                  sortOrder={sortOrder}
+                  onColumnSort={handleColumnSort}
+                  onEdit={(cabinetProps) => {
+                    // Find the original cabinet
+                    const cabinet = paginatedCabinets.find(
+                      (c) => c._id === cabinetProps._id
+                    );
+                    if (cabinet) handleEdit(cabinet);
+                  }}
+                  onDelete={(cabinetProps) => {
+                    // Find the original cabinet
+                    const cabinet = paginatedCabinets.find(
+                      (c) => c._id === cabinetProps._id
+                    );
+                    if (cabinet) handleDelete(cabinet);
+                  }}
+                />
+              </div>
+
+              {/* Mobile Card View - Only show on small screens */}
+              <div className="block md:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full">
+                {paginatedCabinets.map((cabinet) => (
+                  <CabinetCard
+                    key={cabinet._id}
+                    _id={cabinet._id}
+                    assetNumber={cabinet.assetNumber || ""}
+                    game={cabinet.game || ""}
+                    smbId={
+                      cabinet.smbId ||
+                      cabinet.smibBoard ||
+                      cabinet.relayId ||
+                      ""
+                    }
+                    serialNumber={getSerialNumberIdentifier(cabinet)}
+                    locationId={cabinet.locationId || ""}
+                    locationName={cabinet.locationName || ""}
+                    moneyIn={cabinet.moneyIn || 0}
+                    moneyOut={cabinet.moneyOut || 0}
+                    cancelledCredits={cabinet.moneyOut || 0}
+                    jackpot={cabinet.jackpot || 0}
+                    gross={cabinet.gross || 0}
+                    lastOnline={
+                      cabinet.lastOnline instanceof Date
+                        ? cabinet.lastOnline.toISOString()
+                        : typeof cabinet.lastOnline === "string"
+                        ? cabinet.lastOnline
+                        : undefined
+                    }
+                    installedGame={
+                      cabinet.installedGame || cabinet.game || ""
+                    }
+                    onEdit={() => handleEdit(cabinet)}
+                    onDelete={() => handleDelete(cabinet)}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(0)}
+                    disabled={currentPage === 0}
+                    className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  >
+                    <DoubleArrowLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <span className="text-gray-700 text-sm">Page</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 1;
+                      if (val < 1) val = 1;
+                      if (val > totalPages) val = totalPages;
+                      setCurrentPage(val - 1);
+                    }}
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                    aria-label="Page number"
+                  />
+                  <span className="text-gray-700 text-sm">
+                    of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={currentPage === totalPages - 1}
+                    className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(totalPages - 1)}
+                    disabled={currentPage === totalPages - 1}
+                    className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  >
+                    <DoubleArrowRightIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           {selectedCabinet && (
             <AccountingDetails
@@ -341,6 +577,31 @@ export default function LocationDetailsPage() {
               activeMetricsFilter="All Time"
             />
           )}
+
+        {/* Floating Refresh Button */}
+        <AnimatePresence>
+          {showFloatingRefresh && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="fixed bottom-6 right-6 z-50"
+            >
+              <motion.button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <RefreshCw
+                  className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </PageLayout>
     </>
   );

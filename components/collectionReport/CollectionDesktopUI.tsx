@@ -22,7 +22,11 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
+  selectedFilters,
+  onFilterChange,
+  onClearFilters,
   isSearching,
+  onEdit,
 }) => {
   return (
     <div className="hidden lg:block">
@@ -37,6 +41,9 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
           onSearchSubmit={onSearchSubmit}
           showUncollectedOnly={showUncollectedOnly}
           onShowUncollectedOnlyChange={onShowUncollectedOnlyChange}
+          selectedFilters={selectedFilters}
+          onFilterChange={onFilterChange}
+          onClearFilters={onClearFilters}
           isSearching={isSearching}
         />
       </div>
@@ -58,7 +65,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
             ref={desktopTableRef}
             className="animate-in fade-in-0 slide-in-from-bottom-2"
           >
-            <CollectionReportTable data={desktopCurrentItems} />
+            <CollectionReportTable data={desktopCurrentItems} onEdit={onEdit} />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Pencil2Icon } from "@radix-ui/react-icons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ExtendedCabinetInfoHeaderProps = {
   title: string;
@@ -36,10 +37,10 @@ const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
           </h1>
 
           <p className="text-grayHighlight mt-2">
-            Manufacturer: {isLoading ? "Loading..." : "Some Manufacturer"}
+            Manufacturer: {isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : "Some Manufacturer"}
           </p>
           <p className="text-grayHighlight mt-1">
-            Game Type: {isLoading ? "Loading..." : "None"}
+            Game Type: {isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : "None"}
           </p>
           <p className="mt-1">
             <span className="text-button">{title}</span>

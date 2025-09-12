@@ -1,261 +1,195 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
+import { connectDB } from "../lib/middleware/db";
 import { ActivityLog } from "@/app/api/lib/models/activityLog";
-import { apiLogger } from "@/app/api/lib/utils/logger";
-import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
-import { generateMongoId } from "@/lib/utils/id";
+import { calculateChanges } from "@/app/api/lib/helpers/activityLogger";
 
 /**
- * Extract client IP address from request headers with comprehensive fallback
- * This function tries multiple headers to get the real client IP address
+ * GET /api/activity-logs
+ * Get activity logs with filtering, searching, and pagination
  */
-function extractClientIP(request: NextRequest, fallbackIP?: string): string {
-  // Try various headers that might contain the real client IP
-  const possibleHeaders = [
-    "x-forwarded-for",
-    "x-real-ip",
-    "x-client-ip",
-    "x-forwarded",
-    "x-cluster-client-ip",
-    "forwarded-for",
-    "forwarded",
-    "cf-connecting-ip", // Cloudflare
-    "true-client-ip", // Akamai and Cloudflare
-  ];
-
-  for (const header of possibleHeaders) {
-    const value = request.headers.get(header);
-    if (value) {
-      // Handle comma-separated values (take the first one)
-      const firstIP = value.split(",")[0].trim();
-      if (firstIP && firstIP !== "unknown" && firstIP !== "::1") {
-        return firstIP;
-      }
-    }
-  }
-
-  // Fallback to the IP provided in the request body
-  if (fallbackIP && fallbackIP !== "client-side" && fallbackIP !== "unknown") {
-    return fallbackIP;
-  }
-
-  // Last resort - try to get from connection
-  const connection = (request as { connection?: { remoteAddress?: string } })
-    .connection;
-  if (connection?.remoteAddress) {
-    return connection.remoteAddress;
-  }
-
-  return "unknown";
-}
-
-export async function POST(request: NextRequest) {
-  const context = apiLogger.createContext(request, "/api/activity-logs");
-  apiLogger.startLogging();
-
-  try {
-    await connectDB();
-
-    const body = await request.json();
-    const {
-      action,
-      resource,
-      resourceId,
-      resourceName,
-      details,
-      previousData,
-      newData,
-      ipAddress,
-      userAgent,
-    } = body;
-
-    // Get user information from request body or extract from JWT token
-    const userId = body.userId || "unknown";
-    const username = body.username || "unknown";
-
-    // Get client IP from headers with comprehensive fallback
-    const clientIP = extractClientIP(request, ipAddress);
-
-    // Generate a proper MongoDB ObjectId-style hex string for the activity log
-    const activityLogId = await generateMongoId();
-
-    // Create activity log entry
-    const activityLog = new ActivityLog({
-      _id: activityLogId,
-      userId,
-      username,
-      action,
-      resource,
-      resourceId,
-      resourceName,
-      details,
-      previousData,
-      newData,
-      ipAddress: clientIP,
-      userAgent: userAgent || request.headers.get("user-agent"),
-      timestamp: new Date(),
-      // Add missing fields with default values
-      actor: {
-        id: userId,
-        email: username,
-        role: "user",
-      },
-      actionType: action.toUpperCase(),
-      entityType: resource,
-      entity: {
-        id: resourceId,
-        name: resourceName,
-      },
-      changes: [],
-      description: details,
-    });
-
-    await activityLog.save();
-
-    apiLogger.logSuccess(
-      context,
-      `Successfully logged activity for ${resource} ${resourceId}`
-    );
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Activity logged successfully",
-        activityId: activityLog._id,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    apiLogger.logError(context, "Failed to log activity", errorMessage);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to log activity",
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
-}
-
 export async function GET(request: NextRequest) {
-  const context = apiLogger.createContext(request, "/api/activity-logs");
-  apiLogger.startLogging();
-
   try {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
+    
+    // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Filter parameters
     const userId = searchParams.get("userId");
-    const resource = searchParams.get("resource");
+    const username = searchParams.get("username");
+    const email = searchParams.get("email");
     const action = searchParams.get("action");
-    const ipAddress = searchParams.get("ipAddress");
+    const resource = searchParams.get("resource");
+    const resourceId = searchParams.get("resourceId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const startTime = searchParams.get("startTime");
-    const endTime = searchParams.get("endTime");
-    const eventType = searchParams.get("eventType");
-    const type = searchParams.get("type");
+    const search = searchParams.get("search");
 
-    // Build query
-    const query: Record<string, unknown> = {};
+    // Sort parameters
+    const sortBy = searchParams.get("sortBy") || "timestamp";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
+
+    // Build query filter
+    const filter: Record<string, unknown> = {};
+    
 
     if (userId) {
-      query.userId = userId;
+      filter.userId = userId;
     }
 
-    if (resource) {
-      query.resource = resource;
+    if (username) {
+      filter.username = { $regex: username, $options: "i" };
+    }
+
+    if (email) {
+      // More explicit email search - ensure it's searching the right field
+      filter["actor.email"] = { $regex: email, $options: "i" };
     }
 
     if (action) {
-      query.action = action;
+      filter.action = action;
     }
 
-    if (ipAddress) {
-      query.ipAddress = ipAddress;
+    if (resource) {
+      filter.resource = resource;
     }
 
-    if (startDate && endDate) {
-      const startDateTime = new Date(startDate);
-      const endDateTime = new Date(endDate);
+    if (resourceId) {
+      filter.resourceId = resourceId;
+    }
 
-      // Add time filtering if provided
-      if (startTime) {
-        const [hours, minutes, seconds] = startTime.split(":").map(Number);
-        startDateTime.setHours(hours, minutes, seconds || 0, 0);
+    if (startDate || endDate) {
+      filter.timestamp = {} as Record<string, Date>;
+      if (startDate) {
+        (filter.timestamp as Record<string, Date>).$gte = new Date(startDate);
+        console.warn("Activity logs start date filter:", new Date(startDate));
       }
-
-      if (endTime) {
-        const [hours, minutes, seconds] = endTime.split(":").map(Number);
-        endDateTime.setHours(hours, minutes, seconds || 0, 999);
-      }
-
-      query.timestamp = {
-        $gte: startDateTime,
-        $lte: endDateTime,
-      };
-    }
-
-    if (eventType) {
-      query.resource = eventType;
-    }
-
-    if (type) {
-      // Map type to action
-      const typeMapping: Record<string, string> = {
-        General: "view",
-        Significant: "update",
-        Priority: "create",
-      };
-      if (typeMapping[type]) {
-        query.action = typeMapping[type];
+      if (endDate) {
+        (filter.timestamp as Record<string, Date>).$lte = new Date(endDate);
+        console.warn("Activity logs end date filter:", new Date(endDate));
       }
     }
 
-    // Get total count
-    const totalCount = await ActivityLog.countDocuments(query);
+    // Global search across multiple fields (only if no specific filters are applied)
+    if (search && !username && !email) {
+      filter.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { "actor.email": { $regex: search, $options: "i" } },
+        { resourceName: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { details: { $regex: search, $options: "i" } },
+      ];
+    }
 
-    // Get paginated results
-    const activities = await ActivityLog.find(query)
-      .sort({ timestamp: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    // Build sort object
+    const sort: Record<string, 1 | -1> = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    apiLogger.logSuccess(
-      context,
-      `Successfully fetched ${
-        activities.length
-      } activity logs (page ${page}/${Math.ceil(totalCount / limit)})`
-    );
+    console.warn("Activity logs query filter:", JSON.stringify(filter, null, 2));
+    
+    // Execute query with pagination
+    const [logs, totalCount] = await Promise.all([
+      ActivityLog.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ActivityLog.countDocuments(filter),
+    ]);
+    
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
     return NextResponse.json({
       success: true,
       data: {
-        activities: convertResponseToTrinidadTime(activities),
+        logs,
         pagination: {
           currentPage: page,
-          totalPages: Math.ceil(totalCount / limit),
+          totalPages,
           totalCount,
-          hasNextPage: page < Math.ceil(totalCount / limit),
-          hasPrevPage: page > 1,
+          hasNextPage,
+          hasPrevPage,
           limit,
         },
       },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    apiLogger.logError(context, "Failed to fetch activity logs", errorMessage);
+    console.error("Error fetching activity logs:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch activity logs",
-        details: errorMessage,
+      { success: false, error: "Failed to fetch activity logs" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/activity-logs
+ * Create a new activity log entry
+ */
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const body = await request.json();
+    
+    // Validate required fields
+    const { action, resource, resourceId, userId, username } = body;
+    
+    if (!action || !resource || !resourceId || !userId || !username) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Calculate changes if previousData and newData are provided
+    let changes = body.changes || [];
+    if (body.previousData && body.newData && changes.length === 0) {
+      changes = calculateChanges(body.previousData, body.newData);
+    }
+
+    // Create new activity log
+    const activityLog = new ActivityLog({
+      _id: new Date().getTime().toString(), // Simple ID generation
+      timestamp: new Date(),
+      userId,
+      username,
+      action,
+      resource,
+      resourceId,
+      resourceName: body.resourceName,
+      details: body.details,
+      description: body.description,
+      actor: body.actor || {
+        id: userId,
+        email: username,
+        role: "user"
       },
+      ipAddress: body.ipAddress,
+      userAgent: body.userAgent,
+      changes: changes,
+      previousData: body.previousData,
+      newData: body.newData,
+    });
+
+    await activityLog.save();
+
+    return NextResponse.json({
+      success: true,
+      data: { activityLog }
+    });
+  } catch (error) {
+    console.error("Error creating activity log:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create activity log" },
       { status: 500 }
     );
   }

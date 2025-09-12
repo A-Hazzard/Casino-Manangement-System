@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
     const allowedLocationIds = (userPermissions?.["gaming-locations"] as Record<string, unknown>)?.resources as string[] || [];
     
     // Filter by user's allowed locations if not admin
-    let locationFilter = {};
-    if (!userRoles.includes("admin") && allowedLocationIds.length > 0) {
-      locationFilter = { locationId: { $in: allowedLocationIds } };
-    }
+    // let locationFilter = {};
+    // if (!userRoles.includes("admin") && allowedLocationIds.length > 0) {
+    //   locationFilter = { locationId: { $in: allowedLocationIds } };
+    // }
 
     // Add specific location filter if requested
     if (locationId) {
@@ -59,44 +59,20 @@ export async function GET(request: NextRequest) {
         );
       }
       // TODO: Use locationFilter in actual data fetching implementation
-      locationFilter = { ...locationFilter, locationId };
+      // locationFilter = { ...locationFilter, locationId };
     }
 
     // TODO: Implement actual data fetching logic using locationFilter
-    // This is a placeholder implementation
-    console.warn("Location filter for future implementation:", locationFilter);
-    const sampleData: DailyCountsReport[] = [
-      {
-        locationId: "LOC001",
-        locationName: "Main Casino Floor",
-        date: new Date().toISOString().split('T')[0],
-        meterReadings: [
-          {
-            machineId: "MAC001",
-            machineName: "Lucky Stars Deluxe",
-            openingReading: 125000,
-            closingReading: 128500,
-            netRevenue: 3500,
-            variance: 0,
-          },
-        ],
-        voucherData: {
-          issued: 1250,
-          redeemed: 1180,
-          outstanding: 70,
-        },
-        physicalCounts: {
-          expectedCash: 15000,
-          actualCash: 14950,
-          variance: -50,
-        },
-      },
-    ];
+    // This should query MongoDB collections for daily counts data
+    // const dailyCountsData = await db.collection('daily-counts').find(locationFilter).toArray();
+    
+    // For now, return empty array until MongoDB implementation is complete
+    const responseData: DailyCountsReport[] = [];
 
     return NextResponse.json({
       success: true,
-      data: sampleData,
-      message: "Daily counts retrieved successfully",
+      data: responseData,
+      message: "Daily counts endpoint - MongoDB implementation pending",
     });
 
   } catch (error) {

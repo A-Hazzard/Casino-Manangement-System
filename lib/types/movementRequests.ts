@@ -57,6 +57,8 @@ export type MovementRequest = {
   approvedBy?: string;
   /** Second approver (user email) */
   approvedBySecond?: string;
+  /** Soft deletion timestamp */
+  deletedAt?: Date;
 };
 
 /**

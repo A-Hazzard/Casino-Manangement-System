@@ -126,7 +126,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ### TypeScript Discipline
 - All types in `shared/types/`, `lib/types/`, or `types/` directories
 - Prefer `type` over `interface`
-- No `any` types allowed
+- No `any` types allowed (temporary exceptions with ESLint disable comments for placeholder data)
 - Always check dependencies before deleting code
 
 ### Code Organization
@@ -140,6 +140,19 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - Always run `pnpm build` after changes
 - Never ignore ESLint violations
 - Follow established code style
+
+### Loading States and Skeleton Loaders - CRITICAL REQUIREMENTS
+- **MANDATORY: Every page and component with async data MUST use specific skeleton loaders**
+- **NEVER use generic loading states** like "Loading...", "Loading Data", or generic spinners
+- **EVERY skeleton loader MUST exactly match the layout and structure of the actual content**
+- **Skeleton loaders MUST be page/component-specific** - no generic reusable skeletons for different content types
+
+#### Skeleton Loader Requirements:
+1. **Content-Specific Skeletons:** Each page must have its own skeleton that matches the exact layout of the real content
+2. **Visual Accuracy:** Exact dimensions and spacing as the real content, proper visual hierarchy, all interactive elements represented
+3. **Implementation Standards:** Use Shadcn Skeleton component, create dedicated skeleton files in `components/ui/skeletons/`
+4. **File Organization:** Skeleton files in `components/ui/skeletons/[PageName]Skeletons.tsx`
+5. **Mobile-Specific Requirements:** Every page and section must have mobile-specific loaders that match mobile layouts
 
 ### Security
 - JWT tokens with `jose` library
@@ -324,6 +337,50 @@ export default function Component() {
 - Optimize database queries
 - Improve error handling consistency
 - Enhance test coverage
+
+## Recent System Updates (January 2025)
+
+### Collection System Implementation
+- **Complete Collection Management System** implemented with full CRUD operations
+- **Collection Reports**: Main dashboard for viewing, filtering, and managing collection reports
+- **Collection Detail Views**: Detailed machine-level and location-level financial analysis
+- **New Collection Modal**: Comprehensive interface for creating collection reports with machine selection
+- **Financial Calculations**: Accurate drop, cancelled credits, gross revenue, and variance calculations
+- **Multi-tab Interface**: Collection, Monthly, Manager, and Collector schedule management
+- **Real-time Data**: Live updates and refresh functionality across all collection components
+
+### Date Filter System Enhancement
+- **Custom Date Range Fix**: Resolved timezone conversion issues for accurate date filtering
+- **All Time Filter**: Implemented proper "All Time" filtering across all endpoints
+- **Independent Date Filters**: Activity Log and Bill Validator now have separate date filters
+- **MUI TimePicker Integration**: Professional time selection components replacing basic HTML inputs
+- **Date Range Validation**: Comprehensive date validation and error handling
+
+### Cabinet Management System
+- **SMIB Configuration**: Complete SMIB (Slot Machine Interface Board) management interface
+- **Firmware Management**: Upload, version control, and deployment of SMIB firmware
+- **Movement Requests**: Cabinet relocation workflow with approval system
+- **Real-time Monitoring**: Live cabinet status tracking and performance analytics
+- **Collection Settings**: Configure collection parameters and track collection state
+
+### Sample Data Removal
+- **All sample and mock data has been removed** from the codebase
+- Components now use empty arrays and placeholder messages for MongoDB integration
+- All hardcoded data arrays replaced with TODO comments for future MongoDB implementation
+- TypeScript errors from sample data removal resolved with proper type handling
+
+### Skeleton Loading System Implementation
+- **Comprehensive skeleton loading system** implemented across all pages
+- Each page has specific skeleton loaders that match exact content layout
+- Mobile-specific skeleton loaders for responsive design
+- Skeleton files organized in `components/ui/skeletons/` directory
+- All generic loading states replaced with content-specific skeletons
+
+### MongoDB Integration Status
+- **All APIs now use real MongoDB data** - no sample data in API routes
+- Frontend components prepared for MongoDB data fetching
+- Placeholder implementations ready for real data integration
+- Financial calculations and business logic preserved for real data
 
 ---
 

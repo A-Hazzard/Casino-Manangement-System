@@ -2,6 +2,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { Meters } from "@/app/api/lib/models/meters";
 import { Machine } from "@/app/api/lib/models/machines";
 import { MachineSession } from "@/app/api/lib/models/machineSessions";
+import { calculateMovement } from "@/lib/utils/movementCalculation";
 import type {
   SasMetricsCalculation,
   PreviousCollectionMeters,
@@ -125,7 +126,7 @@ export async function getSasTimePeriod(
 }
 
 /**
- * Get previous collection meters from machineSessions
+ * Get previous collection meters from machine and gaming location
  */
 export async function getPreviousCollectionMeters(
   machineId: string
@@ -148,35 +149,28 @@ export async function getPreviousCollectionMeters(
     metersIn: 0,
     metersOut: 0,
   };
-  const collectionTime = machineData.collectionTime;
+
+  // Get previousCollectionTime from gaming location, not machine
+  const gamingLocationId = machineData.gamingLocation as string;
+  let collectionTime: Date | undefined;
+  
+  if (gamingLocationId) {
+    const GamingLocations = (await import("@/app/api/lib/models/gaminglocations")).GamingLocations;
+    const gamingLocation = await GamingLocations.findById(gamingLocationId).lean();
+    if (gamingLocation) {
+      const locationData = gamingLocation as Record<string, unknown>;
+      const previousCollectionTime = locationData.previousCollectionTime;
+      collectionTime = previousCollectionTime ? new Date(previousCollectionTime as string) : undefined;
+    }
+  }
 
   return {
     metersIn: (collectionMeters.metersIn as number) || 0,
     metersOut: (collectionMeters.metersOut as number) || 0,
-    collectionTime: collectionTime
-      ? new Date(collectionTime as string)
-      : undefined,
+    collectionTime,
   };
 }
 
-/**
- * Calculate movement as difference from previous collection
- */
-export function calculateMovement(
-  currentMetersIn: number,
-  currentMetersOut: number,
-  previousMeters: PreviousCollectionMeters
-): MovementCalculation {
-  const metersIn = currentMetersIn - previousMeters.metersIn;
-  const metersOut = currentMetersOut - previousMeters.metersOut;
-  const gross = metersIn - metersOut;
-
-  return {
-    metersIn,
-    metersOut,
-    gross,
-  };
-}
 
 /**
  * Update machine collection meters and collection time
@@ -185,18 +179,26 @@ export async function updateMachineCollectionMeters(
   machineId: string,
   metersIn: number,
   metersOut: number,
-  collectionTime: Date = new Date()
+  collectionTime: Date = new Date(),
+  updateCollectionTime: boolean = false
 ): Promise<void> {
   await connectDB();
 
-  // Update machine with new collection meters and time
+  // Prepare update object
+  const updateData: Record<string, unknown> = {
+    "collectionMeters.metersIn": metersIn,
+    "collectionMeters.metersOut": metersOut,
+    updatedAt: new Date(),
+  };
+
+  // Only update collectionTime if explicitly requested (when report is finalized)
+  if (updateCollectionTime) {
+    updateData.collectionTime = collectionTime;
+  }
+
+  // Update machine with new collection meters
   await Machine.findByIdAndUpdate(machineId, {
-    $set: {
-      "collectionMeters.metersIn": metersIn,
-      "collectionMeters.metersOut": metersOut,
-      collectionTime: collectionTime,
-      updatedAt: new Date(),
-    },
+    $set: updateData,
   });
 
   // Machine collection meters updated successfully
@@ -295,15 +297,22 @@ export async function createCollectionWithCalculations(
   const movement = calculateMovement(
     payload.metersIn as number,
     payload.metersOut as number,
-    previousMeters
+    previousMeters,
+    payload.ramClear as boolean,
+    payload.ramClearCoinIn as number,
+    payload.ramClearCoinOut as number,
+    payload.ramClearMetersIn as number,
+    payload.ramClearMetersOut as number
   );
 
-  // Update machine collection meters
+  // Update machine collection meters with calculated movement values
+  // Never update collectionTime here - it's managed at gaming location level
   await updateMachineCollectionMeters(
     payload.machineId as string,
-    payload.metersIn as number,
-    payload.metersOut as number,
-    finalSasEndTime
+    movement.metersIn,
+    movement.metersOut,
+    finalSasEndTime,
+    false // Never update collectionTime at machine level
   );
 
   return {

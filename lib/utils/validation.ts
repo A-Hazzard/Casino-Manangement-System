@@ -50,11 +50,13 @@ export function validateCollectionReportPayload(
     isNaN(payload.amountToCollect)
   )
     errors.push("Amount to collect is required and must be a number.");
+  // amountCollected is optional - only validate if provided
   if (
-    typeof payload.amountCollected !== "number" ||
-    isNaN(payload.amountCollected)
+    payload.amountCollected !== undefined &&
+    payload.amountCollected !== null &&
+    (typeof payload.amountCollected !== "number" || isNaN(payload.amountCollected))
   )
-    errors.push("Collected amount is required and must be a number.");
+    errors.push("Collected amount must be a valid number when provided.");
   if (typeof payload.taxes !== "number" || isNaN(payload.taxes))
     errors.push("Taxes is required and must be a number.");
   if (typeof payload.advance !== "number" || isNaN(payload.advance))

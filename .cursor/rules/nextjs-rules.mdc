@@ -140,6 +140,100 @@ All contributors should adhere to the following rules, which are enforced throug
 
 ---
 
+## 7.1. Loading States & Skeleton Loaders - CRITICAL REQUIREMENTS
+
+- **MANDATORY: Every page and component with async data MUST use specific skeleton loaders**
+- **NEVER use generic loading states** like "Loading...", "Loading Data", or generic spinners
+- **EVERY skeleton loader MUST exactly match the layout and structure of the actual content**
+- **Skeleton loaders MUST be page/component-specific** - no generic reusable skeletons for different content types
+
+### **Skeleton Loader Requirements:**
+
+#### **1. Content-Specific Skeletons:**
+- **Each page must have its own skeleton** that matches the exact layout of the real content
+- **Each tab/section must have its own skeleton** that represents the specific content structure
+- **Skeleton must include all visual elements**: headers, cards, tables, buttons, forms, charts, etc.
+- **Skeleton must match responsive behavior**: desktop table view, mobile card view, etc.
+
+#### **2. Visual Accuracy:**
+- **Exact dimensions and spacing** as the real content
+- **Proper visual hierarchy** with headers, descriptions, and content areas
+- **All interactive elements** represented (buttons, inputs, dropdowns, etc.)
+- **Status indicators** included where appropriate (online/offline dots, badges, etc.)
+- **Pagination controls** represented in skeleton form
+
+#### **3. Implementation Standards:**
+- **Use Shadcn Skeleton component** for all skeleton elements
+- **Create dedicated skeleton files** in `components/ui/skeletons/`
+- **Name skeletons specifically**: `PageNameSkeleton`, `TabNameSkeleton`, `SectionNameSkeleton`
+- **Import and use specific skeletons** in each component
+- **NO generic `MainContentSkeleton` or similar** - each must be content-specific
+
+#### **4. File Organization:**
+- **Skeleton files**: `components/ui/skeletons/[PageName]Skeletons.tsx`
+- **Export specific skeletons**: `export const PageNameSkeleton = () => (...)` 
+- **Import in components**: `import { PageNameSkeleton } from "@/components/ui/skeletons/[PageName]Skeletons"`
+- **Use in loading states**: `{loading ? <PageNameSkeleton /> : <ActualContent />}`
+
+#### **5. Examples of PROPER Implementation:**
+```typescript
+// ✅ CORRECT - Specific skeleton for Machines Overview tab
+export const MachinesOverviewSkeleton = () => (
+  <div className="space-y-6">
+    {/* Machine Statistics Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="min-h-[120px]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-16" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              </div>
+              <Skeleton className="h-12 w-12 rounded-full" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+    {/* Filters, Table, Pagination - all matching real content */}
+  </div>
+);
+
+// ❌ WRONG - Generic skeleton
+export const GenericSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+  </div>
+);
+```
+
+#### **6. Enforcement Rules:**
+- **Code reviews MUST verify** skeleton loaders match content layout
+- **NO text-based loading states** allowed ("Loading...", "Loading Data", etc.)
+- **NO generic spinners** for content areas
+- **ALL async operations** must show appropriate skeleton
+- **Skeleton must be visible** during data fetching, not hidden behind sidebars
+
+#### **7. Common Violations to AVOID:**
+- ❌ Using `MainContentSkeleton` for different content types
+- ❌ Generic "Loading..." text instead of skeleton
+- ❌ Spinner in content area instead of skeleton
+- ❌ Skeleton that doesn't match actual content layout
+- ❌ Skeleton hidden behind sidebar or other elements
+- ❌ Same skeleton used for different pages/tabs
+
+**References:**
+- `components/ui/skeletons/` - All skeleton components
+- `components/ui/skeletons/ReportsSkeletons.tsx` - Example of proper implementation
+
+---
+
 ## 8. Performance Optimization
 
 - Implement proper code-splitting and lazy loading for pages and large components.

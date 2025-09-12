@@ -127,7 +127,7 @@ export default function ReportsContent() {
         availableTabs={availableTabs}
         activeView={activeView}
         onTabChange={handleTabChange}
-        isLoading={isLoading}
+        _isLoading={isLoading}
         realTimeMetrics={realTimeMetrics}
       />
 

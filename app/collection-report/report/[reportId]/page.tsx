@@ -1,9 +1,27 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+
+// Date formatting function for SAS times
+const formatSasTime = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    };
+    return date.toLocaleDateString("en-US", options);
+  } catch {
+    return dateString; // Return original if parsing fails
+  }
+};
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -12,6 +30,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { SyncButton } from "@/components/ui/RefreshButton";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Table,
   TableBody,
@@ -24,6 +43,7 @@ import {
 // Layout components
 
 import PageLayout from "@/components/layout/PageLayout";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 // Skeleton components
 import {
@@ -74,6 +94,7 @@ export default function CollectionReportPage() {
   const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
   const tabContentRef = useRef<HTMLDivElement>(null);
 
@@ -118,14 +139,28 @@ export default function CollectionReportPage() {
     animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
 
+  // Handle scroll to show/hide floating refresh button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      setShowFloatingRefresh(scrollTop > 200);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   // Handle tab change with URL update
-  const handleTabChange = (tab: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare") => {
+  const handleTabChange = (
+    tab: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
+  ) => {
     setActiveTab(tab);
-    
+
     // Update URL based on tab selection
     const sectionMap: Record<string, string> = {
       "Machine Metrics": "machine",
-      "Location Metrics": "location", 
+      "Location Metrics": "location",
       "SAS Metrics Compare": "sas",
     };
 
@@ -179,15 +214,14 @@ export default function CollectionReportPage() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-          <p className="text-xl text-red-600 mb-4">Error: {error}</p>
-          <Link href="/collection-report" legacyBehavior>
-            <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-              <ArrowLeft size={18} className="mr-2" />
-              Back to Collections
-            </a>
-          </Link>
-        </div>
+        <NotFoundError
+          title="Report Error"
+          message={error}
+          resourceType="report"
+          showRetry={false}
+          customBackText="Back to Collection Reports"
+          customBackHref="/collection-reports"
+        />
       </PageLayout>
     );
   }
@@ -205,15 +239,14 @@ export default function CollectionReportPage() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-          <p className="text-xl text-gray-700 mb-4">Report not found.</p>
-          <Link href="/collection-report" legacyBehavior>
-            <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-              <ArrowLeft size={18} className="mr-2" />
-              Back to Collections
-            </a>
-          </Link>
-        </div>
+        <NotFoundError
+          title="Report Not Found"
+          message={`The collection report with ID "${reportId}" could not be found.`}
+          resourceType="report"
+          showRetry={false}
+          customBackText="Back to Collection Reports"
+          customBackHref="/collection-reports"
+        />
       </PageLayout>
     );
   }
@@ -240,7 +273,7 @@ export default function CollectionReportPage() {
   const metricsData = reportData?.machineMetrics || [];
   const machineTotalPages = Math.ceil(metricsData.length / ITEMS_PER_PAGE);
   const hasData = metricsData.length > 0;
-  
+
   // Apply pagination to the resolved machine data
   const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -284,45 +317,70 @@ export default function CollectionReportPage() {
               className="bg-white rounded-lg shadow-md overflow-hidden"
             >
               <div className="bg-lighterBlueHighlight text-white p-3">
-                <h3 className="font-semibold">{metric.machineId}</h3>
+                <h3
+                  className="font-semibold cursor-pointer hover:underline"
+                  onClick={() => {
+                    if (metric.actualMachineId) {
+                      const url = `/cabinets/${metric.actualMachineId}`;
+                      console.warn("Navigating to:", url);
+                      router.push(url);
+                    } else {
+                      console.warn(
+                        "No actualMachineId found for machine:",
+                        metric.machineId
+                      );
+                    }
+                  }}
+                >
+                  {metric.machineId}
+                </h3>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Dropped / Cancelled</span>
                   <span className="font-medium text-gray-800">
-                    {metric.dropCancelled}
+                    {metric.dropCancelled || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Meters Gross</span>
                   <span className="font-medium text-gray-800">
-                    {metric.metersGross}
+                    {metric.metersGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Gross</span>
                   <span className="font-medium text-gray-800">
-                    {metric.sasGross}
+                    {metric.sasGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variation</span>
                   <span className="font-medium text-gray-800">
-                    {metric.variation}
+                    {metric.variation?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Times</span>
                   <div className="font-medium text-gray-800 text-right">
-                    <div>{metric.sasStartTime}</div>
-                    <div>{metric.sasEndTime}</div>
+                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
+                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto pb-6">
+        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto pb-6">
           <Table>
             <TableHeader>
               <TableRow className="bg-button hover:bg-button">
@@ -350,17 +408,51 @@ export default function CollectionReportPage() {
               {paginatedMetricsData.map((metric) => (
                 <TableRow key={metric.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
-                    <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
+                    <span
+                      className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
+                      onClick={() => {
+                        console.warn("Machine click debug:", {
+                          machineId: metric.machineId,
+                          actualMachineId: metric.actualMachineId,
+                          metric: metric,
+                        });
+                        if (metric.actualMachineId) {
+                          const url = `/cabinets/${metric.actualMachineId}`;
+                          console.warn("Navigating to:", url);
+                          router.push(url);
+                        } else {
+                          console.warn(
+                            "No actualMachineId found for machine:",
+                            metric.machineId
+                          );
+                        }
+                      }}
+                    >
                       {metric.machineId}
                     </span>
                   </TableCell>
-                  <TableCell>{metric.dropCancelled}</TableCell>
-                  <TableCell>{metric.metersGross}</TableCell>
-                  <TableCell>{metric.sasGross}</TableCell>
-                  <TableCell>{metric.variation}</TableCell>
+                  <TableCell>{metric.dropCancelled || "0.00"}</TableCell>
+                  <TableCell>
+                    {metric.metersGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    {metric.sasGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    {metric.variation?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
                   <TableCell className="text-xs">
-                    <div>{metric.sasStartTime}</div>
-                    <div>{metric.sasEndTime}</div>
+                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
+                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -469,8 +561,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.metersGross
                   )}`}
                 >
-                  {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.metersGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -480,8 +577,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.sasGross
                   )}`}
                 >
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -491,8 +593,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.variation
                   )}`}
                 >
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.variation?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
             </div>
@@ -690,8 +797,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.metersGross
                   )}`}
                 >
-                  {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.metersGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
@@ -701,8 +813,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.sasGross
                   )}`}
                 >
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
               </tr>
               <tr>
@@ -712,8 +829,13 @@ export default function CollectionReportPage() {
                     reportData?.locationMetrics?.variation
                   )}`}
                 >
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                    "0"}
+                  {reportData?.locationMetrics?.variation?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
               </tr>
             </tbody>
@@ -953,7 +1075,10 @@ export default function CollectionReportPage() {
                     totalSasDrop
                   )}`}
                 >
-                  {totalSasDrop.toLocaleString()}
+                  {totalSasDrop.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -963,7 +1088,10 @@ export default function CollectionReportPage() {
                     totalSasCancelled
                   )}`}
                 >
-                  {totalSasCancelled.toLocaleString()}
+                  {totalSasCancelled.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -973,63 +1101,61 @@ export default function CollectionReportPage() {
                     totalSasGross
                   )}`}
                 >
-                  {totalSasGross.toLocaleString()}
+                  {totalSasGross.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-button hover:bg-button">
+                <TableHead className="text-white font-semibold">
                   METRIC
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   VALUE
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
-                  SAS Drop Total
-                </td>
-                <td
-                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
-                    totalSasDrop
-                  )}`}
-                >
-                  {totalSasDrop.toLocaleString()}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">SAS Drop Total</TableCell>
+                <TableCell className={getFinancialColorClass(totalSasDrop)}>
+                  {totalSasDrop.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">
                   SAS Cancelled Total
-                </td>
-                <td
-                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
-                    totalSasCancelled
-                  )}`}
+                </TableCell>
+                <TableCell
+                  className={getFinancialColorClass(totalSasCancelled)}
                 >
-                  {totalSasCancelled.toLocaleString()}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
-                  SAS Gross Total
-                </td>
-                <td
-                  className={`p-3 whitespace-nowrap ${getFinancialColorClass(
-                    totalSasGross
-                  )}`}
-                >
-                  {totalSasGross.toLocaleString()}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  {totalSasCancelled.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">SAS Gross Total</TableCell>
+                <TableCell className={getFinancialColorClass(totalSasGross)}>
+                  {totalSasGross.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </>
     );
@@ -1144,6 +1270,31 @@ export default function CollectionReportPage() {
         <LocationMetricsContent loading={false} />
         <SASMetricsCompareContent loading={false} />
       </div>
+
+      {/* Floating Refresh Button */}
+      <AnimatePresence>
+        {showFloatingRefresh && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <motion.button
+              onClick={handleSync}
+              disabled={refreshing}
+              className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <RefreshCw
+                className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageLayout>
   );
 }

@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NewCabinetFormData } from "@/lib/types/cabinets";
 import { createCabinet } from "@/lib/helpers/cabinets";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import { toast } from "sonner";
 
 type NewCabinetModalProps = {
   locations?: { _id: string; name: string }[];
@@ -32,9 +33,34 @@ export const NewCabinetModal = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const [serialNumberError, setSerialNumberError] = useState<string>("");
 
   // Create activity logger for cabinet operations
   const cabinetLogger = createActivityLogger("machine");
+
+  // Serial number validation function
+  const validateSerialNumber = (value: string): string => {
+    if (!value) return "";
+
+    // Check length
+    if (value.length !== 12) {
+      return "Serial number must be exactly 12 characters long";
+    }
+
+    // Check if it's hexadecimal and lowercase
+    const hexPattern = /^[0-9a-f]+$/;
+    if (!hexPattern.test(value)) {
+      return "Serial number must contain only lowercase hexadecimal characters (0-9, a-f)";
+    }
+
+    // Check if it ends with 0, 4, 8, or c
+    const lastChar = value.charAt(11);
+    if (!["0", "4", "8", "c"].includes(lastChar)) {
+      return "Serial number must end with 0, 4, 8, or c";
+    }
+
+    return ""; // No error
+  };
 
   const [formData, setFormData] = useState<NewCabinetFormData>({
     serialNumber: "",
@@ -49,7 +75,7 @@ export const NewCabinetModal = ({
     collectionSettings: {
       multiplier: "1",
       lastCollectionTime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDThh:mm
-     lastMetersIn: "0",
+      lastMetersIn: "0",
       lastMetersOut: "0",
     },
   });
@@ -107,6 +133,15 @@ export const NewCabinetModal = ({
     try {
       setLoading(true);
 
+      // Validate serial number before submission
+      const serialError = validateSerialNumber(formData.serialNumber);
+      if (serialError) {
+        setSerialNumberError(serialError);
+        toast.error("Please fix the serial number validation errors");
+        setLoading(false);
+        return;
+      }
+
       const success = await createCabinet(formData);
       if (success) {
         // Log the cabinet creation activity
@@ -117,16 +152,17 @@ export const NewCabinetModal = ({
           `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`
         );
 
+        toast.success("Cabinet created successfully!");
         handleClose();
         // Reset form after successful submission
         resetForm();
         onCreated?.(); // Call the onCreated callback
       }
     } catch (err) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to create cabinet:", err);
-      }
+      console.error("Failed to create cabinet:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to create cabinet";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -150,6 +186,7 @@ export const NewCabinetModal = ({
         lastMetersOut: "0",
       },
     });
+    setSerialNumberError(""); // Clear any validation errors
   };
 
   // Define a consistent change handler to fix the typing issues
@@ -157,10 +194,28 @@ export const NewCabinetModal = ({
     field: keyof Omit<NewCabinetFormData, "collectionSettings">,
     value: string
   ) => {
-    setFormData((prev: NewCabinetFormData) => ({
-      ...prev,
-      [field]: value,
-    }));
+    // Special handling for serial number with validation
+    if (field === "serialNumber") {
+      // Convert to lowercase and remove any non-hex characters
+      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, "");
+
+      // Limit to 12 characters
+      const limitedValue = cleanValue.slice(0, 12);
+
+      // Validate the value
+      const error = validateSerialNumber(limitedValue);
+      setSerialNumberError(error);
+
+      setFormData((prev: NewCabinetFormData) => ({
+        ...prev,
+        [field]: limitedValue,
+      }));
+    } else {
+      setFormData((prev: NewCabinetFormData) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
   };
 
   const handleCheckboxChange = (checked: boolean) => {
@@ -221,21 +276,33 @@ export const NewCabinetModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Serial Number
+                    Serial Number <span className="text-red-500">*</span>
                   </label>
                   <Input
                     id="serialNumber"
-                    placeholder="Machine Serial Number"
+                    placeholder="12-character hex (ends with 0,4,8,c)"
                     value={formData.serialNumber}
                     onChange={(e) =>
                       handleInputChange("serialNumber", e.target.value)
                     }
-                    className="bg-container border-border"
+                    className={`bg-container border-border ${
+                      serialNumberError ? "border-red-500" : ""
+                    }`}
+                    maxLength={12}
                   />
+                  {serialNumberError && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {serialNumberError}
+                    </p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Must be 12 characters, lowercase hex, ending with 0, 4, 8,
+                    or c
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Installed Game
+                    Installed Game <span className="text-red-500">*</span>
                   </label>
                   <Input
                     id="game"
@@ -251,7 +318,7 @@ export const NewCabinetModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Game Type
+                    Game Type <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={formData.gameType}
@@ -291,7 +358,8 @@ export const NewCabinetModal = ({
                 {formData.isCronosMachine && (
                   <div>
                     <label className="text-sm font-medium text-buttonActive block mb-2">
-                      Accounting Denomination (Only Cronos)
+                      Accounting Denomination (Only Cronos){" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="accountingDenomination"
@@ -309,7 +377,7 @@ export const NewCabinetModal = ({
                 )}
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Cabinet Type
+                    Cabinet Type <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={formData.cabinetType}
@@ -333,7 +401,7 @@ export const NewCabinetModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    Location
+                    Location <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={formData.gamingLocation}
@@ -362,7 +430,7 @@ export const NewCabinetModal = ({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
-                    SMIB Board
+                    SMIB Board <span className="text-red-500">*</span>
                   </label>
                   <Input
                     id="smibBoard"
@@ -379,7 +447,7 @@ export const NewCabinetModal = ({
               {/* Status */}
               <div>
                 <label className="text-sm font-medium text-buttonActive block mb-2">
-                  Status
+                  Status <span className="text-red-500">*</span>
                 </label>
                 <Select
                   value={formData.assetStatus}

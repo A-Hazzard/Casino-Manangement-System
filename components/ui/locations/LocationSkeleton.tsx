@@ -12,7 +12,7 @@ export default function LocationSkeleton() {
                 LOCATION NAME
               </th>
               <th className="p-3 border border-[#00b517] text-sm">HANDLE</th>
-              <th className="p-3 border border-[#00b517] text-sm">CANCELLED</th>
+              <th className="p-3 border border-[#00b517] text-sm">MONEY OUT</th>
               <th className="p-3 border border-[#00b517] text-sm">JACKPOT</th>
               <th className="p-3 border border-[#00b517] text-sm">GROSS</th>
               <th className="p-3 border border-[#00b517] text-sm">ACTIONS</th>

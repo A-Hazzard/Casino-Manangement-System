@@ -34,14 +34,14 @@ import type {
 import { DateRange as RDPDateRange } from "react-day-picker";
 import {
   animatePagination,
-  animateTableRows,
-  animateCards,
   animateContentTransition,
   filterCollectionReports,
   calculatePagination,
   fetchAndFormatSchedulers,
   setLastMonthDateRange,
-} from "@/lib/helpers/collectionReportPage";
+  animateTableRows,
+  animateCards,
+} from "@/lib/helpers/collectionReportPageV2";
 import { fetchAndFormatCollectorSchedules } from "@/lib/helpers/collectorSchedules";
 import {
   handleTabChange,
@@ -61,6 +61,8 @@ import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
+import EditCollectionModalV2 from "@/components/collectionReport/EditCollectionModalV2";
+import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
 
 import type { CollectorSchedule } from "@/lib/types/components";
 
@@ -71,6 +73,7 @@ import type { CollectionView } from "@/lib/types/collection";
 import { useCollectionNavigation } from "@/lib/hooks/useCollectionNavigation";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
+import "./animations.css";
 
 /**
  * Main page component for the Collection Report.
@@ -103,7 +106,16 @@ const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
 
 export default function CollectionReportPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
       <CollectionReportContent />
     </Suspense>
   );
@@ -117,6 +129,8 @@ function CollectionReportContent() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+
+  // Animation functions are now imported directly from V2 helpers
 
   // Read initial view from URL and sync on change
   const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
@@ -165,6 +179,10 @@ function CollectionReportContent() {
   // New Collection Modal state
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
 
+  // Edit Collection Modal state
+  const [showEditCollectionModal, setShowEditCollectionModal] = useState(false);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+
   // Filter state for collection reports
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [locationsWithMachines, setLocationsWithMachines] = useState<
@@ -173,6 +191,7 @@ function CollectionReportContent() {
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [search, setSearch] = useState<string>("");
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   // Manager Schedule state
   const [schedulers, setSchedulers] = useState<SchedulerTableRow[]>([]);
@@ -331,15 +350,16 @@ function CollectionReportContent() {
   useEffect(() => {
     setDesktopPage(1);
     setMobilePage(1);
-  }, [selectedLocation, search, showUncollectedOnly]);
+  }, [selectedLocation, search, showUncollectedOnly, selectedFilters]);
 
-  // Animate table/cards when data changes
+  // Animate table/cards when data changes with CSS animations
   useEffect(() => {
-    if (!loading && !isSearching) {
-      if (desktopTableRef.current && activeTab === "collection") {
+    if (!loading && !isSearching && activeTab === "collection") {
+      // Use CSS-based animation functions
+      if (desktopTableRef.current) {
         animateTableRows(desktopTableRef);
       }
-      if (mobileCardsRef.current && activeTab === "collection") {
+      if (mobileCardsRef.current) {
         animateCards(mobileCardsRef);
       }
     }
@@ -349,7 +369,7 @@ function CollectionReportContent() {
     if (!reports || !Array.isArray(reports)) {
       return [];
     }
-    
+
     const filtered = filterCollectionReports(
       reports,
       selectedLocation,
@@ -358,8 +378,30 @@ function CollectionReportContent() {
       locations
     );
 
+    // Apply SMIB filters
+    if (selectedFilters.length > 0) {
+      return filtered.filter((report) => {
+        return selectedFilters.some((filter) => {
+          if (filter === "SMIBLocationsOnly" && !report.noSMIBLocation)
+            return true;
+          if (filter === "NoSMIBLocation" && report.noSMIBLocation === true)
+            return true;
+          if (filter === "LocalServersOnly" && report.isLocalServer)
+            return true;
+          return false;
+        });
+      });
+    }
+
     return filtered;
-  }, [reports, selectedLocation, showUncollectedOnly, search, locations]);
+  }, [
+    reports,
+    selectedLocation,
+    showUncollectedOnly,
+    search,
+    locations,
+    selectedFilters,
+  ]);
 
   const fetchMonthlyData = useCallback(() => {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
@@ -601,6 +643,36 @@ function CollectionReportContent() {
     setShowUncollectedOnly(checked);
   };
 
+  const handleFilterChange = (filter: string, checked: boolean) => {
+    if (checked) {
+      setSelectedFilters((prev) => [...prev, filter]);
+    } else {
+      setSelectedFilters((prev) => prev.filter((f) => f !== filter));
+    }
+  };
+
+  const handleClearFilters = () => {
+    setSelectedLocation("all");
+    setShowUncollectedOnly(false);
+    setSearch("");
+    setSelectedFilters([]);
+  };
+
+  // Handle edit collection report
+  const handleEditCollectionReport = (reportId: string) => {
+    setEditingReportId(reportId);
+    setShowEditCollectionModal(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = useCallback(() => {
+    setShowEditCollectionModal(false);
+    // Delay clearing reportId to allow modal to cleanup properly
+    setTimeout(() => {
+      setEditingReportId(null);
+    }, 300); // Wait for modal close animation
+  }, []);
+
   // --- RENDER ---
 
   // Debugging: Log data and filters to diagnose empty UI
@@ -738,7 +810,11 @@ function CollectionReportContent() {
                     onShowUncollectedOnlyChange={
                       handleShowUncollectedOnlyChange
                     }
+                    selectedFilters={selectedFilters}
+                    onFilterChange={handleFilterChange}
+                    onClearFilters={handleClearFilters}
                     isSearching={isSearching}
+                    onEdit={handleEditCollectionReport}
                   />
                   {/* Mobile */}
                   <CollectionMobileUI
@@ -762,7 +838,11 @@ function CollectionReportContent() {
                     onShowUncollectedOnlyChange={
                       handleShowUncollectedOnlyChange
                     }
+                    selectedFilters={selectedFilters}
+                    onFilterChange={handleFilterChange}
+                    onClearFilters={handleClearFilters}
                     isSearching={isSearching}
+                    onEdit={handleEditCollectionReport}
                   />
                 </div>
               )}
@@ -881,6 +961,19 @@ function CollectionReportContent() {
         locations={locationsWithMachines}
         onRefresh={refreshCollectionReports}
       />
+
+      {/* Edit Collection Modal V2 */}
+      {editingReportId && (
+        <ErrorBoundary>
+          <EditCollectionModalV2
+            show={showEditCollectionModal}
+            onClose={handleCloseEditModal}
+            reportId={editingReportId}
+            locations={locationsWithMachines}
+            onRefresh={refreshCollectionReports}
+          />
+        </ErrorBoundary>
+      )}
     </>
   );
 }

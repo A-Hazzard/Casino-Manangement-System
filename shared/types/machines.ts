@@ -165,13 +165,6 @@ export type MachineEvaluationSummary = {
   }[];
 };
 
-export type MachineEvaluationChartData = {
-  category: string;
-  primary: number;
-  secondary: number;
-  primaryLabel: string;
-  secondaryLabel: string;
-};
 
 export type MachineEvaluationFilters = {
   manufacturer?: string;

@@ -67,7 +67,9 @@ export type MemberSession = {
   time?: string;
   sessionLength?: string;
   handle?: number;
-  cancelledCredits?: number;
+  moneyIn?: number; // Physical cash inserted (movement.drop)
+  moneyOut?: number; // Manual payouts (movement.totalCancelledCredits)
+  cancelledCredits?: number; // Legacy field - use moneyOut instead
   jackpot?: number;
   won?: number;
   bet?: number;

@@ -10,6 +10,8 @@ import { deleteCabinet } from "@/lib/helpers/cabinets";
 import { IMAGES } from "@/lib/constants/images";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import { toast } from "sonner";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 
 export const DeleteCabinetModal = ({
   onCabinetDeleted,
@@ -18,11 +20,14 @@ export const DeleteCabinetModal = ({
 }) => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
     useCabinetActionsStore();
+  const { activeMetricsFilter } = useDashBoardStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Create activity logger for cabinet operations
   const cabinetLogger = createActivityLogger("machine");
+
+
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -68,14 +73,14 @@ export const DeleteCabinetModal = ({
     try {
       const cabinetData = { ...selectedCabinet };
       
-      const success = await deleteCabinet(selectedCabinet._id);
+      const success = await deleteCabinet(selectedCabinet._id, activeMetricsFilter);
       if (success) {
         // Log the cabinet deletion activity
         await cabinetLogger.logDelete(
           selectedCabinet._id,
-          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"}`,
+          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}`,
           cabinetData,
-          `Deleted cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || selectedCabinet.serialNumber || "Unknown"})`
+          `Deleted cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"})`
         );
 
         // Call the callback to refresh data
@@ -88,10 +93,9 @@ export const DeleteCabinetModal = ({
         handleClose();
       }
     } catch (err) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to delete cabinet:", err);
-      }
+      console.error("Failed to delete cabinet:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete cabinet";
+      toast.error(errorMessage);
     }
   };
 

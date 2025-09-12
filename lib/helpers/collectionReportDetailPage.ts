@@ -27,7 +27,7 @@ export function calculateLocationTotal(
 ): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
-    const gross = (collection.metersOut || 0) - (collection.metersIn || 0);
+    const gross = (collection.metersIn || 0) - (collection.metersOut || 0);
     return total + gross;
   }, 0);
 }
@@ -117,13 +117,31 @@ export function generateMachineMetricsData(
 
   // Transform each collection into a machine metric entry
   const metricsData = collections.map((col, index) => {
-    // Get machine identifier with priority: serialNumber -> machineName -> machineId -> machineCustomName
+    // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
+    // Use a helper function to check for valid non-empty strings
+    const isValidString = (str: string | undefined | null): string | null => {
+      return str && typeof str === "string" && str.trim() !== ""
+        ? str.trim()
+        : null;
+    };
+
     const machineId =
-      col.serialNumber ||
-      col.machineName ||
-      col.machineId ||
-      col.machineCustomName ||
+      isValidString(col.serialNumber) ||
+      isValidString(col.machineName) ||
+      isValidString(col.machineCustomName) ||
+      isValidString(col.machineId) ||
       `Machine ${index + 1}`;
+
+    // Debug logging to see what values we're getting
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Machine fallback debug:", {
+        serialNumber: col.serialNumber,
+        machineName: col.machineName,
+        machineCustomName: col.machineCustomName,
+        machineId: col.machineId,
+        selected: machineId,
+      });
+    }
 
     // Get drop and cancelled from sasMeters
     const drop = col.sasMeters?.drop || 0;
@@ -136,7 +154,14 @@ export function generateMachineMetricsData(
     const sasGross = col.sasMeters?.gross || 0;
 
     // Calculate variation (difference between meters gross and SAS gross)
-    const variation = metersGross - sasGross;
+    // Check if SAS data exists - if not, show "No SAS Data"
+    const variation =
+      !col.sasMeters ||
+      col.sasMeters.gross === undefined ||
+      col.sasMeters.gross === null ||
+      col.sasMeters.gross === 0
+        ? "No SAS Data"
+        : metersGross - sasGross;
 
     // Get SAS times from sasMeters
     const sasStartTime = col.sasMeters?.sasStartTime || "-";
@@ -145,6 +170,7 @@ export function generateMachineMetricsData(
     return {
       id: col._id || `machine-${index}`,
       machineId: machineId,
+      actualMachineId: col.machineId, // The actual machine ID for navigation
       droppedCancelled: `${drop} / ${cancelled}`,
       metersGross: metersGross.toLocaleString(),
       sasGross: sasGross.toLocaleString(),

@@ -66,6 +66,8 @@ export function handleSectionChange(
       params.delete("section"); // Default section, no param needed
     } else if (section === "licensees") {
       params.set("section", "licensees");
+    } else if (section === "activity-logs") {
+      params.set("section", "activity-logs");
     }
 
     const newURL = params.toString()

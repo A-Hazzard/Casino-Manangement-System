@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, Search } from "lucide-react";
 
-
 type LocationSingleSelectProps = {
   locations: { id: string; name: string; sasEnabled?: boolean }[];
   selectedLocation: string;
@@ -80,7 +79,7 @@ export default function LocationSingleSelect({
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-[70] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
           {/* Header with search */}
           <div className="p-2 border-b border-gray-100">
             <div className="flex justify-between items-center mb-2">

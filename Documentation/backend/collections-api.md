@@ -138,9 +138,15 @@ Location Metrics mapping implemented in the helper:
 |---|---|
 | `droppedCancelled` | `movement.metersIn` and `movement.metersOut` combined as `${metersIn}/${metersOut}` |
 | `metersGross` | `movement.gross` |
-| `variation` | `movement.gross` (placeholder until variance calculation added) |
+| `variation` | `movement.gross - sasMeters.gross` (shows "No SAS Data" if SAS data is missing) |
 | `sasGross` | `sasMeters.gross` |
-| `variance` | `movement.gross` (placeholder until variance calculation added) |
+| `variance` | `movement.gross - sasMeters.gross` (shows "No SAS Data" if SAS data is missing) |
+
+**SAS Data Validation Logic:**
+The API performs validation checks before calculating variation:
+- **Validation Check**: `(!col.sasMeters || col.sasMeters.gross === undefined || col.sasMeters.gross === null || col.sasMeters.gross === 0)`
+- **Result**: Returns "No SAS Data" if validation fails, otherwise calculates `metersGross - sasGross`
+- **Consistency**: Applied across all collection report endpoints and helper functions
 | `varianceReason` | Currently not implemented |
 | `amountToCollect` | Currently not implemented |
 | `collectedAmount` | Currently not implemented |
@@ -476,12 +482,135 @@ Variance = Meters Gross - SAS Gross
 Variance% = (Variance / SAS Gross) * 100
 ```
 
-#### **Revenue Sharing**
+#### **Amount to Collect Formula (Core Collection Logic)**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+```
+
+**What This Means:**
+- **metersIn**: Current meter reading when collecting
+- **prevIn**: Previous meter reading from last collection  
+- **Division by 2**: Represents the 50/50 profit sharing between casino and location
+
+**Step-by-Step Example:**
+```
+Scenario: Collecting from Machine A
+- Previous meter reading (prevIn): 400
+- Current meter reading (metersIn): 300
+
+Calculation:
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (300 - 400) / 2
+Amount to Collect = -100 / 2
+Amount to Collect = -50
+
+Result: Location owes $50 to casino (negative = money flows back to casino)
+```
+
+**Another Example:**
+```
+Scenario: Collecting from Machine B
+- Previous meter reading (prevIn): 200
+- Current meter reading (metersIn): 500
+
+Calculation:
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (500 - 200) / 2
+Amount to Collect = 300 / 2
+Amount to Collect = 150
+
+Result: Casino owes $150 to location (positive = money flows to location)
+```
+
+#### **Balance Correction System**
+```
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+```
+
+**How Balance Correction Works:**
+1. **When you enter a Collected Amount**, it gets added to the Balance Correction
+2. **Balance Correction** can be positive or negative
+3. **Positive Balance Correction**: Adds money to location's account
+4. **Negative Balance Correction**: Removes money from location's account
+
+**Balance Correction Example:**
+```
+Scenario: Collector found extra $50 that wasn't recorded properly
+
+State:
+- Previous Balance: $1,020
+- Amount to Collect: $150 (from new collection)
+- Amount Collected: $150 (actual cash collected)
+- Balance Correction: -$50 (negative because removing extra $50)
+
+Calculation:
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+New Balance = $1,020 + $150 - $150 + (-$50)
+New Balance = $1,020 + $0 - $50
+New Balance = $970
+
+Result: Location now owes $970 to casino (reduced by $50 due to correction)
+```
+
+#### **Revenue Sharing (Alternative Calculation)**
 ```
 Amount To Collect = Gross Revenue * (Profit Share% / 100)
 Partner Revenue = Gross Revenue * ((100 - Profit Share%) / 100)
 Balance Calculation = Previous Balance + Amount To Collect - Amount Collected ± Corrections
 ```
+
+### Real-World Collection Example
+
+**Complete Collection Process:**
+
+**Machine**: Slot Machine #123  
+**Location**: Downtown Casino  
+**Collector**: John Smith
+
+**Step 1 - Meter Readings:**
+- **Previous metersIn**: 1,000
+- **Current metersIn**: 1,500
+- **Previous metersOut**: 200
+- **Current metersOut**: 300
+
+**Step 2 - Calculate Amount to Collect:**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (1,500 - 1,000) / 2
+Amount to Collect = 500 / 2
+Amount to Collect = $250
+```
+
+**Step 3 - Calculate Gross Revenue:**
+```
+Gross = (metersIn - prevIn) - (metersOut - prevOut)
+Gross = (1,500 - 1,000) - (300 - 200)
+Gross = 500 - 100
+Gross = $400
+```
+
+**Step 4 - Collection Process:**
+- **Amount to Collect**: $250
+- **Amount Actually Collected**: $240 (collector found $10 less)
+- **Balance Correction**: +$10 (to account for the shortage)
+
+**Step 5 - Update Balance:**
+```
+Previous Balance: $500
+New Balance = $500 + $250 - $240 + $10
+New Balance = $520
+```
+
+**Final Result**: Location owes $520 to the casino after this collection.
+
+### Key Points to Remember
+
+1. **Amount to Collect** is always calculated as `(metersIn - prevIn) / 2`
+2. **Balance Correction** is added to the balance calculation
+3. **Positive Balance Correction** = Credit to location
+4. **Negative Balance Correction** = Debit to location
+5. **The formula ensures accurate tracking** of all money movements
+6. **All calculations are auditable** and traceable for compliance
 
 #### **Monthly Aggregations**
 ```

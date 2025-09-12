@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocationsWithMetrics } from "@/app/api/lib/helpers/locationAggregation";
 import { TimePeriod } from "@/app/api/lib/types";
 import { getDatesForTimePeriod } from "../lib/utils/dates";
+import { trinidadTimeToUtc } from "../lib/utils/timezone";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { LocationFilter } from "@/lib/types/location";
 import { getCacheKey, getCachedData, setCachedData, clearCache } from "@/app/api/lib/helpers/cacheUtils";
@@ -43,8 +44,9 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      startDate = new Date(customStart);
-      endDate = new Date(customEnd);
+      // For custom date ranges, convert from Trinidad time to UTC
+      startDate = trinidadTimeToUtc(new Date(customStart));
+      endDate = trinidadTimeToUtc(new Date(customEnd));
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
@@ -113,12 +115,25 @@ export async function GET(req: NextRequest) {
 
     // Apply filters if needed
     let filteredRows = rows;
-    if (machineTypeFilter === "LocalServersOnly") {
-      filteredRows = rows.filter((loc) => loc.isLocalServer === true);
-    } else if (machineTypeFilter === "SMIBLocationsOnly") {
-      filteredRows = rows.filter((loc) => loc.noSMIBLocation === false);
-    } else if (machineTypeFilter === "NoSMIBLocation") {
-      filteredRows = rows.filter((loc) => loc.noSMIBLocation === true);
+    if (machineTypeFilter) {
+      // Handle comma-separated multiple filters
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      
+      filteredRows = rows.filter((loc) => {
+        // Apply AND logic - location must match ALL selected filters
+        return filters.every((filter) => {
+          switch (filter.trim()) {
+            case "LocalServersOnly":
+              return loc.isLocalServer === true;
+            case "SMIBLocationsOnly":
+              return loc.noSMIBLocation === false;
+            case "NoSMIBLocation":
+              return loc.noSMIBLocation === true;
+            default:
+              return true;
+          }
+        });
+      });
     }
 
     // Sort by money in descending order

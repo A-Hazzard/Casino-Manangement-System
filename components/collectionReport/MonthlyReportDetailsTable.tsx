@@ -1,7 +1,15 @@
 import React from "react";
-import type { MonthlyReportDetailsRow } from "@/lib/types/componentProps"; // Assuming these are types
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { MonthlyReportDetailsRow } from "@/lib/types/componentProps";
 
-type Row = MonthlyReportDetailsRow; // Alias if structure is identical, otherwise define explicitly
+type Row = MonthlyReportDetailsRow;
 
 type ExtendedMonthlyReportDetailsTableProps = {
   details: Row[];
@@ -11,29 +19,29 @@ export default function MonthlyReportDetailsTable({
   details,
 }: ExtendedMonthlyReportDetailsTableProps) {
   return (
-    <div className="overflow-x-auto bg-white shadow mt-0">
-      <table className="min-w-full text-sm text-left">
-        <thead className="bg-button">
-          <tr>
-            <th className="px-4 py-2 text-white font-bold">LOCATION</th>
-            <th className="px-4 py-2 text-white font-bold">DROP</th>
-            <th className="px-4 py-2 text-white font-bold">WIN</th>
-            <th className="px-4 py-2 text-white font-bold">GROSS</th>
-            <th className="px-4 py-2 text-white font-bold">SAS GROSS</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-x-auto bg-white rounded-lg shadow mt-0">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">LOCATION</TableHead>
+            <TableHead className="text-white font-semibold">DROP</TableHead>
+            <TableHead className="text-white font-semibold">WIN</TableHead>
+            <TableHead className="text-white font-semibold">GROSS</TableHead>
+            <TableHead className="text-white font-semibold">SAS GROSS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {details.map((row, idx) => (
-            <tr key={idx} className="border-b">
-              <td className="px-4 py-2">{row.location}</td>
-              <td className="px-4 py-2">{row.drop}</td>
-              <td className="px-4 py-2">{row.win}</td>
-              <td className="px-4 py-2">{row.gross}</td>
-              <td className="px-4 py-2">{row.sasGross}</td>
-            </tr>
+            <TableRow key={idx} className="hover:bg-gray-50">
+              <TableCell className="font-medium">{row.location}</TableCell>
+              <TableCell>{row.drop}</TableCell>
+              <TableCell>{row.win}</TableCell>
+              <TableCell>{row.gross}</TableCell>
+              <TableCell>{row.sasGross}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

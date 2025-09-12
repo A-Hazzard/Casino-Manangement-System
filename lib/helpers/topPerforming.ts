@@ -11,7 +11,7 @@ import { colorPalette } from "@/lib/constants/uiConstants";
  */
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
-  timePeriod: string = "7d"
+  timePeriod: string
 ): Promise<TopPerformingData[]> {
   try {
     const params = { activeTab, timePeriod };

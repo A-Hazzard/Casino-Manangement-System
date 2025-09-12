@@ -1,11 +1,34 @@
-# Timezone Management Documentation
+# Timezone Management
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Date:** August 29, 2025
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Timezone Configuration](#timezone-configuration)
+3. [Core Timezone Utilities](#core-timezone-utilities)
+4. [Implementation Examples](#implementation-examples)
+5. [Business Logic](#business-logic)
+6. [Error Handling](#error-handling)
+7. [Performance Considerations](#performance-considerations)
 
 ## Overview
 
-The Evolution One CMS system implements comprehensive timezone management for Trinidad and Tobago (UTC-4). All date fields throughout the application are automatically converted from UTC (stored in the database) to Trinidad local time for display and user interaction.
+The Evolution One CMS system implements comprehensive timezone management for Trinidad and Tobago (UTC-4). All date fields throughout the application are automatically converted from UTC (stored in the database) to Trinidad local time for display and user interaction, ensuring consistent and accurate time representation across all system components.
+
+### Key Principles
+- **Consistency**: All dates displayed in Trinidad local time (UTC-4)
+- **Accuracy**: Automatic conversion between UTC storage and local display
+- **Reliability**: No daylight saving time complications
+- **Performance**: Efficient timezone conversion with minimal overhead
+
+### System Integration
+- **Database Storage**: All dates stored in UTC format for consistency
+- **API Responses**: Automatic conversion to Trinidad time for frontend display
+- **Date Queries**: Frontend inputs converted to UTC for database operations
+- **User Interface**: All date/time displays show Trinidad local time
 
 ## Timezone Configuration
 

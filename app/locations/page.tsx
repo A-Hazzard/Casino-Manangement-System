@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import {
-  fetchLocationsData,
+  fetchAggregatedLocationsData,
   searchAllLocations,
 } from "@/lib/helpers/locations";
 import { AggregatedLocation } from "@/lib/types/location";
@@ -18,13 +18,14 @@ import {
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
 import RefreshButton from "@/components/ui/RefreshButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 import PageLayout from "@/components/layout/PageLayout";
 
@@ -44,6 +45,7 @@ import { useDebounce } from "@/lib/utils/hooks";
 import { fetchMachineStats } from "@/lib/helpers/machineStats";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { NetworkError } from "@/components/ui/errors";
 
 export default function LocationsPage() {
   const {
@@ -63,8 +65,10 @@ export default function LocationsPage() {
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
   const router = useRouter();
 
   // Debounce search term to reduce API calls
@@ -72,9 +76,11 @@ export default function LocationsPage() {
 
   // Handler for refresh button
   const handleRefresh = async () => {
+    console.warn("Refresh button clicked");
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
+    console.warn("Refresh completed");
   };
 
   // Machine stats state for online/offline counts (like dashboard)
@@ -132,7 +138,9 @@ export default function LocationsPage() {
 
   // Optimized data fetching with better error handling
   const fetchData = useCallback(async () => {
+    console.warn("fetchData called - locations page");
     setLoading(true);
+    setError(null);
     try {
       // If there's a search term, use the search function to get ALL locations
       if (debouncedSearchTerm.trim()) {
@@ -153,33 +161,30 @@ export default function LocationsPage() {
         : "";
 
       let dateRangeForFetch = undefined;
-      if (
-        activeMetricsFilter === "Custom" &&
-        customDateRange?.startDate &&
-        customDateRange?.endDate
-      ) {
+      const effectiveFilter = activeMetricsFilter || "Today";
+      if (effectiveFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
         dateRangeForFetch = {
           from: customDateRange.startDate,
           to: customDateRange.endDate,
         };
-      } else if (activeMetricsFilter === "All Time") {
-        // For All Time, don't pass any date range to get all data
-        dateRangeForFetch = undefined;
       }
+      // For "Today", "Yesterday", "7d", "30d", and "All Time", let the API handle the date logic
+      // by passing the timePeriod directly without a custom dateRange
 
       // Use empty string as fallback if selectedLicencee is empty
       const effectiveLicencee = selectedLicencee || "";
 
-      const data = await fetchLocationsData(
-        activeMetricsFilter as TimePeriod,
+      const data = await fetchAggregatedLocationsData(
+        (activeMetricsFilter || "Today") as TimePeriod,
         effectiveLicencee,
         filterString,
         dateRangeForFetch
       );
 
       setLocationData(data);
-    } catch {
+    } catch (err) {
       setLocationData([]); // Set empty array on error
+      setError(err instanceof Error ? err.message : "Failed to load locations");
     } finally {
       setLoading(false);
     }
@@ -194,6 +199,25 @@ export default function LocationsPage() {
   // Fetch data when dependencies change
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  // Refresh data when user returns to the page (e.g., after updating a machine elsewhere)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Refresh data when the page becomes visible again (user navigated back)
+      if (!document.hidden) {
+        // Add a small delay to ensure the page is fully loaded
+        setTimeout(() => {
+          fetchData();
+        }, 100);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchData]);
 
   // Reset page when search changes
@@ -262,6 +286,18 @@ export default function LocationsPage() {
       setCurrentPage(0);
     }
   }, [currentPage, totalPages]);
+
+  // Handle scroll to show/hide floating refresh button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      setShowFloatingRefresh(scrollTop > 200);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleFirstPage = () => setCurrentPage(0);
   const handleLastPage = () => setCurrentPage(totalPages - 1);
@@ -356,7 +392,10 @@ export default function LocationsPage() {
         {/* Date Filters Row - Desktop and md */}
         <div className="hidden md:flex items-center justify-between mt-4 mb-0 gap-4">
           <div className="flex-1 min-w-0">
-            <DashboardDateFilters hideAllTime={true} />
+            <DashboardDateFilters 
+              onCustomRangeGo={fetchData}
+              disabled={isLoading}
+            />
           </div>
           <div className="flex-shrink-0 ml-4 w-auto">
             <MachineStatusWidget
@@ -370,7 +409,10 @@ export default function LocationsPage() {
         {/* Mobile/Tablet: Date Filters and Machine Status stacked */}
         <div className="md:hidden flex flex-col gap-4 mt-4">
           <div className="w-full">
-            <DashboardDateFilters hideAllTime={true} />
+            <DashboardDateFilters 
+              onCustomRangeGo={fetchData}
+              disabled={isLoading}
+            />
           </div>
           <div className="w-full">
             <MachineStatusWidget
@@ -557,7 +599,15 @@ export default function LocationsPage() {
 
         {/* Content Section */}
         <div className="flex-1 w-full">
-          {isLoading ? (
+          {error ? (
+            <NetworkError
+              title="Failed to Load Locations"
+              message="Unable to load location data. Please check your connection and try again."
+              onRetry={fetchData}
+              isRetrying={refreshing}
+              errorDetails={error}
+            />
+          ) : isLoading ? (
             <>
               {/* Mobile: show 3 card skeletons */}
               <div className="block md:hidden">
@@ -768,6 +818,31 @@ export default function LocationsPage() {
         onClose={closeLocationModal}
         onCreated={fetchData}
       />
+
+      {/* Floating Refresh Button */}
+      <AnimatePresence>
+        {showFloatingRefresh && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <motion.button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <RefreshCw
+                className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

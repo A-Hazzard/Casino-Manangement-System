@@ -25,14 +25,14 @@ import { formatISODate } from "@/shared/utils/dateFormat";
  * Calls the `/api/metrics/meters` endpoint using a time period, and optionally a custom date range and licencee filter.
  * Normalizes the data into the dashboardData shape, groups records by day or hour, and sorts chronologically.
  *
- * @param timePeriod - The time period to fetch metrics for (default: "7d").
+ * @param timePeriod - The time period to fetch metrics for.
  * @param startDate - (Optional) Start date for a custom range.
  * @param endDate - (Optional) End date for a custom range.
  * @param licencee - (Optional) Licencee ID to filter metrics.
  * @returns Promise resolving to an array of aggregated dashboardData objects.
  */
 export async function getMetrics(
-  timePeriod: TimePeriod = "7d",
+  timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string,
   licencee?: string

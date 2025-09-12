@@ -1,70 +1,100 @@
 import React from "react";
 import Image from "next/image";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
+import { Edit3 } from "lucide-react";
 
 type ExtendedCollectionReportTableProps = {
   data: CollectionReportRow[];
+  onEdit?: (reportId: string) => void;
 };
 
 export default function CollectionReportTable({
   data,
+  onEdit,
 }: ExtendedCollectionReportTableProps) {
   const router = useRouter();
   return (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button text-white">
-          <tr>
-            <th className="px-2 py-2">COLLECTOR</th>
-            <th className="px-2 py-2">LOCATION</th>
-            <th className="px-2 py-2">GROSS</th>
-            <th className="px-2 py-2">MACHINES</th>
-            <th className="px-2 py-2">COLLECTED</th>
-            <th className="px-2 py-2">UNCOLLECTED</th>
-            <th className="px-2 py-2">LOCATION REVENUE</th>
-            <th className="px-2 py-2">TIME</th>
-            <th className="px-2 py-2">DETAILS</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="hidden lg:block overflow-x-auto bg-white rounded-lg shadow w-full min-w-0">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">COLLECTOR</TableHead>
+            <TableHead centered className="text-white font-semibold">LOCATION</TableHead>
+            <TableHead centered className="text-white font-semibold">GROSS</TableHead>
+            <TableHead centered className="text-white font-semibold">MACHINES</TableHead>
+            <TableHead centered className="text-white font-semibold">COLLECTED</TableHead>
+            <TableHead centered className="text-white font-semibold">UNCOLLECTED</TableHead>
+            <TableHead centered className="text-white font-semibold">VARIATION</TableHead>
+            <TableHead centered className="text-white font-semibold">BALANCE</TableHead>
+            <TableHead centered className="text-white font-semibold">LOCATION REVENUE</TableHead>
+            <TableHead centered className="text-white font-semibold">TIME</TableHead>
+            <TableHead centered className="text-white font-semibold">DETAILS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data?.map((row, index) => (
-            <tr
+            <TableRow
               key={`${row?.collector || 'unknown'}-${row?.location || 'unknown'}-${row?.time || 'unknown'}-${index}`}
-              className="border-b hover:bg-lighterGreenHighlight"
+              className="hover:bg-lighterGreenHighlight"
             >
-              <td className="px-4 py-2">{row?.collector || '-'}</td>
-              <td className="px-4 py-2">{row?.location || '-'}</td>
-              <td className="px-4 py-2">{row?.gross || 0}</td>
-              <td className="px-4 py-2">{row?.machines || '0/0'}</td>
-              <td className="px-4 py-2">{row?.collected || 0}</td>
-              <td className="px-4 py-2">{row?.uncollected || '-'}</td>
-              <td className="px-4 py-2">{row?.locationRevenue || 0}</td>
-              <td className="px-4 py-2">{row?.time || '-'}</td>
-              <td className="px-4 py-2">
-                <button
-                  className="flex items-center justify-center text-buttonActive px-3 py-1 rounded-md text-xs font-semibold bg-transparent"
-                  onClick={() =>
-                    router.push(
-                      `/collection-report/report/${row?.locationReportId || ''}`
-                    )
-                  }
-                  aria-label="View Details"
-                >
-                  <span className="sr-only">View</span>
-                  <Image
-                    src="/details.svg"
-                    alt="Details"
-                    className="h-5 w-5"
-                    width={20}
-                    height={20}
-                  />
-                </button>
-              </td>
-            </tr>
+              <TableCell className="font-medium">{row?.collector || '-'}</TableCell>
+              <TableCell centered>{row?.location || '-'}</TableCell>
+              <TableCell centered>{row?.gross || 0}</TableCell>
+              <TableCell centered>{row?.machines || '0/0'}</TableCell>
+              <TableCell centered>{row?.collected || 0}</TableCell>
+              <TableCell centered>{row?.uncollected || '-'}</TableCell>
+              <TableCell centered>{row?.variation || 'No Variance'}</TableCell>
+              <TableCell centered>{row?.balance || 0}</TableCell>
+              <TableCell centered>{row?.locationRevenue || 0}</TableCell>
+              <TableCell centered>{row?.time || '-'}</TableCell>
+              <TableCell centered>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-buttonActive hover:bg-buttonActive/10"
+                    onClick={() =>
+                      router.push(
+                        `/collection-report/report/${row?.locationReportId || ''}`
+                      )
+                    }
+                    aria-label="View Details"
+                  >
+                    <Image
+                      src="/details.svg"
+                      alt="Details"
+                      className="h-4 w-4"
+                      width={16}
+                      height={16}
+                    />
+                  </Button>
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
+                      onClick={() => onEdit(row?.locationReportId || '')}
+                      aria-label="Edit Report"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

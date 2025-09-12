@@ -1,9 +1,44 @@
-# Reports Backend API Documentation
+# Reports API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Base URLs](#base-urls)
+3. [Core Endpoints](#core-endpoints)
+4. [Data Models](#data-models)
+5. [Business Logic](#business-logic)
+6. [Error Handling](#error-handling)
+7. [Security Features](#security-features)
+8. [Performance Considerations](#performance-considerations)
 
 ## Overview
-The Reports Backend API provides comprehensive data aggregation and analytics capabilities for gaming locations, machines, and revenue analysis. It includes location aggregation, SAS machine determination, and performance metrics calculation with Trinidad timezone support.
+
+The Reports API provides comprehensive data aggregation and analytics capabilities for the Evolution One CMS system. It handles location aggregation, machine performance analysis, financial reporting, and SAS machine determination with advanced filtering and real-time analytics.
+
+### Key Features
+- **Location Aggregation**: Comprehensive location-level metrics and analytics
+- **Machine Performance**: Detailed machine performance analysis and reporting
+- **Financial Analytics**: Revenue analysis and financial performance tracking
+- **SAS Integration**: SAS machine determination and evaluation
+- **Advanced Filtering**: Time-based and location-based filtering capabilities
+
+### System Integration
+- **Dashboard Analytics**: Real-time data for dashboard components
+- **Collection Systems**: Integration with collection and reporting systems
+- **Location Management**: Connection to location and machine management
+- **Financial Systems**: Seamless integration with financial calculations
+
+## Base URLs
+
+```
+/api/locationAggregation
+/api/reports
+/api/analytics
+```
 
 ## Core Endpoints
 

@@ -16,6 +16,7 @@ import { useMembersNavigation } from "@/lib/hooks/useMembersNavigation";
 
 // Components
 import MembersNavigation from "@/components/members/common/MembersNavigation";
+import { MembersListTabSkeleton, MembersSummaryTabSkeleton } from "@/components/ui/skeletons/MembersSkeletons";
 
 // Tab Components
 import MembersListTab from "@/components/members/tabs/MembersListTab";
@@ -90,7 +91,9 @@ export default function MembersContent() {
           transition={{ duration: 0.2 }}
           className="h-full"
         >
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={
+            activeTab === "members" ? <MembersListTabSkeleton /> : <MembersSummaryTabSkeleton />
+          }>
             {tabComponents[activeTab]}
           </Suspense>
         </motion.div>

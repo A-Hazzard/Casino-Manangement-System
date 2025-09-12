@@ -3,6 +3,15 @@
 import { useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Member, MemberSortOption } from "@/lib/types/members";
 import {
   ChevronLeftIcon,
@@ -56,15 +65,15 @@ const MemberTable: React.FC<MemberTableProps> = ({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <Table
           ref={tableRef}
-          className="table-fixed w-full border-collapse text-center"
+          className="table-fixed w-full"
         >
-          <thead className="bg-button text-white">
-            <tr>
-              <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+          <TableHeader>
+            <TableRow className="bg-button hover:bg-button">
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("locationName")}
               >
                 <span>LOCATION</span>
@@ -73,9 +82,10 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                centered
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("name")}
               >
                 <span>FULL NAME</span>
@@ -84,9 +94,10 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                centered
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("winLoss")}
               >
                 <span>WIN/LOSS</span>
@@ -95,9 +106,10 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-border text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                centered
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("lastSession")}
               >
                 <span>JOINED</span>
@@ -106,13 +118,13 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th className="p-3 border border-border text-sm">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+              <TableHead centered className="text-white font-semibold">ACTIONS</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {members.map((member) => (
-              <tr
+              <TableRow
                 key={member._id}
                 className="cursor-pointer hover:bg-muted"
                 onClick={(e) => {
@@ -121,21 +133,27 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   }
                 }}
               >
-                <td className="p-3 bg-container border border-border text-sm text-left hover:bg-accent">
+                <TableCell className="text-left">
                   {member.locationName || "Unknown Location"}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm text-left hover:bg-accent">
+                </TableCell>
+                <TableCell centered>
                   <div>{`${member.profile.firstName} ${member.profile.lastName}`}</div>
                   <div className="mt-1 inline-flex text-primary-foreground text-[10px] leading-tight">
-                    <span className="bg-blueHighlight px-1 py-0.5 rounded-l-full">
+                    <Badge
+                      variant="secondary"
+                      className="bg-blueHighlight text-white px-1 py-0.5 rounded-l-full rounded-r-none"
+                    >
                       {member.profile.occupation || "Not Specified"}
-                    </span>
-                    <span className="bg-button px-1 py-0.5 rounded-r-full">
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className="bg-button text-white px-1 py-0.5 rounded-r-full rounded-l-none"
+                    >
                       {member.points} POINTS
-                    </span>
+                    </Badge>
                   </div>
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
+                </TableCell>
+                <TableCell centered>
                   <div
                     className={`font-medium ${
                       (member.winLoss || 0) >= 0
@@ -149,51 +167,69 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     In: {formatCurrency(member.totalMoneyIn || 0)} | Out:{" "}
                     {formatCurrency(member.totalMoneyOut || 0)}
                   </div>
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
+                </TableCell>
+                <TableCell centered>
                   {formatDate(member.createdAt)}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-accent">
+                </TableCell>
+                <TableCell centered>
                   <div className="flex items-center justify-center gap-2">
-                    <Image
-                      src={leftHamburgerMenu}
-                      alt="Details"
-                      width={20}
-                      height={20}
-                      className="cursor-pointer opacity-70 hover:opacity-100"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         onMemberClick(member._id);
                       }}
-                    />
-                    <Image
-                      src={editIcon}
-                      alt="Edit"
-                      width={20}
-                      height={20}
-                      className="cursor-pointer opacity-70 hover:opacity-100"
+                    >
+                      <Image
+                        src={leftHamburgerMenu}
+                        alt="Details"
+                        width={16}
+                        height={16}
+                        className="opacity-70 hover:opacity-100"
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         onAction("edit", member);
                       }}
-                    />
-                    <Image
-                      src={deleteIcon}
-                      alt="Delete"
-                      width={20}
-                      height={20}
-                      className="cursor-pointer opacity-70 hover:opacity-100"
+                    >
+                      <Image
+                        src={editIcon}
+                        alt="Edit"
+                        width={16}
+                        height={16}
+                        className="opacity-70 hover:opacity-100"
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         onAction("delete", member);
                       }}
-                    />
+                    >
+                      <Image
+                        src={deleteIcon}
+                        alt="Delete"
+                        width={16}
+                        height={16}
+                        className="opacity-70 hover:opacity-100"
+                      />
+                    </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination Controls */}

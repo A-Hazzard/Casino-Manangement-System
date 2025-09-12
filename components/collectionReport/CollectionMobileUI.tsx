@@ -22,7 +22,11 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
+  selectedFilters,
+  onFilterChange,
+  onClearFilters,
   isSearching,
+  onEdit,
 }) => {
   return (
     <div className="lg:hidden w-full bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
@@ -36,6 +40,9 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
         onSearchSubmit={onSearchSubmit}
         showUncollectedOnly={showUncollectedOnly}
         onShowUncollectedOnlyChange={onShowUncollectedOnlyChange}
+        selectedFilters={selectedFilters}
+        onFilterChange={onFilterChange}
+        onClearFilters={onClearFilters}
         isSearching={isSearching}
       />
 
@@ -66,6 +73,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
               <CollectionReportCards
                 data={mobileCurrentItems}
                 gridLayout={false}
+                onEdit={onEdit}
               />
             </div>
 
@@ -74,6 +82,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
               <CollectionReportCards
                 data={mobileCurrentItems}
                 gridLayout={true}
+                onEdit={onEdit}
               />
             </div>
 

@@ -21,6 +21,7 @@ const FILTERS: { label: string; value: CollectionReportDateFilter }[] = [
   { label: "Yesterday", value: "yesterday" },
   { label: "Last 7 Days", value: "last7" },
   { label: "Last 30 Days", value: "last30" },
+  { label: "All Time", value: "alltime" },
 ];
 
 export default function CollectionReportDateButtons({

@@ -6,7 +6,7 @@ import { MemberSession } from "@/lib/types/members";
 // Removed unused icon imports - using text symbols instead
 import { formatCurrency } from "@/lib/utils/formatters";
 import Link from "next/link";
-import { ActivityIcon } from "lucide-react";
+import { ActivityIcon, ChevronUp, ChevronDown } from "lucide-react";
 
 // Custom format function for login time to show date and time on separate lines
 const formatLoginTime = (dateTime: string | Date | null | undefined): string => {
@@ -37,27 +37,69 @@ const formatLoginTime = (dateTime: string | Date | null | undefined): string => 
   }
 };
 
+type SortOption = "time" | "sessionLength" | "moneyIn" | "moneyOut" | "jackpot" | "wonLess" | "points" | "gamesPlayed" | "gamesWon" | "coinIn" | "coinOut";
+
 type PlayerSessionTableProps = {
   sessions: MemberSession[];
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  sortOption: SortOption;
+  sortOrder: "asc" | "desc";
+  onSort: (column: SortOption) => void;
 };
 
 const TABLE_HEADERS = [
-  "Login Time",
-  "Session Length",
-  "Handle",
-  "Cancel. Cred.",
-  "Jackpot",
-  "Won/Less",
-  "Points",
-  "Games Played",
-  "Games Won",
-  "Coin In",
-  "Coin Out",
-  "Actions",
+  { label: "Login Time", sortKey: "time" as SortOption },
+  { label: "Session Length", sortKey: "sessionLength" as SortOption },
+  { label: "Money In", sortKey: "moneyIn" as SortOption },
+  { label: "Money Out", sortKey: "moneyOut" as SortOption },
+  { label: "Jackpot", sortKey: "jackpot" as SortOption },
+  { label: "Won/Less", sortKey: "wonLess" as SortOption },
+  { label: "Points", sortKey: "points" as SortOption },
+  { label: "Games Played", sortKey: "gamesPlayed" as SortOption },
+  { label: "Games Won", sortKey: "gamesWon" as SortOption },
+  { label: "Coin In", sortKey: "coinIn" as SortOption },
+  { label: "Coin Out", sortKey: "coinOut" as SortOption },
+  { label: "Actions", sortKey: null },
 ];
+
+// Sortable header component
+const SortableHeader = ({ 
+  children, 
+  sortKey, 
+  currentSort, 
+  onSort 
+}: { 
+  children: React.ReactNode; 
+  sortKey: SortOption; 
+  currentSort: { key: SortOption; direction: "asc" | "desc" }; 
+  onSort: (key: SortOption) => void; 
+}) => {
+  const isActive = currentSort.key === sortKey;
+  
+  return (
+    <th 
+      className="p-3 border border-border text-sm relative cursor-pointer whitespace-nowrap hover:bg-gray-100 transition-colors select-none"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center justify-center gap-1">
+        <span>{children}</span>
+        {isActive ? (
+          currentSort.direction === 'asc' ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )
+        ) : (
+          <div className="w-4 h-4 opacity-30">
+            <ChevronUp className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+    </th>
+  );
+};
 
 // Session Card Component for Mobile
 const SessionCard = ({
@@ -82,15 +124,15 @@ const SessionCard = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-600">Handle</span>
+          <span className="font-medium text-gray-600">Money In</span>
           <span className="font-semibold text-right break-all">
-            {formatCurrency(session.handle)}
+            {formatCurrency(session.moneyIn)}
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-600">Cancel. Cred.</span>
+          <span className="font-medium text-gray-600">Money Out</span>
           <span className="font-semibold text-right break-all">
-            {formatCurrency(session.cancelledCredits)}
+            {formatCurrency(session.moneyOut)}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -156,12 +198,92 @@ export default function PlayerSessionTable({
   currentPage,
   totalPages,
   onPageChange,
+  sortOption,
+  sortOrder,
+  onSort,
 }: PlayerSessionTableProps) {
   const handleFirstPage = () => onPageChange(0);
   const handleLastPage = () => onPageChange(totalPages - 1);
   const handlePrevPage = () => currentPage > 0 && onPageChange(currentPage - 1);
   const handleNextPage = () =>
     currentPage < totalPages - 1 && onPageChange(currentPage + 1);
+
+  // Sort sessions based on current sort option and order
+  const sortedSessions = React.useMemo(() => {
+    return [...sessions].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      switch (sortOption) {
+        case "time":
+          // Handle both individual sessions (Date objects) and grouped data (formatted strings)
+          if (typeof a.time === 'string' && typeof b.time === 'string') {
+            // For grouped data, sort by the string representation
+            aValue = a.time;
+            bValue = b.time;
+          } else {
+            // For individual sessions, sort by timestamp
+            aValue = a.time ? new Date(a.time).getTime() : 0;
+            bValue = b.time ? new Date(b.time).getTime() : 0;
+          }
+          break;
+        case "sessionLength":
+          aValue = a.sessionLength || "N/A";
+          bValue = b.sessionLength || "N/A";
+          break;
+        case "moneyIn":
+          aValue = a.moneyIn || 0;
+          bValue = b.moneyIn || 0;
+          break;
+        case "moneyOut":
+          aValue = a.moneyOut || 0;
+          bValue = b.moneyOut || 0;
+          break;
+        case "jackpot":
+          aValue = a.jackpot || 0;
+          bValue = b.jackpot || 0;
+          break;
+        case "wonLess":
+          aValue = a.wonLess || 0;
+          bValue = b.wonLess || 0;
+          break;
+        case "points":
+          aValue = a.points || 0;
+          bValue = b.points || 0;
+          break;
+        case "gamesPlayed":
+          aValue = a.gamesPlayed || 0;
+          bValue = b.gamesPlayed || 0;
+          break;
+        case "gamesWon":
+          aValue = a.gamesWon || 0;
+          bValue = b.gamesWon || 0;
+          break;
+        case "coinIn":
+          aValue = a.coinIn || 0;
+          bValue = b.coinIn || 0;
+          break;
+        case "coinOut":
+          aValue = a.coinOut || 0;
+          bValue = b.coinOut || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortOrder === "asc" 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      if (sortOrder === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  }, [sessions, sortOption, sortOrder]);
 
   const renderCell = (session: MemberSession, header: string) => {
     const wonLess = (session.won || 0) - (session.bet || 0);
@@ -187,10 +309,10 @@ export default function PlayerSessionTable({
         }
       case "Session Length":
         return session.sessionLength || "N/A";
-      case "Handle":
-        return formatCurrency(session.handle);
-      case "Cancel. Cred.":
-        return formatCurrency(session.cancelledCredits);
+      case "Money In":
+        return formatCurrency(session.moneyIn);
+      case "Money Out":
+        return formatCurrency(session.moneyOut);
       case "Jackpot":
         return formatCurrency(session.jackpot);
       case "Won/Less":
@@ -237,7 +359,7 @@ export default function PlayerSessionTable({
       {/* Mobile/Tablet Card View */}
       <div className="block md:hidden">
         <div className="grid grid-cols-1 gap-4 p-4">
-          {sessions.map((session) => (
+          {sortedSessions.map((session) => (
             <SessionCard
               key={session._id}
               session={session}
@@ -253,24 +375,35 @@ export default function PlayerSessionTable({
             <thead className="bg-button text-white">
               <tr>
                 {TABLE_HEADERS.map((header) => (
-                  <th
-                    key={header}
-                    className="p-3 border border-border text-sm relative cursor-pointer whitespace-nowrap"
-                  >
-                    <span>{header}</span>
-                  </th>
+                  header.sortKey ? (
+                    <SortableHeader
+                      key={header.label}
+                      sortKey={header.sortKey}
+                      currentSort={{ key: sortOption, direction: sortOrder }}
+                      onSort={onSort}
+                    >
+                      {header.label}
+                    </SortableHeader>
+                  ) : (
+                    <th
+                      key={header.label}
+                      className="p-3 border border-border text-sm relative whitespace-nowrap"
+                    >
+                      <span>{header.label}</span>
+                    </th>
+                  )
                 ))}
               </tr>
             </thead>
             <tbody>
-              {sessions.map((session) => (
+              {sortedSessions.map((session) => (
                 <tr key={session._id} className="hover:bg-muted">
                   {TABLE_HEADERS.map((header) => (
                     <td
-                      key={header}
+                      key={header.label}
                       className="p-3 bg-container border border-border text-sm text-left hover:bg-accent whitespace-nowrap"
                     >
-                      {renderCell(session, header)}
+                      {renderCell(session, header.label)}
                     </td>
                   ))}
                 </tr>

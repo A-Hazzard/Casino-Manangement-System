@@ -2,6 +2,15 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import editIcon from "@/public/editIcon.svg";
 import deleteIcon from "@/public/deleteIcon.svg";
+
+// Pre-render the icons for better performance
+const EditIcon = () => (
+  <Image src={editIcon} alt="Edit" width={20} height={20} priority />
+);
+
+const DeleteIcon = () => (
+  <Image src={deleteIcon} alt="Delete" width={20} height={20} priority />
+);
 import {
   getStatusColor,
   formatMovementRequestDate,
@@ -52,12 +61,7 @@ export default function MovementRequestCard({
           onClick={() => onEdit(request)}
           className="text-green-500 flex-shrink-0"
         >
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={20}
-            height={20}
-          />
+          <EditIcon />
         </button>
       </div>
       <div className="mb-3 space-y-1">
@@ -106,12 +110,7 @@ export default function MovementRequestCard({
           onClick={() => onDelete(request)}
           className="text-red-500 flex-shrink-0"
         >
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={20}
-            height={20}
-          />
+          <DeleteIcon />
         </button>
       </div>
     </div>

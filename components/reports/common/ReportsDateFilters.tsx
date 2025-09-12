@@ -7,7 +7,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { TimePeriod } from "@/app/api/lib/types";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useReportsStore } from "@/lib/store/reportsStore";
-import CurrencyFilter from "@/components/filters/CurrencyFilter";
 
 /**
  * Reports Date Filters Component
@@ -24,7 +23,7 @@ export default function ReportsDateFilters() {
     loadingChartData,
     loadingTopPerforming,
     refreshing,
-    selectedLicencee,
+    selectedLicencee: _selectedLicencee,
   } = useDashBoardStore();
 
   const { setDateRange, activeView } = useReportsStore();
@@ -44,8 +43,8 @@ export default function ReportsDateFilters() {
     // Only show 7/30 day filters for non-meters tabs
     if (activeView !== "meters") {
       baseButtons.push(
-        { label: "Last 7 Days", value: "last7days" as TimePeriod },
-        { label: "Last 30 Days", value: "last30days" as TimePeriod }
+        { label: "Last 7 Days", value: "7d" as TimePeriod },
+        { label: "Last 30 Days", value: "30d" as TimePeriod }
       );
     }
 
@@ -139,10 +138,12 @@ export default function ReportsDateFilters() {
           endDate = new Date(startDate);
           endDate.setHours(23, 59, 59, 999);
           break;
+        case "7d":
         case "last7days":
           startDate = new Date(now.setDate(now.getDate() - 7));
           endDate = new Date();
           break;
+        case "30d":
         case "last30days":
           startDate = new Date(now.setDate(now.getDate() - 30));
           endDate = new Date();
@@ -160,10 +161,6 @@ export default function ReportsDateFilters() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 w-full">
-      {/* Currency Filter */}
-      <div className="flex items-center gap-2">
-        <CurrencyFilter selectedLicensee={selectedLicencee} />
-      </div>
 
       {/* Mobile: Select dropdown */}
       <div className="w-full md:hidden">

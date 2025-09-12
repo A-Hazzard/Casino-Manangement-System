@@ -11,7 +11,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type"); // 'overview', 'stats', 'all', 'offline'
     const timePeriod =
-      (searchParams.get("timePeriod") as TimePeriod) || "Today";
+      searchParams.get("timePeriod") as TimePeriod;
+    
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      return NextResponse.json(
+        { error: "timePeriod parameter is required" },
+        { status: 400 }
+      );
+    }
+    
     const licencee = searchParams.get("licencee") || undefined;
     const onlineStatus = searchParams.get("onlineStatus") || "all"; // New parameter for online/offline filtering
     const searchTerm = searchParams.get("search"); // Extract search parameter
@@ -34,12 +43,31 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      startDate = new Date(customStart);
-      endDate = new Date(customEnd);
+      
+      // Parse custom dates and apply timezone handling
+      // Create dates in Trinidad timezone (UTC-4)
+      const customStartDate = new Date(customStart + 'T00:00:00-04:00');
+      const customEndDate = new Date(customEnd + 'T23:59:59-04:00');
+      
+      // Convert to UTC for database queries
+      startDate = new Date(customStartDate.getTime());
+      endDate = new Date(customEndDate.getTime());
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
       endDate = e;
+    }
+
+    // Debug logging for custom date ranges
+    if (timePeriod === "Custom") {
+      const customStart = searchParams.get("startDate");
+      const customEnd = searchParams.get("endDate");
+      console.warn("🔍 API - Custom date range debug (machines):");
+      console.warn("🔍 API - Original customStart:", customStart);
+      console.warn("🔍 API - Original customEnd:", customEnd);
+      console.warn("🔍 API - Parsed startDate:", startDate?.toISOString());
+      console.warn("🔍 API - Parsed endDate:", endDate?.toISOString());
+      console.warn("🔍 API - Timezone offset applied: +4 hours (Trinidad to UTC)");
     }
 
     const db = await connectDB();
@@ -86,6 +114,7 @@ export async function GET(req: NextRequest) {
         { origSerialNumber: { $regex: searchTerm, $options: "i" } },
         { game: { $regex: searchTerm, $options: "i" } },
         { manuf: { $regex: searchTerm, $options: "i" } },
+        { manufacturer: { $regex: searchTerm, $options: "i" } },
         { "Custom.name": { $regex: searchTerm, $options: "i" } },
       ];
     }
@@ -427,6 +456,7 @@ const getOverviewMachines = async (
         gamingLocation: 1,
         game: 1,
         manuf: 1,
+        manufacturer: 1,
         lastActivity: 1,
         isSasMachine: 1,
         gameConfig: 1,
@@ -438,11 +468,11 @@ const getOverviewMachines = async (
         coinOut: { $ifNull: ["$meterData.coinOut", 0] },
         gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
         jackpot: { $ifNull: ["$meterData.jackpot", 0] },
-        // Calculate netWin and gross
+        // Calculate netWin (Handle - Automatic Payouts) and gross (Money In - Money Out)
         netWin: {
           $subtract: [
-            { $ifNull: ["$meterData.drop", 0] },
-            { $ifNull: ["$meterData.moneyOut", 0] }
+            { $ifNull: ["$meterData.coinIn", 0] },
+            { $ifNull: ["$meterData.coinOut", 0] }
           ]
         },
         gross: {
@@ -483,7 +513,7 @@ const getOverviewMachines = async (
       locationId: machine.gamingLocation?.toString() || "",
       locationName: machine.locationName || "Unknown Location",
       gameTitle: machine.game || "Unknown Game",
-      manufacturer: machine.manuf || "Unknown Manufacturer",
+      manufacturer: machine.manufacturer || machine.manuf || "Unknown Manufacturer",
       isOnline: !!(
         machine.lastActivity &&
         new Date(machine.lastActivity as string) >= new Date(Date.now() - 3 * 60 * 1000)
@@ -670,6 +700,7 @@ const getAllMachines = async (
           gamingLocation: 1,
           game: 1,
           manuf: 1,
+          manufacturer: 1,
           lastActivity: 1,
           isSasMachine: 1,
           gameConfig: 1,
@@ -679,11 +710,11 @@ const getAllMachines = async (
           moneyOut: { $ifNull: ["$meterData.moneyOut", 0] },
           gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
           jackpot: { $ifNull: ["$meterData.jackpot", 0] },
-          // Calculate netWin and gross
+          // Calculate netWin (Handle - Automatic Payouts) and gross (Money In - Money Out)
           netWin: {
             $subtract: [
-              { $ifNull: ["$meterData.drop", 0] },
-              { $ifNull: ["$meterData.moneyOut", 0] }
+              { $ifNull: ["$meterData.coinIn", 0] },
+              { $ifNull: ["$meterData.coinOut", 0] }
             ]
           },
           gross: {
@@ -725,7 +756,7 @@ const getAllMachines = async (
         locationId: machine.gamingLocation?.toString() || "",
         locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
-        manufacturer: machine.manuf || "Unknown Manufacturer",
+        manufacturer: machine.manufacturer || machine.manuf || "Unknown Manufacturer",
         isOnline: !!(
           machine.lastActivity &&
           new Date(machine.lastActivity as string) >= new Date(Date.now() - 3 * 60 * 1000)
@@ -779,6 +810,7 @@ const getOfflineMachines = async (
 ) => {
   try {
     const searchTerm = searchParams.get("search");
+    const locationId = searchParams.get("locationId");
 
     // Build machine filter for offline machines
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
@@ -789,6 +821,11 @@ const getOfflineMachines = async (
       ],
       lastActivity: { $exists: true, $lt: threeMinutesAgo },
     };
+
+    // Add location filter if specified
+    if (locationId && locationId !== "all") {
+      machineMatchStage.gamingLocation = locationId;
+    }
 
     // Add search filter if specified
     if (searchTerm && searchTerm.trim()) {
@@ -889,6 +926,7 @@ const getOfflineMachines = async (
           gamingLocation: 1,
           game: 1,
           manuf: 1,
+          manufacturer: 1,
           lastActivity: 1,
           isSasMachine: 1,
           gameConfig: 1,
@@ -898,11 +936,11 @@ const getOfflineMachines = async (
           moneyOut: { $ifNull: ["$meterData.moneyOut", 0] },
           gamesPlayed: { $ifNull: ["$meterData.gamesPlayed", 0] },
           jackpot: { $ifNull: ["$meterData.jackpot", 0] },
-          // Calculate netWin and gross
+          // Calculate netWin (Handle - Automatic Payouts) and gross (Money In - Money Out)
           netWin: {
             $subtract: [
-              { $ifNull: ["$meterData.drop", 0] },
-              { $ifNull: ["$meterData.moneyOut", 0] }
+              { $ifNull: ["$meterData.coinIn", 0] },
+              { $ifNull: ["$meterData.coinOut", 0] }
             ]
           },
           gross: {
@@ -942,7 +980,7 @@ const getOfflineMachines = async (
         locationId: machine.gamingLocation?.toString() || "",
         locationName: machine.locationName || "Unknown Location",
         gameTitle: machine.game || "Unknown Game",
-        manufacturer: machine.manuf || "Unknown Manufacturer",
+        manufacturer: machine.manufacturer || machine.manuf || "Unknown Manufacturer",
         isOnline: false, // All machines in this query are offline
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,

@@ -1,6 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Eye } from "lucide-react";
 import {
   formatCurrency,
@@ -37,70 +45,54 @@ export default function SessionsTable({
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Player
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Machine
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Start Time
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Duration
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Handle
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Jackpot
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Points
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-button hover:bg-button">
+              <TableHead className="text-white font-semibold">Player</TableHead>
+              <TableHead className="text-white font-semibold">Machine</TableHead>
+              <TableHead className="text-white font-semibold">Start Time</TableHead>
+              <TableHead className="text-white font-semibold">Duration</TableHead>
+              <TableHead className="text-white font-semibold">Handle</TableHead>
+              <TableHead className="text-white font-semibold">Jackpot</TableHead>
+              <TableHead className="text-white font-semibold">Points</TableHead>
+              <TableHead className="text-white font-semibold">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {sessions.map((session) => (
-              <tr key={session._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+              <TableRow key={session._id} className="hover:bg-gray-50">
+                <TableCell>
                   <div className="text-sm font-medium text-gray-900">
                     {session.memberName || "Unknown Player"}
                   </div>
                   <div className="text-sm text-gray-500">
                     ID: {session.memberId}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </TableCell>
+                <TableCell>
                   <div className="text-sm font-medium text-gray-900">
                     {session.machineId}
                   </div>
                   <div className="text-sm text-gray-500">
                     {session.machineName || "Unknown Machine"}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                </TableCell>
+                <TableCell className="text-sm text-gray-900">
                   {formatDate(session.startTime)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                </TableCell>
+                <TableCell className="text-sm text-gray-900">
                   {formatDuration(session.duration)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                </TableCell>
+                <TableCell className="text-sm text-gray-900">
                   {formatCurrency(session.handle)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                </TableCell>
+                <TableCell className="text-sm text-gray-900">
                   {formatCurrency(session.jackpot)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                </TableCell>
+                <TableCell className="text-sm text-gray-900">
                   {formatPoints(session.points)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                </TableCell>
+                <TableCell>
                   <Button
                     size="sm"
                     variant="outline"
@@ -112,11 +104,11 @@ export default function SessionsTable({
                     <Eye className="h-4 w-4" />
                     <span>Events</span>
                   </Button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Mobile Cards */}

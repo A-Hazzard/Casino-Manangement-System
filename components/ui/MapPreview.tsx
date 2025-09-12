@@ -56,6 +56,7 @@ const getLocationStats = (location: locations, locationAggregates: Record<string
     ? locationAggregates.find((d) => d.location === location._id)
     : undefined;
 
+
   return {
     moneyIn: stats?.moneyIn ?? 0,
     moneyOut: stats?.moneyOut ?? 0,
@@ -267,16 +268,12 @@ export default function MapPreview(props: MapPreviewProps) {
           params.append("timePeriod", "Today");
         } else if (activeMetricsFilter === "Yesterday") {
           params.append("timePeriod", "Yesterday");
-        } else if (
-          activeMetricsFilter === "last7days" ||
-          activeMetricsFilter === "7d"
-        ) {
+        } else if (activeMetricsFilter === "7d") {
           params.append("timePeriod", "7d");
-        } else if (
-          activeMetricsFilter === "last30days" ||
-          activeMetricsFilter === "30d"
-        ) {
+        } else if (activeMetricsFilter === "30d") {
           params.append("timePeriod", "30d");
+        } else if (activeMetricsFilter === "All Time") {
+          params.append("timePeriod", "All Time");
         } else if (activeMetricsFilter === "Custom" && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
             const sd =
@@ -290,10 +287,12 @@ export default function MapPreview(props: MapPreviewProps) {
             params.append("startDate", sd.toISOString());
             params.append("endDate", ed.toISOString());
           } else {
-            params.append("timePeriod", "Today");
+            // No valid timePeriod, skip the request
+            return;
           }
         } else {
-          params.append("timePeriod", "Today");
+          // No valid timePeriod, skip the request
+          return;
         }
         if (selectedLicencee) {
           params.append("licencee", selectedLicencee);
@@ -317,7 +316,7 @@ export default function MapPreview(props: MapPreviewProps) {
     customDateRange,
     selectedLicencee,
     props.locationAggregates,
-  ]); // Added props.locationAggregates to dependencies
+  ]);
 
   // Modal animation using GSAP
   useEffect(() => {

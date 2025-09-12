@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Member } from "@/app/api/lib/models/members";
+import { logActivity } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 import type { PipelineStage } from "mongoose";
 
 export async function GET(request: NextRequest) {
@@ -14,18 +17,45 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
-    const licencee = searchParams.get("licencee") || "";
-    console.warn("Received licencee parameter:", licencee);
+    
+    // Date filters
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    
+    // Win/Loss filter
+    const winLossFilter = searchParams.get("winLossFilter"); // "positive", "negative", "all"
+    
+    // Location filter
+    const locationFilter = searchParams.get("locationFilter");
 
     // Build optimized query
     const query: Record<string, unknown> = {};
 
+    // Search by member name, username, or ID
     if (search) {
       query.$or = [
         { "profile.firstName": { $regex: search, $options: "i" } },
         { "profile.lastName": { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
         { _id: { $regex: search, $options: "i" } },
       ];
+    }
+
+    // Date filter for joined date
+    if (startDate || endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        dateFilter.$lte = new Date(endDate);
+      }
+      query.createdAt = dateFilter;
+    }
+
+    // Location filter
+    if (locationFilter && locationFilter !== "all") {
+      query.gamingLocation = locationFilter;
     }
 
     // Build optimized sort options with indexing considerations
@@ -37,6 +67,12 @@ export async function GET(request: NextRequest) {
       sort["_id"] = sortOrder === "asc" ? 1 : -1;
     } else if (sortBy === "lastSession") {
       sort["createdAt"] = sortOrder === "asc" ? 1 : -1;
+    } else if (sortBy === "winLoss") {
+      sort["winLoss"] = sortOrder === "asc" ? 1 : -1;
+    } else if (sortBy === "joined") {
+      sort["createdAt"] = sortOrder === "asc" ? 1 : -1;
+    } else if (sortBy === "location") {
+      sort["locationName"] = sortOrder === "asc" ? 1 : -1;
     } else {
       sort[sortBy] = sortOrder === "asc" ? 1 : -1;
     }
@@ -71,7 +107,7 @@ export async function GET(request: NextRequest) {
     pipeline.push({
       $addFields: {
         locationName: { $arrayElemAt: ["$locationInfo.name", 0] },
-        // Calculate win/loss from sessions
+        // Calculate financial metrics from sessions using correct fields from financial guide
         totalMoneyIn: {
           $reduce: {
             input: "$sessions",
@@ -106,24 +142,52 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        totalHandle: {
+          $reduce: {
+            input: "$sessions",
+            initialValue: 0,
+            in: {
+              $add: [
+                "$$value",
+                {
+                  $ifNull: [{ $toDouble: "$$this.endMeters.movement.coinIn" }, 0],
+                },
+              ],
+            },
+          },
+        },
       },
     });
 
-    // Add win/loss calculation
+    // Add win/loss calculation (Gross Revenue = Money In - Money Out)
     pipeline.push({
       $addFields: {
         winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
+        grossRevenue: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
       },
     });
 
-    // Filter by licencee if specified
-    if (licencee && licencee !== "All Licensees" && licencee !== "all") {
-      console.warn("Filtering by licencee:", licencee);
-      pipeline.push({
-        $match: {
-          "locationInfo.rel.licencee": licencee,
-        },
-      });
+    // Filter by win/loss if specified
+    if (winLossFilter && winLossFilter !== "all") {
+      if (winLossFilter === "positive") {
+        pipeline.push({
+          $match: {
+            winLoss: { $gt: 0 },
+          },
+        });
+      } else if (winLossFilter === "negative") {
+        pipeline.push({
+          $match: {
+            winLoss: { $lt: 0 },
+          },
+        });
+      } else if (winLossFilter === "zero") {
+        pipeline.push({
+          $match: {
+            winLoss: { $eq: 0 },
+          },
+        });
+      }
     }
 
     // Project only needed fields
@@ -143,8 +207,10 @@ export async function GET(request: NextRequest) {
         accountLocked: 1,
         lastLogin: 1,
         winLoss: 1,
+        grossRevenue: 1,
         totalMoneyIn: 1,
         totalMoneyOut: 1,
+        totalHandle: 1,
       },
     });
 
@@ -170,14 +236,15 @@ export async function GET(request: NextRequest) {
       pipeline as unknown as PipelineStage[]
     );
 
-    // Debug: Log some sample location info to see what licensee values exist
-    if (members.length > 0) {
+    // Debug: Log some sample member info if needed
+    if (members.length > 0 && process.env.NODE_ENV === "development") {
       console.warn(
-        "Sample member location info:",
-        members.slice(0, 3).map((m) => ({
+        "Sample member info:",
+        members.slice(0, 2).map((m) => ({
           memberId: m._id,
+          name: `${m.profile?.firstName} ${m.profile?.lastName}`,
           locationName: m.locationName,
-          gamingLocation: m.gamingLocation,
+          winLoss: m.winLoss,
         }))
       );
     }
@@ -257,6 +324,37 @@ export async function POST(request: NextRequest) {
     });
 
     await newMember.save();
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "username", oldValue: null, newValue: body.username },
+          { field: "firstName", oldValue: null, newValue: body.profile.firstName },
+          { field: "lastName", oldValue: null, newValue: body.profile.lastName },
+          { field: "email", oldValue: null, newValue: body.profile.email || "" },
+          { field: "phoneNumber", oldValue: null, newValue: body.phoneNumber || "" },
+          { field: "gamingLocation", oldValue: null, newValue: body.gamingLocation || "default" },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "member",
+          { id: newMember._id, name: `${body.profile.firstName} ${body.profile.lastName}` },
+          createChanges,
+          `Created new member "${body.profile.firstName} ${body.profile.lastName}" with username "${body.username}"`,
+          getClientIP(request) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
 
     return NextResponse.json(newMember, { status: 201 });
   } catch (error) {

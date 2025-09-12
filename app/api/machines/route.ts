@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
+import { Collections } from "@/app/api/lib/models/collections";
 import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
 // TODO: Import date utilities when implementing date filtering
 // import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { Meters } from "../lib/models/meters";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 import { generateMongoId } from "@/lib/utils/id";
+import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: NextRequest) {
   try {
@@ -372,7 +376,7 @@ export async function POST(request: NextRequest) {
         lockBvOnLogOut: false,
       },
       playableBalance: 0,
-      custom: { name: "" },
+      custom: { name: data.serialNumber },
       balances: { cashable: 0 },
       curProcess: { name: "", next: "" },
       tasks: {
@@ -477,6 +481,40 @@ export async function POST(request: NextRequest) {
 
     await newMachine.save();
 
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "serialNumber", oldValue: null, newValue: data.serialNumber },
+          { field: "game", oldValue: null, newValue: data.game },
+          { field: "gameType", oldValue: null, newValue: data.gameType || "slot" },
+          { field: "isCronosMachine", oldValue: null, newValue: data.isCronosMachine },
+          { field: "cabinetType", oldValue: null, newValue: data.cabinetType },
+          { field: "assetStatus", oldValue: null, newValue: data.assetStatus },
+          { field: "gamingLocation", oldValue: null, newValue: data.gamingLocation },
+          { field: "smibBoard", oldValue: null, newValue: data.smibBoard },
+          { field: "accountingDenomination", oldValue: null, newValue: data.accountingDenomination },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "machine",
+          { id: machineId, name: data.serialNumber },
+          createChanges,
+          `Created new machine "${data.serialNumber}" with game "${data.game}"`,
+          getClientIP(request) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(newMachine),
@@ -505,16 +543,71 @@ export async function PUT(request: NextRequest) {
     // ID validation removed - _id is stored as String, not ObjectId
 
     const data = (await request.json()) as MachineUpdateData;
+    
+    // Get original machine data for change tracking
+    const originalMachine = await Machine.findById(id);
+    if (!originalMachine) {
+      return NextResponse.json(
+        { success: false, error: "Cabinet not found" },
+        { status: 404 }
+      );
+    }
+
     const updatedMachine = await Machine.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,
     });
 
-    if (!updatedMachine) {
-      return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
-        { status: 404 }
-      );
+    // If serial number was updated, also update it in Collections
+    if (data.serialNumber !== undefined && data.serialNumber !== "" && data.serialNumber !== originalMachine.serialNumber) {
+      try {
+        await Collections.updateMany(
+          { machineId: id },
+          { $set: { serialNumber: data.serialNumber } }
+        );
+        console.warn(`Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`);
+      } catch (collectionsError) {
+        console.error("Failed to update serial number in Collections:", collectionsError);
+        // Don't fail the entire operation if Collections update fails
+      }
+    }
+
+    // If game name was updated, also update it in Collections
+    if (data.game !== undefined && data.game !== "" && data.game !== originalMachine.game) {
+      try {
+        await Collections.updateMany(
+          { machineId: id },
+          { $set: { machineName: data.game } }
+        );
+        console.warn(`Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`);
+      } catch (collectionsError) {
+        console.error("Failed to update machine name in Collections:", collectionsError);
+        // Don't fail the entire operation if Collections update fails
+      }
+    }
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const changes = calculateChanges(originalMachine.toObject(), data);
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "UPDATE",
+          "machine",
+          { id, name: originalMachine.serialNumber || originalMachine.game },
+          changes,
+          `Updated machine "${originalMachine.serialNumber || originalMachine.game}"`,
+          getClientIP(request) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
     }
 
     return NextResponse.json({
@@ -544,18 +637,53 @@ export async function DELETE(request: NextRequest) {
 
     // ID validation removed - _id is stored as String, not ObjectId
 
-    const result = await Machine.findByIdAndUpdate(id, {
+    // Get machine data before deletion for logging
+    const machineToDelete = await Machine.findById(id);
+    if (!machineToDelete) {
+      return NextResponse.json(
+        { success: false, error: "Cabinet not found" },
+        { status: 404 }
+      );
+    }
+
+    await Machine.findByIdAndUpdate(id, {
       $set: {
         deletedAt: new Date(),
         updatedAt: new Date(),
       },
     });
 
-    if (!result) {
-      return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
-        { status: 404 }
-      );
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const deleteChanges = [
+          { field: "serialNumber", oldValue: machineToDelete.serialNumber, newValue: null },
+          { field: "game", oldValue: machineToDelete.game, newValue: null },
+          { field: "gameType", oldValue: machineToDelete.gameType, newValue: null },
+          { field: "isCronosMachine", oldValue: machineToDelete.isCronosMachine, newValue: null },
+          { field: "cabinetType", oldValue: machineToDelete.cabinetType, newValue: null },
+          { field: "assetStatus", oldValue: machineToDelete.assetStatus, newValue: null },
+          { field: "gamingLocation", oldValue: machineToDelete.gamingLocation, newValue: null },
+          { field: "smibBoard", oldValue: machineToDelete.smibBoard, newValue: null },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "DELETE",
+          "machine",
+          { id, name: machineToDelete.serialNumber || machineToDelete.game },
+          deleteChanges,
+          `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game}"`,
+          getClientIP(request) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
     }
 
     return NextResponse.json({

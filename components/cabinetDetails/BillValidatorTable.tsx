@@ -38,11 +38,11 @@ export const BillValidatorTable: React.FC<ExtendedBillValidatorTableProps> = ({
         <table className="min-w-[350px] w-full border border-border rounded-lg shadow-md">
           <thead>
             <tr className="bg-blueHighlight text-container">
-              <th className="py-2 px-4 text-left rounded-tl-lg">
+              <th className="py-2 px-4 text-center rounded-tl-lg">
                 Denomination
               </th>
-              <th className="py-2 px-4 text-left">Quantity</th>
-              <th className="py-2 px-4 text-left rounded-tr-lg">Subtotal</th>
+              <th className="py-2 px-4 text-center">Quantity</th>
+              <th className="py-2 px-4 text-center rounded-tr-lg">Subtotal</th>
             </tr>
           </thead>
           <tbody className="bg-container">

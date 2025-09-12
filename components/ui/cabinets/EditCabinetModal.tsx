@@ -1,17 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { CabinetFormData } from "@/lib/types/cabinets";
 import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
 import { Trash2 } from "lucide-react";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
-import { useAuth } from "@/lib/hooks/useAuth";
 import { toast } from "sonner";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import axios from "axios";
 
 export const EditCabinetModal = ({
   onCabinetUpdated,
@@ -20,14 +30,43 @@ export const EditCabinetModal = ({
 }) => {
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetActionsStore();
+  const { activeMetricsFilter } = useDashBoardStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState(false);
-  const [fetchingDetails, setFetchingDetails] = useState(false);
-  const { hasRole } = useAuth();
+  const [cabinetDataLoading, setCabinetDataLoading] = useState(false);
+  const [locations, setLocations] = useState<
+    { id: string; name: string; sasEnabled: boolean }[]
+  >([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
 
   // Create activity logger for cabinet operations
   const cabinetLogger = createActivityLogger("machine");
+
+  // Fetch locations data
+  const fetchLocations = useCallback(async () => {
+    try {
+      setLocationsLoading(true);
+      const response = await axios.get("/api/locations");
+      const locationsData = response.data.locations || [];
+      const mappedLocations = locationsData.map(
+        (loc: Record<string, unknown>) => ({
+          id: loc._id as string,
+          name: loc.name as string,
+          sasEnabled:
+            ((loc as Record<string, unknown>).sasEnabled as boolean) || false,
+        })
+      );
+      setLocations(mappedLocations);
+    } catch (error) {
+      console.error("Failed to fetch locations:", error);
+      toast.error("Failed to load locations");
+      setLocations([]);
+    } finally {
+      setLocationsLoading(false);
+    }
+  }, []);
 
   const [formData, setFormData] = useState<CabinetFormData>({
     id: "",
@@ -58,10 +97,13 @@ export const EditCabinetModal = ({
         isCronosMachine: selectedCabinet.isCronosMachine || false,
       });
 
+      // Fetch locations data when modal opens
+      fetchLocations();
+
       // Fetch additional cabinet details if needed
-      if (selectedCabinet._id) {
-        setFetchingDetails(true);
-        fetchCabinetById(selectedCabinet._id)
+      if (selectedCabinet._id && activeMetricsFilter) {
+        setCabinetDataLoading(true);
+        fetchCabinetById(selectedCabinet._id, activeMetricsFilter)
           .then((cabinetDetails) => {
             if (cabinetDetails) {
               setFormData((prevData) => ({
@@ -88,11 +130,11 @@ export const EditCabinetModal = ({
             }
           })
           .finally(() => {
-            setFetchingDetails(false);
+            setCabinetDataLoading(false);
           });
       }
     }
-  }, [selectedCabinet]);
+  }, [selectedCabinet, fetchLocations, activeMetricsFilter]);
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -146,7 +188,7 @@ export const EditCabinetModal = ({
       const previousData = { ...selectedCabinet };
 
       // Pass the entire formData object with id included
-      const success = await updateCabinet(formData);
+      const success = await updateCabinet(formData, activeMetricsFilter);
       if (success) {
         // Log the cabinet update activity
         await cabinetLogger.logUpdate(
@@ -155,7 +197,7 @@ export const EditCabinetModal = ({
             selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
           } - ${
             selectedCabinet.assetNumber ||
-            selectedCabinet.serialNumber ||
+            getSerialNumberIdentifier(selectedCabinet) ||
             "Unknown"
           }`,
           previousData,
@@ -164,31 +206,33 @@ export const EditCabinetModal = ({
             selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
           } (${
             selectedCabinet.assetNumber ||
-            selectedCabinet.serialNumber ||
+            getSerialNumberIdentifier(selectedCabinet) ||
             "Unknown"
           })`
         );
 
         // Call the callback to refresh data
         onCabinetUpdated?.();
-        
+
         // Show success feedback
         toast.success("Cabinet updated successfully");
-        
+
         // Close the modal
         handleClose();
       }
     } catch (error) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error updating cabinet:", error);
-      }
+      console.error("Error updating cabinet:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update cabinet";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   if (!isEditModalOpen || !selectedCabinet) return null;
+
+  // No need for skeleton loading since we already have selectedCabinet data
+  // The form will be populated with basic data and updated when detailed data arrives
 
   // Desktop View Modal Content
   return (
@@ -201,13 +245,13 @@ export const EditCabinetModal = ({
       />
 
       {/* Desktop Modal */}
-      <div className="fixed inset-0 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-container rounded-md shadow-lg max-w-2xl w-full max-h-[98vh] overflow-visible"
           style={{ opacity: 0, transform: "translateY(-20px)" }}
         >
-          <div className="p-4 flex items-center border-b border-border">
+          <div className="p-3 sm:p-4 flex items-center border-b border-border">
             <h2 className="text-xl font-semibold text-center flex-1">
               Edit Cabinet Details
             </h2>
@@ -236,135 +280,186 @@ export const EditCabinetModal = ({
           </div>
 
           {/* Form Content */}
-          <div className="px-8 pb-8 space-y-4">
-            {fetchingDetails ? (
-              <div className="py-8 text-center text-muted-foreground">
-                Loading cabinet details...
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Serial Number & Installed Game */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      Serial Number
-                    </label>
-                    <Input
-                      id="assetNumber"
-                      name="assetNumber"
-                      value={formData.assetNumber}
-                      onChange={handleChange}
-                      placeholder="Enter serial number"
-                      className="bg-container border-border"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      Installed Game
-                    </label>
-                    <Input
-                      id="installedGame"
-                      name="installedGame"
-                      value={formData.installedGame}
-                      onChange={handleChange}
-                      placeholder="Enter installed game name"
-                      className="bg-container border-border"
-                    />
-                  </div>
-                </div>
-
-                {/* Accounting Denomination & Collection Multiplier */}
-                {hasRole("admin") && formData.isCronosMachine && (
-                  <div className="grid grid-cols-2 gap-4">
+          <div className="px-4 sm:px-8 pb-6 sm:pb-8 max-h-[calc(98vh-120px)] overflow-visible">
+            <div className="space-y-4 max-h-[calc(98vh-180px)] overflow-y-auto">
+                <div className="space-y-6">
+                  {/* Serial Number & Installed Game */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-grayHighlight block mb-2">
-                        Accounting Denomination (Chronos Only)
+                        Serial Number
                       </label>
-                      <Input
-                        id="accountingDenomination"
-                        name="accountingDenomination"
-                        value={formData.accountingDenomination}
-                        onChange={handleChange}
-                        placeholder="Enter denomination value"
-                        className="bg-container border-border"
-                      />
+                      {cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Input
+                          id="assetNumber"
+                          name="assetNumber"
+                          value={formData.assetNumber}
+                          onChange={handleChange}
+                          placeholder="Enter serial number"
+                          className="bg-container border-border"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        Installed Game
+                      </label>
+                      {cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Input
+                          id="installedGame"
+                          name="installedGame"
+                          value={formData.installedGame}
+                          onChange={handleChange}
+                          placeholder="Enter installed game name"
+                          className="bg-container border-border"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Accounting Denomination & Collection Multiplier */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        Accounting Denomination
+                      </label>
+                      {cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Input
+                          id="accountingDenomination"
+                          name="accountingDenomination"
+                          value={formData.accountingDenomination}
+                          onChange={handleChange}
+                          placeholder="The denomination the mac"
+                          className="bg-container border-border"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-grayHighlight block mb-2">
                         Collection Report Multiplier
                       </label>
-                      <Input
-                        id="collectionMultiplier"
-                        name="collectionMultiplier"
-                        value={formData.collectionMultiplier}
-                        onChange={handleChange}
-                        placeholder="Enter multiplier value"
-                        className="bg-container border-border"
-                      />
+                      {cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Input
+                          id="collectionMultiplier"
+                          name="collectionMultiplier"
+                          value={formData.collectionMultiplier}
+                          onChange={handleChange}
+                          placeholder="Enter multiplier value"
+                          className="bg-container border-border"
+                        />
+                      )}
                     </div>
                   </div>
-                )}
 
-                {/* Location & SMIB Board */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      Location
-                    </label>
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      placeholder="Enter location name"
-                      className="bg-container border-border"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
-                      SMIB Board
-                    </label>
-                    <Input
-                      id="smbId"
-                      name="smbId"
-                      value={formData.smbId}
-                      onChange={handleChange}
-                      placeholder="Enter SMIB ID"
-                      className="bg-container border-border"
-                    />
-                  </div>
-                </div>
-
-                {/* Status Field */}
-                <div>
-                  <label className="text-sm font-medium text-grayHighlight block mb-2">
-                    Status
-                  </label>
-                  <div className="flex space-x-4">
-                    {["Functional", "Maintenance", "Offline"].map((status) => (
-                      <label key={status} className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="status"
-                          checked={formData.status === status}
-                          onChange={() =>
-                            setFormData((prev) => ({ ...prev, status }))
-                          }
-                          className="w-4 h-4 text-button border-border focus:ring-button"
-                        />
-                        <span className="ml-2">{status}</span>
+                  {/* Location & SMIB Board */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        Location
                       </label>
-                    ))}
+                      {locationsLoading || cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Select
+                          value={formData.location || undefined}
+                          onValueChange={(locationId) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              location: locationId,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-container border-border">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {locations
+                              .filter(
+                                (location) =>
+                                  location.id && location.id.trim() !== ""
+                              )
+                              .map((location) => (
+                                <SelectItem
+                                  key={location.id}
+                                  value={location.id}
+                                >
+                                  {location.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-grayHighlight block mb-2">
+                        SMIB Board
+                      </label>
+                      {cabinetDataLoading ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Input
+                          id="smbId"
+                          name="smbId"
+                          value={formData.smbId}
+                          onChange={handleChange}
+                          placeholder="Enter SMIB ID"
+                          className="bg-container border-border"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status Field */}
+                  <div>
+                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                      Status
+                    </label>
+                    {cabinetDataLoading ? (
+                      <div className="flex space-x-4">
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                    ) : (
+                      <div className="flex space-x-4">
+                        {["Functional", "Maintenance", "Offline"].map(
+                          (status) => (
+                            <label
+                              key={status}
+                              className="inline-flex items-center"
+                            >
+                              <input
+                                type="radio"
+                                name="status"
+                                checked={formData.status === status}
+                                onChange={() =>
+                                  setFormData((prev) => ({ ...prev, status }))
+                                }
+                                className="w-4 h-4 text-button border-border focus:ring-button"
+                              />
+                              <span className="ml-2">{status}</span>
+                            </label>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
 
             {/* Footer */}
-            <div className="flex justify-center space-x-4 mt-6">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
               <Button
                 onClick={handleSubmit}
-                disabled={loading || fetchingDetails}
+                disabled={loading}
                 className="bg-button hover:bg-button/90 text-container px-8"
               >
                 {loading ? "Saving..." : "SAVE"}
@@ -372,7 +467,7 @@ export const EditCabinetModal = ({
               <Button
                 onClick={handleClose}
                 variant="outline"
-                disabled={loading || fetchingDetails}
+                disabled={loading}
                 className="px-8"
               >
                 CLOSE

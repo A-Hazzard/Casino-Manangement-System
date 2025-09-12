@@ -3,6 +3,14 @@
 import { useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { LocationTableProps } from "@/lib/types/location";
 
 import React from "react";
@@ -26,15 +34,15 @@ const LocationTable: React.FC<LocationTableProps> = ({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <Table
           ref={tableRef}
-          className="table-fixed w-full border-collapse text-center"
+          className="table-fixed w-full"
         >
-          <thead className="bg-[#00b517] text-white">
-            <tr>
-              <th
-                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+          <TableHeader>
+            <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("locationName")}
               >
                 <span>LOCATION NAME</span>
@@ -43,31 +51,31 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("moneyIn")}
               >
-                <span>HANDLE</span>
+                <span>MONEY IN</span>
                 {sortOption === "moneyIn" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("moneyOut")}
               >
-                <span>CANCELLED</span>
+                <span>MONEY OUT</span>
                 {sortOption === "moneyOut" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("jackpot")}
               >
                 <span>JACKPOT</span>
@@ -76,9 +84,9 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th
-                className="p-3 border border-[#00b517] text-sm relative cursor-pointer"
+              </TableHead>
+              <TableHead
+                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("gross")}
               >
                 <span>GROSS</span>
@@ -87,13 +95,13 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
                 )}
-              </th>
-              <th className="p-3 border border-[#00b517] text-sm">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+              <TableHead className="text-white font-semibold">ACTIONS</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {locations.map((loc) => (
-              <tr
+              <TableRow
                 key={loc.locationName}
                 className="cursor-pointer hover:bg-muted"
                 onClick={(e) => {
@@ -102,28 +110,28 @@ const LocationTable: React.FC<LocationTableProps> = ({
                   }
                 }}
               >
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-left hover:bg-accent">
+                <TableCell className="text-left">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">
                       {loc.locationName || "Unknown Location"}
                     </span>
                   </div>
-                </td>
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                </TableCell>
+                <TableCell className="text-center">
                   {formatCurrency(loc.moneyIn || 0)}
-                </td>
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                </TableCell>
+                <TableCell className="text-center">
                   {formatCurrency(loc.moneyOut || 0)}
-                </td>
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                </TableCell>
+                <TableCell className="text-center">
                   {formatCurrency(loc.jackpot || 0)}
-                </td>
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                </TableCell>
+                <TableCell className="text-center">
                   <span className="text-green-600 font-semibold">
                     {formatCurrency(loc.gross || 0)}
                   </span>
-                </td>
-                <td className="p-3 bg-white border-2 border-gray-200 text-sm text-center hover:bg-accent">
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="ghost"
@@ -160,11 +168,11 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       />
                     </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </>
   );

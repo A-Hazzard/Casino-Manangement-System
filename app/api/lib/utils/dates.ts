@@ -13,48 +13,49 @@ export const getDatesForTimePeriod = (
   let startDate: Date | undefined;
   let endDate: Date | undefined;
 
-  // Use the exact same pattern as the working MongoDB query
-  const TZ_OFFSET_MINUTES = 4 * 60; // UTC-4 for Trinidad
-  const now = new Date();
-  const trinidadNow = new Date(now.getTime() - TZ_OFFSET_MINUTES * 60000);
-
-  // Helper function to get start of day in Trinidad time
-  const getStartOfDayTrinidad = (date: Date): Date => {
-    const startLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-    const startUTC = new Date(startLocal.getTime() + TZ_OFFSET_MINUTES * 60000);
-    return startUTC;
-  };
-
-  // Helper function to get end of day in Trinidad time
-  const getEndOfDayTrinidad = (date: Date): Date => {
-    const startLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-    const startUTC = new Date(startLocal.getTime() + TZ_OFFSET_MINUTES * 60000);
-    const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
-    return endUTC;
-  };
+  // Use UTC dates directly (matching the working MongoDB shell queries)
 
   switch (timePeriod) {
     case "Today":
-      startDate = getStartOfDayTrinidad(trinidadNow);
-      endDate = new Date(now); // Use current time as end
+      // Define today's range in UTC (midnight to 23:59:59)
+      startDate = new Date();
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
       break;
 
     case "Yesterday":
-      const yesterday = new Date(trinidadNow.getTime() - 24 * 60 * 60 * 1000);
-      startDate = getStartOfDayTrinidad(yesterday);
-      endDate = getEndOfDayTrinidad(yesterday);
+      // Define yesterday's range in UTC (midnight to 23:59:59)
+      startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - 1);
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCDate(endDate.getUTCDate() - 1);
+      endDate.setUTCHours(23, 59, 59, 999);
       break;
 
     case "7d":
-      const sevenDaysAgo = new Date(trinidadNow.getTime() - 6 * 24 * 60 * 60 * 1000);
-      startDate = getStartOfDayTrinidad(sevenDaysAgo);
-      endDate = new Date(now); // Use current time as end
+    case "last7days":
+      // Define 7-day range in UTC
+      startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - 6);
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
       break;
 
     case "30d":
-      const thirtyDaysAgo = new Date(trinidadNow.getTime() - 29 * 24 * 60 * 60 * 1000);
-      startDate = getStartOfDayTrinidad(thirtyDaysAgo);
-      endDate = new Date(now); // Use current time as end
+    case "last30days":
+      // Define 30-day range in UTC
+      startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - 29);
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
       break;
 
     case "All Time":
@@ -65,8 +66,11 @@ export const getDatesForTimePeriod = (
 
     default:
       // Default to Today
-      startDate = getStartOfDayTrinidad(trinidadNow);
-      endDate = new Date(now); // Use current time as end
+      startDate = new Date();
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
       break;
   }
 

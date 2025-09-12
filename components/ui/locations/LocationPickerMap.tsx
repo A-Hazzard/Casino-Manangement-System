@@ -24,7 +24,8 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
   initialLng,
   mapType,
   onLocationSelect,
-  userLocation,
+  onMapLoadError,
+  onMapLoadSuccess,
 }) => {
   // Load Google Maps API
   const { isLoaded, loadError } = useLoadScript({
@@ -32,9 +33,38 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     libraries,
   });
 
+  // Debug API key loading
+  useEffect(() => {
+    if (loadError) {
+      console.error("Google Maps API Error:", loadError);
+      console.error(
+        "API Key:",
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "Present" : "Missing"
+      );
+      console.error("Current domain:", window.location.hostname);
+      // Call the error handler if provided
+      onMapLoadError?.();
+    }
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      console.error(
+        "Google Maps API Key is missing from environment variables"
+      );
+      // Call the error handler if provided
+      onMapLoadError?.();
+    } else {
+      console.warn("Google Maps API Key loaded successfully");
+    }
+  }, [loadError, onMapLoadError]);
+
+  // Call success handler when map is loaded
+  useEffect(() => {
+    if (isLoaded && !loadError) {
+      onMapLoadSuccess?.();
+    }
+  }, [isLoaded, loadError, onMapLoadSuccess]);
+
   // Map state
   const [map, setMap] = useState<google.maps.Map | null>(null);
-
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
 
   // Search state
@@ -71,23 +101,6 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     };
   }, [mapType, isLoaded]);
 
-  // Calculate distance between two points
-  const calculateDistance = useCallback(
-    (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-      const R = 6371; // Earth's radius in kilometers
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLng = ((lng2 - lng1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLng / 2) *
-          Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    },
-    []
-  );
 
   // Handle map load
   const onMapLoad = useCallback(
@@ -211,14 +224,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
                 const lat = place.geometry?.location?.lat() || 0;
                 const lng = place.geometry?.location?.lng() || 0;
 
-                const isLocal = userLocation
-                  ? calculateDistance(
-                      lat,
-                      lng,
-                      userLocation.lat,
-                      userLocation.lng
-                    ) < 50
-                  : false;
+                const isLocal = false;
 
                 return {
                   id: place.place_id || Math.random().toString(),
@@ -249,7 +255,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         setIsSearching(false);
       }
     },
-    [calculateDistance, userLocation, isLoaded]
+    [isLoaded]
   );
 
   // Handle search input change with debouncing
@@ -348,6 +354,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     };
   }, []);
 
+
   // Handle loading error
   if (loadError) {
     return (
@@ -357,9 +364,14 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       >
         <div className="text-center text-red-600 p-4">
           <p className="font-medium mb-2">Failed to load Google Maps</p>
-          <p className="text-sm">
-            Please check your API key and internet connection
-          </p>
+          <p className="text-sm mb-2">This could be due to:</p>
+          <ul className="text-xs text-left space-y-1">
+            <li>• API key restrictions (check Google Cloud Console)</li>
+            <li>• Domain not authorized for this API key</li>
+            <li>• API key quota exceeded</li>
+            <li>• Internet connection issues</li>
+          </ul>
+          <p className="text-xs mt-2">Check browser console for more details</p>
         </div>
       </div>
     );
@@ -382,22 +394,6 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
   return (
     <div style={{ ...containerStyle, position: "relative" }}>
-      {/* Recenter to user location button */}
-      {userLocation && (
-        <button
-          type="button"
-          onClick={() => {
-            if (!map) return;
-            map.panTo({ lat: userLocation.lat, lng: userLocation.lng });
-            map.setZoom(16);
-            setCenter({ lat: userLocation.lat, lng: userLocation.lng });
-            updateLocationFromCoords(userLocation.lat, userLocation.lng);
-          }}
-          className="absolute z-10 right-4 top-4 bg-white border border-gray-300 rounded-md shadow px-3 py-2 text-sm hover:bg-gray-50"
-        >
-          My location
-        </button>
-      )}
 
       {/* Search Bar */}
       <div className="absolute top-4 left-4 z-10 w-80 max-w-[calc(100%-2rem)]">

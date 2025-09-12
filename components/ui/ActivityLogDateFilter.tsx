@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import { TimePeriod } from "@/app/api/lib/types";
 import {
   Select,
   SelectContent,
@@ -9,47 +11,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import { Calendar } from "lucide-react";
-import type { TimePeriod } from "@/shared/types/common";
-import { Button } from "@/components/ui/button";
+import type { DateRange as RDPDateRange } from "react-day-picker";
 
-export default function ActivityLogDateFilter() {
-  const {
-    activeMetricsFilter,
-    setActiveMetricsFilter,
-    setCustomDateRange,
-    pendingCustomDateRange,
-    setPendingCustomDateRange,
-    loadingChartData,
-    loadingTopPerforming,
-    refreshing,
-  } = useDashBoardStore();
+export type ActivityLogDateFilterProps = {
+  onDateRangeChange?: (dateRange: { from: Date; to: Date } | undefined) => void;
+  onTimePeriodChange?: (timePeriod: TimePeriod) => void;
+  disabled?: boolean;
+};
 
+export default function ActivityLogDateFilter({
+  onDateRangeChange,
+  onTimePeriodChange,
+  disabled = false,
+}: ActivityLogDateFilterProps) {
+  const [activeFilter, setActiveFilter] = useState<TimePeriod>("7d");
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [pendingCustomDateRange, setPendingCustomDateRange] = useState<RDPDateRange>();
 
-  // Check if any loading state is active
-  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
+  const timeFilterButtons: { label: string; value: TimePeriod }[] = [
+    { label: "Today", value: "Today" as TimePeriod },
+    { label: "Yesterday", value: "Yesterday" as TimePeriod },
+    { label: "Last 7 Days", value: "7d" as TimePeriod },
+    { label: "Last 30 Days", value: "30d" as TimePeriod },
+    { label: "All Time", value: "All Time" as TimePeriod },
+    { label: "Custom", value: "Custom" as TimePeriod },
+  ];
 
-  const handleFilterChange = (value: TimePeriod) => {
-    if (value === "Custom") {
+  const handleFilterClick = (filter: TimePeriod) => {
+    if (filter === "Custom") {
       setShowCustomPicker(true);
-      // Don't immediately set activeMetricsFilter to Custom
-      // Only show the picker, keep the current filter active
     } else {
       setShowCustomPicker(false);
-      setActiveMetricsFilter(value);
+      setActiveFilter(filter);
+      onTimePeriodChange?.(filter);
+      onDateRangeChange?.(undefined);
     }
   };
 
   const handleApplyCustomRange = () => {
-    if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
-      setCustomDateRange({
-        startDate: pendingCustomDateRange.startDate,
-        endDate: pendingCustomDateRange.endDate,
-      });
-      setActiveMetricsFilter("Custom");
+    if (pendingCustomDateRange?.from && pendingCustomDateRange?.to) {
+      // Convert dates to proper timezone format
+      const startDate = new Date(pendingCustomDateRange.from);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(pendingCustomDateRange.to);
+      endDate.setHours(23, 59, 59, 999);
+      
+      setActiveFilter("Custom");
       setShowCustomPicker(false);
+      onTimePeriodChange?.("Custom");
+      onDateRangeChange?.({ from: startDate, to: endDate });
     }
   };
 
@@ -58,116 +69,67 @@ export default function ActivityLogDateFilter() {
     setPendingCustomDateRange(undefined);
   };
 
+  const handleSetLastMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+    setPendingCustomDateRange({ from: firstDay, to: lastDay });
+  };
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-gray-600" />
-        <span className="text-sm font-medium text-gray-600">Date Range:</span>
+    <div className="flex flex-col gap-3 w-full">
+      {/* Filter Controls */}
+      <div className="flex flex-wrap items-center gap-2 w-full">
+        {/* Desktop Filter Buttons */}
+        <div className="hidden md:flex items-center gap-2">
+          {timeFilterButtons.map((button) => (
+            <Button
+              key={button.value}
+              variant={activeFilter === button.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterClick(button.value)}
+              disabled={disabled}
+              className={
+                activeFilter === button.value
+                  ? "bg-buttonActive text-container"
+                  : "bg-container text-grayHighlight border-buttonActive hover:bg-buttonActive hover:text-container"
+              }
+            >
+              {button.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Mobile Filter Dropdown */}
+        <div className="md:hidden w-full">
+          <Select
+            value={activeFilter}
+            onValueChange={(value) => handleFilterClick(value as TimePeriod)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFilterButtons.map((button) => (
+                <SelectItem key={button.value} value={button.value}>
+                  {button.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {!showCustomPicker ? (
-        <>
-          {/* Mobile and md/lg: Select dropdown */}
-          <div className="xl:hidden">
-            <Select
-              value={activeMetricsFilter}
-              onValueChange={handleFilterChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger className={`w-48 bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}>
-                <SelectValue placeholder="Select date range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Today">Today</SelectItem>
-                <SelectItem value="Yesterday">Yesterday</SelectItem>
-                <SelectItem value="last7days">Last 7 Days</SelectItem>
-                <SelectItem value="last30days">Last 30 Days</SelectItem>
-                <SelectItem value="Custom">Custom Range</SelectItem>
-                <SelectItem value="All Time">All Time</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* xl and above: Filter buttons */}
-          <div className="hidden xl:flex items-center gap-2">
-            {[
-              { label: "Today", value: "Today" as TimePeriod },
-              { label: "Yesterday", value: "Yesterday" as TimePeriod },
-              { label: "Last 7 Days", value: "last7days" as TimePeriod },
-              { label: "Last 30 Days", value: "last30days" as TimePeriod },
-              { label: "Custom", value: "Custom" as TimePeriod },
-              { label: "All Time", value: "All Time" as TimePeriod },
-            ].map((filter) => (
-              <Button
-                key={filter.value}
-                onClick={() => handleFilterChange(filter.value)}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  activeMetricsFilter === filter.value
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
-                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={isLoading}
-              >
-                {filter.label}
-              </Button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowCustomPicker(false)}
-            variant="outline"
-            size="sm"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleApplyCustomRange}
-            size="sm"
-            className="bg-buttonActive text-white"
-          >
-            Apply
-          </Button>
-        </div>
-      )}
-
-      {/* Custom Date Picker */}
+      {/* Custom Date Range Picker */}
       {showCustomPicker && (
-        <div className="mt-4 w-full">
-          <ModernDateRangePicker
-            value={
-              pendingCustomDateRange
-                ? {
-                    from: pendingCustomDateRange.startDate,
-                    to: pendingCustomDateRange.endDate,
-                  }
-                : undefined
-            }
-            onChange={(range) =>
-              setPendingCustomDateRange(
-                range && range.from && range.to
-                  ? { startDate: range.from, endDate: range.to }
-                  : undefined
-              )
-            }
-            onGo={handleApplyCustomRange}
-            onCancel={handleCancelCustomRange}
-            onSetLastMonth={() => {
-              const now = new Date();
-              const firstDay = new Date(
-                now.getFullYear(),
-                now.getMonth() - 1,
-                1
-              );
-              const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-              setPendingCustomDateRange({
-                startDate: firstDay,
-                endDate: lastDay,
-              });
-            }}
-          />
-        </div>
+        <ModernDateRangePicker
+          value={pendingCustomDateRange}
+          onChange={setPendingCustomDateRange}
+          onGo={handleApplyCustomRange}
+          onCancel={handleCancelCustomRange}
+          onSetLastMonth={handleSetLastMonth}
+        />
       )}
     </div>
   );

@@ -203,13 +203,12 @@ export async function getMetricsForLocations(
   useAccountDenom = false,
   licencee?: string
 ) {
-  if (!timeframe.startDate || !timeframe.endDate) {
-    throw new Error("Provide Timeframe for Both Start & End Date ⌛");
+  // Handle "All Time" case where timeframe is undefined
+  const filter: QueryFilter = {};
+  
+  if (timeframe.startDate && timeframe.endDate) {
+    filter.readAt = { $gte: timeframe.startDate, $lte: timeframe.endDate };
   }
-
-  const filter: QueryFilter = {
-    readAt: { $gte: timeframe.startDate, $lte: timeframe.endDate },
-  };
 
   const metersStageAggregationQuery =
     aggregateMetersWithoutLocationSession(filter);

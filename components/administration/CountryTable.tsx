@@ -19,15 +19,15 @@ export default function CountryTable({
       <table className="min-w-full bg-white rounded-lg shadow-md">
         <thead className="bg-button text-white">
           <tr>
-            <th className="py-3 px-4 text-left font-semibold text-sm">NAME</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            <th className="py-3 px-4 text-center font-semibold text-sm">NAME</th>
+            <th className="py-3 px-4 text-center font-semibold text-sm">
               ALPHA 2
             </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            <th className="py-3 px-4 text-center font-semibold text-sm">
               ALPHA 3
             </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">ISO</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            <th className="py-3 px-4 text-center font-semibold text-sm">ISO</th>
+            <th className="py-3 px-4 text-center font-semibold text-sm">
               CREATED ON
             </th>
             <th className="py-3 px-4 text-center font-semibold text-sm">

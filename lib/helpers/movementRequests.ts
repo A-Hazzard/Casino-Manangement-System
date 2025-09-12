@@ -4,7 +4,6 @@
 
 import axios from "axios";
 import type { MovementRequest } from "@/lib/types/movementRequests";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 /**
  * Fetch all movement requests from the API.
@@ -31,18 +30,7 @@ export async function fetchMovementRequests(
 export async function createMovementRequest(
   data: Omit<MovementRequest, "_id" | "createdAt" | "updatedAt">
 ): Promise<MovementRequest> {
-  const movementLogger = createActivityLogger("session");
-  
   const res = await axios.post("/api/movement-requests", data);
-  
-  // Log the movement request creation activity
-  await movementLogger.logCreate(
-    res.data._id,
-    `Movement Request: ${data.locationFrom} to ${data.locationTo}`,
-    data,
-    `Created movement request from ${data.locationFrom} to ${data.locationTo}`
-  );
-  
   return res.data;
 }
 
@@ -54,19 +42,7 @@ export async function createMovementRequest(
 export async function updateMovementRequest(
   data: MovementRequest
 ): Promise<MovementRequest> {
-  const movementLogger = createActivityLogger("session");
-  
   const res = await axios.patch(`/api/movement-requests/${data._id}`, data);
-  
-  // Log the movement request update activity
-  await movementLogger.logUpdate(
-    data._id,
-    `Movement Request: ${data.locationFrom} to ${data.locationTo}`,
-    data,
-    data,
-    `Updated movement request from ${data.locationFrom} to ${data.locationTo}`
-  );
-  
   return res.data;
 }
 
@@ -76,17 +52,7 @@ export async function updateMovementRequest(
  * @returns Promise<void>
  */
 export async function deleteMovementRequest(id: string): Promise<void> {
-  const movementLogger = createActivityLogger("session");
-  
   await axios.delete(`/api/movement-requests/${id}`);
-  
-  // Log the movement request deletion activity
-  await movementLogger.logDelete(
-    id,
-    "Movement Request",
-    { id },
-    `Deleted movement request with ID: ${id}`
-  );
 }
 
 /**

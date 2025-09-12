@@ -29,8 +29,14 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     if (timePeriod === "Custom" && startDate && endDate) {
-      start = new Date(startDate);
-      end = new Date(endDate);
+      // Parse custom dates and apply timezone handling
+      // Create dates in Trinidad timezone (UTC-4)
+      const customStartDate = new Date(startDate + 'T00:00:00-04:00');
+      const customEndDate = new Date(endDate + 'T23:59:59-04:00');
+      
+      // Convert to UTC for database queries
+      start = new Date(customStartDate.getTime());
+      end = new Date(customEndDate.getTime());
     } else {
       switch (timePeriod) {
         case "24h":

@@ -307,10 +307,12 @@ export default function LocationMap({
               params.append("startDate", sd.toISOString());
               params.append("endDate", ed.toISOString());
             } else {
-              params.append("timePeriod", "Today");
+              // No valid timePeriod, skip the request
+              return;
             }
           } else {
-            params.append("timePeriod", "Today");
+            // No valid timePeriod, skip the request
+            return;
           }
 
           // Add licensee filter if selected

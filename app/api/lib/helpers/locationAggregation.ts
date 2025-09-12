@@ -96,14 +96,30 @@ export const getLocationsWithMetrics = async (
       locations.map(async (location) => {
         const locationId = location._id.toString();
 
-        // Use the working MongoDB query pattern for meters aggregation
-        // Use only string matching since all IDs are stored as strings
+        // First get all machines for this location
+        const machinesForLocation = await db
+          .collection("machines")
+          .find(
+            {
+              gamingLocation: location._id,
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+            },
+            { projection: { _id: 1 } }
+          )
+          .toArray();
+
+        const machineIds = machinesForLocation.map((m) => m._id);
+
+        // Now aggregate meters for all machines in this location
         const metersAggregation = await db
           .collection("meters")
           .aggregate([
             {
               $match: {
-                location: locationId, // String format only
+                machine: { $in: machineIds }, // Match by machine IDs, not location
                 ...(startDate && endDate
                   ? {
                       readAt: {
@@ -118,7 +134,7 @@ export const getLocationsWithMetrics = async (
               $group: {
                 _id: null,
                 totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
-                totalCancelledCredits: {
+                totalMoneyOut: {
                   $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
                 },
                 totalGamesPlayed: {
@@ -166,7 +182,7 @@ export const getLocationsWithMetrics = async (
         // Extract metrics from aggregation results
         const meterMetrics = metersAggregation[0] || {
           totalDrop: 0,
-          totalCancelledCredits: 0,
+          totalMoneyOut: 0,
           totalGamesPlayed: 0,
           totalCoinIn: 0,
           totalCoinOut: 0,
@@ -184,8 +200,8 @@ export const getLocationsWithMetrics = async (
           location: locationId,
           locationName: location.name || "Unknown Location",
           moneyIn: meterMetrics.totalDrop,
-          moneyOut: meterMetrics.totalCancelledCredits,
-          gross: meterMetrics.totalDrop - meterMetrics.totalCancelledCredits,
+          moneyOut: meterMetrics.totalMoneyOut,
+          gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut,
           coinIn: meterMetrics.totalCoinIn,
           coinOut: meterMetrics.totalCoinOut,
           jackpot: meterMetrics.totalJackpot,

@@ -62,7 +62,7 @@ const createStore = () => {
         showDatePicker: false,
         activeTab: "Cabinets",
         activeFilters: {
-          Today: true,
+          Today: false,
           Yesterday: false,
           last7days: false,
           last30days: false,
@@ -100,12 +100,6 @@ const createStore = () => {
         setGamingLocations: (gamingLocations) => set({ gamingLocations }),
         setSelectedLicencee: (selectedLicencee) => {
           set({ selectedLicencee });
-          // Sync with currency store
-          if (typeof window !== "undefined") {
-            import("@/lib/store/currencyStore").then(({ useCurrencyStore }) => {
-              useCurrencyStore.getState().setSelectedLicensee(selectedLicencee);
-            });
-          }
         },
         setCustomDateRange: (customDateRange) => set({ customDateRange }),
         setPendingCustomDateRange: (pendingCustomDateRange) =>

@@ -8,6 +8,17 @@ import type {
 import type { Machine as _MachineType } from "@/lib/types/machines";
 import { CollectionReportData } from "@/lib/types";
 import { CollectionReport } from "../models/collectionReport";
+
+/**
+ * Formats a number with smart decimal handling
+ */
+const formatSmartDecimal = (value: number): string => {
+  if (isNaN(value)) return "0";
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  return value.toFixed(hasSignificantDecimals ? 2 : 0);
+};
 import { Collections } from "../models/collections";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
 import { getDatesForTimePeriod } from "../utils/dates";
@@ -69,8 +80,8 @@ export async function getMachineEventsByMachine(
       console.error(
         "[API] getMachineEventsByMachine: MachineEvent model is not properly initialized"
       );
-      // Return mock data as fallback
-      return getMockMachineEvents(machineId);
+      // Return empty array instead of mock data
+      return [];
     }
 
     const query: Record<string, unknown> = { machine: machineId };
@@ -90,9 +101,9 @@ export async function getMachineEventsByMachine(
       query
     ).lean()) as MachineEventType[];
 
-    // If no results, return mock data
+    // If no results, return empty array
     if (!result || result.length === 0) {
-      return getMockMachineEvents(machineId);
+      return [];
     }
 
     return result;
@@ -101,166 +112,8 @@ export async function getMachineEventsByMachine(
       "[API] getMachineEventsByMachine: error fetching data",
       error
     );
-    return getMockMachineEvents(machineId);
+    return [];
   }
-}
-
-/**
- * Provides mock machine events data when real data is unavailable.
- *
- * @param machineId - The machine ID to use in mock data.
- * @returns An array of mock MachineEventType objects.
- */
-function getMockMachineEvents(machineId: string): MachineEventType[] {
-  // Current date/time
-  const now = new Date();
-
-  // Generate mock data with correct structure matching the DB schema
-  const mockEvents: MachineEventType[] = [
-    {
-      _id: "1",
-      machine: machineId,
-      command: "7E",
-      commandType: "exp",
-      description: "Game has started",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-      message: {
-        incomingMessage: {
-          typ: "exp",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "7E",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      _id: "2",
-      machine: machineId,
-      command: "7F",
-      commandType: "exp",
-      description: "Game has ended",
-      relay: machineId.substring(0, 8),
-      date: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(), // 2 hours and 3 minutes ago
-      message: {
-        incomingMessage: {
-          typ: "exp",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "7F",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(),
-    },
-    {
-      _id: "3",
-      machine: machineId,
-      command: "2A",
-      commandType: "cmd",
-      description: "Collect meters",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "2A",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
-      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-      _id: "4",
-      machine: machineId,
-      command: "1D",
-      commandType: "cmd",
-      description: "Door opened",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "1D",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3
-      ).toISOString(),
-    },
-    {
-      _id: "5",
-      machine: machineId,
-      command: "1E",
-      commandType: "cmd",
-      description: "Door closed",
-      relay: machineId.substring(0, 8),
-      date: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(), // 3 days and 15 mins ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "1E",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(),
-    },
-  ];
-
-  return mockEvents;
 }
 
 /**
@@ -448,7 +301,6 @@ export async function getCollectionReportById(
   );
   const totalVariation = totalMetersGross - totalSasGross;
 
-
   // Get total number of machines for this location
   let totalMachinesForLocation = collections.length; // Default fallback
   try {
@@ -517,12 +369,20 @@ export async function getCollectionReportById(
       ? new Date(report.timestamp).toLocaleString()
       : "-",
     machineMetrics: collections.map((collection, idx: number) => {
-      // sasMeters.machine is already resolved by the aggregation query
-      const machineDisplayName = collection.sasMeters?.machine || 
-        collection.machineCustomName ||
-        collection.serialNumber ||
-        collection.machineName ||
-        collection.machineId ||
+      // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
+      // Use a helper function to check for valid non-empty strings
+      const isValidString = (str: string | undefined | null): string | null => {
+        return str && typeof str === "string" && str.trim() !== ""
+          ? str.trim()
+          : null;
+      };
+
+      const machineDisplayName =
+        isValidString(collection.serialNumber) ||
+        isValidString(collection.machineName) ||
+        isValidString(collection.machineCustomName) ||
+        isValidString(collection.machineId) ||
+        isValidString(collection.sasMeters?.machine) ||
         `Machine ${idx + 1}`;
 
       // Calculate drop/cancelled from the difference between current and previous meters
@@ -530,16 +390,26 @@ export async function getCollectionReportById(
       const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
       const meterGross = collection.movement?.gross || 0;
       const sasGross = collection.sasMeters?.gross || 0;
-      const variation = meterGross - sasGross;
-
+      // Check if SAS data exists - if not, show "No SAS Data"
+       const variation =
+         !collection.sasMeters ||
+         collection.sasMeters.gross === undefined ||
+         collection.sasMeters.gross === null ||
+         collection.sasMeters.gross === 0
+           ? "No SAS Data"
+           : meterGross - sasGross;
 
       return {
         id: String(idx + 1),
         machineId: machineDisplayName,
+        actualMachineId: collection.machineId, // The actual machine ID for navigation
         dropCancelled: `${drop} / ${cancelled}`,
         metersGross: meterGross,
-        sasGross: sasGross.toString(),
-        variation: variation.toString(),
+        sasGross: formatSmartDecimal(sasGross),
+        variation:
+          typeof variation === "string"
+            ? variation
+            : formatSmartDecimal(variation),
         sasStartTime: collection.sasMeters?.sasStartTime || "-",
         sasEndTime: collection.sasMeters?.sasEndTime || "-",
         hasIssue: false,

@@ -5,17 +5,16 @@ import { MobileLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import StatCardSkeleton, {
-  ChartSkeleton,
-} from "@/components/ui/SkeletonLoader";
+import {
+  DashboardFinancialMetricsSkeleton,
+  DashboardChartSkeleton,
+} from "@/components/ui/skeletons/DashboardSkeletons";
 import Chart from "@/components/ui/dashboard/Chart";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { RefreshCw } from "lucide-react";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import Image from "next/image";
-import { IMAGES } from "@/lib/constants/images";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function MobileLayout(props: MobileLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -84,20 +83,6 @@ export default function MobileLayout(props: MobileLayoutProps) {
         />
       </div>
 
-      {/* Title */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          <Image
-            src={IMAGES.dashboardIcon}
-            alt="Dashboard Icon"
-            width={24}
-            height={24}
-            className="w-5 h-5 sm:w-6 sm:h-6"
-          />
-        </div>
-      </div>
-
       {/* Machine Status Widget */}
       <div className="mb-4">
         <MachineStatusWidget
@@ -130,45 +115,52 @@ export default function MobileLayout(props: MobileLayoutProps) {
         </div>
       </div>
 
+
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {props.loadingChartData ? (
-          <StatCardSkeleton count={3} />
-        ) : (
+      {props.loadingChartData ? (
+        <DashboardFinancialMetricsSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Money In
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-              <p className={`font-bold ${getFinancialColorClass(props.totals?.moneyIn)}`}>
-                {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyIn)}`}>
+                  {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
+                </p>
+              </div>
             </div>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Money Out
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-              <p className={`font-bold ${getFinancialColorClass(props.totals?.moneyOut)}`}>
-                {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyOut)}`}>
+                  {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
+                </p>
+              </div>
             </div>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Gross
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-              <p className={`font-bold ${getFinancialColorClass(props.totals?.gross)}`}>
-                {props.totals ? formatNumber(props.totals.gross) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.gross)}`}>
+                  {props.totals ? formatNumber(props.totals.gross) : "--"}
+                </p>
+              </div>
             </div>
           </>
-        )}
-      </div>
+        </div>
+      )}
 
       {props.loadingChartData ? (
-        <ChartSkeleton />
+        <DashboardChartSkeleton />
       ) : (
         <Chart
           loadingChartData={props.loadingChartData}

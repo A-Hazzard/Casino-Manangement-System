@@ -41,11 +41,11 @@ export type DashBoardStore = {
   chartData: dashboardData[];
   setChartData: (_state: dashboardData[]) => void;
 
-  activeMetricsFilter: TimePeriod;
-  setActiveMetricsFilter: (_state: TimePeriod) => void;
+  activeMetricsFilter: TimePeriod | "";
+  setActiveMetricsFilter: (_state: TimePeriod | "") => void;
 
-  activePieChartFilter: TimePeriod;
-  setActivePieChartFilter: (_state: TimePeriod) => void;
+  activePieChartFilter: TimePeriod | "";
+  setActivePieChartFilter: (_state: TimePeriod | "") => void;
 
   customDateRange: dateRange;
   setCustomDateRange: (_state: dateRange) => void;

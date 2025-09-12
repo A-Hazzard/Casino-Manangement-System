@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { X, Trash2 } from "lucide-react";
 import type { UserDetailsModalProps } from "@/lib/types/administration";
@@ -19,6 +20,7 @@ export default function UserDetailsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -42,6 +44,7 @@ export default function UserDetailsModal({
   // Initialize form data when user changes
   useEffect(() => {
     if (user) {
+      setIsLoading(false);
       setFormData({
         firstName: user.profile?.firstName || "",
         lastName: user.profile?.lastName || "",
@@ -59,8 +62,11 @@ export default function UserDetailsModal({
         notes: user.profile?.identification?.notes || "",
         profilePicture: user.profilePicture || "",
       });
+    } else if (open) {
+      // Show loading state when modal is open but user data is not yet available
+      setIsLoading(true);
     }
-  }, [user]);
+  }, [user, open]);
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -187,24 +193,32 @@ export default function UserDetailsModal({
                     <label className="block text-sm font-semibold mb-1 text-gray-900">
                       Username:
                     </label>
-                    <input
-                      className="w-full rounded-md p-3 bg-white border border-border text-center lg:text-left"
-                      value={user.username || ""}
-                      disabled
-                      placeholder="Username"
-                    />
+                    {isLoading ? (
+                      <Skeleton className="h-12 w-full" />
+                    ) : (
+                      <input
+                        className="w-full rounded-md p-3 bg-white border border-border text-center lg:text-left"
+                        value={user?.username || ""}
+                        disabled
+                        placeholder="Username"
+                      />
+                    )}
                   </div>
                   <div className="w-full">
                     <label className="block text-sm font-semibold mb-1 text-gray-900">
                       Email Address:
                     </label>
-                    <input
-                      type="email"
-                      className="w-full rounded-md p-3 bg-white border border-border text-center lg:text-left"
-                      value={user.email || ""}
-                      disabled
-                      placeholder="Email Address"
-                    />
+                    {isLoading ? (
+                      <Skeleton className="h-12 w-full" />
+                    ) : (
+                      <input
+                        type="email"
+                        className="w-full rounded-md p-3 bg-white border border-border text-center lg:text-left"
+                        value={user?.email || ""}
+                        disabled
+                        placeholder="Email Address"
+                      />
+                    )}
                   </div>
                 </div>
                 <input
@@ -217,78 +231,92 @@ export default function UserDetailsModal({
               </div>
               {/* Right: User info fields */}
               <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 lg:mt-0">
-                <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
-                    First Name:
-                  </label>
-                  <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      handleInputChange("firstName", e.target.value)
-                    }
-                    placeholder="Enter First Name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
-                    Last Name:
-                  </label>
-                  <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      handleInputChange("lastName", e.target.value)
-                    }
-                    placeholder="Enter Last Name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
-                    Middle Name:
-                  </label>
-                  <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
-                    value={formData.middleName}
-                    onChange={(e) =>
-                      handleInputChange("middleName", e.target.value)
-                    }
-                    placeholder="Enter Middle Name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
-                    Other Name:
-                  </label>
-                  <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
-                    value={formData.otherName}
-                    onChange={(e) =>
-                      handleInputChange("otherName", e.target.value)
-                    }
-                    placeholder="Enter Other Name"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
-                    Gender:
-                  </label>
-                  <select
-                    className="w-full rounded-md p-3 bg-white border border-border"
-                    value={formData.gender}
-                    onChange={(e) =>
-                      handleInputChange("gender", e.target.value)
-                    }
-                    required
-                  >
-                    <option value="">Select</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+                {isLoading ? (
+                  // Show skeleton loaders for all form fields
+                  <>
+                    {Array.from({ length: 12 }).map((_, index) => (
+                      <div key={index}>
+                        <Skeleton className="h-4 w-20 mb-1" />
+                        <Skeleton className="h-12 w-full" />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                        First Name:
+                      </label>
+                      <input
+                        className="w-full rounded-md p-3 bg-white border border-border"
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          handleInputChange("firstName", e.target.value)
+                        }
+                        placeholder="Enter First Name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                        Last Name:
+                      </label>
+                      <input
+                        className="w-full rounded-md p-3 bg-white border border-border"
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          handleInputChange("lastName", e.target.value)
+                        }
+                        placeholder="Enter Last Name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                        Middle Name:
+                      </label>
+                      <input
+                        className="w-full rounded-md p-3 bg-white border border-border"
+                        value={formData.middleName}
+                        onChange={(e) =>
+                          handleInputChange("middleName", e.target.value)
+                        }
+                        placeholder="Enter Middle Name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                        Other Name:
+                      </label>
+                      <input
+                        className="w-full rounded-md p-3 bg-white border border-border"
+                        value={formData.otherName}
+                        onChange={(e) =>
+                          handleInputChange("otherName", e.target.value)
+                        }
+                        placeholder="Enter Other Name"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                        Gender:
+                      </label>
+                      <select
+                        className="w-full rounded-md p-3 bg-white border border-border"
+                        value={formData.gender}
+                        onChange={(e) =>
+                          handleInputChange("gender", e.target.value)
+                        }
+                        required
+                      >
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

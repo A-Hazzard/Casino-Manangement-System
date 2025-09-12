@@ -7,18 +7,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
 
-const MOCK_LOCATIONS = [
-  { id: "loc1", name: "All Locations" },
-  { id: "loc2", name: "Dev Lab" },
-  { id: "loc3", name: "Test Lab" },
-  { id: "loc4", name: "Dev Lab 2" },
-];
+// TODO: Replace with MongoDB data fetching
+const MOCK_LOCATIONS: unknown[] = [];
 
 export default function SMIBManagement() {
   const [search, setSearch] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState(
-    MOCK_LOCATIONS[0].id
-  );
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedSMIBs, setSelectedSMIBs] = useState<
     Array<{ id: string; label: string }>
   >([]);
@@ -30,9 +24,7 @@ export default function SMIBManagement() {
     setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
   };
 
-  const currentSelectedLocationName =
-    MOCK_LOCATIONS.find((l) => l.id === selectedLocation)?.name ||
-    "Selected Location";
+  const currentSelectedLocationName = "No locations available - MongoDB implementation pending";
 
   return (
     <div className="w-full max-w-full min-h-[80vh] flex flex-col gap-6 text-gray-700">
@@ -52,11 +44,17 @@ export default function SMIBManagement() {
           onChange={(e) => setSelectedLocation(e.target.value)}
           className="w-full lg:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
         >
-          {MOCK_LOCATIONS.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
+          {MOCK_LOCATIONS.length === 0 ? (
+            <option value="" disabled>
+              No locations available - MongoDB implementation pending
             </option>
-          ))}
+          ) : (
+            MOCK_LOCATIONS.map((loc: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))
+          )}
         </select>
       </div>
 

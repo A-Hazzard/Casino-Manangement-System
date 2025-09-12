@@ -2,11 +2,6 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
-import { getExchangeRates } from "@/lib/helpers/rates";
-import {
-  processResponseWithCurrency,
-  extractCurrencyParams,
-} from "@/lib/helpers/currencyConversion";
 
 // Removed auto-index creation to avoid conflicts and extra latency
 
@@ -17,9 +12,6 @@ export async function GET(req: NextRequest) {
     const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "7d";
     const licencee = searchParams.get("licencee") || undefined;
 
-    // Extract currency conversion parameters
-    const { displayCurrency, licenseeName } =
-      extractCurrencyParams(searchParams);
 
     const showAllLocations = searchParams.get("showAllLocations") === "true";
 
@@ -40,8 +32,25 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      startDate = new Date(customStart);
-      endDate = new Date(customEnd);
+      
+      // Parse custom dates and apply timezone handling
+      // The frontend sends dates that represent the start and end of the day in Trinidad time, already converted to UTC
+      const customStartDate = new Date(customStart);
+      let customEndDate = new Date(customEnd);
+      
+      // The end date from frontend represents the start of the end day in Trinidad time
+      // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
+      customEndDate = new Date(customEndDate.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
+      
+      // Use the dates as-is since they're already in the correct UTC format
+      startDate = customStartDate;
+      endDate = customEndDate;
+      
+      console.warn("🔍 API - Custom date range timezone conversion:");
+      console.warn("🔍 API - Original start date:", customStart);
+      console.warn("🔍 API - Original end date:", customEnd);
+      console.warn("🔍 API - Extended end date (UTC):", endDate.toISOString());
+      console.warn("🔍 API - Parsed start date (UTC):", startDate.toISOString());
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
@@ -54,6 +63,18 @@ export async function GET(req: NextRequest) {
     console.warn("🔍 API - current system time:", new Date().toISOString());
     console.warn("🔍 API - licencee:", licencee);
     console.warn("🔍 API - showAllLocations:", showAllLocations);
+    
+    // Debug logging for custom date ranges
+    if (timePeriod === "Custom") {
+      const customStart = searchParams.get("startDate");
+      const customEnd = searchParams.get("endDate");
+      console.warn("🔍 API - Custom date range debug:");
+      console.warn("🔍 API - Original customStart:", customStart);
+      console.warn("🔍 API - Original customEnd:", customEnd);
+      console.warn("🔍 API - Parsed startDate:", startDate?.toISOString());
+      console.warn("🔍 API - Parsed endDate:", endDate?.toISOString());
+      console.warn("🔍 API - Timezone offset applied: +4 hours (Trinidad to UTC)");
+    }
 
     const db = await connectDB();
     if (!db) {
@@ -80,7 +101,7 @@ export async function GET(req: NextRequest) {
 
     // console.log("🔍 API - Using optimized aggregation pipeline");
 
-    // Use MongoDB aggregation pipeline for much better performance
+    // Use MongoDB aggregation pipeline matching the working shell queries
     const aggregationPipeline = [
       // Stage 1: Start with locations
       {
@@ -90,96 +111,71 @@ export async function GET(req: NextRequest) {
       {
         $lookup: {
           from: "machines",
-          let: { locationId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ["$gamingLocation", "$$locationId"] },
-                $or: [
-                  { deletedAt: null },
-                  { deletedAt: { $lt: new Date("2020-01-01") } },
-                ],
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                serialNumber: 1,
-                game: 1,
-                isSasMachine: 1,
-                lastActivity: 1,
-              },
-            },
-          ],
-          as: "machines",
-        },
+          localField: "_id",
+          foreignField: "gamingLocation",
+          as: "machines"
+        }
       },
-      // Stage 3: Lookup meters for each location
-      // When showAllLocations is true, get all meters; otherwise filter by date
+      // Stage 3: Unwind machines (preserve locations with no machines)
+      { 
+        $unwind: { 
+          path: "$machines", 
+          preserveNullAndEmptyArrays: true 
+        } 
+      },
+      // Stage 4: Lookup meters for each machine (filtered by date if specified)
       {
         $lookup: {
           from: "meters",
-          let: { locationId: { $toString: "$_id" } },
+          let: { machineId: "$machines._id" },
           pipeline: [
             {
-              $match: showAllLocations 
-                ? { $expr: { $eq: ["$location", "$$locationId"] } }
-                : {
-                    $expr: { $eq: ["$location", "$$locationId"] },
-                    readAt: { $gte: startDate, $lte: endDate },
-                  },
-            },
-            {
-              $group: {
-                _id: null,
-                totalMoneyIn: { $sum: { $ifNull: ["$movement.drop", 0] } },
-                totalMoneyOut: {
-                  $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
-                },
-                meterCount: { $sum: 1 },
-              },
-            },
+              $match: {
+                $expr: { $eq: ["$machine", "$$machineId"] },
+                // Apply date filter if specified
+                ...(startDate && endDate ? { readAt: { $gte: startDate, $lte: endDate } } : {}),
+              }
+            }
           ],
-          as: "meterAggregation",
-        },
+          as: "meters"
+        }
       },
-      // Stage 4: Add a flag to indicate if location has any data
+      // Stage 5: Unwind meters (preserve machines with no meters)
+      { 
+        $unwind: { 
+          path: "$meters", 
+          preserveNullAndEmptyArrays: true 
+        } 
+      },
+      // Stage 6: Group by location and calculate sums (matching working shell queries)
+      {
+        $group: {
+          _id: "$_id",
+          locationName: { $first: "$name" },
+          isLocalServer: { $first: { $ifNull: ["$isLocalServer", false] } },
+          machines: { $addToSet: "$machines" },
+          moneyIn: { $sum: { $ifNull: ["$meters.movement.drop", 0] } },
+          moneyOut: { $sum: { $ifNull: ["$meters.movement.totalCancelledCredits", 0] } }
+        }
+      },
+      // Stage 7: Add gross calculation
       {
         $addFields: {
-          hasData: {
-            $or: [
-              { $gt: [{ $size: "$machines" }, 0] },
-              {
-                $gt: [
-                  {
-                    $ifNull: [
-                      { $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] },
-                      0,
-                    ],
-                  },
-                  0,
-                ],
-              },
-            ],
-          },
-        },
+          gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+        }
       },
-      // Stage 5: Filter locations based on showAllLocations parameter
-      // When showAllLocations is true, show all locations regardless of data
-      ...(showAllLocations ? [] : [{ $match: { hasData: true } }]),
-      // Stage 6: Calculate metrics
+      // Stage 8: Calculate additional metrics
       {
         $addFields: {
           location: { $toString: "$_id" },
-          locationName: { $ifNull: ["$name", "Unknown Location"] },
-          isLocalServer: { $ifNull: ["$isLocalServer", false] },
-          totalMachines: { $size: "$machines" },
+          totalMachines: { $size: { $filter: { input: "$machines", cond: { $ne: ["$$this", null] } } } },
           onlineMachines: {
             $size: {
               $filter: {
                 input: "$machines",
                 cond: {
                   $and: [
+                    { $ne: ["$$this", null] },
                     { $ne: ["$$this.lastActivity", null] },
                     {
                       $gt: [
@@ -202,7 +198,12 @@ export async function GET(req: NextRequest) {
             $size: {
               $filter: {
                 input: "$machines",
-                cond: { $eq: ["$$this.isSasMachine", true] },
+                cond: { 
+                  $and: [
+                    { $ne: ["$$this", null] },
+                    { $eq: ["$$this.isSasMachine", true] }
+                  ]
+                },
               },
             },
           },
@@ -210,7 +211,12 @@ export async function GET(req: NextRequest) {
             $size: {
               $filter: {
                 input: "$machines",
-                cond: { $ne: ["$$this.isSasMachine", true] },
+                cond: { 
+                  $and: [
+                    { $ne: ["$$this", null] },
+                    { $ne: ["$$this.isSasMachine", true] }
+                  ]
+                },
               },
             },
           },
@@ -220,7 +226,12 @@ export async function GET(req: NextRequest) {
                 $size: {
                   $filter: {
                     input: "$machines",
-                    cond: { $eq: ["$$this.isSasMachine", true] },
+                    cond: { 
+                      $and: [
+                        { $ne: ["$$this", null] },
+                        { $eq: ["$$this.isSasMachine", true] }
+                      ]
+                    },
                   },
                 },
               },
@@ -233,38 +244,36 @@ export async function GET(req: NextRequest) {
                 $size: {
                   $filter: {
                     input: "$machines",
-                    cond: { $ne: ["$$this.isSasMachine", true] },
+                    cond: { 
+                      $and: [
+                        { $ne: ["$$this", null] },
+                        { $ne: ["$$this.isSasMachine", true] }
+                      ]
+                    },
                   },
                 },
               },
               0,
             ],
           },
-          moneyIn: {
-            $ifNull: [
-              { $arrayElemAt: ["$meterAggregation.totalMoneyIn", 0] },
-              0,
-            ],
-          },
-          moneyOut: {
-            $ifNull: [
-              { $arrayElemAt: ["$meterAggregation.totalMoneyOut", 0] },
-              0,
-            ],
-          },
         },
       },
-      // Stage 7: Calculate gross revenue
-      {
-        $addFields: {
-          gross: { $subtract: ["$moneyIn", "$moneyOut"] },
-        },
-      },
-      // Stage 8: Sort by gross revenue (highest first)
+      // Stage 9: Filter locations based on showAllLocations parameter
+      // When showAllLocations is true, show all locations regardless of data
+      ...(showAllLocations ? [] : [{ 
+        $match: { 
+          $or: [
+            { $gt: ["$totalMachines", 0] },
+            { $gt: ["$moneyIn", 0] },
+            { $gt: ["$moneyOut", 0] }
+          ]
+        } 
+      }]),
+      // Stage 10: Sort by gross revenue (highest first)
       {
         $sort: { gross: -1 },
       },
-      // Stage 9: Apply pagination
+      // Stage 11: Apply pagination
       {
         $facet: {
           metadata: [{ $count: "totalCount" }],
@@ -334,10 +343,6 @@ export async function GET(req: NextRequest) {
 
     console.warn("🔍 API - Request completed in", duration, "ms");
 
-    // Get exchange rates for currency conversion
-    const exchangeRates = await getExchangeRates();
-
-    // Process response with currency conversion
     const response = {
       data: paginatedData,
       pagination: {
@@ -350,14 +355,7 @@ export async function GET(req: NextRequest) {
       },
     };
 
-    const convertedResponse = processResponseWithCurrency(
-      response,
-      displayCurrency,
-      exchangeRates,
-      licenseeName
-    );
-
-    return NextResponse.json(convertedResponse);
+    return NextResponse.json(response);
   } catch (err: unknown) {
     console.error("Error in reports locations route:", err);
     return NextResponse.json(

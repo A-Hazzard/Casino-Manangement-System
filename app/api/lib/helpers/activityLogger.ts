@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { ActivityLog } from "../models/activityLog";
 import type {
   ActivityLog as ActivityLogType,
@@ -43,6 +44,8 @@ export async function logActivity(
   const normalizedResource = entityType.toLowerCase();
 
   const activityLog = await ActivityLog.create({
+    // Required _id field
+    _id: new mongoose.Types.ObjectId().toString(),
     // New required fields
     userId: actor.id,
     username: actor.email,

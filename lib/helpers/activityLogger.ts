@@ -8,7 +8,8 @@ export type ActivityResource =
   | "member"
   | "location"
   | "machine"
-  | "session";
+  | "session"
+  | "movement-request";
 
 export type ActivityLogData = {
   action: "create" | "update" | "delete" | "login" | "logout";
@@ -72,6 +73,73 @@ async function getClientIP(): Promise<string> {
 }
 
 /**
+ * Calculate changes between two objects for activity logging
+ */
+function calculateChanges(
+  oldObj: Record<string, unknown>,
+  newObj: Record<string, unknown>
+): Array<{ field: string; oldValue: unknown; newValue: unknown }> {
+  const changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> = [];
+
+  // Check for changed or new fields
+  for (const [key, newValue] of Object.entries(newObj)) {
+    const oldValue = oldObj[key];
+    if (oldValue !== newValue) {
+      changes.push({
+        field: key,
+        oldValue,
+        newValue,
+      });
+    }
+  }
+
+  // Check for deleted fields
+  for (const [key, oldValue] of Object.entries(oldObj)) {
+    if (!(key in newObj)) {
+      changes.push({
+        field: key,
+        oldValue,
+        newValue: undefined,
+      });
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Generate a detailed description with "from" and "to" values
+ */
+function generateDetailedDescription(
+  action: string,
+  resource: string,
+  resourceName: string,
+  changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
+): string {
+  if (action === "create") {
+    return `Created new ${resource}: ${resourceName}`;
+  }
+
+  if (action === "delete") {
+    return `Deleted ${resource}: ${resourceName}`;
+  }
+
+  if (action === "update" && changes && changes.length > 0) {
+    if (changes.length === 1) {
+      const change = changes[0];
+      return `Updated ${resource} "${resourceName}": changed ${change.field} from "${String(change.oldValue || 'empty')}" to "${String(change.newValue || 'empty')}"`;
+    } else {
+      const changeDescriptions = changes.map(change => 
+        `${change.field}: "${String(change.oldValue || 'empty')}" → "${String(change.newValue || 'empty')}"`
+      );
+      return `Updated ${resource} "${resourceName}": ${changeDescriptions.join(', ')}`;
+    }
+  }
+
+  return `Updated ${resource}: ${resourceName}`;
+}
+
+/**
  * Helper function to create activity log entries for CRUD operations
  */
 export const createActivityLogger = (resource: ActivityResource) => {
@@ -88,7 +156,7 @@ export const createActivityLogger = (resource: ActivityResource) => {
         resourceId,
         resourceName,
         newData,
-        details: details || `Created new ${resource}: ${resourceName}`,
+        details: details || generateDetailedDescription("create", resource, resourceName),
       }),
 
     logUpdate: (
@@ -97,16 +165,18 @@ export const createActivityLogger = (resource: ActivityResource) => {
       previousData: Record<string, unknown>,
       newData: Record<string, unknown>,
       details?: string
-    ) =>
-      logActivity({
+    ) => {
+      const changes = calculateChanges(previousData, newData);
+      return logActivity({
         action: "update",
         resource,
         resourceId,
         resourceName,
         previousData,
         newData,
-        details: details || `Updated ${resource}: ${resourceName}`,
-      }),
+        details: details || generateDetailedDescription("update", resource, resourceName, changes),
+      });
+    },
 
     logDelete: (
       resourceId: string,
@@ -120,7 +190,7 @@ export const createActivityLogger = (resource: ActivityResource) => {
         resourceId,
         resourceName,
         previousData,
-        details: details || `Deleted ${resource}: ${resourceName}`,
+        details: details || generateDetailedDescription("delete", resource, resourceName),
       }),
   };
 };

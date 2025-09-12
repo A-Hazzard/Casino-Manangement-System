@@ -10,6 +10,7 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { SessionEventsPageSkeleton } from "@/components/ui/skeletons/SessionsSkeletons";
 
 import type {
   MachineEvent,
@@ -172,18 +173,7 @@ export default function SessionEventsPage() {
 
   const renderEventsTable = () => {
     if (loading) {
-      return (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="animate-pulse">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="p-4 border-b border-gray-200">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
+      return <SessionEventsPageSkeleton />;
     }
 
     if (events.length === 0) {

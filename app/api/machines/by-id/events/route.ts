@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
     const event = searchParams.get("event");
     const game = searchParams.get("game");
     const timePeriod = searchParams.get("timePeriod");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
     const page = parseInt(searchParams.get("page") || "1");
     const requestedLimit = parseInt(searchParams.get("limit") || "20");
     const limit =
@@ -27,12 +29,73 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Optimized query: Start with the most common and specific identifier
-    // Most machine events use the machine._id directly
-    const query: Record<string, unknown> = { machine: machineId };
+    // Build the base query with machine ID
+    const baseQuery: Record<string, unknown> = { machine: machineId };
 
-    // If no results found with direct match, try alternative identifiers
-    let events = await MachineEvent.find(query)
+    // Add other filters to the query
+    if (eventType) {
+      baseQuery["eventType"] = { $regex: eventType, $options: "i" } as unknown;
+    }
+
+    if (event) {
+      baseQuery["description"] = { $regex: event, $options: "i" } as unknown;
+    }
+
+    if (game) {
+      baseQuery["gameName"] = { $regex: game, $options: "i" } as unknown;
+    }
+
+    // Apply date filtering if provided
+    let dateFilterStart: Date | null = null;
+    let dateFilterEnd: Date | null = null;
+
+    // Handle custom date range (startDate and endDate parameters)
+    if (startDate && endDate) {
+      dateFilterStart = new Date(startDate);
+      dateFilterEnd = new Date(endDate);
+    }
+    // Handle predefined time periods
+    else if (timePeriod && timePeriod !== "All Time") {
+      // Use the same timezone-aware approach as the main API
+      const tz = "America/Port_of_Spain";
+      const now = new Date();
+
+      switch (timePeriod) {
+        case "Today":
+          dateFilterStart = new Date(
+            now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
+          );
+          dateFilterEnd = new Date(dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+          break;
+        case "Yesterday":
+          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          dateFilterStart = new Date(
+            yesterday.toLocaleDateString("en-CA", { timeZone: tz }) +
+              "T00:00:00.000Z"
+          );
+          dateFilterEnd = new Date(dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+          break;
+        case "7d":
+          dateFilterEnd = now;
+          dateFilterStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "30d":
+          dateFilterEnd = now;
+          dateFilterStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          // No time filtering - return all events
+          break;
+      }
+    }
+
+    // Only add date filter if we have valid start and end dates
+    if (dateFilterStart && dateFilterEnd) {
+      baseQuery["date"] = { $gte: dateFilterStart, $lte: dateFilterEnd } as unknown;
+    }
+
+    // Try to find events with the base query
+    let events = await MachineEvent.find(baseQuery)
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -57,10 +120,12 @@ export async function GET(request: NextRequest) {
           { cabinetId: machineDoc.serialNumber },
         ].filter((q) => Object.values(q)[0]); // Only include non-null values
 
-        // Try each alternative query
+        // Try each alternative query with the same filters
         for (const altQuery of alternativeQueries) {
-          const altEvents = await MachineEvent.find(altQuery)
+          const combinedQuery = { ...baseQuery, ...altQuery };
+          const altEvents = await MachineEvent.find(combinedQuery)
             .sort({ date: -1 })
+            .skip((page - 1) * limit)
             .limit(limit)
             .lean();
 
@@ -72,66 +137,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (eventType) {
-      query["eventType"] = { $regex: eventType, $options: "i" } as unknown;
-    }
-
-    if (event) {
-      query["description"] = { $regex: event, $options: "i" } as unknown;
-    }
-
-    if (game) {
-      query["gameName"] = { $regex: game, $options: "i" } as unknown;
-    }
-
-    // Apply time period filtering if provided
-    if (timePeriod && timePeriod !== "All Time") {
-      // Use the same timezone-aware approach as the main API
-      const tz = "America/Port_of_Spain";
-      const now = new Date();
-
-      let startDate: Date | null = null;
-      let endDate: Date | null = null;
-
-      switch (timePeriod) {
-        case "Today":
-          startDate = new Date(
-            now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
-          );
-          endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000 - 1);
-          break;
-        case "Yesterday":
-          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          startDate = new Date(
-            yesterday.toLocaleDateString("en-CA", { timeZone: tz }) +
-              "T00:00:00.000Z"
-          );
-          endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000 - 1);
-          break;
-        case "7d":
-          endDate = now;
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "30d":
-          endDate = now;
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          // No time filtering - return all events
-          break;
-      }
-
-      // Only add date filter if we have valid start and end dates
-      if (startDate && endDate) {
-        query["date"] = { $gte: startDate, $lte: endDate } as unknown;
-      }
-    }
-
-    // Get total count for pagination (only if we have a stable query)
+    // Get total count for pagination
     let totalEvents = events.length;
     if (events.length > 0) {
       // Use the same query that found results for accurate count
-      const countQuery = events.length === limit ? query : {};
+      const countQuery = events.length === limit ? baseQuery : {};
       if (Object.keys(countQuery).length > 0) {
         totalEvents = await MachineEvent.countDocuments(countQuery);
       }

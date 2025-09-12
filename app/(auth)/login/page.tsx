@@ -8,6 +8,7 @@ import { validatePassword } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import LiquidGradient from "@/components/ui/LiquidGradient";
 import LoginForm from "@/components/auth/LoginForm";
+import { LoginPageSkeleton } from "@/components/ui/skeletons/LoginSkeletons";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -64,11 +65,7 @@ export default function LoginPage() {
   };
 
   if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p>Loading login...</p>
-      </div>
-    );
+    return <LoginPageSkeleton />;
   }
 
   return (

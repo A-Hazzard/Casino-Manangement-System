@@ -1,13 +1,44 @@
 # Members API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Base URLs](#base-urls)
+3. [Endpoints](#endpoints)
+4. [Data Models](#data-models)
+5. [Business Logic](#business-logic)
+6. [Error Handling](#error-handling)
+7. [Security Features](#security-features)
+8. [Performance Considerations](#performance-considerations)
 
 ## Overview
-The Members API manages gaming member data, including member profiles, session history, and gaming statistics. It provides CRUD operations for member management and session tracking.
 
-## Base URL
+The Members API provides comprehensive member management functionality for the Evolution One CMS system. It handles member profiles, gaming session tracking, financial statistics, and member-related operations with full audit trails and security controls.
+
+### Key Features
+- **Member Management**: Complete CRUD operations for member profiles
+- **Session Tracking**: Detailed gaming session history and statistics
+- **Financial Analytics**: Win/loss calculations and performance metrics
+- **Search and Filtering**: Advanced search capabilities with pagination
+- **Audit Trails**: Complete activity logging for compliance
+
+### System Integration
+- **Authentication**: JWT-based security with role-based access control
+- **Real-time Updates**: Live session tracking and member status updates
+- **Financial Integration**: Seamless integration with collection and reporting systems
+- **Location Management**: Member association with gaming locations
+
+## Base URLs
+
 ```
 /api/members
+/api/members/[id]
+/api/members/[id]/sessions
+/api/members/[id]/sessions/[machineId]/events
 ```
 
 ## Endpoints

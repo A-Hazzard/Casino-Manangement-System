@@ -82,14 +82,3 @@ export type {
 // Date format types
 export type { DateFormatOptions, DateInput } from "./dateFormat";
 
-// Currency types
-export type {
-  CurrencyCode,
-  LICENCEE_DEFAULT_CURRENCY,
-  ExchangeRate,
-  ExchangeRates,
-  CurrencyConversionRequest,
-  CurrencyConversionResponse,
-  CurrencyFilterState,
-  CurrencyMeta,
-} from "./currency";

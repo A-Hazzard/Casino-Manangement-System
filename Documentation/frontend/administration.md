@@ -1,11 +1,30 @@
 # Administration Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [User Management](#user-management)
+- [Licensee Management](#licensee-management)
+- [Security Features](#security-features)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
 
-This page provides user and licensee management for the casino management system, including roles, permissions, and activity logs.
+## Overview
 
+The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### File Information
 - **File:** `app/administration/page.tsx`
 - **URL Pattern:** `/administration`
+- **Component Type:** Administrative Management Page
+- **Authentication:** Required (Admin Role)
 
 ## Main Features
 - **User Management:**

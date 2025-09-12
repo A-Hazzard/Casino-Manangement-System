@@ -1,11 +1,45 @@
 # Locations Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
 
-This page provides comprehensive casino location management, including location overview, cabinet management, and performance analytics for each casino location.
+## Table of Contents
 
+1. [Overview](#overview)
+2. [Main Features](#main-features)
+3. [Technical Architecture](#technical-architecture)
+4. [Location Management](#location-management)
+5. [Performance Analytics](#performance-analytics)
+6. [Cabinet Management](#cabinet-management)
+7. [API Integration](#api-integration)
+8. [State Management](#state-management)
+9. [Security Features](#security-features)
+10. [Performance Optimization](#performance-optimization)
+11. [Error Handling](#error-handling)
+
+## Overview
+
+The Locations page provides comprehensive casino location management, including location overview, cabinet management, and performance analytics for each casino location. This page serves as the central hub for managing all casino locations and their associated operations with real-time monitoring and detailed analytics.
+
+### Key Principles
+- **Location Management**: Complete CRUD operations for casino locations
+- **Performance Analytics**: Real-time location performance monitoring
+- **Cabinet Integration**: Seamless cabinet management within locations
+- **Financial Tracking**: Location-specific financial metrics and reporting
+
+### File Information
 - **File:** `app/locations/page.tsx`
 - **URL Pattern:** `/locations`
+- **Component Type:** Location Management Page
+- **Authentication:** Required
+- **Access Level:** All authenticated users
+
+### System Integration
+- **Location Management**: Complete location lifecycle management
+- **Cabinet Operations**: Cabinet management within location context
+- **Financial Analytics**: Location-specific financial performance tracking
+- **Collection Systems**: Integration with collection and reporting systems
 
 ## Main Features
 - **Location Management:**

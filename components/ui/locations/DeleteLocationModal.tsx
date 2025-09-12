@@ -24,13 +24,16 @@ export default function DeleteLocationModal({
     useLocationActionsStore();
   const locationLogger = createActivityLogger("location");
 
+
   const handleClose = () => {
+    // Modal closed
     closeDeleteModal();
   };
 
   const handleDelete = async () => {
     if (!selectedLocation?.location) return;
 
+   
     try {
       const locationData = { ...selectedLocation };
 

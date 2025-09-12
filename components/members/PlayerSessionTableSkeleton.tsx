@@ -1,18 +1,18 @@
 import React from "react";
 
 const TABLE_HEADERS = [
-  "Login Time",
-  "Session Length",
-  "Handle",
-  "Cancel. Cred.",
-  "Jackpot",
-  "Won/Less",
-  "Points",
-  "Games Played",
-  "Games Won",
-  "Coin In",
-  "Coin Out",
-  "Actions",
+  { label: "Login Time", sortable: true },
+  { label: "Session Length", sortable: true },
+  { label: "Money In", sortable: true },
+  { label: "Money Out", sortable: true },
+  { label: "Jackpot", sortable: true },
+  { label: "Won/Less", sortable: true },
+  { label: "Points", sortable: true },
+  { label: "Games Played", sortable: true },
+  { label: "Games Won", sortable: true },
+  { label: "Coin In", sortable: true },
+  { label: "Coin Out", sortable: true },
+  { label: "Actions", sortable: false },
 ];
 
 // Session Card Skeleton Component for Mobile
@@ -56,10 +56,19 @@ export default function PlayerSessionTableSkeleton() {
               <tr>
                 {TABLE_HEADERS.map((header) => (
                   <th
-                    key={header}
-                    className="p-3 border border-border text-sm relative cursor-pointer"
+                    key={header.label}
+                    className={`p-3 border border-border text-sm relative ${
+                      header.sortable ? "cursor-pointer" : ""
+                    }`}
                   >
-                    <span>{header}</span>
+                    <div className="flex items-center justify-center gap-1">
+                      <span>{header.label}</span>
+                      {header.sortable && (
+                        <div className="w-4 h-4 opacity-30">
+                          <div className="w-4 h-4 bg-gray-300 rounded animate-pulse"></div>
+                        </div>
+                      )}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -69,7 +78,7 @@ export default function PlayerSessionTableSkeleton() {
                 <tr key={index} className="hover:bg-muted">
                   {TABLE_HEADERS.map((header) => (
                     <td
-                      key={header}
+                      key={header.label}
                       className="p-3 bg-container border border-border text-sm text-left hover:bg-accent"
                     >
                       <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>

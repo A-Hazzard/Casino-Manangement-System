@@ -31,9 +31,14 @@ export const fetchCabinets = async (
     const queryParams = [];
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
 
-    if (customDateRange?.from && customDateRange?.to) {
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
       queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
       queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
@@ -82,16 +87,33 @@ export const fetchCabinets = async (
  */
 export const fetchCabinetById = async (
   cabinetId: string,
-  timePeriod?: string
+  timePeriod?: string,
+  customDateRange?: DateRange
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
     let endpoint = `/api/machines/${cabinetId}`;
 
-    if (timePeriod) {
-      endpoint += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    // Add query parameters
+    const queryParams = [];
+
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
+      queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    } else if (timePeriod) {
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
 
+    if (queryParams.length > 0) {
+      endpoint += `?${queryParams.join("&")}`;
+    }
+
+    console.warn("[DEBUG] fetchCabinetById calling:", endpoint);
     const response = await axios.get(endpoint, {
       headers: getAuthHeaders(),
     });
@@ -178,14 +200,23 @@ export const createCabinet = async (
  * Update an existing cabinet with provided form data.
  *
  * @param data - CabinetFormData object.
+ * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to the updated cabinet data, or throws on error.
  */
-export const updateCabinet = async (data: CabinetFormData) => {
+export const updateCabinet = async (
+  data: CabinetFormData,
+  timePeriod?: string
+) => {
   try {
     const cabinetLogger = createActivityLogger("machine");
 
     // Get the machine data with gamingLocation from the new endpoint
-    const cabinetResponse = await axios.get(`/api/machines/${data.id}`, {
+    let cabinetUrl = `/api/machines/${data.id}`;
+    if (timePeriod) {
+      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    }
+
+    const cabinetResponse = await axios.get(cabinetUrl, {
       headers: getAuthHeaders(),
     });
 
@@ -230,14 +261,20 @@ export const updateCabinet = async (data: CabinetFormData) => {
  * Delete a cabinet by its ID.
  *
  * @param cabinetId - The unique identifier for the cabinet.
+ * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to true if deleted, or throws on error.
  */
-export const deleteCabinet = async (cabinetId: string) => {
+export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
   try {
     const cabinetLogger = createActivityLogger("machine");
 
     // Get the machine data with gamingLocation from the new endpoint
-    const cabinetResponse = await axios.get(`/api/machines/${cabinetId}`, {
+    let cabinetUrl = `/api/machines/${cabinetId}`;
+    if (timePeriod) {
+      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    }
+
+    const cabinetResponse = await axios.get(cabinetUrl, {
       headers: getAuthHeaders(),
     });
 
@@ -327,11 +364,20 @@ export async function fetchCabinetsForLocation(
   locationId: string,
   licencee?: string,
   timePeriod?: string,
-  searchTerm?: string
+  searchTerm?: string,
+  customDateRange?: DateRange
 ) {
   try {
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      console.warn(
+        "⚠️ No timePeriod provided to fetchCabinetsForLocation, returning empty array"
+      );
+      return [];
+    }
+
     const params: Record<string, string> = {
-      timePeriod: timePeriod || "today",
+      timePeriod: timePeriod,
     };
 
     if (licencee) {
@@ -340,6 +386,19 @@ export async function fetchCabinetsForLocation(
 
     if (searchTerm) {
       params.search = searchTerm;
+    }
+
+    // Handle custom date range
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      console.warn("Custom date range:", customDateRange);
+      params.startDate = customDateRange.from.toISOString();
+      params.endDate = customDateRange.to.toISOString();
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
+      console.warn("Custom date params:", params);
     }
 
     const queryString = new URLSearchParams(params).toString();
@@ -488,13 +547,21 @@ export async function loadCabinetsForLocation(
   timePeriod?: string
 ) {
   try {
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      console.warn(
+        "⚠️ No timePeriod provided to loadCabinetsForLocation, returning empty array"
+      );
+      return [];
+    }
+
     // Fetching cabinets for location: ${locationId}
 
     // Create a cancel token for this request
     const cancelToken = axios.CancelToken.source();
 
     const params: Record<string, string> = {
-      timePeriod: timePeriod || "today",
+      timePeriod: timePeriod,
     };
 
     if (licencee) {
@@ -560,5 +627,47 @@ export const fetchMachineEvents = async (machineId: string) => {
       error
     );
     return [];
+  }
+};
+
+/**
+ * Update machine's collectionMetersHistory array.
+ *
+ * @param machineId - The unique identifier for the machine.
+ * @param collectionHistoryEntry - The collection history entry to add/update.
+ * @param operation - The operation to perform: 'add', 'update', or 'delete'.
+ * @param entryId - The ID of the entry to update or delete (required for 'update' and 'delete' operations).
+ * @returns Promise resolving to success status.
+ */
+export const updateMachineCollectionHistory = async (
+  machineId: string,
+  collectionHistoryEntry?: {
+    _id?: string;
+    metersIn: number;
+    metersOut: number;
+    prevMetersIn: number;
+    prevMetersOut: number;
+    timestamp: Date;
+    locationReportId: string;
+  },
+  operation: "add" | "update" | "delete" = "add",
+  entryId?: string
+) => {
+  try {
+    const response = await axios.patch(
+      `/api/machines/${machineId}/collection-history`,
+      {
+        operation,
+        entry: collectionHistoryEntry,
+        entryId,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error updating collection history for machine ${machineId}:`,
+      error
+    );
+    throw error;
   }
 };

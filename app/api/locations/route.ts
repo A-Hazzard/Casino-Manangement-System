@@ -4,11 +4,10 @@ import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 import { apiLogger } from "@/app/api/lib/utils/logger";
-import {
-  analyzeLocationGeoCoords,
-  logGeoCoordIssues,
-} from "@/app/api/lib/helpers/locationFileLogging";
 import { generateMongoId } from "@/lib/utils/id";
+import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -43,10 +42,6 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
-    // Analyze location geoCoords and log issues
-    const { missingGeoCoords, zeroGeoCoords } =
-      analyzeLocationGeoCoords(locations);
-    logGeoCoordIssues(missingGeoCoords, zeroGeoCoords);
 
     // Return minimal or full set based on query
     const locationsToReturn = minimal ? locations : locations;
@@ -128,6 +123,40 @@ export async function POST(request: Request) {
 
     // Save the new location
     await newLocation.save();
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "name", oldValue: null, newValue: name },
+          { field: "country", oldValue: null, newValue: country },
+          { field: "address.street", oldValue: null, newValue: address?.street || "" },
+          { field: "address.city", oldValue: null, newValue: address?.city || "" },
+          { field: "rel.licencee", oldValue: null, newValue: rel?.licencee || "" },
+          { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
+          { field: "isLocalServer", oldValue: null, newValue: isLocalServer || false },
+          { field: "geoCoords.latitude", oldValue: null, newValue: geoCoords?.latitude || 0 },
+          { field: "geoCoords.longitude", oldValue: null, newValue: geoCoords?.longitude || 0 },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "location",
+          { id: locationId, name },
+          createChanges,
+          `Created new location "${name}" in ${country}`,
+          getClientIP(request as NextRequest) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
 
     return NextResponse.json(
       { success: true, location: newLocation },
@@ -229,6 +258,9 @@ export async function PUT(request: Request) {
       // Always update the updatedAt timestamp
       updateData.updatedAt = new Date();
 
+      // Get original location data for change tracking
+      const originalLocation = location.toObject();
+
       // Update the location
       const result = await GamingLocations.updateOne(
         { _id: locationId },
@@ -240,6 +272,30 @@ export async function PUT(request: Request) {
           { success: false, message: "No changes were made to the location" },
           { status: 400 }
         );
+      }
+
+      // Log activity
+      const currentUser = await getUserFromServer();
+      if (currentUser && currentUser.emailAddress) {
+        try {
+          const changes = calculateChanges(originalLocation, updateData);
+
+          await logActivity(
+            {
+              id: currentUser._id as string,
+              email: currentUser.emailAddress as string,
+              role: (currentUser.roles as string[])?.[0] || "user",
+            },
+            "UPDATE",
+            "location",
+            { id: locationId, name: location.name },
+            changes,
+            `Updated location "${location.name}"`,
+            getClientIP(request as NextRequest) || undefined
+          );
+        } catch (logError) {
+          console.error("Failed to log activity:", logError);
+        }
       }
 
       return NextResponse.json(
@@ -280,18 +336,54 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Get location data before deletion for logging
+    const locationToDelete = await GamingLocations.findById(id);
+    if (!locationToDelete) {
+      return NextResponse.json(
+        { success: false, message: "Location not found" },
+        { status: 404 }
+      );
+    }
+
     // Soft delete by setting deletedAt
-    const deletedLocation = await GamingLocations.findByIdAndUpdate(
+    await GamingLocations.findByIdAndUpdate(
       id,
       { deletedAt: new Date() },
       { new: true }
     );
 
-    if (!deletedLocation) {
-      return NextResponse.json(
-        { success: false, message: "Location not found" },
-        { status: 404 }
-      );
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const deleteChanges = [
+          { field: "name", oldValue: locationToDelete.name, newValue: null },
+          { field: "country", oldValue: locationToDelete.country, newValue: null },
+          { field: "address.street", oldValue: locationToDelete.address?.street || "", newValue: null },
+          { field: "address.city", oldValue: locationToDelete.address?.city || "", newValue: null },
+          { field: "rel.licencee", oldValue: locationToDelete.rel?.licencee || "", newValue: null },
+          { field: "profitShare", oldValue: locationToDelete.profitShare, newValue: null },
+          { field: "isLocalServer", oldValue: locationToDelete.isLocalServer, newValue: null },
+          { field: "geoCoords.latitude", oldValue: locationToDelete.geoCoords?.latitude || 0, newValue: null },
+          { field: "geoCoords.longitude", oldValue: locationToDelete.geoCoords?.longitude || 0, newValue: null },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "DELETE",
+          "location",
+          { id, name: locationToDelete.name },
+          deleteChanges,
+          `Deleted location "${locationToDelete.name}"`,
+          getClientIP(request as NextRequest) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
     }
 
     return NextResponse.json(

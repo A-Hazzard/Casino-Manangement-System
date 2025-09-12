@@ -57,6 +57,7 @@ export type Cabinet = {
   coinOut?: number;
   gamesPlayed?: number;
   gamesWon?: number;
+  handle?: number; // Same as coinIn for betting activity
   sasMeters?: SasMeters;
   online?: boolean;
   meterData?: {
@@ -113,12 +114,28 @@ export type Cabinet = {
     metersOut?: number;
   };
   collectionTime?: string | Date;
+  collectorDenomination?: number;
   collectionMetersHistory?: Array<{
     metersIn?: number;
     metersOut?: number;
     timestamp?: string;
     _id?: string;
   }>;
+  billMeters?: {
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+  };
   deletedAt?: string | Date | null;
   locationId?: string;
   locationName?: string;

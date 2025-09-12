@@ -33,9 +33,13 @@ export function filterCollectionReports(
       }
     }
 
-    // Uncollected only filter
-    if (showUncollectedOnly && report.uncollected === "0") {
-      return false;
+    // Uncollected only filter - show only reports where uncollected > 0
+    if (showUncollectedOnly) {
+      const uncollectedStr = String(report.uncollected || "").trim();
+      const uncollectedNum = Number(uncollectedStr);
+      if (isNaN(uncollectedNum) || uncollectedNum <= 0) {
+        return false;
+      }
     }
 
     return true;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { DashboardDateFiltersProps } from "@/lib/types/componentProps";
+import DateRangeIndicator from "@/components/ui/DateRangeIndicator";
 
 export default function DashboardDateFilters({
   disabled,
@@ -32,35 +33,55 @@ export default function DashboardDateFilters({
   } = useDashBoardStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
   const timeFilterButtons: { label: string; value: TimePeriod }[] = hideAllTime
     ? [
         { label: "Today", value: "Today" as TimePeriod },
         { label: "Yesterday", value: "Yesterday" as TimePeriod },
-        { label: "Last 7 Days", value: "last7days" as TimePeriod },
-        { label: "Last 30 Days", value: "last30days" as TimePeriod },
+        { label: "Last 7 Days", value: "7d" as TimePeriod },
+        { label: "Last 30 Days", value: "30d" as TimePeriod },
         { label: "Custom", value: "Custom" as TimePeriod },
       ]
     : [
         { label: "Today", value: "Today" as TimePeriod },
         { label: "Yesterday", value: "Yesterday" as TimePeriod },
-        { label: "Last 7 Days", value: "last7days" as TimePeriod },
-        { label: "Last 30 Days", value: "last30days" as TimePeriod },
-        { label: "Custom", value: "Custom" as TimePeriod },
+        { label: "Last 7 Days", value: "7d" as TimePeriod },
+        { label: "Last 30 Days", value: "30d" as TimePeriod },
         { label: "All Time", value: "All Time" as TimePeriod },
+        { label: "Custom", value: "Custom" as TimePeriod },
       ];
 
   // Check if any loading state is active
   const isLoading = loadingChartData || loadingTopPerforming || refreshing;
 
+  // Handle callback after state updates
+  useEffect(() => {
+    if (shouldTriggerCallback && onCustomRangeGo) {
+      setShouldTriggerCallback(false);
+      onCustomRangeGo();
+    }
+  }, [shouldTriggerCallback, onCustomRangeGo]);
+
   const handleApplyCustomRange = () => {
     if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
+      // Convert dates to Trinidad timezone format (UTC-4)
+      // The dates from the picker are in local time, but we need to convert them
+      // to represent the start and end of the day in Trinidad time
+      const startDate = new Date(pendingCustomDateRange.startDate);
+      startDate.setHours(0, 0, 0, 0); // Start of day in local time
+      
+      const endDate = new Date(pendingCustomDateRange.endDate);
+      endDate.setHours(23, 59, 59, 999); // End of day in local time
+      
       setCustomDateRange({
-        startDate: pendingCustomDateRange.startDate,
-        endDate: pendingCustomDateRange.endDate,
+        startDate: startDate,
+        endDate: endDate,
       });
       setActiveMetricsFilter("Custom");
       setShowCustomPicker(false);
-      if (onCustomRangeGo) onCustomRangeGo();
+      
+      // Set flag to trigger callback after state updates
+      setShouldTriggerCallback(true);
     }
   };
 
@@ -90,9 +111,14 @@ export default function DashboardDateFilters({
   const showDesktopButtons = mode === "desktop" || mode === "auto";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 w-full">
-      {/* Mobile: Select dropdown */}
-      <div className={mode === "auto" ? "w-full md:hidden" : "w-full"}>
+    <div className="flex flex-col gap-3 w-full">
+      {/* Date Range Indicator */}
+      <DateRangeIndicator />
+      
+      {/* Filter Controls */}
+      <div className="flex flex-wrap items-center gap-2 w-full">
+        {/* Mobile and md: Select dropdown */}
+        <div className={mode === "auto" ? "w-full lg:hidden" : "w-full"}>
         <Select
           value={activeMetricsFilter}
           onValueChange={handleFilterClick as (v: string) => void}
@@ -101,13 +127,22 @@ export default function DashboardDateFilters({
           <SelectTrigger
             className={`bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors ${
               mode === "auto" ? "w-full" : "w-full"
-            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            } ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            } min-h-[44px] text-base`}
           >
-            <SelectValue placeholder="Select date range" />
+            <SelectValue
+              placeholder="Select date range"
+              className="text-gray-700"
+            />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="text-gray-700">
             {timeFilterButtons.map((filter) => (
-              <SelectItem key={filter.value} value={filter.value as string}>
+              <SelectItem
+                key={filter.value}
+                value={filter.value as string}
+                className="text-gray-700"
+              >
                 {filter.label}
               </SelectItem>
             ))}
@@ -115,12 +150,12 @@ export default function DashboardDateFilters({
         </Select>
       </div>
 
-      {/* md and above: Filter buttons */}
+      {/* lg and above: Filter buttons */}
       {showDesktopButtons && (
         <div
           className={
             mode === "auto"
-              ? "hidden md:flex flex-wrap items-center gap-2"
+              ? "hidden lg:flex flex-wrap items-center gap-2"
               : "flex flex-wrap items-center gap-2"
           }
         >
@@ -166,6 +201,7 @@ export default function DashboardDateFilters({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

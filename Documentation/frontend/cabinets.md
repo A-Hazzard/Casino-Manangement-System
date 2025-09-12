@@ -1,11 +1,31 @@
 # Cabinets Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [Cabinet Management](#cabinet-management)
+- [SMIB Management](#smib-management)
+- [Movement Requests](#movement-requests)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Security Features](#security-features)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
 
-This page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, configuration, and operational controls.
+## Overview
 
+The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, configuration, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### File Information
 - **File:** `app/cabinets/page.tsx`
 - **URL Pattern:** `/cabinets`
+- **Component Type:** Cabinet Management Page
+- **Authentication:** Required
 
 ## Main Features
 - **Cabinet Management:**

@@ -157,26 +157,74 @@ export function animateTableRows(
 }
 
 /**
- * Applies GSAP animation to card elements
+ * Applies GSAP animation to card elements with robust error handling
  * @param cardsRef - React ref to the cards container
  */
 export function animateCards(cardsRef: React.RefObject<HTMLDivElement | null>) {
-  if (cardsRef.current) {
-    const cards = Array.from(
-      cardsRef.current?.querySelectorAll(".card-item") || []
+  // Early return if ref is not available
+  if (!cardsRef?.current) {
+    console.warn("animateCards: cardsRef.current is not available");
+    return;
+  }
+
+  try {
+    // Use a more robust selector and add safety checks
+    const cards = cardsRef.current.querySelectorAll(".card-item");
+    
+    // Convert to array and filter out any null/undefined elements
+    const validCards = Array.from(cards).filter(card => 
+      card && card instanceof Element && card.isConnected
     );
+
+    if (validCards.length === 0) {
+      console.warn("animateCards: No valid card elements found");
+      return;
+    }
+
+    // Kill any existing animations on these elements to prevent conflicts
+    gsap.killTweensOf(validCards);
+
+    // Apply animation with error handling
     gsap.fromTo(
-      cards,
-      { opacity: 0, scale: 0.95, y: 15 },
+      validCards,
+      { 
+        opacity: 0, 
+        scale: 0.95, 
+        y: 15,
+        // Ensure elements are initially hidden
+        visibility: "hidden"
+      },
       {
         opacity: 1,
         scale: 1,
         y: 0,
+        visibility: "visible",
         duration: 0.3,
         stagger: 0.05,
         ease: "back.out(1.5)",
+        onComplete: () => {
+          // Clean up any inline styles that might interfere
+          validCards.forEach(card => {
+            if (card instanceof HTMLElement) {
+              card.style.visibility = "";
+            }
+          });
+        }
       }
     );
+  } catch (error) {
+    console.error("animateCards: GSAP animation failed:", error);
+    // Fallback: ensure cards are visible even if animation fails
+    if (cardsRef.current) {
+      const cards = cardsRef.current.querySelectorAll(".card-item");
+      cards.forEach(card => {
+        if (card instanceof HTMLElement) {
+          card.style.opacity = "1";
+          card.style.transform = "none";
+          card.style.visibility = "visible";
+        }
+      });
+    }
   }
 }
 
@@ -329,7 +377,7 @@ export function calculateLocationTotal(
 ): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
-    const gross = (collection.metersOut || 0) - (collection.metersIn || 0);
+    const gross = (collection.metersIn || 0) - (collection.metersOut || 0);
     return total + gross;
   }, 0);
 }

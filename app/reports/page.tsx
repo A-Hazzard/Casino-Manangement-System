@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
-import { RefreshCw } from "lucide-react";
 
 // Components
 import ReportsContent from "@/components/reports/ReportsContent";
+import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
 
 /**
  * Reports Page
@@ -19,16 +19,7 @@ import ReportsContent from "@/components/reports/ReportsContent";
  */
 export default function ReportsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-buttonActive" />
-            <p className="text-gray-600">Loading reports...</p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<ReportsPageSkeleton />}>
       <ReportsContent />
     </Suspense>
   );

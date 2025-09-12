@@ -2,12 +2,12 @@ import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "../../lib/middleware/db";
-import { DateRange, TimePeriod } from "@shared/types";
+import { TimePeriod } from "@shared/types";
 import {
   MachineMatchStage,
   MachineAggregationMatchStage,
 } from "@/lib/types/machines";
-import { getDateRangeForTimePeriodAlt } from "@/app/api/lib/utils/dateUtils";
+import { getDateRangeForTimePeriodAlt, DateRangeAlt } from "@/app/api/lib/utils/dateUtils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,19 +19,42 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get("locationId");
     const searchTerm = searchParams.get("search")?.trim() || "";
     const licensee = searchParams.get("licensee");
-    const timePeriod = searchParams.get("timePeriod") || "Today";
+    const timePeriod = searchParams.get("timePeriod");
+    
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      return NextResponse.json(
+        { error: "timePeriod parameter is required" },
+        { status: 400 }
+      );
+    }
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
     // Log the query parameters for debugging
 
     // Get date range for time period filtering
-    let dateRange: DateRange;
+    let dateRange: DateRangeAlt;
     if (startDateParam && endDateParam) {
+      // For custom date ranges, the frontend sends dates that represent
+      // the start and end of the day in Trinidad time, already converted to UTC
+      const customStartDate = new Date(startDateParam);
+      let customEndDate = new Date(endDateParam);
+      
+      // The end date from frontend represents the start of the end day in Trinidad time
+      // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
+      customEndDate = new Date(customEndDate.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
+      
       dateRange = {
-        start: new Date(startDateParam),
-        end: new Date(endDateParam),
+        start: customStartDate,
+        end: customEndDate,
       };
+      
+      console.warn("🔍 API - Custom date range debug (machines aggregation):");
+      console.warn("🔍 API - Original start date:", startDateParam);
+      console.warn("🔍 API - Original end date:", endDateParam);
+      console.warn("🔍 API - Extended end date (UTC):", dateRange.end.toISOString());
+      console.warn("🔍 API - Parsed start date (UTC):", dateRange.start.toISOString());
     } else {
       dateRange = getDateRangeForTimePeriodAlt(timePeriod as TimePeriod);
     }
@@ -128,11 +151,8 @@ export async function GET(req: NextRequest) {
               $group: {
                 _id: null,
                 sumDrop: { $sum: "$movement.drop" },
-                sumOut: { $sum: "$movement.totalCancelledCredits" },
+                sumMoneyOut: { $sum: "$movement.totalCancelledCredits" },
                 sumJackpot: { $sum: "$movement.jackpot" },
-                sumCancelledCredits: {
-                  $sum: "$movement.totalCancelledCredits",
-                },
                 sumCoinIn: { $sum: "$movement.coinIn" },
                 sumCoinOut: { $sum: "$movement.coinOut" },
                 sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
@@ -163,6 +183,7 @@ export async function GET(req: NextRequest) {
         relayId: { $ifNull: ["$machines.relayId", ""] },
         installedGame: { $ifNull: ["$machines.game", ""] },
         game: { $ifNull: ["$machines.game", ""] },
+        manufacturer: { $ifNull: ["$machines.manufacturer", "$machines.manuf", "Unknown Manufacturer"] },
         status: { $ifNull: ["$machines.assetStatus", ""] },
         assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
         cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
@@ -175,13 +196,13 @@ export async function GET(req: NextRequest) {
         lastActivity: "$machines.lastActivity",
         // Financial metrics from meter aggregation
         moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
-        moneyOut: { $ifNull: ["$meterAgg.sumOut", 0] },
-        cancelledCredits: { $ifNull: ["$meterAgg.sumCancelledCredits", 0] },
+        moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
+        cancelledCredits: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
         jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
         gross: {
           $subtract: [
             { $ifNull: ["$meterAgg.sumDrop", 0] },
-            { $ifNull: ["$meterAgg.sumOut", 0] },
+            { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
           ],
         },
         // Additional metrics for comprehensive financial tracking
@@ -258,11 +279,8 @@ export async function GET(req: NextRequest) {
                   $group: {
                     _id: null,
                     sumDrop: { $sum: "$movement.drop" },
-                    sumOut: { $sum: "$movement.totalCancelledCredits" },
+                    sumMoneyOut: { $sum: "$movement.totalCancelledCredits" },
                     sumJackpot: { $sum: "$movement.jackpot" },
-                    sumCancelledCredits: {
-                      $sum: "$movement.totalCancelledCredits",
-                    },
                     sumCoinIn: { $sum: "$movement.coinIn" },
                     sumCoinOut: { $sum: "$movement.coinOut" },
                     sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
@@ -298,15 +316,15 @@ export async function GET(req: NextRequest) {
               lastActivity: "$machines.lastActivity",
               // Financial metrics from meter aggregation
               moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
-              moneyOut: { $ifNull: ["$meterAgg.sumOut", 0] },
+              moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
               cancelledCredits: {
-                $ifNull: ["$meterAgg.sumCancelledCredits", 0],
+                $ifNull: ["$meterAgg.sumMoneyOut", 0],
               },
               jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
               gross: {
                 $subtract: [
                   { $ifNull: ["$meterAgg.sumDrop", 0] },
-                  { $ifNull: ["$meterAgg.sumOut", 0] },
+                  { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
                 ],
               },
               // Additional metrics for comprehensive financial tracking

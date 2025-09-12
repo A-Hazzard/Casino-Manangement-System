@@ -1,8 +1,21 @@
 # Redirect Pages
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+## Table of Contents
+- [Overview](#overview)
+- [Redirect Pages](#redirect-pages)
+- [Technical Implementation](#technical-implementation)
+- [URL Normalization](#url-normalization)
+- [Backward Compatibility](#backward-compatibility)
+- [Performance Considerations](#performance-considerations)
+- [Maintenance Guidelines](#maintenance-guidelines)
 
-This document describes the redirect pages in the Dynamic1 Casino Management System that provide backward compatibility and URL normalization.
+## Overview
+
+The redirect pages ensure that legacy URLs and alternative naming conventions continue to work by automatically redirecting users to the correct pages. This maintains a good user experience while allowing the system to evolve with consistent URL structures.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
 
 ## Overview
 

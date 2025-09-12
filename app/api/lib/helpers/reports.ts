@@ -6,12 +6,12 @@ import {
   Reportable,
 } from "@/lib/types/reports";
 import { isWithinInterval } from "date-fns";
-import { generateMockAnalyticsData } from "@/lib/helpers/reports";
-
-const mockData = generateMockAnalyticsData();
+// TODO: Replace with actual MongoDB data fetching
+// const mockData = await fetchAnalyticsDataFromMongoDB();
 
 function applyFilters(config: ReportConfig): GamingMachine[] {
-  let filteredMachines = mockData.machines;
+  // TODO: Replace with actual MongoDB query
+  let filteredMachines: GamingMachine[] = [];
 
   const dateRange = config.dateRange
     ? {
@@ -105,9 +105,8 @@ export function generateReportData(config: ReportConfig): ReportData {
   const filteredMachines = applyFilters(config);
 
   const tableData: Reportable[] = filteredMachines.map((machine) => {
-    const location = mockData.locations.find(
-      (l) => l.id === machine.locationId
-    );
+    // TODO: Replace with actual location lookup from MongoDB
+    const location = undefined; // await findLocationById(machine.locationId);
     return createReportableRow(machine, location, config.fields);
   });
 

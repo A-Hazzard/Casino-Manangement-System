@@ -61,13 +61,13 @@ export default function LocationCard({
       <div className="flex flex-col space-y-2 text-sm mb-2">
         <div className="flex justify-between">
           <span className="font-medium">Money In</span>
-          <span className="text-foreground font-semibold">
+          <span className="text-foreground font-semibold break-words text-right">
             {formatCurrency(location.moneyIn ?? 0)}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="font-medium">Money Out</span>
-          <span className="text-foreground font-semibold">
+          <span className="text-foreground font-semibold break-words text-right">
             {formatCurrency(location.moneyOut ?? 0)}
           </span>
         </div>
@@ -76,7 +76,7 @@ export default function LocationCard({
       <div className="flex justify-between mt-1 mb-3">
         <span className="font-medium">Gross</span>
         <span
-          className={`font-semibold ${
+          className={`font-semibold break-words text-right ${
             (location.gross ?? 0) < 0 ? "text-destructive" : "text-button"
           }`}
         >

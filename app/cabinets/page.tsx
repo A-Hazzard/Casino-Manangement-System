@@ -21,10 +21,12 @@ import {
   filterCabinets as filterCabinetsHelper,
 } from "@/lib/helpers/cabinetsPage";
 import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
+import { NetworkError } from "@/components/ui/errors";
 
 import {
   ArrowDownIcon,
@@ -77,6 +79,8 @@ function CabinetsPageContent() {
     setIsNewMovementRequestModalOpen(false);
 
   const handleMovementRequestSubmit = () => {
+    // Refresh the cabinets data to show updated movement requests
+    loadCabinets();
     closeNewMovementRequestModal();
   };
 
@@ -91,6 +95,7 @@ function CabinetsPageContent() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
@@ -193,6 +198,7 @@ function CabinetsPageContent() {
       console.error("Error fetching cabinet data:", err);
       setAllCabinets([]);
       setFilteredCabinets([]);
+      setError(err instanceof Error ? err.message : "Failed to load cabinets");
     } finally {
       setLoading(false);
       setInitialLoading(false); // Set initialLoading to false after the first load completes
@@ -201,9 +207,9 @@ function CabinetsPageContent() {
     selectedLicencee,
     filterCabinets,
     searchTerm,
-    setLoadingChartData,
     activeMetricsFilter,
     customDateRange,
+    setLoadingChartData,
   ]);
 
   useEffect(() => {
@@ -302,6 +308,7 @@ function CabinetsPageContent() {
         onClose={closeNewMovementRequestModal}
         locations={locations}
         onSubmit={handleMovementRequestSubmit}
+        onRefresh={loadCabinets}
       />
       <UploadSmibDataModal
         isOpen={isUploadSmibDataModalOpen}
@@ -418,7 +425,11 @@ function CabinetsPageContent() {
         {/* Date Filters Row - Visible on both mobile and desktop */}
         <div className="flex items-center justify-between mt-4 mb-0 gap-4">
           <div className="flex-1 min-w-0">
-            <DashboardDateFilters disabled={loading} hideAllTime={true} />
+            <DashboardDateFilters 
+              disabled={loading} 
+              hideAllTime={false}
+              onCustomRangeGo={loadCabinets}
+            />
           </div>
         </div>
         {/* Mobile: Search, Location Filter, and Sort stacked - Only show on cabinets section */}
@@ -516,12 +527,20 @@ function CabinetsPageContent() {
         {/* Section Content */}
         {activeSection === "cabinets" ? (
           <>
-            {initialLoading || loading ? (
+            {error ? (
+              <NetworkError
+                title="Failed to Load Cabinets"
+                message="Unable to load cabinet data. Please check your connection and try again."
+                onRetry={loadCabinets}
+                isRetrying={loading}
+                errorDetails={error}
+              />
+            ) : initialLoading || loading ? (
               <>
                 {/* Table Skeleton for large screens */}
                 <div className="hidden md:block">
                   <ClientOnly
-                    fallback={<div className="space-y-4 mt-4">Loading...</div>}
+                    fallback={<CabinetTableSkeleton />}
                   >
                     <CabinetTableSkeleton />
                   </ClientOnly>
@@ -530,7 +549,7 @@ function CabinetsPageContent() {
                 {/* Card Skeleton for small screens only */}
                 <div className="block md:hidden">
                   <ClientOnly
-                    fallback={<div className="space-y-4 mt-4">Loading...</div>}
+                    fallback={<CabinetCardSkeleton />}
                   >
                     <CabinetCardSkeleton />
                   </ClientOnly>
@@ -590,15 +609,7 @@ function CabinetsPageContent() {
                           cabinet.relayId ||
                           ""
                         }
-                        serialNumber={
-                          ((cabinet as Record<string, unknown>)
-                            .serialNumber as string) ||
-                          ((cabinet as Record<string, unknown>)
-                            .origSerialNumber as string) ||
-                          ((cabinet as Record<string, unknown>)
-                            .machineId as string) ||
-                          ""
-                        }
+                        serialNumber={getSerialNumberIdentifier(cabinet)}
                         locationId={cabinet.locationId || ""}
                         locationName={cabinet.locationName || ""}
                         moneyIn={cabinet.moneyIn || 0}
@@ -704,7 +715,7 @@ function CabinetsPageContent() {
 
 export default function CabinetsPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<CabinetTableSkeleton />}>
       <CabinetsPageContent />
     </Suspense>
   );

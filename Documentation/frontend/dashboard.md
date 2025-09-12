@@ -1,44 +1,88 @@
 # Dashboard Page
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
 
-This page provides a comprehensive real-time overview of casino operations, financial metrics, and performance analytics for the casino management system.
+## Table of Contents
 
+1. [Overview](#overview)
+2. [Main Features](#main-features)
+3. [Technical Architecture](#technical-architecture)
+4. [Business Logic](#business-logic)
+5. [Data Flow](#data-flow)
+6. [API Integration](#api-integration)
+7. [State Management](#state-management)
+8. [Performance Optimization](#performance-optimization)
+9. [Security Features](#security-features)
+10. [Error Handling](#error-handling)
+
+## Overview
+
+The Dashboard page serves as the central command center for the Evolution One Casino Management System, providing real-time insights into casino operations, financial performance, and system health. It offers comprehensive analytics, performance monitoring, and operational oversight in a single, intuitive interface.
+
+### Key Principles
+- **Real-time Data**: Live updates of all critical system metrics
+- **Comprehensive Analytics**: Complete financial and operational insights
+- **User-friendly Interface**: Intuitive design for all user levels
+- **Performance Monitoring**: Real-time system health and performance tracking
+
+### File Information
 - **File:** `app/page.tsx`
 - **URL Pattern:** `/`
+- **Component Type:** Main Landing Page
+- **Authentication:** Required
+- **Access Level:** All authenticated users
+
+### System Integration
+- **Financial Analytics**: Real-time financial metrics and calculations
+- **Machine Monitoring**: Live machine status and performance tracking
+- **Location Management**: Location-specific analytics and insights
+- **Collection Systems**: Integration with collection and reporting systems
 
 ## Main Features
-- **Real-Time Metrics:**
-  - Financial overview (money in, money out, gross revenue)
-  - Machine status (total, online, offline machines)
-  - Performance indicators and trends
-  - Live data updates and refresh functionality
-- **Interactive Charts:**
-  - Line charts for time-series data
-  - Pie charts for location and machine distribution
-  - Top-performing locations and machines
-  - Interactive chart elements with tooltips
-- **Date Filtering:**
-  - Predefined time periods (Today, Yesterday, Last 7 days, 30 days)
-  - Custom date range selection with calendar picker
-  - Real-time data updates based on filters
-  - Automatic period switching based on data availability
-- **Licensee Selection:**
-  - Dropdown to switch between different licensees
-  - Filters all data based on selected licensee
-  - "All Licensees" option for global overview
-- **Responsive Layout:**
-  - Separate desktop and mobile layouts
-  - Optimized for different screen sizes
-  - Mobile-first design approach
-- **Navigation System:**
-  - Persistent sidebar for desktop navigation
-  - Mobile hamburger menu with slide-out navigation
-  - Quick access to all major modules
-- **Map Integration:**
-  - Interactive map showing gaming location distribution
-  - Geographical visualization of casino locations
-  - Location markers with detailed information
+
+### Real-Time Metrics
+- **Financial Overview**: Money in, money out, and gross revenue calculations
+- **Machine Status**: Total, online, and offline machine counts with real-time updates
+- **Performance Indicators**: Key performance metrics and trend analysis
+- **Live Data Updates**: Automatic refresh functionality with manual override options
+
+### Interactive Charts
+- **Time-Series Data**: Line charts showing revenue trends over time
+- **Distribution Analysis**: Pie charts for location and machine distribution
+- **Performance Rankings**: Top-performing locations and machines
+- **Interactive Elements**: Tooltips and clickable chart components
+
+### Date Filtering
+- **Predefined Periods**: Today, Yesterday, Last 7 days, Last 30 days options
+- **Custom Date Range**: Calendar picker for specific time periods
+- **Real-time Updates**: Data automatically updates based on selected filters
+- **Smart Period Switching**: Automatic adjustment based on data availability
+
+### Licensee Selection
+- **Multi-licensee Support**: Dropdown to switch between different licensees
+- **Data Filtering**: All dashboard data filtered based on selected licensee
+- **Global Overview**: "All Licensees" option for system-wide metrics
+- **Context Switching**: Seamless switching between licensee contexts
+
+### Responsive Layout
+- **Desktop Layout**: Full-featured dashboard with sidebar navigation
+- **Mobile Layout**: Optimized mobile interface with hamburger menu
+- **Screen Adaptation**: Automatic layout adjustment for different screen sizes
+- **Mobile-First Design**: Touch-friendly interface for mobile devices
+
+### Navigation System
+- **Persistent Sidebar**: Desktop navigation with quick access to all modules
+- **Mobile Menu**: Slide-out navigation menu for mobile devices
+- **Module Access**: Direct links to all major system modules
+- **Breadcrumb Navigation**: Clear navigation path indication
+
+### Map Integration
+- **Geographic Visualization**: Interactive map showing gaming location distribution
+- **Location Markers**: Detailed information for each gaming location
+- **Performance Overlay**: Visual representation of location performance
+- **Interactive Features**: Clickable markers with location details
 
 ## Technical Architecture
 

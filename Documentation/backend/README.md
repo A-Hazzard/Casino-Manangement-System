@@ -1,7 +1,24 @@
 # Backend API Documentation
 
+## Table of Contents
+- [Overview](#overview)
+- [Documentation Structure](#documentation-structure)
+- [Core API Documentation](#core-api-documentation)
+- [Authentication & Authorization](#authentication--authorization)
+- [Data Models](#data-models)
+- [Error Handling](#error-handling)
+- [Performance Guidelines](#performance-guidelines)
+- [Security Standards](#security-standards)
+- [Testing Requirements](#testing-requirements)
+- [Deployment Guidelines](#deployment-guidelines)
+
 ## Overview
+
 This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation is organized by functionality and provides detailed information about endpoints, request/response formats, and usage patterns.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
 
 ## Documentation Structure
 

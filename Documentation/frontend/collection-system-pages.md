@@ -1,11 +1,24 @@
 # Collection System Frontend Pages Documentation
 
-**Author**: Aaron Hazzard - Senior Software Engineer  
-**Last Updated**: August 29th, 2025
+## Table of Contents
+- [Overview](#overview)
+- [Page 1: Collection Report Main Page](#page-1-collection-report-main-page)
+- [Page 2: Collection Report Detail Page](#page-2-collection-report-detail-page)
+- [Page 3: New Collection Modal](#page-3-new-collection-modal)
+- [Common Features](#common-features)
+- [Data Flow Summary](#data-flow-summary)
+- [Technical Architecture](#technical-architecture)
+- [Business Logic](#business-logic)
+- [Security Features](#security-features)
+- [Performance Optimization](#performance-optimization)
 
 ## Overview
 
 The Collection System frontend consists of three main pages that work together to provide a complete collection management solution. Each page serves a specific purpose in the collection workflow.
+
+**Author**: Aaron Hazzard - Senior Software Engineer  
+**Last Updated**: September 6th, 2025  
+**Version:** 2.0.0
 
 ---
 
@@ -323,6 +336,104 @@ Interface for creating new collection reports. This modal allows users to collec
 - **Manual Refresh**: Users can manually refresh data
 - **Sync Functions**: Special sync functions for meter data
 - **Error Recovery**: Automatic retry and error handling
+
+---
+
+## CRUD Operations
+
+### Create Collection Reports
+**Process Flow:**
+1. **Location Selection**: User selects a gaming location from dropdown
+2. **Machine Selection**: System displays all machines at selected location
+3. **Data Entry**: User enters meter readings and financial data for each machine
+4. **Validation**: System validates all inputs and calculates totals
+5. **Report Generation**: System creates individual collections and generates report
+6. **Database Storage**: Collections and report stored in MongoDB
+7. **UI Update**: Main page refreshes to show new report
+
+**Data Structure:**
+```typescript
+CollectionReport {
+  _id: string;
+  locationReportId: string;
+  collectorName: string;
+  locationName: string;
+  timestamp: Date;
+  totalDrop: number;
+  totalCancelled: number;
+  totalGross: number;
+  amountCollected: number;
+  amountUncollected: number;
+  variance: number;
+  currentBalance: number;
+  partnerProfit: number;
+  machinesCollected: number;
+  totalMachines: number;
+}
+```
+
+### Read Collection Reports
+**Process Flow:**
+1. **Data Fetching**: System fetches reports from `/api/collectionReport`
+2. **Filtering**: Applies date range, location, and search filters
+3. **Sorting**: Sorts by date, amount, or other criteria
+4. **Pagination**: Displays results in configurable page sizes
+5. **Real-time Updates**: Refreshes data when filters change
+
+**Display Formats:**
+- **Desktop**: Table view with detailed columns
+- **Mobile**: Card view with key information
+- **Detail View**: Comprehensive report analysis
+
+### Update Collection Reports
+**Process Flow:**
+1. **Report Selection**: User selects report to edit
+2. **Data Loading**: System loads current report data
+3. **Form Population**: Edit form populated with existing values
+4. **User Modifications**: User updates financial data, notes, or corrections
+5. **Validation**: System validates changes and calculates new totals
+6. **Database Update**: Report updated in MongoDB
+7. **UI Refresh**: Interface updates to reflect changes
+
+**Editable Fields:**
+- Financial amounts (collected, uncollected, variance)
+- Balance corrections and reasons
+- Collection notes and comments
+- Machine meter readings
+- Tax and advance amounts
+
+### Delete Collection Reports
+**Process Flow:**
+1. **Report Selection**: User selects report to delete
+2. **Confirmation Modal**: System shows confirmation dialog
+3. **Dependency Check**: System verifies no dependent records exist
+4. **Soft Delete**: Report marked as deleted (deletedAt timestamp)
+5. **Cascade Updates**: Related collections updated accordingly
+6. **UI Update**: Report removed from interface
+
+**Safety Measures:**
+- Confirmation dialog prevents accidental deletion
+- Soft delete preserves audit trail
+- Dependency checking prevents orphaned records
+- Rollback capability for data recovery
+
+### Collection Detail Operations
+**Machine Metrics Tab:**
+- **View**: Display individual machine collection data
+- **Search**: Find specific machines by ID or name
+- **Sort**: Sort by drop, gross, or variance
+- **Export**: Export machine data to CSV/Excel
+
+**Location Metrics Tab:**
+- **View**: Display aggregated location financial data
+- **Edit**: Modify location-level financial information
+- **Calculate**: Automatic calculation of totals and variances
+- **Validate**: Ensure data consistency and accuracy
+
+**SAS Metrics Compare Tab:**
+- **Compare**: Side-by-side comparison of SAS vs meter data
+- **Analyze**: Variance analysis and discrepancy identification
+- **Report**: Generate variance reports for audit purposes
 
 ---
 

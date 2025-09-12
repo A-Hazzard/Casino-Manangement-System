@@ -1,4 +1,4 @@
-export type AdministrationSection = "users" | "licensees";
+export type AdministrationSection = "users" | "licensees" | "activity-logs";
 
 export type AdministrationTab = {
   id: AdministrationSection;
@@ -16,5 +16,10 @@ export const ADMINISTRATION_TABS_CONFIG: AdministrationTab[] = [
     id: "licensees",
     label: "Licensees",
     icon: "🏢", // Building emoji
+  },
+  {
+    id: "activity-logs",
+    label: "Activity Logs",
+    icon: "📋", // Clipboard emoji
   },
 ];

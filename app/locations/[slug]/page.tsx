@@ -33,22 +33,38 @@ import {
   filterAndSortCabinets as filterAndSortCabinetsUtil,
 } from "@/lib/utils/ui";
 import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import CabinetCardsSkeleton from "@/components/ui/locations/CabinetCardsSkeleton";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
+import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
+import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 import Link from "next/link";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 
 export default function LocationPage() {
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
 
-  const { selectedLicencee, setSelectedLicencee, activeMetricsFilter } =
+  const { selectedLicencee, setSelectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
+
+  // State for tracking date filter initialization
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // Detect when date filter is properly initialized
+  useEffect(() => {
+    if (activeMetricsFilter && !dateFilterInitialized) {
+      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter, dateFilterInitialized]);
 
   const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +99,12 @@ export default function LocationPage() {
   // Calculate financial totals from cabinet data
   const financialTotals = calculateCabinetFinancialTotals(allCabinets);
 
+  // Calculate machine status from cabinet data
+  const machineStats = {
+    onlineMachines: allCabinets.filter(cabinet => cabinet.online === true).length,
+    offlineMachines: allCabinets.filter(cabinet => cabinet.online === false).length,
+  };
+
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
     const filtered = filterAndSortCabinetsUtil(
@@ -101,10 +123,14 @@ export default function LocationPage() {
       setLoading(true);
       setCabinetsLoading(true);
       try {
-        // Check if store is properly hydrated
-        if (!activeMetricsFilter) {
-          // Wait a bit for store hydration
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        // Only proceed if we have a valid activeMetricsFilter and it's been properly initialized
+        if (!activeMetricsFilter || !dateFilterInitialized) {
+          console.warn("⚠️ No activeMetricsFilter or not initialized, skipping data fetch", { activeMetricsFilter, dateFilterInitialized });
+          setAllCabinets([]);
+          setError("No time period filter selected");
+          setLoading(false);
+          setCabinetsLoading(false);
+          return;
         }
 
         // Fetch locations for the selected licensee
@@ -127,11 +153,15 @@ export default function LocationPage() {
         const foundLocation = currentLocation || currentLocationAlt;
 
         // Check if current location exists in new licensee's locations
-        if (!foundLocation && formattedLocations.length > 0) {
-          // Current location doesn't belong to new licensee, redirect to first available
-          const firstLocation = formattedLocations[0];
-          router.replace(`/locations/${firstLocation.id}`);
-          return; // Exit early as we're redirecting
+        if (!foundLocation) {
+          // Location doesn't exist for this licensee, show 404 error
+          setSelectedLocation("");
+          setLocationName("");
+          setAllCabinets([]);
+          setError("Location not found");
+          setLoading(false);
+          setCabinetsLoading(false);
+          return;
         } else if (formattedLocations.length === 0) {
           // No locations for this licensee, clear selection
           setSelectedLocation("");
@@ -153,17 +183,22 @@ export default function LocationPage() {
 
         // Fetch cabinets data for the location
         try {
-          // Ensure we have a valid activeMetricsFilter
-          const timePeriod = activeMetricsFilter
-            ? activeMetricsFilter
-            : "today";
-          console.warn(`🔍 Using timePeriod: ${timePeriod}`);
+          // Only fetch if we have a valid activeMetricsFilter - no fallback
+          if (!activeMetricsFilter) {
+            console.warn("⚠️ No activeMetricsFilter available, skipping cabinet fetch");
+            setAllCabinets([]);
+            setError("No time period filter selected");
+            return;
+          }
+
+          console.warn(`🔍 Using timePeriod: ${activeMetricsFilter}`);
 
           const cabinetsData = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
             selectedLicencee,
-            timePeriod, // Pass as timePeriod (3rd parameter)
-            undefined // Don't pass searchTerm (4th parameter)
+            activeMetricsFilter, // Pass the selected filter directly
+            undefined, // Don't pass searchTerm (4th parameter)
+            activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
           );
           console.warn(
             `✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`
@@ -182,7 +217,7 @@ export default function LocationPage() {
     };
 
     fetchData();
-  }, [locationId, selectedLicencee, activeMetricsFilter, router]);
+  }, [locationId, selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, router]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -259,10 +294,20 @@ export default function LocationPage() {
     try {
       // Fetch cabinets data for the SELECTED location
       try {
+        // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
+        if (!activeMetricsFilter || !dateFilterInitialized) {
+          console.warn("⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch", { activeMetricsFilter, dateFilterInitialized });
+          setAllCabinets([]);
+          setError("No time period filter selected");
+          return;
+        }
+
         const cabinetsData = await fetchCabinetsForLocation(
           locationId, // Always use the URL slug for cabinet fetching
           selectedLicencee,
-          activeMetricsFilter
+          activeMetricsFilter,
+          undefined, // Don't pass searchTerm
+          activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
         );
         setAllCabinets(cabinetsData);
         setError(null); // Clear any previous errors on successful refresh
@@ -275,7 +320,7 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
-  }, [selectedLicencee, activeMetricsFilter, locationId]);
+  }, [selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, locationId]);
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (newLocationId: string) => {
@@ -285,6 +330,7 @@ export default function LocationPage() {
   };
 
   const { openCabinetModal } = useNewCabinetStore();
+
 
   return (
     <>
@@ -296,39 +342,79 @@ export default function LocationPage() {
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenceeFilter={false}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* Title Row */}
-        <div className="flex items-center justify-between mt-4 w-full max-w-full">
-          <div className="flex items-center gap-3 w-full">
-            <Link href="/locations" className="mr-2">
+        {/* Title Row - Responsive Layout */}
+        <div className="mt-4 w-full max-w-full">
+          {/* Mobile Layout (below sm) */}
+          <div className="sm:hidden space-y-3">
+            {/* Back button and title */}
+            <div className="flex items-center gap-3">
+              <Link href="/locations">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-xl font-bold text-gray-800 flex-1">
+                Location Details
+              </h1>
+            </div>
+            
+            {/* Action buttons - stacked on mobile */}
+            <div className="flex gap-2">
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
+                className="flex-1"
+              />
               <Button
-                variant="ghost"
-                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                variant="default"
+                className="flex-1 bg-button text-white"
+                disabled={loading || cabinetsLoading || refreshing}
+                onClick={() => openCabinetModal(locationId)}
               >
-                <ArrowLeftIcon className="h-5 w-5" />
+                Create
               </Button>
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              Location Details
-            </h1>
-            <RefreshButton
-              onClick={handleRefresh}
-              isSyncing={refreshing}
-              disabled={loading || cabinetsLoading || refreshing}
-              label="Refresh"
-              className="ml-auto"
-            />
-            <Button
-              variant="default"
-              className="ml-2 bg-button text-white"
-              disabled={loading || cabinetsLoading || refreshing}
-              onClick={() => openCabinetModal(locationId)}
-            >
-              Create Machine
-            </Button>
+            </div>
+          </div>
+
+          {/* Desktop Layout (sm and above) */}
+          <div className="hidden sm:flex items-center justify-between">
+            <div className="flex items-center gap-3 w-full">
+              <Link href="/locations" className="mr-2">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Location Details
+              </h1>
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
+                className="ml-auto"
+              />
+              <Button
+                variant="default"
+                className="ml-2 bg-button text-white"
+                disabled={loading || cabinetsLoading || refreshing}
+                onClick={() => openCabinetModal(locationId)}
+              >
+                Create Machine
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -341,23 +427,42 @@ export default function LocationPage() {
           />
         </div>
 
-        {/* Date Filters Row - Desktop and md */}
-        <div className="hidden md:flex items-center justify-between mt-4 mb-0 gap-4">
-          <div className="flex-1 min-w-0">
-            <DashboardDateFilters
-              disabled={loading || cabinetsLoading || refreshing}
-              hideAllTime={true}
-            />
+        {/* Date Filters and Machine Status Row - Responsive */}
+        <div className="mt-4">
+          {/* Desktop and md: Side by side layout */}
+          <div className="hidden md:flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <DashboardDateFilters
+                disabled={loading || cabinetsLoading || refreshing}
+                hideAllTime={false}
+                onCustomRangeGo={handleRefresh}
+              />
+            </div>
+            <div className="flex-shrink-0 ml-4 w-auto">
+              <MachineStatusWidget
+                isLoading={loading || cabinetsLoading}
+                onlineCount={machineStats.onlineMachines}
+                offlineCount={machineStats.offlineMachines}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Mobile/Tablet: Date Filters stacked */}
-        <div className="md:hidden flex flex-col gap-4 mt-4">
-          <div className="w-full">
-            <DashboardDateFilters
-              disabled={loading || cabinetsLoading || refreshing}
-              hideAllTime={true}
-            />
+          {/* Mobile: Stacked layout */}
+          <div className="md:hidden flex flex-col gap-4">
+            <div className="w-full">
+              <DashboardDateFilters
+                disabled={loading || cabinetsLoading || refreshing}
+                hideAllTime={false}
+                onCustomRangeGo={handleRefresh}
+              />
+            </div>
+            <div className="w-full">
+              <MachineStatusWidget
+                isLoading={loading || cabinetsLoading}
+                onlineCount={machineStats.onlineMachines}
+                offlineCount={machineStats.offlineMachines}
+              />
+            </div>
           </div>
         </div>
 
@@ -679,7 +784,7 @@ export default function LocationPage() {
                 <CabinetGrid
                   filteredCabinets={
                     filteredCabinets
-                      .filter((cab) => cab.serialNumber)
+                      .filter((cab) => getSerialNumberIdentifier(cab) !== "N/A")
                       .map((cab) => ({
                         ...cab,
                         isOnline: cab.online,
@@ -752,10 +857,25 @@ export default function LocationPage() {
           )}
         </div>
 
-        {error && <div className="mt-10 text-center text-red-500">{error}</div>}
+        {error === "Location not found" ? (
+          <NotFoundError
+            title="Location Not Found"
+            message={`The location with ID "${locationId}" could not be found for the selected licensee.`}
+            resourceType="location"
+            showRetry={false}
+            customBackText="Back to Locations"
+            customBackHref="/locations"
+          />
+        ) : error ? (
+          <div className="mt-10 text-center text-red-500">{error}</div>
+        ) : null}
 
         <NewCabinetModal onCreated={handleRefresh} />
       </PageLayout>
+      
+      {/* Cabinet Action Modals */}
+      <EditCabinetModal onCabinetUpdated={handleRefresh} />
+      <DeleteCabinetModal onCabinetDeleted={handleRefresh} />
     </>
   );
 }

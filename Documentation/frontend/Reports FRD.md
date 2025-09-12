@@ -1,12 +1,30 @@
-# Dynamic1 Casino Management System – Reports Module Functional Requirements
+# Reports Module Functional Requirements
 
-**Author:** Aaron Hazzard - Senior Software Engineer
-Date: 05/06/2025
-________________________________________
-1. Introduction
-This document outlines the core functional requirements for the redesigned Reports Module within the Dynamic1 Casino Management System. These requirements reflect common reporting needs requested by internal stakeholders, collections staff, and licensees. The goal is to enable efficient monitoring of financials, machine performance, customer data, and site operations across all locations.
-________________________________________
-2. Functional Requirements
+## Table of Contents
+- [Overview](#overview)
+- [Functional Requirements](#functional-requirements)
+- [Report Types](#report-types)
+- [Current Implementation](#current-implementation)
+- [Business Logic and Calculations](#business-logic-and-calculations)
+- [Data Flow and Processing](#data-flow-and-processing)
+- [Technical Architecture](#technical-architecture)
+- [Export Functionality](#export-functionality)
+- [Performance Considerations](#performance-considerations)
+- [Future Enhancements](#future-enhancements)
+
+## Overview
+
+This document outlines the core functional requirements for the Reports Module within the Evolution One Casino Management System. The module provides comprehensive reporting capabilities for financial monitoring, machine performance analysis, customer data insights, and operational oversight across all casino locations.
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
+
+### Purpose
+Enable efficient monitoring of financials, machine performance, customer data, and site operations across all locations through comprehensive reporting tools.
+
+## 2. Functional Requirements
+
 Each report listed below should support the ability to: 
 - Filter by date range, location, licensee, and other relevant parameters 
 - View on screen with pagination and sorting
@@ -64,10 +82,9 @@ ________________________________________
 •	Data should update in near real-time where possible
 •	Stakeholders (Vanessa, Sylvia, Kevin) will review and prioritize report types for MVP delivery
 •	Further feedback will be gathered during QA and beta testing to iterate layout and filtering
-________________________________________
-4. Current Implementation Status
+## 4. Current Implementation Status
 
-4.1. Implemented Features (✅)
+### 4.1. Implemented Features (✅)
 •	**Multi-Tab Report Interface**: Dashboard, Locations, Machines, and Meters tabs
 •	**Date Filtering System**: Predefined periods (Today, Yesterday, Last 7 days, 30 days) and custom date range picker
 •	**Licensee Filtering**: Filter all reports by specific licensee or view all licensees
@@ -77,13 +94,13 @@ ________________________________________
 •	**Permission-based Access**: Role-based access control for different report types
 •	**Interactive Navigation**: Tab-based navigation with URL state management
 
-4.2. Report Types Currently Available
+### 4.2. Report Types Currently Available
 •	**Dashboard Tab**: Overview metrics and KPIs across all operations
 •	**Locations Tab**: Location-specific performance analysis and comparisons
 •	**Machines Tab**: Individual machine performance and revenue tracking  
 •	**Meters Tab**: Meter readings and financial data by location
 
-4.3. Export Implementation Details
+### 4.3. Export Implementation Details
 •	**Data Source**: Direct API calls to `/api/analytics/reports` endpoint
 •	**Export Formats**: CSV and Excel (XLSX) with proper file naming
 •	**Data Scope**: Exports all data matching current filters (date range, licensee, report type)
@@ -91,15 +108,99 @@ ________________________________________
 •	**Error Handling**: Comprehensive error handling with user feedback via toast notifications
 •	**Performance**: Optimized for large datasets with progress indicators
 
-4.4. Technical Architecture
+### 4.4. Technical Architecture
 •	**Frontend**: React-based UI with Zustand state management
 •	**API Integration**: RESTful API calls with proper authentication
 •	**Data Processing**: Server-side data aggregation and formatting
 •	**File Generation**: Client-side file creation and download handling
 •	**State Management**: Synchronized state between dashboard and reports modules
 
-________________________________________
-5. Delivery Considerations
+## 5. Business Logic and Calculations
+
+### 5.1. Dashboard Tab Calculations
+
+**Financial Metrics:**
+- **Total Revenue**: Sum of all machine revenue across selected locations and time period
+- **Average Revenue per Machine**: Total revenue divided by active machine count
+- **Revenue Growth**: Percentage change compared to previous period
+- **Top Performing Machines**: Ranked by revenue with location context
+
+**Operational Metrics:**
+- **Machine Uptime**: Percentage of time machines are online vs offline
+- **Collection Efficiency**: Ratio of collected amounts to expected amounts
+- **Location Performance**: Revenue comparison across different gaming locations
+
+### 5.2. Locations Tab Calculations
+
+**Location Performance Metrics:**
+- **Total Revenue per Location**: Aggregated revenue from all machines at each location
+- **Machine Count**: Total machines vs active machines per location
+- **Revenue per Machine**: Average revenue generated per machine at each location
+- **Uptime Percentage**: Percentage of time machines are operational
+
+**SAS Evaluation:**
+- **Variance Analysis**: Difference between SAS system data and meter readings
+- **Accuracy Percentage**: How closely SAS data matches actual meter data
+- **Discrepancy Tracking**: Identification of locations with significant variances
+
+**Revenue Analysis:**
+- **Hourly Revenue Patterns**: Revenue distribution throughout the day
+- **Peak Performance Times**: Identification of highest revenue periods
+- **Trend Analysis**: Revenue growth or decline over time periods
+
+### 5.3. Machines Tab Calculations
+
+**Machine Performance Metrics:**
+- **Revenue per Machine**: Total money in minus money out for each machine
+- **Play Count**: Number of games played on each machine
+- **Average Wager**: Total money in divided by play count
+- **Hold Percentage**: (Money in - Money out) / Money in × 100
+
+**Machine Evaluation:**
+- **Performance Rating**: Based on revenue, uptime, and play activity
+- **Efficiency Score**: Revenue generated per hour of operation
+- **Maintenance Indicators**: Machines showing declining performance
+
+**Offline Machine Analysis:**
+- **Downtime Duration**: How long machines have been offline
+- **Revenue Impact**: Lost revenue due to machine downtime
+- **Maintenance Priority**: Ranking based on revenue loss and downtime
+
+### 5.4. Meters Tab Calculations
+
+**Meter Reading Analysis:**
+- **Money In/Out Totals**: Sum of all meter readings for selected period
+- **Net Revenue**: Money in minus money out for each machine
+- **Meter Variance**: Difference between expected and actual meter readings
+- **Collection Accuracy**: Percentage of accurate meter readings
+
+**Financial Reconciliation:**
+- **Expected vs Actual**: Comparison of predicted revenue vs actual meter data
+- **Variance Reporting**: Identification of significant discrepancies
+- **Audit Trail**: Complete record of all meter readings and changes
+
+## 6. Data Flow and Processing
+
+### 6.1. Data Sources
+- **Machine Data**: Real-time data from gaming machines via SAS system
+- **Meter Readings**: Physical meter data collected during maintenance
+- **Collection Data**: Financial data from collection reports
+- **Location Data**: Gaming location information and configuration
+
+### 6.2. Data Processing Pipeline
+1. **Data Collection**: Gather data from multiple sources (SAS, meters, collections)
+2. **Data Validation**: Verify data integrity and flag discrepancies
+3. **Data Aggregation**: Combine and summarize data by location, machine, and time period
+4. **Calculation Engine**: Apply business logic to generate metrics and KPIs
+5. **Data Presentation**: Format data for display in reports and dashboards
+
+### 6.3. Real-time Updates
+- **Live Data Sync**: Continuous synchronization with SAS system
+- **Automatic Refresh**: Periodic updates of report data
+- **Manual Refresh**: User-initiated data updates
+- **Change Notifications**: Alerts for significant data changes
+
+## 7. Delivery Considerations
 •	Prioritize foundational reports (counts, machines, location stats) in first implementation wave
 •	Additional integrations (e.g., bar POS) may follow if data sources become available
 •	Export and printing must be consistent across all reports

@@ -48,6 +48,9 @@ const createStore = () => {
           },
           `Created new location: ${location.name} at ${location.address}`
         );
+
+        // Return the created location data
+        return response.data?.data;
       } catch (error) {
         console.error("Error creating location:", error);
         throw error;

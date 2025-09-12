@@ -56,41 +56,30 @@ export function createTimeFilterButtons() {
 }
 
 /**
- * Simulates loading dashboard data
+ * Loads dashboard data from MongoDB
  * @param setLoading - Function to set loading state
  * @param updateRealTimeMetrics - Function to update real-time metrics
  * @param _selectedDateRange - Selected date range (unused parameter)
  */
 export function loadDashboardData(
   setLoading: (loading: boolean) => void,
-  updateRealTimeMetrics: (metrics: RealTimeMetrics) => void,
+  _updateRealTimeMetrics: (metrics: RealTimeMetrics) => void,
   _selectedDateRange: unknown
 ) {
   setLoading(true);
-  setTimeout(() => {
-    updateRealTimeMetrics({
-      currentPlayers: 1847,
-      activeTerminals: 234,
-      totalRevenue: 2450000,
-      averageHold: 8.7,
-      topPerformingMachine: {
-        id: "MAC001",
-        name: "Lucky Stars Deluxe",
-        revenue: 45678,
-      },
-      alerts: [
-        {
-          type: "performance",
-          message: "Machine MAC003 performance below threshold",
-          timestamp: new Date().toISOString(),
-          severity: "medium",
-          acknowledged: false,
-        },
-      ],
-      lastUpdated: new Date().toISOString(),
-    });
-    setLoading(false);
-  }, 1000);
+  
+  // TODO: Implement actual API call to fetch dashboard data from MongoDB
+  // This should fetch real-time metrics from the database
+  // fetchDashboardMetrics().then(data => {
+  //   updateRealTimeMetrics(data);
+  //   setLoading(false);
+  // }).catch(error => {
+  //   console.error('Error fetching dashboard metrics:', error);
+  //   setLoading(false);
+  // });
+  
+  // For now, just set loading to false
+  setLoading(false);
 }
 
 /**
@@ -396,7 +385,14 @@ export async function handleExportMeters(
           machine.totalCancelledCredits.toLocaleString(),
           "0", // Jackpot not available in current data
           machine.gamesPlayed.toLocaleString(),
-          machine.theoreticalHold?.toFixed(1) + "%" || "0.0%",
+          (() => {
+            const hold = machine.theoreticalHold;
+            if (hold === undefined) return "0%";
+            const hasDecimals = hold % 1 !== 0;
+            const decimalPart = hold % 1;
+            const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+            return hold.toFixed(hasSignificantDecimals ? 1 : 0) + "%";
+          })(),
           machine.isOnline ? "Online" : "Offline",
           machine.isSasEnabled ? "Yes" : "No",
         ]),

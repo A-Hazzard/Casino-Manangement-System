@@ -36,90 +36,22 @@ import { exportData } from "@/lib/utils/exportUtils";
 // Types
 import type { ComplianceMetrics } from "@/lib/types/reports";
 
-// Sample data
+// TODO: Replace with MongoDB data fetching
 const sampleComplianceMetrics: ComplianceMetrics = {
-  totalChecks: 156,
-  passedChecks: 142,
-  failedChecks: 8,
-  pendingChecks: 6,
-  complianceScore: 91.0,
-  criticalIssues: 2,
-  resolvedIssues: 134,
-  pendingIssues: 14,
-  averageResolutionTime: 2.3,
-  upcomingDeadlines: [
-    {
-      requirement: "Quarterly Gaming Commission Report",
-      deadline: "2024-03-31",
-      status: "on-track",
-    },
-    {
-      requirement: "Anti-Money Laundering Review",
-      deadline: "2024-02-15",
-      status: "at-risk",
-    },
-    {
-      requirement: "Security Audit Update",
-      deadline: "2024-01-30",
-      status: "overdue",
-    },
-  ],
+  totalChecks: 0,
+  passedChecks: 0,
+  failedChecks: 0,
+  pendingChecks: 0,
+  complianceScore: 0,
+  criticalIssues: 0,
+  resolvedIssues: 0,
+  pendingIssues: 0,
+  averageResolutionTime: 0,
+  upcomingDeadlines: [],
 };
 
-const complianceCategories = [
-  {
-    category: "Gaming Regulations",
-    passed: 45,
-    failed: 2,
-    pending: 1,
-    score: 94,
-  },
-  {
-    category: "Financial Compliance",
-    passed: 38,
-    failed: 1,
-    pending: 2,
-    score: 95,
-  },
-  {
-    category: "Security Standards",
-    passed: 32,
-    failed: 3,
-    pending: 1,
-    score: 89,
-  },
-  { category: "Data Protection", passed: 27, failed: 2, pending: 2, score: 87 },
-];
-
-const recentAudits = [
-  {
-    id: "AUD001",
-    type: "Internal Security Audit",
-    date: "2024-01-15",
-    auditor: "Security Team",
-    status: "passed",
-    findings: 3,
-    severity: "low",
-  },
-  {
-    id: "AUD002",
-    type: "Gaming Commission Review",
-    date: "2024-01-10",
-    auditor: "External Auditor",
-    status: "failed",
-    findings: 7,
-    severity: "high",
-  },
-  {
-    id: "AUD003",
-    type: "Financial Controls Check",
-    date: "2024-01-08",
-    auditor: "Internal Audit",
-    status: "passed",
-    findings: 1,
-    severity: "low",
-  },
-];
+const complianceCategories: unknown[] = [];
+const recentAudits: unknown[] = [];
 
 export default function ComplianceTab() {
   const {
@@ -154,18 +86,21 @@ export default function ComplianceTab() {
           "Pending Checks",
           "Status",
         ],
-        data: complianceCategories.map((category) => [
-          category.category,
-          `${category.score}%`,
-          category.passed.toString(),
-          category.failed.toString(),
-          category.pending.toString(),
-          category.score >= 90
-            ? "Excellent"
-            : category.score >= 80
-            ? "Good"
-            : "Needs Attention",
-        ]),
+        data: complianceCategories.map((category: unknown) => {
+          const c = category as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          return [
+            c.category,
+            `${c.score}%`,
+            c.passed.toString(),
+            c.failed.toString(),
+            c.pending.toString(),
+            c.score >= 90
+              ? "Excellent"
+              : c.score >= 80
+              ? "Good"
+              : "Needs Attention",
+          ];
+        }),
         summary: [
           {
             label: "Overall Compliance Score",
@@ -363,41 +298,50 @@ export default function ComplianceTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {complianceCategories.map((category) => (
-                    <div key={category.category} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{category.category}</span>
-                        <Badge
-                          variant={
-                            category.score >= 90
-                              ? "default"
-                              : category.score >= 80
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {category.score}%
-                        </Badge>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            category.score >= 90
-                              ? "bg-green-500"
-                              : category.score >= 80
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          }`}
-                          style={{ width: `${category.score}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-600">
-                        <span>Passed: {category.passed}</span>
-                        <span>Failed: {category.failed}</span>
-                        <span>Pending: {category.pending}</span>
-                      </div>
-                    </div>
-                  ))}
+                  {complianceCategories.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">
+                      No compliance data available - MongoDB implementation pending
+                    </p>
+                  ) : (
+                    complianceCategories.map((category: unknown) => {
+                      const c = category as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+                      return (
+                        <div key={c.category} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{c.category}</span>
+                            <Badge
+                              variant={
+                                c.score >= 90
+                                  ? "default"
+                                  : c.score >= 80
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {c.score}%
+                            </Badge>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                c.score >= 90
+                                  ? "bg-green-500"
+                                  : c.score >= 80
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{ width: `${c.score}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>Passed: {c.passed}</span>
+                            <span>Failed: {c.failed}</span>
+                            <span>Pending: {c.pending}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -463,59 +407,68 @@ export default function ComplianceTab() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentAudits.map((audit) => (
-                  <div
-                    key={audit.id}
-                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {audit.type}
-                          </h3>
-                          <Badge
-                            variant={
-                              audit.status === "passed"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {audit.status}
-                          </Badge>
-                          <Badge
-                            variant={
-                              audit.severity === "low"
-                                ? "secondary"
-                                : audit.severity === "medium"
-                                ? "outline"
-                                : "destructive"
-                            }
-                          >
-                            {audit.severity} risk
-                          </Badge>
-                        </div>
+                {recentAudits.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">
+                    No audit data available - MongoDB implementation pending
+                  </p>
+                ) : (
+                  recentAudits.map((audit: unknown) => {
+                    const a = audit as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+                    return (
+                      <div
+                        key={a.id}
+                        className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-semibold text-lg">
+                                {a.type}
+                              </h3>
+                              <Badge
+                                variant={
+                                  a.status === "passed"
+                                    ? "default"
+                                    : "destructive"
+                                }
+                              >
+                                {a.status}
+                              </Badge>
+                              <Badge
+                                variant={
+                                  a.severity === "low"
+                                    ? "secondary"
+                                    : a.severity === "medium"
+                                    ? "outline"
+                                    : "destructive"
+                                }
+                              >
+                                {a.severity} risk
+                              </Badge>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>
-                              {new Date(audit.date).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="font-medium">Auditor:</span>{" "}
-                            {audit.auditor}
-                          </div>
-                          <div>
-                            <span className="font-medium">Findings:</span>{" "}
-                            {audit.findings}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  {new Date(a.date).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Auditor:</span>{" "}
+                                {a.auditor}
+                              </div>
+                              <div>
+                                <span className="font-medium">Findings:</span>{" "}
+                                {a.findings}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,18 +1,40 @@
 # Collection Report Page
 
+## Table of Contents
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technical Architecture](#technical-architecture)
+- [Report Detail View](#report-detail-view)
+- [Business Logic](#business-logic)
+- [Data Flow](#data-flow)
+- [API Integration](#api-integration)
+- [State Management](#state-management)
+- [Security Features](#security-features)
+- [Performance Optimization](#performance-optimization)
+- [Error Handling](#error-handling)
+
+## Overview
+
+The Collection Report page provides comprehensive financial collection management for the casino system, including collection reports, monthly summaries, and collector scheduling. This page serves as the central hub for managing all aspects of casino money collection operations.
+
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** August 29th, 2025
+**Last Updated:** September 6th, 2025  
+**Version:** 2.0.0
 
-This page provides comprehensive financial collection management for the casino system, including collection reports, monthly summaries, and collector scheduling.
-
+### File Information
 - **File:** `app/collection-report/page.tsx`
 - **URL Pattern:** `/collection-report`
+- **Component Type:** Financial Management Page
+- **Authentication:** Required
 
 **Note**: For complete system documentation, see the [Collection System Pages Documentation](./collection-system-pages.md).
 
 ## Main Features
 - **Collection Reports:**
   - View, search, and filter collection reports.
+  - Create new collection reports with machine selection.
+  - Edit existing collection reports and financial data.
+  - Delete collection reports with confirmation.
   - Real-time collection data and variance tracking.
   - Collection performance analytics.
 - **Monthly Reports:**
@@ -73,30 +95,64 @@ This page provides comprehensive financial collection management for the casino 
 ### Location Metrics – column-to-field mapping
 Rendered in `LocationMetricsContent` within `page.tsx`. Values are provided by `getCollectionReportById` which maps raw `CollectionReport` fields to a `LocationMetric` object.
 
+**Data Mapping Explanation:**
+- **Gross** = Same as `metersGross` (total revenue from machines)
+- **Collected** = Same as `collectedAmount` (actual cash collected)
+- **Uncollected** = Same as `amountUncollected` (amount not collected)
+- **Location Revenue** = Same as `locationRevenue` (location's share of revenue)
+- **Variation** = Difference between Meter Gross and SAS Gross (shows "No SAS Data" if SAS data is missing, "No Variance" if zero)
+- **Balance** = Same as `currentBalanceOwed` (current outstanding balance)
+
+**SAS Data Validation:**
+The system performs validation checks to determine when SAS data is available:
+- **SAS Data Available**: When `sasMeters` object exists and `sasMeters.gross` is not null/undefined/zero
+- **SAS Data Missing**: When `sasMeters` is null/undefined or `sasMeters.gross` is null/undefined/zero
+- **Variation Calculation**: Only calculated when SAS data is available, otherwise shows "No SAS Data"
+- **Consistency**: This validation ensures consistent behavior across all collection report views
+
 | UI Label | Frontend Path | Backend Source (model.field) | Notes |
 |---|---|---|---|
 | Dropped / Cancelled | `locationMetrics.droppedCancelled` | `collectionReports.totalDrop` / `collectionReports.totalCancelled` | Displayed as `${drop}/${cancelled}` |
-| Meters Gross | `locationMetrics.metersGross` | `collectionReports.totalGross` | Number, formatted |
-| Variation | `locationMetrics.variation` | `collectionReports.variance` | Number, formatted |
+| **Meters Gross** | `locationMetrics.metersGross` | `collectionReports.totalGross` | **Same as "Gross" in table** |
+| Variation | `locationMetrics.variation` | `collectionReports.variance` | **Same as "Variation" in table, shows "No Variance" if zero** |
 | SAS Gross | `locationMetrics.sasGross` | `collectionReports.totalSasGross` | Number, formatted |
 | Variance | `locationMetrics.variance` | `collectionReports.variance` | Duplicate of Variation for the detail cards |
 | Variance Reason | `locationMetrics.varianceReason` | `collectionReports.varianceReason` | String or '-' |
 | Amount To Collect | `locationMetrics.amountToCollect` | `collectionReports.amountToCollect` | Number |
-| Collected Amount | `locationMetrics.collectedAmount` | `collectionReports.amountCollected` | Number |
-| Location Revenue | `locationMetrics.locationRevenue` | `collectionReports.partnerProfit` | Number |
-| Amount Uncollected | `locationMetrics.amountUncollected` | `collectionReports.amountUncollected` | Number |
+| **Collected Amount** | `locationMetrics.collectedAmount` | `collectionReports.amountCollected` | **Same as "Collected" in table** |
+| **Location Revenue** | `locationMetrics.locationRevenue` | `collectionReports.partnerProfit` | **Same as "Location Revenue" in table** |
+| **Amount Uncollected** | `locationMetrics.amountUncollected` | `collectionReports.amountUncollected` | **Same as "Uncollected" in table** |
 | Machines Number | `locationMetrics.machinesNumber` | `collectionReports.machinesCollected` | String/number |
 | Reason For Shortage | `locationMetrics.reasonForShortage` | `collectionReports.reasonShortagePayment` | String or '-' |
 | Taxes | `locationMetrics.taxes` | `collectionReports.taxes` | Number |
 | Advance | `locationMetrics.advance` | `collectionReports.advance` | Number |
 | Previous Balance Owed | `locationMetrics.previousBalanceOwed` | `collectionReports.previousBalance` | Number |
-| Current Balance Owed | `locationMetrics.currentBalanceOwed` | `collectionReports.currentBalance` | Number |
+| **Current Balance Owed** | `locationMetrics.currentBalanceOwed` | `collectionReports.currentBalance` | **Same as "Balance" in table** |
 | Balance Correction | `locationMetrics.balanceCorrection` | `collectionReports.balanceCorrection` | Number (can be negative) |
 | Correction Reason | `locationMetrics.correctionReason` | `collectionReports.balanceCorrectionReas` | String or '-' |
 
 Frontend render locations:
 - Mobile summary table and four cards: `LocationMetricsContent` (mobile section)
 - Desktop summary ("Location Total") and four detail tables: `LocationMetricsContent` (desktop section)
+
+### Collection Report Table Data Mapping
+The main collection report table (in `/collection-report` page) displays the following data with proper mapping:
+
+| Table Column | Data Source | Description |
+|---|---|---|
+| **Collector** | `collectionReports.collectorName` | Name of the collector who performed the collection |
+| **Location** | `collectionReports.locationName` | Name of the gaming location |
+| **Gross** | Calculated from `collections.movement.gross` | Total revenue from machines (same as Meters Gross in detail view) |
+| **Machines** | Calculated from collections count vs total machines | Number of machines collected vs total machines at location |
+| **Collected** | `collectionReports.amountCollected` | Actual cash collected by collectors (same as Collected Amount in detail view) |
+| **Uncollected** | `collectionReports.amountUncollected` | Amount not collected (same as Amount Uncollected in detail view) |
+| **Variation** | Calculated from `metersGross - sasGross` | Difference between expected and actual (same as Variation in detail view, shows "No Variance" if zero) |
+| **Balance** | `collectionReports.currentBalance` | Current outstanding balance (same as Current Balance Owed in detail view) |
+| **Location Revenue** | `collectionReports.partnerProfit` | Location's share of revenue (same as Location Revenue in detail view) |
+| **Time** | `collectionReports.timestamp` | Date and time when the collection was performed |
+| **Details** | Action button | Link to detailed collection report view |
+
+**Data Consistency:** The table data is properly mapped and consistent with the detailed view data. All financial calculations follow standard casino collection procedures and maintain data integrity across the system. The table now includes all required columns as specified in the requirements.
 
 ### Machine Metrics – column-to-field mapping
 Computed in `getCollectionReportById` by reading `machines` collection and selecting the entry in each machine's `collectionMetersHistory` whose `locationReportId` matches the current report. Frontend component is `MachineMetricsContent` in `page.tsx`.
@@ -237,12 +293,108 @@ CollectionReportPage (app/collection-report/page.tsx)
 ```
 
 ### Business Logic
-- **Collection Management:** Complete collection report lifecycle
+- **Collection Management:** Complete collection report lifecycle with full CRUD operations
 - **Financial Tracking:** Variance analysis and performance metrics
 - **Scheduling:** Collection scheduling and optimization
 - **Performance Analytics:** Collector and location performance analysis
 - **Search & Filtering:** Real-time search across multiple fields
 - **Pagination:** Efficient data display with configurable page sizes
+
+## CRUD Operations
+
+### Create Collection Reports
+**Process Flow:**
+1. **Location Selection**: User selects a gaming location from dropdown
+2. **Machine Selection**: System displays all machines at selected location
+3. **Data Entry**: User enters meter readings and financial data for each machine
+4. **Validation**: System validates all inputs and calculates totals
+5. **Report Generation**: System creates individual collections and generates report
+6. **Database Storage**: Collections and report stored in MongoDB
+7. **UI Update**: Main page refreshes to show new report
+
+**Data Structure:**
+```typescript
+CollectionReport {
+  _id: string;
+  locationReportId: string;
+  collectorName: string;
+  locationName: string;
+  timestamp: Date;
+  totalDrop: number;
+  totalCancelled: number;
+  totalGross: number;
+  amountCollected: number;
+  amountUncollected: number;
+  variance: number;
+  currentBalance: number;
+  partnerProfit: number;
+  machinesCollected: number;
+  totalMachines: number;
+}
+```
+
+### Read Collection Reports
+**Process Flow:**
+1. **Data Fetching**: System fetches reports from `/api/collectionReport`
+2. **Filtering**: Applies date range, location, and search filters
+3. **Sorting**: Sorts by date, amount, or other criteria
+4. **Pagination**: Displays results in configurable page sizes
+5. **Real-time Updates**: Refreshes data when filters change
+
+**Display Formats:**
+- **Desktop**: Table view with detailed columns
+- **Mobile**: Card view with key information
+- **Detail View**: Comprehensive report analysis
+
+### Update Collection Reports
+**Process Flow:**
+1. **Report Selection**: User selects report to edit
+2. **Data Loading**: System loads current report data
+3. **Form Population**: Edit form populated with existing values
+4. **User Modifications**: User updates financial data, notes, or corrections
+5. **Validation**: System validates changes and calculates new totals
+6. **Database Update**: Report updated in MongoDB
+7. **UI Refresh**: Interface updates to reflect changes
+
+**Editable Fields:**
+- Financial amounts (collected, uncollected, variance)
+- Balance corrections and reasons
+- Collection notes and comments
+- Machine meter readings
+- Tax and advance amounts
+
+### Delete Collection Reports
+**Process Flow:**
+1. **Report Selection**: User selects report to delete
+2. **Confirmation Modal**: System shows confirmation dialog
+3. **Dependency Check**: System verifies no dependent records exist
+4. **Soft Delete**: Report marked as deleted (deletedAt timestamp)
+5. **Cascade Updates**: Related collections updated accordingly
+6. **UI Update**: Report removed from interface
+
+**Safety Measures:**
+- Confirmation dialog prevents accidental deletion
+- Soft delete preserves audit trail
+- Dependency checking prevents orphaned records
+- Rollback capability for data recovery
+
+### Collection Detail Operations
+**Machine Metrics Tab:**
+- **View**: Display individual machine collection data
+- **Search**: Find specific machines by ID or name
+- **Sort**: Sort by drop, gross, or variance
+- **Export**: Export machine data to CSV/Excel
+
+**Location Metrics Tab:**
+- **View**: Display aggregated location financial data
+- **Edit**: Modify location-level financial information
+- **Calculate**: Automatic calculation of totals and variances
+- **Validate**: Ensure data consistency and accuracy
+
+**SAS Metrics Compare Tab:**
+- **Compare**: Side-by-side comparison of SAS vs meter data
+- **Analyze**: Variance analysis and discrepancy identification
+- **Report**: Generate variance reports for audit purposes
 
 ### Security Features
 - **Authentication:** Secure API calls with authentication headers
@@ -520,4 +672,180 @@ Collector Efficiency = (Total Collected / Total Expected) * 100
 4. **Revenue Sharing**: Standard business calculation ✅
 5. **Balance Management**: Standard accounting calculation ✅
 
-**Note**: Collection report calculations follow standard financial practices and appear to be correctly implemented according to casino collection procedures. 
+**Note**: Collection report calculations follow standard financial practices and appear to be correctly implemented according to casino collection procedures.
+
+## Detailed Financial Calculation Formulas
+
+### Amount to Collect Formula
+
+The **Amount to Collect** is calculated using a simple formula that determines how much money should be collected from each machine based on the meter readings.
+
+#### **Formula:**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+```
+
+#### **What This Means:**
+- **metersIn**: Current meter reading when collecting
+- **prevIn**: Previous meter reading from last collection
+- **Division by 2**: Represents the 50/50 profit sharing between the casino and location
+
+#### **Step-by-Step Example:**
+
+**Scenario**: Collecting from Machine A
+- **Previous meter reading (prevIn)**: 400
+- **Current meter reading (metersIn)**: 300
+
+**Calculation:**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (300 - 400) / 2
+Amount to Collect = -100 / 2
+Amount to Collect = -50
+```
+
+**Result**: The location owes $50 to the casino (negative amount means money flows back to casino)
+
+#### **Another Example:**
+
+**Scenario**: Collecting from Machine B
+- **Previous meter reading (prevIn)**: 200
+- **Current meter reading (metersIn)**: 500
+
+**Calculation:**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (500 - 200) / 2
+Amount to Collect = 300 / 2
+Amount to Collect = 150
+```
+
+**Result**: The casino owes $150 to the location (positive amount means money flows to location)
+
+### Balance Correction System
+
+**Balance Correction** is used to adjust the running balance when there are discrepancies, errors, or special circumstances that require manual adjustment.
+
+#### **How Balance Correction Works:**
+
+1. **When you enter a Collected Amount**, it gets added to the Balance Correction
+2. **Balance Correction** can be positive or negative
+3. **Positive Balance Correction**: Adds money to the location's account
+4. **Negative Balance Correction**: Removes money from the location's account
+
+#### **Balance Correction Formula:**
+```
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+```
+
+#### **Step-by-Step Example:**
+
+**Scenario**: Location has an outstanding balance that needs adjustment
+
+**Initial State:**
+- **Previous Balance**: $1,000 (location owes casino)
+- **Amount to Collect**: $200 (from current collection)
+- **Amount Collected**: $180 (actual cash collected)
+- **Balance Correction**: $0 (no previous corrections)
+
+**Calculation:**
+```
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+New Balance = $1,000 + $200 - $180 + $0
+New Balance = $1,020
+```
+
+**Result**: Location now owes $1,020 to the casino
+
+#### **Balance Correction Example:**
+
+**Scenario**: Collector found an extra $50 that wasn't recorded properly
+
+**State:**
+- **Previous Balance**: $1,020
+- **Amount to Collect**: $150 (from new collection)
+- **Amount Collected**: $150 (actual cash collected)
+- **Balance Correction**: -$50 (negative because we're removing the extra $50)
+
+**Calculation:**
+```
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+New Balance = $1,020 + $150 - $150 + (-$50)
+New Balance = $1,020 + $0 - $50
+New Balance = $970
+```
+
+**Result**: Location now owes $970 to the casino (reduced by $50 due to correction)
+
+#### **Another Balance Correction Example:**
+
+**Scenario**: Location had a machine malfunction and needs a $100 credit
+
+**State:**
+- **Previous Balance**: $970
+- **Amount to Collect**: $200 (from current collection)
+- **Amount Collected**: $200 (actual cash collected)
+- **Balance Correction**: +$100 (positive because we're giving credit)
+
+**Calculation:**
+```
+New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
+New Balance = $970 + $200 - $200 + $100
+New Balance = $970 + $0 + $100
+New Balance = $1,070
+```
+
+**Result**: Location now owes $1,070 to the casino (increased by $100 due to credit)
+
+### Real-World Collection Example
+
+**Complete Collection Process:**
+
+**Machine**: Slot Machine #123
+**Location**: Downtown Casino
+**Collector**: John Smith
+
+**Step 1 - Meter Readings:**
+- **Previous metersIn**: 1,000
+- **Current metersIn**: 1,500
+- **Previous metersOut**: 200
+- **Current metersOut**: 300
+
+**Step 2 - Calculate Amount to Collect:**
+```
+Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = (1,500 - 1,000) / 2
+Amount to Collect = 500 / 2
+Amount to Collect = $250
+```
+
+**Step 3 - Calculate Gross Revenue:**
+```
+Gross = (metersIn - prevIn) - (metersOut - prevOut)
+Gross = (1,500 - 1,000) - (300 - 200)
+Gross = 500 - 100
+Gross = $400
+```
+
+**Step 4 - Collection Process:**
+- **Amount to Collect**: $250
+- **Amount Actually Collected**: $240 (collector found $10 less)
+- **Balance Correction**: +$10 (to account for the shortage)
+
+**Step 5 - Update Balance:**
+```
+Previous Balance: $500
+New Balance = $500 + $250 - $240 + $10
+New Balance = $520
+```
+
+**Final Result**: Location owes $520 to the casino after this collection.
+
+### Key Points to Remember
+
+1. **Amount to Collect** is always calculated as `(metersIn - prevIn) / 2`
+2. **Balance Correction** is added to the balance calculation
+3. **Positive Balance Correction** = Credit to location
+4. **Negative Balance Correction** = Debit to location
+5. **The formula ensures accurate tracking** of all money movements
+6. **All calculations are auditable** and traceable for compliance 

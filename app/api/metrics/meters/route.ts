@@ -48,14 +48,29 @@ export async function GET(req: NextRequest) {
     let { startDate, endDate } = params;
     const timePeriod = params.timePeriod;
     const licencee = params.licencee;
+    
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      return NextResponse.json(
+        { error: "timePeriod parameter is required" },
+        { status: 400 }
+      );
+    }
+    
     // Ensure type safety for timePeriod and licencee
     const apiParams: ApiParamsType = {
-      timePeriod: (timePeriod as ApiParamsType["timePeriod"]) || "Today",
+      timePeriod: timePeriod as ApiParamsType["timePeriod"],
       licencee: licencee || "",
     };
     if (startDate && endDate) {
-      startDate = new Date(startDate).toISOString();
-      endDate = new Date(endDate).toISOString();
+      // For custom date ranges, the frontend sends dates that already represent Trinidad time
+      // We need to convert them to UTC for database queries by adding 4 hours
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Convert Trinidad time to UTC by adding 4 hours
+      startDate = new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString();
+      endDate = new Date(end.getTime() + (4 * 60 * 60 * 1000)).toISOString();
     } else {
       const dates = getDatesForTimePeriod(apiParams.timePeriod);
       startDate = dates.startDate?.toISOString() || "All Time";
@@ -72,12 +87,38 @@ export async function GET(req: NextRequest) {
 
     // console.log(`Fetching meters for ${apiParams.timePeriod}...`);
 
+    // Handle "All Time" case - pass undefined dates for "All Time" periods
+    let dateFilter: { startDate: Date | undefined; endDate: Date | undefined };
+    if (startDate !== "All Time" && endDate !== "All Time") {
+      dateFilter = { startDate: new Date(startDate), endDate: new Date(endDate) };
+    } else {
+      dateFilter = { startDate: undefined, endDate: undefined };
+    }
+
     const metrics = await getMetricsForLocations(
       db,
-      { startDate: new Date(startDate), endDate: new Date(endDate) },
+      dateFilter,
       false,
       apiParams.licencee // pass the licencee value (if provided)
     );
+
+    // If no metrics found, return a default entry with 0 values
+    // This ensures the dashboard always gets data to calculate totals
+    if (metrics.length === 0) {
+      const defaultMetrics = [{
+        day: startDate !== "All Time" ? new Date(startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
+        time: "00:00",
+        drop: 0,
+        totalCancelledCredits: 0,
+        gross: 0,
+        gamesPlayed: 0,
+        jackpot: 0,
+        location: "",
+        machine: "",
+        geoCoords: null
+      }];
+      return NextResponse.json(defaultMetrics);
+    }
 
     if (apiParams.licencee) {
       if (metrics.length > 0) {
@@ -93,7 +134,6 @@ export async function GET(req: NextRequest) {
 
     // console.log(`Successfully retrieved metrics for: ${apiParams.timePeriod}`);
 
-    // If a licencee filter is used, wrap the result in an object with key "result"
     return NextResponse.json(metrics);
   } catch (error) {
     console.error("Error in metrics API:", error);

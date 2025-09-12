@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types/api";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { createCollectionReport } from "@/lib/helpers/collectionReport";
+import { validateRamClearMeters } from "@/lib/utils/ramClearValidation";
 
 /**
  * Fetches in-progress collections for a collector
@@ -92,8 +93,13 @@ export function validateMachineEntry(
   machineForDataEntry: CollectionReportMachineSummary | undefined,
   currentMetersIn: string,
   currentMetersOut: string,
-  userId: string | undefined
-): { isValid: boolean; error?: string } {
+  userId: string | undefined,
+  ramClear?: boolean,
+  prevIn?: number,
+  prevOut?: number,
+  ramClearMetersIn?: number,
+  ramClearMetersOut?: number
+): { isValid: boolean; error?: string; warnings?: string[] } {
   if (!selectedMachineId || !machineForDataEntry) {
     return { isValid: false, error: "Please select a machine first." };
   }
@@ -121,6 +127,34 @@ export function validateMachineEntry(
 
   if (isNaN(metersIn) || isNaN(metersOut)) {
     return { isValid: false, error: "Invalid meter values" };
+  }
+
+  // RAM Clear validation if parameters are provided
+  if (ramClear !== undefined && prevIn !== undefined && prevOut !== undefined) {
+    const ramClearValidation = validateRamClearMeters({
+      currentMetersIn: metersIn,
+      currentMetersOut: metersOut,
+      prevIn,
+      prevOut,
+      ramClear,
+      ramClearMetersIn,
+      ramClearMetersOut
+    });
+
+    if (!ramClearValidation.isValid) {
+      return { 
+        isValid: false, 
+        error: ramClearValidation.errors.join(", "),
+        warnings: ramClearValidation.warnings
+      };
+    }
+
+    if (ramClearValidation.warnings.length > 0) {
+      return { 
+        isValid: true, 
+        warnings: ramClearValidation.warnings
+      };
+    }
   }
 
   return { isValid: true };
@@ -185,7 +219,7 @@ export function createMachineEntryData(params: {
     movement: {
       metersIn,
       metersOut,
-      gross: metersOut - metersIn,
+      gross: metersIn - metersOut,
     },
   };
 }
@@ -457,7 +491,7 @@ export function createCollectionDocumentPayload(params: {
     movement: {
       metersIn,
       metersOut,
-      gross: metersOut - metersIn,
+      gross: metersIn - metersOut,
     },
   };
 }

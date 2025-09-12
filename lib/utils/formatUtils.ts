@@ -1,38 +1,68 @@
 /**
- * Format a number as currency
+ * Format a number as currency with smart decimal handling
  * @param value - The number to format
  * @returns Formatted currency string
  */
 export const formatCurrency = (value: number): string => {
+  if (isNaN(value)) {
+    return "$0";
+  }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
 };
 
 /**
- * Format a number as percentage
+ * Format a number as percentage with smart decimal handling
  * @param value - The number to format
  * @returns Formatted percentage string
  */
 export const formatPercentage = (value: number): string => {
-  return `${value.toFixed(2)}%`;
+  if (isNaN(value)) {
+    return "0%";
+  }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  
+  return `${value.toFixed(hasSignificantDecimals ? 2 : 0)}%`;
 };
 
 /**
- * Format a large number with appropriate suffixes (K, M, B)
+ * Format a large number with appropriate suffixes (K, M, B) and smart decimals
  * @param value - The number to format
  * @returns Formatted number string
  */
 export const formatLargeNumber = (value: number): string => {
   if (value >= 1000000000) {
-    return `${(value / 1000000000).toFixed(1)}B`;
+    const billions = value / 1000000000;
+    const hasDecimals = billions % 1 !== 0;
+    const decimalPart = billions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return `${billions.toFixed(hasSignificantDecimals ? 1 : 0)}B`;
   } else if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
+    const millions = value / 1000000;
+    const hasDecimals = millions % 1 !== 0;
+    const decimalPart = millions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return `${millions.toFixed(hasSignificantDecimals ? 1 : 0)}M`;
   } else if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
+    const thousands = value / 1000;
+    const hasDecimals = thousands % 1 !== 0;
+    const decimalPart = thousands % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return `${thousands.toFixed(hasSignificantDecimals ? 1 : 0)}K`;
   }
   return value.toLocaleString();
 }; 

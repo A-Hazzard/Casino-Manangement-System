@@ -1,43 +1,72 @@
 /**
- * Format currency values for display.
+ * Format currency values for display with smart decimal handling.
  * @param value - The numeric value to format.
- * @returns Formatted currency string (e.g., $1,234.56).
+ * @returns Formatted currency string (e.g., $1,234 or $1,234.56).
  */
 export const formatCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined) {
-    return "$0.00";
+    return "$0";
   }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
 };
 
 /**
- * Format large numbers with appropriate suffixes (K, M, B).
+ * Format large numbers with appropriate suffixes (K, M, B) and smart decimals.
  * @param value - The numeric value to format.
  * @returns Formatted number string.
  */
 export const formatLargeNumber = (value: number): string => {
   if (value >= 1_000_000_000) {
-    return (value / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+    const billions = value / 1_000_000_000;
+    const hasDecimals = billions % 1 !== 0;
+    const decimalPart = billions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return billions.toFixed(hasSignificantDecimals ? 1 : 0) + "B";
   }
   if (value >= 1_000_000) {
-    return (value / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+    const millions = value / 1_000_000;
+    const hasDecimals = millions % 1 !== 0;
+    const decimalPart = millions % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return millions.toFixed(hasSignificantDecimals ? 1 : 0) + "M";
   }
   if (value >= 1_000) {
-    return (value / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+    const thousands = value / 1_000;
+    const hasDecimals = thousands % 1 !== 0;
+    const decimalPart = thousands % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+    return thousands.toFixed(hasSignificantDecimals ? 1 : 0) + "K";
   }
   return value.toString();
 };
 
 /**
- * Format a number as a percentage.
+ * Format a number as a percentage with smart decimal handling.
  * @param value - The numeric value to format.
  * @returns Formatted percentage string.
  */
 export const formatPercentage = (value: number): string => {
-  return `${value.toFixed(1)}%`;
+  if (isNaN(value)) {
+    return "0%";
+  }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+  
+  return `${value.toFixed(hasSignificantDecimals ? 1 : 0)}%`;
 };
 
 /**

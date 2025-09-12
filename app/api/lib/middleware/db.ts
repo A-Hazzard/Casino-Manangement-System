@@ -2,7 +2,9 @@ import mongoose from "mongoose";
 import { MongooseCache } from "@/lib/types/mongo";
 
 const MONGODB_URI = process.env.MONGO_URI;
-if (!MONGODB_URI) throw new Error("MONGO_URI not set in environment variables");
+if (typeof window === 'undefined' && !MONGODB_URI) {
+  throw new Error("MONGO_URI not set in environment variables");
+}
 
 const mongooseCache: MongooseCache = {
   conn: null,
@@ -15,13 +17,22 @@ const mongooseCache: MongooseCache = {
  * @returns Promise resolving to a MongoDB database instance (native MongoDB driver).
  */
 export async function connectDB() {
+  // Only run on server-side
+  if (typeof window !== 'undefined') {
+    throw new Error("connectDB can only be called on the server-side");
+  }
+
+  if (!MONGODB_URI) {
+    throw new Error("MONGO_URI not set in environment variables");
+  }
+
   if (mongooseCache.conn) {
     return mongooseCache.conn.db;
   }
 
   if (!mongooseCache.promise) {
     mongooseCache.promise = mongoose
-      .connect(MONGODB_URI || "", {
+      .connect(MONGODB_URI, {
         bufferCommands: false,
         connectTimeoutMS: 10000,
       })

@@ -8,9 +8,10 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
-import { CabinetDetail, TimePeriod } from "@/lib/types/cabinets";
+import { CabinetDetail } from "@/lib/types/cabinets";
 import { fetchCabinetById } from "@/lib/helpers/cabinets";
-import { useRouter, usePathname } from "next/navigation";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -18,16 +19,17 @@ import {
 } from "@radix-ui/react-icons";
 import { differenceInMinutes } from "date-fns";
 import { motion, AnimatePresence, Variants } from "framer-motion";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { toast } from "sonner";
 import gsap from "gsap";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { RefreshCw } from "lucide-react";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
+import { NotFoundError, NetworkError } from "@/components/ui/errors";
 
 // Extracted skeleton and error components
 import {
   CabinetDetailsLoadingState,
-  CabinetDetailsErrorState,
 } from "@/components/ui/skeletons/CabinetDetailSkeletons";
 
 // Animation variants
@@ -59,41 +61,92 @@ function useHasMounted() {
 export default function CabinetDetailPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const slug = pathname.split("/").pop() || "";
   const [isClient, setIsClient] = useState(false);
   const hasMounted = useHasMounted();
 
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { 
+    selectedLicencee, 
+    setSelectedLicencee,
+    activeMetricsFilter,
+    customDateRange
+  } = useDashBoardStore();
+
+  // State for tracking date filter initialization
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // Detect when date filter is properly initialized
+  useEffect(() => {
+    if (activeMetricsFilter && !dateFilterInitialized) {
+      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter, dateFilterInitialized]);
 
   const { openEditModal } = useCabinetActionsStore();
 
   const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
   const [locationName, setLocationName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<"not-found" | "network" | "unknown">("unknown");
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  
+  // Initialize activeMetricsTabContent from URL on first load
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
-    useState<string>("Range Metrics");
-  const [activeMetricsFilter, setActiveMetricsFilter] =
-    useState<TimePeriod>("Today");
-  const [metricsLoading, setMetricsLoading] = useState(false);
+    useState<string>(() => {
+      const section = searchParams?.get("section");
+      if (section === "live-metrics") return "Live Metrics";
+      if (section === "bill-validator") return "Bill Validator";
+      if (section === "activity-log") return "Activity Log";
+      if (section === "collection-history") return "Collection History";
+      if (section === "collection-settings") return "Collection Settings";
+      if (section === "configurations") return "Configurations";
+      return "Range Metrics"; // default
+    });
 
   // Communication mode and firmware selection states
   const [communicationMode, setCommunicationMode] = useState<string>("sas");
   const [firmwareVersion, setFirmwareVersion] =
     useState<string>("Cloudy v1.0.4");
 
+
   // Refs for animation
   const configSectionRef = useRef<HTMLDivElement>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   const fetchCabinetDetailsData = useCallback(async () => {
     setError(null);
+    setErrorType("unknown");
+    setMetricsLoading(true);
+
     try {
-      // Fetch cabinet data with date filtering
-      const cabinetData = await fetchCabinetById(slug, activeMetricsFilter);
+      // Fetch cabinet data with current date filter - no default fallback
+      if (!activeMetricsFilter) {
+        console.warn("[DEBUG] No active date filter set, skipping fetch");
+        setMetricsLoading(false);
+        return;
+      }
+      
+      console.warn("[DEBUG] Fetching cabinet data with:", { slug, timePeriod: activeMetricsFilter, customDateRange });
+      const cabinetData = await fetchCabinetById(
+        slug, 
+        activeMetricsFilter, 
+        activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined
+      );
+      
+      // Check if cabinet was not found
+      if (!cabinetData) {
+        setError("Cabinet not found");
+        setErrorType("not-found");
+        setCabinet(null);
+        return;
+      }
+
       setCabinet(cabinetData);
 
       // Use location name directly from cabinet data
@@ -111,34 +164,55 @@ export default function CabinetDetailPage() {
       }
       setCommunicationModeFromData(cabinetData);
       setFirmwareVersionFromData(cabinetData);
-    } catch {
+    } catch (err) {
       setCabinet(null);
-      toast.error("Failed to fetch cabinet details");
-    }
-  }, [slug, activeMetricsFilter]);
-
-  // Handle filter changes with debouncing
-  const handleFilterChange = useCallback(
-    async (newFilter: TimePeriod) => {
-      if (newFilter === activeMetricsFilter) return;
-
-      setActiveMetricsFilter(newFilter);
-      setMetricsLoading(true);
-
-      try {
-        await fetchCabinetDetailsData();
-      } finally {
-        setMetricsLoading(false);
+      
+      // Determine error type based on the error
+      if (err instanceof Error) {
+        if (err.message.includes("404") || err.message.includes("not found")) {
+          setError("Cabinet not found");
+          setErrorType("not-found");
+        } else if (err.message.includes("network") || err.message.includes("fetch")) {
+          setError("Network error");
+          setErrorType("network");
+        } else {
+          setError("Failed to fetch cabinet details");
+          setErrorType("unknown");
+        }
+      } else {
+        setError("Failed to fetch cabinet details");
+        setErrorType("unknown");
       }
-    },
-    [activeMetricsFilter, fetchCabinetDetailsData]
-  );
+      
+      toast.error("Failed to fetch cabinet details");
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [slug, activeMetricsFilter, customDateRange]);
+
+  // Callback function to refresh cabinet data after updates
+  const handleCabinetUpdated = useCallback(() => {
+    fetchCabinetDetailsData();
+  }, [fetchCabinetDetailsData]);
+
 
   useEffect(() => {
-    console.warn("[DEBUG] useEffect (initial fetch) running with slug:", slug);
-    fetchCabinetDetailsData();
+    console.warn("[DEBUG] useEffect (initial fetch) running with slug:", slug, "activeMetricsFilter:", activeMetricsFilter, "dateFilterInitialized:", dateFilterInitialized);
+    // Only fetch if we have a valid date filter and it's been properly initialized
+    if (activeMetricsFilter && dateFilterInitialized) {
+      fetchCabinetDetailsData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]); // Remove fetchCabinetDetailsData from dependencies to prevent infinite re-renders
+  }, [slug, activeMetricsFilter, dateFilterInitialized]); // Include dateFilterInitialized to ensure proper initialization
+
+  // Note: Date filter changes are now handled by the main useEffect above
+
+  // Don't show loading state on initial load
+  useEffect(() => {
+    if (cabinet && !refreshing) {
+      setMetricsLoading(false);
+    }
+  }, [cabinet, refreshing]);
 
   const handleBackToCabinets = () => {
     router.push(`/cabinets`);
@@ -152,6 +226,54 @@ export default function CabinetDetailPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Keep state in sync with URL changes (for browser back/forward)
+  useEffect(() => {
+    const section = searchParams?.get("section");
+    if (section === "live-metrics" && activeMetricsTabContent !== "Live Metrics") {
+      setActiveMetricsTabContent("Live Metrics");
+    } else if (section === "bill-validator" && activeMetricsTabContent !== "Bill Validator") {
+      setActiveMetricsTabContent("Bill Validator");
+    } else if (section === "activity-log" && activeMetricsTabContent !== "Activity Log") {
+      setActiveMetricsTabContent("Activity Log");
+    } else if (section === "collection-history" && activeMetricsTabContent !== "Collection History") {
+      setActiveMetricsTabContent("Collection History");
+    } else if (section === "collection-settings" && activeMetricsTabContent !== "Collection Settings") {
+      setActiveMetricsTabContent("Collection Settings");
+    } else if (section === "configurations" && activeMetricsTabContent !== "Configurations") {
+      setActiveMetricsTabContent("Configurations");
+    } else if (!section && activeMetricsTabContent !== "Range Metrics") {
+      setActiveMetricsTabContent("Range Metrics");
+    }
+  }, [searchParams, activeMetricsTabContent]);
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: string) => {
+    setActiveMetricsTabContent(tab);
+
+    // Update URL based on tab selection
+    const sectionMap: Record<string, string> = {
+      "Range Metrics": "",
+      "Live Metrics": "live-metrics",
+      "Bill Validator": "bill-validator",
+      "Activity Log": "activity-log",
+      "Collection History": "collection-history",
+      "Collection Settings": "collection-settings",
+      "Configurations": "configurations",
+    };
+
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    const sectionValue = sectionMap[tab];
+    
+    if (sectionValue) {
+      params.set("section", sectionValue);
+    } else {
+      params.delete("section");
+    }
+    
+    const newUrl = `${pathname}?${params.toString()}`;
+    router.push(newUrl, { scroll: false });
+  };
 
   // Handle scroll to show/hide floating refresh button
   useEffect(() => {
@@ -217,6 +339,7 @@ export default function CabinetDetailPage() {
     }
   };
 
+
   // Add helper functions to set communication mode and firmware version
   const setCommunicationModeFromData = (data: CabinetDetail) => {
     if (
@@ -267,22 +390,67 @@ export default function CabinetDetailPage() {
     );
   }
 
-  // 2. SECOND: If there was an error, show error message
+  // 2. SECOND: If there was an error, show appropriate error component
   if (error) {
     return (
-      <CabinetDetailsErrorState
-        selectedLicencee={selectedLicencee}
-        setSelectedLicencee={setSelectedLicencee}
-        error={error}
-        onRetry={fetchCabinetDetailsData}
-      />
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+        showToaster={false}
+      >
+        {/* Back button */}
+        <div className="mt-4 mb-2">
+          <Button
+            onClick={handleBackToCabinets}
+            variant="outline"
+            className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+            size="sm"
+          >
+            <ArrowLeftIcon className="mr-2 h-4 w-4" />
+            Back to Cabinets
+          </Button>
+        </div>
+
+        {/* Error Component */}
+        {errorType === "not-found" ? (
+          <NotFoundError
+            title="Cabinet Not Found"
+            message={`The cabinet "${slug}" could not be found. It may have been deleted or moved.`}
+            resourceType="cabinet"
+            onRetry={fetchCabinetDetailsData}
+            onGoBack={handleBackToCabinets}
+          />
+        ) : errorType === "network" ? (
+          <NetworkError
+            title="Connection Error"
+            message="Unable to load cabinet details. Please check your connection and try again."
+            onRetry={fetchCabinetDetailsData}
+            isRetrying={refreshing}
+            errorDetails={error}
+          />
+        ) : (
+          <NetworkError
+            title="Error Loading Cabinet"
+            message="An unexpected error occurred while loading the cabinet details."
+            onRetry={fetchCabinetDetailsData}
+            isRetrying={refreshing}
+            errorDetails={error}
+          />
+        )}
+      </PageLayout>
     );
   }
 
   // Main return statement should be here, AFTER all conditional returns
   return (
     <>
-      <EditCabinetModal />
+      <EditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
       <DeleteCabinetModal />
 
       <PageLayout
@@ -292,7 +460,7 @@ export default function CabinetDetailPage() {
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenceeFilter={false}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={false}
       >
@@ -340,12 +508,7 @@ export default function CabinetDetailPage() {
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold flex items-center">
                   Name:{" "}
-                  {cabinet?.serialNumber ||
-                    ((cabinet as Record<string, unknown>)
-                      ?.origSerialNumber as string) ||
-                    ((cabinet as Record<string, unknown>)
-                      ?.machineId as string) ||
-                    "GMID1"}
+                  {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
                   <motion.button
                     className="ml-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
                     whileHover={{ scale: 1.1 }}
@@ -359,8 +522,8 @@ export default function CabinetDetailPage() {
                     <Pencil2Icon className="text-button w-5 h-5" />
                   </motion.button>
                 </h1>
-                {/* Show deleted status if cabinet has deletedAt field */}
-                {cabinet?.deletedAt && (
+                {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
+                {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
                   <div className="mt-2 mb-2">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
                       <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
@@ -452,15 +615,10 @@ export default function CabinetDetailPage() {
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold flex items-center">
                   Name:{" "}
-                  {cabinet?.serialNumber ||
-                    ((cabinet as Record<string, unknown>)
-                      ?.origSerialNumber as string) ||
-                    ((cabinet as Record<string, unknown>)
-                      ?.machineId as string) ||
-                    "GMID1"}
+                  {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
                 </h1>
-                {/* Show deleted status if cabinet has deletedAt field */}
-                {cabinet?.deletedAt && (
+                {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
+                {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
                   <div className="mt-2 mb-2">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
                       <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
@@ -872,96 +1030,50 @@ export default function CabinetDetailPage() {
           </div>
         )}
 
-        {/* Date filtering UI */}
-        <div className="mt-4 mb-2 max-w-full">
-          {/* Mobile and md/lg: Select dropdown */}
-          <div className="w-full xl:hidden mb-4">
-            <select
-              value={activeMetricsFilter}
-              onChange={(e) => handleFilterChange(e.target.value as TimePeriod)}
-              className="w-full md:w-48 rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-              disabled={metricsLoading}
-            >
-              {[
-                { label: "Today", value: "Today" as TimePeriod },
-                { label: "Yesterday", value: "Yesterday" as TimePeriod },
-                { label: "Last 7 days", value: "7d" as TimePeriod },
-                { label: "30 days", value: "30d" as TimePeriod },
-                { label: "All Time", value: "All Time" as TimePeriod },
-              ].map((filter) => (
-                <option key={filter.value} value={filter.value}>
-                  {filter.label}
-                </option>
-              ))}
-            </select>
+        {/* Date Filters */}
+        {hasMounted ? (
+          <motion.div
+            className="mt-4 mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <DashboardDateFilters onCustomRangeGo={fetchCabinetDetailsData} />
+          </motion.div>
+        ) : (
+          <div className="mt-4 mb-4">
+            <DashboardDateFilters onCustomRangeGo={fetchCabinetDetailsData} />
           </div>
+        )}
 
-          {/* xl and above: Desktop time period filters */}
-          <div className="hidden xl:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
+        {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
+        <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 custom-scrollbar w-full p-2 rounded-md mt-4 mb-2">
+          <div className="flex space-x-2 min-w-max px-1 pb-1">
             {[
-              { label: "Today", value: "Today" as TimePeriod },
-              { label: "Yesterday", value: "Yesterday" as TimePeriod },
-              { label: "Last 7 days", value: "7d" as TimePeriod },
-              { label: "30 days", value: "30d" as TimePeriod },
-              { label: "All Time", value: "All Time" as TimePeriod },
-            ].map((filter, index) => (
-              <motion.div
-                key={filter.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + index * 0.05 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              "Metrics",
+              "Live Metrics",
+              "Bill Validator",
+              "Activity Log",
+              "Collection History",
+              "Collection Settings",
+            ].map((tab) => (
+              <Button
+                key={tab}
+                className={`whitespace-nowrap px-4 py-2 ${
+                  activeMetricsTabContent ===
+                  (tab === "Metrics" ? "Range Metrics" : tab)
+                    ? "bg-buttonActive text-container"
+                    : "bg-muted text-grayHighlight"
+                }`}
+                onClick={() =>
+                  handleTabChange(
+                    tab === "Metrics" ? "Range Metrics" : tab
+                  )
+                }
               >
-                <Button
-                  className={`px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm text-container rounded-full flex items-center gap-1 md:gap-2 ${
-                    metricsLoading && activeMetricsFilter === filter.value
-                      ? "opacity-80"
-                      : ""
-                  } ${
-                    activeMetricsFilter === filter.value
-                      ? "bg-buttonActive"
-                      : "bg-button"
-                  }`}
-                  onClick={() => handleFilterChange(filter.value)}
-                  disabled={metricsLoading}
-                >
-                  {metricsLoading && activeMetricsFilter === filter.value ? (
-                    <span className="w-3 h-3 md:w-4 md:h-4 border-2 border-container border-t-transparent rounded-full animate-spin"></span>
-                  ) : null}
-                  {filter.label}
-                </Button>
-              </motion.div>
+                {tab}
+              </Button>
             ))}
-          </div>
-          {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
-          <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 custom-scrollbar w-full p-2 rounded-md">
-            <div className="flex space-x-2 min-w-max px-1 pb-1">
-              {[
-                "Metrics",
-                "Live Metrics",
-                "Bill Validator",
-                "Activity Log",
-                "Collection History",
-              ].map((tab) => (
-                <Button
-                  key={tab}
-                  className={`whitespace-nowrap px-4 py-2 ${
-                    activeMetricsTabContent ===
-                    (tab === "Metrics" ? "Range Metrics" : tab)
-                      ? "bg-buttonActive text-container"
-                      : "bg-muted text-grayHighlight"
-                  }`}
-                  onClick={() =>
-                    setActiveMetricsTabContent(
-                      tab === "Metrics" ? "Range Metrics" : tab
-                    )
-                  }
-                >
-                  {tab}
-                </Button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -971,8 +1083,7 @@ export default function CabinetDetailPage() {
             cabinet={cabinet}
             loading={metricsLoading}
             activeMetricsTabContent={activeMetricsTabContent}
-            setActiveMetricsTabContent={setActiveMetricsTabContent}
-            activeMetricsFilter={activeMetricsFilter}
+            setActiveMetricsTabContent={handleTabChange}
           />
         ) : null}
 

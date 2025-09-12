@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useLocationStore } from "@/lib/store/locationStore";
 import LocationPickerMap from "./LocationPickerMap";
-import { SelectedLocation, LocationCoordinates } from "@/lib/types/maps";
+import { SelectedLocation } from "@/lib/types/maps";
 import type { NewLocationModalProps } from "@/lib/types/components";
 import { fetchLicensees } from "@/lib/helpers/licensees";
 import type { Licensee } from "@/lib/types/licensee";
@@ -56,20 +55,15 @@ export default function NewLocationModal({
   });
   const [useMap, setUseMap] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-  const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(
-    null
-  );
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [licenseesLoading, setLicenseesLoading] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState(false);
 
-  // Detect user location on modal open
+  // Load licensees on modal open
   useEffect(() => {
     if (isOpen) {
-      detectUserLocation();
       loadLicensees();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Reset form when modal closes
@@ -105,78 +99,6 @@ export default function NewLocationModal({
     }
   }, [isOpen]);
 
-  const detectUserLocation = async () => {
-    setIsDetectingLocation(true);
-
-    try {
-      // First try to get user's browser location
-      if (navigator.geolocation) {
-        const position = await new Promise<GeolocationPosition>(
-          (resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 60000,
-            });
-          }
-        );
-
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-
-        // Get address from coordinates using reverse geocoding
-        const address = await getAddressFromCoordinates(latitude, longitude);
-
-        setFormData((prev) => ({
-          ...prev,
-          latitude: latitude.toFixed(6),
-          longitude: longitude.toFixed(6),
-          country: address.country || "Trinidad and Tobago",
-          city: address.city || "",
-        }));
-
-        // Don't show toast for browser location detection
-        return;
-      }
-    } catch {
-      // Browser location access denied or failed, trying IP-based location
-    }
-
-    try {
-      // Fallback to IP-based location detection
-      const ipLocation = await getLocationFromIP();
-      setUserLocation({ lat: ipLocation.latitude, lng: ipLocation.longitude });
-
-      setFormData((prev) => ({
-        ...prev,
-        latitude: ipLocation.latitude.toFixed(6),
-        longitude: ipLocation.longitude.toFixed(6),
-        country: ipLocation.country || "Trinidad and Tobago",
-        city: ipLocation.city || "",
-      }));
-
-      // Don't show toast for IP location detection
-    } catch {
-      // IP location detection failed, using default
-
-      // Final fallback to Trinidad and Tobago POS
-      const defaultLat = 10.6599;
-      const defaultLng = -61.5199;
-      setUserLocation({ lat: defaultLat, lng: defaultLng });
-
-      setFormData((prev) => ({
-        ...prev,
-        latitude: defaultLat.toFixed(6),
-        longitude: defaultLng.toFixed(6),
-        country: "Trinidad and Tobago",
-        city: "Port of Spain",
-      }));
-
-      // Don't show toast for default location
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
 
   const loadLicensees = async () => {
     setLicenseesLoading(true);
@@ -191,66 +113,6 @@ export default function NewLocationModal({
     }
   };
 
-  const getAddressFromCoordinates = async (
-    lat: number,
-    lng: number
-  ): Promise<{ country: string; city: string }> => {
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-      );
-      const data = response.data;
-
-      if (data.results && data.results[0]) {
-        const result = data.results[0];
-        let country = "";
-        let city = "";
-
-        for (const component of result.address_components) {
-          const types = component.types;
-
-          if (types.includes("locality")) {
-            city = component.long_name;
-          } else if (types.includes("administrative_area_level_1") && !city) {
-            // Fallback to state/province if no city found
-            city = component.long_name;
-          }
-
-          if (types.includes("country")) {
-            country = component.long_name;
-          }
-        }
-
-        return { country, city };
-      }
-    } catch {
-      console.error("Error getting address from coordinates:");
-    }
-
-    return { country: "Trinidad and Tobago", city: "" };
-  };
-
-  const getLocationFromIP = async (): Promise<{
-    latitude: number;
-    longitude: number;
-    country: string;
-    city: string;
-  }> => {
-    try {
-      const response = await axios.get("https://ipapi.co/json/");
-      const data = response.data;
-
-      return {
-        latitude: data.latitude,
-        longitude: data.longitude,
-        country: data.country_name || "Trinidad and Tobago",
-        city: data.city || "",
-      };
-    } catch {
-      console.error("Error getting location from IP:");
-      throw new Error("Failed to get location from IP");
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -280,10 +142,19 @@ export default function NewLocationModal({
       ...prev,
       latitude: location.lat.toFixed(6),
       longitude: location.lng.toFixed(6),
-      // Update city and country if they were provided by the map
+      // Update address, city and country if they were provided by the map
+      ...(location.address && { street: location.address }),
       ...(location.city && { city: location.city }),
       ...(location.country && { country: location.country }),
     }));
+  };
+
+  const handleMapLoadError = () => {
+    setMapLoadError(true);
+  };
+
+  const handleMapLoadSuccess = () => {
+    setMapLoadError(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,7 +163,7 @@ export default function NewLocationModal({
 
     try {
       // Validate form
-      if (!formData.name || !formData.street || !formData.licencee) {
+      if (!formData.name || !formData.licencee) {
         throw new Error("Please fill in all required fields");
       }
 
@@ -307,12 +178,14 @@ export default function NewLocationModal({
       };
 
       // Add location
-      await createLocation(locationData);
+      const createdLocation = await createLocation(locationData);
+      console.warn("Location created successfully:", createdLocation);
 
       // Show success message
       toast.success("Location added successfully");
 
       // Close modal and refresh
+      console.warn("Calling onCreated callback...");
       onCreated?.();
       onClose();
     } catch (error) {
@@ -327,28 +200,20 @@ export default function NewLocationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-white">
-        <DialogHeader className="p-6 border-b border-gray-200">
-          <DialogTitle className="text-2xl font-bold text-gray-800">
+      <DialogContent className="max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-4xl w-full mx-2 sm:mx-4 md:mx-0 p-0 overflow-hidden bg-white max-h-[95vh] md:max-h-[90vh]">
+        <DialogHeader className="p-4 md:p-6 border-b border-gray-200">
+          <DialogTitle className="text-xl md:text-2xl font-bold text-gray-800">
             Add New Location
           </DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-6 max-h-[70vh] overflow-y-auto"
+          className="p-4 md:p-6 space-y-4 md:space-y-6 max-h-[calc(95vh-120px)] md:max-h-[calc(90vh-120px)] overflow-y-auto"
         >
-          {/* Location Detection Status */}
-          {isDetectingLocation && !formData.latitude && !formData.longitude && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                🔍 Detecting your location...
-              </p>
-            </div>
-          )}
 
           {/* Location Name */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-grayHighlight mb-1">
+            <label className="block text-sm font-medium text-grayHighlight mb-2">
               Location Name <span className="text-red-500">*</span>
             </label>
             <Input
@@ -357,46 +222,46 @@ export default function NewLocationModal({
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Enter location name"
-              className="w-full bg-container border-border"
+              className="w-full h-12 bg-container border-border text-base"
             />
           </div>
 
           {/* Address */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-grayHighlight mb-1">
-              Address <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-grayHighlight mb-2">
+              Address
             </label>
             <Input
               name="street"
               value={formData.street}
               onChange={handleInputChange}
               placeholder="Street"
-              className="w-full bg-container border-border"
+              className="w-full h-12 bg-container border-border text-base"
             />
           </div>
 
-          {/* Line 2 */}
+          {/* City */}
           <div className="mb-4">
             <Input
               name="city"
               value={formData.city}
               onChange={handleInputChange}
               placeholder="City"
-              className="w-full bg-container border-border"
+              className="w-full h-12 bg-container border-border text-base"
             />
           </div>
 
-          {/* City and Country */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Country and Profit Share - Mobile: Stacked, Desktop: Side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-grayHighlight mb-1">
+              <label className="block text-sm font-medium text-grayHighlight mb-2">
                 Country
               </label>
               <select
                 name="country"
                 value={formData.country}
                 onChange={(e) => handleSelectChange("country", e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
               >
                 <option value="">Select Country</option>
                 <option value="Guyana">Guyana</option>
@@ -406,7 +271,7 @@ export default function NewLocationModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-grayHighlight mb-1">
+              <label className="block text-sm font-medium text-grayHighlight mb-2">
                 Profit Share (%)
               </label>
               <Input
@@ -417,21 +282,21 @@ export default function NewLocationModal({
                 value={formData.profitShare}
                 onChange={handleInputChange}
                 placeholder="50"
-                className="w-full bg-container border-border"
+                className="w-full h-12 bg-container border-border text-base"
               />
             </div>
           </div>
 
           {/* Licensee */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-grayHighlight mb-1">
+            <label className="block text-sm font-medium text-grayHighlight mb-2">
               Licensee <span className="text-red-500">*</span>
             </label>
             <select
               name="licencee"
               value={formData.licencee}
               onChange={(e) => handleSelectChange("licencee", e.target.value)}
-              className="w-full h-10 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+              className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
               required
             >
               <option value="">Select Licensee</option>
@@ -449,42 +314,43 @@ export default function NewLocationModal({
             </select>
           </div>
 
-          {/* No SMIB Location Checkbox */}
-          <div className="mb-4 flex justify-center">
-            <div className="flex items-center space-x-2">
+          {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* No SMIB Location Checkbox */}
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Checkbox
                 id="isLocalServer"
                 checked={formData.isLocalServer}
                 onCheckedChange={(checked) =>
                   handleCheckboxChange("isLocalServer", checked === true)
                 }
-                className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+                className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
-              <Label htmlFor="isLocalServer" className="text-sm font-medium">
+              <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
                 No SMIB Location
+              </Label>
+            </div>
+
+            {/* Map Toggle */}
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <Checkbox
+                id="useMap"
+                checked={useMap}
+                onCheckedChange={(checked) => setUseMap(checked === true)}
+                className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
+              />
+              <Label htmlFor="useMap" className="text-sm font-medium flex-1">
+                Use Map to Select Location
               </Label>
             </div>
           </div>
 
-          {/* Map Toggle */}
-          <div className="mb-4 flex items-center space-x-2">
-            <Checkbox
-              id="useMap"
-              checked={useMap}
-              onCheckedChange={(checked) => setUseMap(checked === true)}
-              className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
-            />
-            <Label htmlFor="useMap" className="text-sm font-medium">
-              Use Map to Select Location
-            </Label>
-          </div>
-
-          {/* GEO Coordinates */}
+          {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}
           <div className="mb-4">
-            <p className="text-sm font-medium mb-2">GEO Coordinates</p>
-            <div className="grid grid-cols-2 gap-4">
+            <p className="text-sm font-medium mb-3">GEO Coordinates</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center">
-                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
+                <div className="bg-button text-primary-foreground rounded-l-md py-3 px-4 min-w-[80px]">
                   <span className="text-sm font-medium">Latitude</span>
                 </div>
                 <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
@@ -493,13 +359,13 @@ export default function NewLocationModal({
                     value={formData.latitude}
                     onChange={handleInputChange}
                     placeholder="0.000000"
-                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="border-0 bg-transparent w-full h-12 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
                     readOnly={useMap}
                   />
                 </div>
               </div>
               <div className="flex items-center">
-                <div className="bg-button text-primary-foreground rounded-l-md py-2 px-4">
+                <div className="bg-button text-primary-foreground rounded-l-md py-3 px-4 min-w-[80px]">
                   <span className="text-sm font-medium">Longitude</span>
                 </div>
                 <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
@@ -508,7 +374,7 @@ export default function NewLocationModal({
                     value={formData.longitude}
                     onChange={handleInputChange}
                     placeholder="0.000000"
-                    className="border-0 bg-transparent w-full focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="border-0 bg-transparent w-full h-12 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
                     readOnly={useMap}
                   />
                 </div>
@@ -519,6 +385,14 @@ export default function NewLocationModal({
           {/* Map Component with Integrated Search */}
           {useMap && (
             <div className="mt-4">
+              {/* Map Load Error Indicator */}
+              {mapLoadError && (
+                <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md relative z-10">
+                  <p className="text-xs text-yellow-700">
+                          ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check the &quot;Use Map&quot; button again.
+                  </p>
+                </div>
+              )}
               <LocationPickerMap
                 initialLat={
                   formData.latitude ? parseFloat(formData.latitude) : 10.6599
@@ -528,7 +402,8 @@ export default function NewLocationModal({
                 }
                 mapType="street"
                 onLocationSelect={handleLocationSelect}
-                userLocation={userLocation}
+                onMapLoadError={handleMapLoadError}
+                onMapLoadSuccess={handleMapLoadSuccess}
               />
             </div>
           )}
@@ -538,7 +413,7 @@ export default function NewLocationModal({
             <label className="block text-sm font-medium text-grayHighlight mb-3">
               Bill Validator Denominations
             </label>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {[
                 { key: "denom1", label: "$1" },
                 { key: "denom2", label: "$2" },
@@ -554,7 +429,7 @@ export default function NewLocationModal({
                 { key: "denom5000", label: "$5,000" },
                 { key: "denom10000", label: "$10,000" },
               ].map(({ key, label }) => (
-                <div key={key} className="flex items-center space-x-2">
+                <div key={key} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
                   <Checkbox
                     id={key}
                     checked={
@@ -565,9 +440,9 @@ export default function NewLocationModal({
                     onCheckedChange={(checked) =>
                       handleBillValidatorChange(key, checked === true)
                     }
-                    className="text-grayHighlight border-buttonActive focus:ring-buttonActive"
+                    className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                   />
-                  <Label htmlFor={key} className="text-sm font-medium">
+                  <Label htmlFor={key} className="text-sm font-medium flex-1">
                     {label}
                   </Label>
                 </div>
@@ -576,19 +451,19 @@ export default function NewLocationModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-200">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="px-6 py-2"
+              className="w-full sm:w-auto px-6 py-3 h-12 text-base"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isLoading}
-              className="px-6 py-2 bg-buttonActive hover:bg-buttonActive/90 text-white"
+              className="w-full sm:w-auto px-6 py-3 h-12 bg-buttonActive hover:bg-buttonActive/90 text-white text-base"
             >
               {isLoading ? "Adding..." : "Add Location"}
             </Button>

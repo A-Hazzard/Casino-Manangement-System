@@ -8,20 +8,17 @@ import Image from "next/image";
 import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
 import { toast } from "sonner";
 import deleteIcon from "@/public/deleteIcon.svg";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export const DeleteFirmwareModal = ({
   onDeleteComplete,
 }: {
   onDeleteComplete: () => void;
 }) => {
-  const { isDeleteModalOpen, selectedFirmware } = useFirmwareActionsStore();
+  const { isDeleteModalOpen, selectedFirmware, closeDeleteModal } = useFirmwareActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-  // Create activity logger for firmware operations
-  const firmwareLogger = createActivityLogger("machine");
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -30,7 +27,7 @@ export const DeleteFirmwareModal = ({
   }, [isDeleteModalOpen]);
 
   const handleClose = () => {
-    // Only use Tailwind classes for responsive rendering. Remove all JS device detection logic.
+    closeDeleteModal();
   };
 
   const handleDelete = async () => {
@@ -39,17 +36,7 @@ export const DeleteFirmwareModal = ({
     try {
       setLoading(true);
 
-      const firmwareData = { ...selectedFirmware };
-
       await axios.delete(`/api/firmwares/${selectedFirmware._id}`);
-
-      // Log the firmware deletion activity
-      await firmwareLogger.logDelete(
-        selectedFirmware._id,
-        `${selectedFirmware.product} ${selectedFirmware.version}`,
-        firmwareData,
-        `Deleted firmware: ${selectedFirmware.product} ${selectedFirmware.version}`
-      );
 
       toast.success("Firmware deleted successfully!");
       handleClose();
@@ -82,7 +69,6 @@ export const DeleteFirmwareModal = ({
         <div
           ref={modalRef}
           className="bg-container rounded-md shadow-lg max-w-md w-full"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
         >
           <div className="p-4 border-b border-border">
             <div className="flex justify-between items-center">

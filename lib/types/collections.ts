@@ -95,6 +95,11 @@ export type CreateCollectionPayload = {
   machineName?: string;
   serialNumber?: string;
   isCompleted?: boolean;
+  ramClear?: boolean;
+  ramClearCoinIn?: number;
+  ramClearCoinOut?: number;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
 };
 
 export type SasMetricsCalculation = {

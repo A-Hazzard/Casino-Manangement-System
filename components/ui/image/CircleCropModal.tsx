@@ -55,8 +55,6 @@ export default function CircleCropModal({
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [scale, setScale] = useState(1);
-  const [rotate, setRotate] = useState(0);
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -82,6 +80,7 @@ export default function CircleCropModal({
         throw new Error("No 2d context");
       }
 
+      // Calculate the actual crop coordinates
       const scaleX = image.naturalWidth / image.width;
       const scaleY = image.naturalHeight / image.height;
 
@@ -102,22 +101,27 @@ export default function CircleCropModal({
         crop.height
       );
 
-      // Create circular mask
+      // Create circular mask - ensure perfect circle
       const circleCanvas = document.createElement("canvas");
       const circleCtx = circleCanvas.getContext("2d");
       if (!circleCtx) {
         throw new Error("No 2d context for circle");
       }
 
-      circleCanvas.width = crop.width;
-      circleCanvas.height = crop.height;
+      // Use the crop size as the output size (should be square due to aspect ratio)
+      const outputSize = crop.width; // Should equal crop.height since aspect is 1
+      circleCanvas.width = outputSize;
+      circleCanvas.height = outputSize;
+
+      // Clear the canvas
+      circleCtx.clearRect(0, 0, outputSize, outputSize);
 
       // Create circular clipping path
       circleCtx.beginPath();
       circleCtx.arc(
-        crop.width / 2,
-        crop.height / 2,
-        crop.width / 2,
+        outputSize / 2,
+        outputSize / 2,
+        outputSize / 2,
         0,
         2 * Math.PI
       );
@@ -154,9 +158,9 @@ export default function CircleCropModal({
       {/* Elevated overlay above any underlying modal */}
       {open && typeof window !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[180] bg-black/70" />, document.body
+          <div className="fixed inset-0 z-[100001] bg-black/70" />, document.body
         )}
-      <DialogContent className="max-w-4xl w-full z-[200]">
+      <DialogContent className="max-w-4xl w-full z-[100002]">
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
         </DialogHeader>
@@ -172,55 +176,19 @@ export default function CircleCropModal({
               className="max-h-96"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={imgRef}
-                alt="Crop me"
-                src={imageSrc}
-                style={{
-                  transform: `scale(${scale}) rotate(${rotate}deg)`,
-                  maxHeight: "400px",
-                  maxWidth: "100%",
-                }}
-                onLoad={onImageLoad}
-              />
+                <img
+                  ref={imgRef}
+                  alt="Crop me"
+                  src={imageSrc}
+                  style={{
+                    maxHeight: "400px",
+                    maxWidth: "100%",
+                  }}
+                  onLoad={onImageLoad}
+                />
             </ReactCrop>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                Zoom:
-                <input
-                  type="range"
-                  min="0.5"
-                  max="3"
-                  step="0.1"
-                  value={scale}
-                  onChange={(e) => setScale(Number(e.target.value))}
-                  className="w-32"
-                />
-                <span className="text-xs text-gray-500">
-                  {Math.round(scale * 100)}%
-                </span>
-              </label>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                Rotate:
-                <input
-                  type="range"
-                  min="-180"
-                  max="180"
-                  step="1"
-                  value={rotate}
-                  onChange={(e) => setRotate(Number(e.target.value))}
-                  className="w-32"
-                />
-                <span className="text-xs text-gray-500">{rotate}°</span>
-              </label>
-            </div>
-          </div>
         </div>
 
         <DialogFooter>

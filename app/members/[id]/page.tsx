@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import axios from "axios";
 import { Member } from "@/lib/types/members";
 import PageLayout from "@/components/layout/PageLayout";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 
 import PlayerHeader from "@/components/members/PlayerHeader";
@@ -20,6 +21,7 @@ import { ChevronLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type FilterType = "session" | "day" | "week" | "month";
+type SortOption = "time" | "sessionLength" | "moneyIn" | "moneyOut" | "jackpot" | "wonLess" | "points" | "gamesPlayed" | "gamesWon" | "coinIn" | "coinOut";
 
 export default function MemberDetailsPage() {
   const params = useParams();
@@ -30,6 +32,8 @@ export default function MemberDetailsPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedLicencee, setSelectedLicencee] = useState("All Licensees");
   const [filter, setFilter] = useState<FilterType>("session");
+  const [sortOption, setSortOption] = useState<SortOption>("time");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const isInitialMount = useRef(true);
 
   const memberId = params.id as string;
@@ -88,6 +92,19 @@ export default function MemberDetailsPage() {
     setCurrentPage(0); // Reset to first page when filter changes
   };
 
+  const handleSortToggle = () => {
+    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+  };
+
+  const handleColumnSort = (column: SortOption) => {
+    if (sortOption === column) {
+      handleSortToggle();
+    } else {
+      setSortOption(column);
+      setSortOrder("desc"); // Default to descending for new columns
+    }
+  };
+
   // Export functionality
   const handleExport = async (format: "csv" | "excel" = "csv") => {
     try {
@@ -118,8 +135,8 @@ export default function MemberDetailsPage() {
           "Machine ID",
           "Login Time",
           "Session Length",
-          "Handle",
-          "Cancelled Credits",
+          "Money In",
+          "Money Out",
           "Jackpot",
           "Won/Less",
           "Points",
@@ -140,8 +157,8 @@ export default function MemberDetailsPage() {
                 ? new Date(session.startTime as string).toLocaleString()
                 : "-",
               session.sessionLength || "-",
-              session.handle || 0,
-              session.cancelledCredits || 0,
+              session.moneyIn || 0,
+              session.moneyOut || 0,
               session.jackpot || 0,
               ((session.won as number) || 0) - ((session.bet as number) || 0),
               session.points || 0,
@@ -205,10 +222,14 @@ export default function MemberDetailsPage() {
 
     if (error || !member) {
       return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
-          <h2 className="text-red-800 font-semibold">Error</h2>
-          <p className="text-red-600">{error || "Member not found"}</p>
-        </div>
+        <NotFoundError
+          title="Member Not Found"
+          message={error || `The member with ID "${params.id}" could not be found.`}
+          resourceType="member"
+          showRetry={false}
+          customBackText="Back to Members"
+          customBackHref="/members"
+        />
       );
     }
 
@@ -279,6 +300,9 @@ export default function MemberDetailsPage() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
+          sortOption={sortOption}
+          sortOrder={sortOrder}
+          onSort={handleColumnSort}
         />
       </div>
     );

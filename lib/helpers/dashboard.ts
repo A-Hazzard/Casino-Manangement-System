@@ -47,6 +47,43 @@ export const loadGamingLocations = async (
 };
 
 /**
+ * Fetches dashboard totals using the dedicated totals API
+ */
+export const fetchDashboardTotals = async (
+  activeMetricsFilter: TimePeriod,
+  customDateRange: { startDate: Date; endDate: Date },
+  selectedLicencee: string | undefined,
+  setTotals: (totals: dashboardData | null) => void
+) => {
+  try {
+    let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter}`;
+    
+    if (activeMetricsFilter === "Custom" && customDateRange.startDate && customDateRange.endDate) {
+      url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
+    }
+    
+    if (selectedLicencee && selectedLicencee !== "all") {
+      url += `&licencee=${selectedLicencee}`;
+    }
+
+    const response = await axios.get(url);
+    const totals = response.data;
+
+    // Convert to dashboardData format
+    setTotals({
+      day: "",
+      time: "",
+      moneyIn: totals.moneyIn || 0,
+      moneyOut: totals.moneyOut || 0,
+      gross: totals.gross || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard totals:", error);
+    setTotals(null);
+  }
+};
+
+/**
  * Fetches metrics data based on active filter and licensee
  */
 export const fetchMetricsData = async (
@@ -58,10 +95,19 @@ export const fetchMetricsData = async (
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void
 ) => {
+  // Fetch totals using the dedicated API
+  await fetchDashboardTotals(
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    setTotals
+  );
+
+  // Fetch chart data using the existing method
   if (selectedLicencee) {
     await switchFilter(
       activeMetricsFilter,
-      setTotals,
+      () => {}, // Don't set totals here, we already did it above
       setChartData,
       activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
       activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
@@ -72,7 +118,7 @@ export const fetchMetricsData = async (
   } else {
     await switchFilter(
       activeMetricsFilter,
-      setTotals,
+      () => {}, // Don't set totals here, we already did it above
       setChartData,
       activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
       activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
@@ -92,6 +138,12 @@ export const fetchTopPerformingDataHelper = async (
   setTopPerformingData: (data: TopPerformingData[]) => void,
   setLoadingTopPerforming: (loading: boolean) => void
 ) => {
+  // Only fetch data if there's a valid filter
+  if (!activePieChartFilter) {
+    setTopPerformingData([]);
+    return;
+  }
+
   try {
     setLoadingTopPerforming(true);
     const data = await fetchTopPerformingData(activeTab, activePieChartFilter);

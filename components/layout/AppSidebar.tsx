@@ -50,6 +50,10 @@ export default function AppSidebar() {
   const { user } = useUserStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  
+  
+ 
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
@@ -141,21 +145,30 @@ export default function AppSidebar() {
     };
   }, [user?.emailAddress]);
 
-  // Handle click outside to close dropdown when collapsed on desktop
+  // Custom click outside handler - only for collapsed sidebar
   useEffect(() => {
+    if (!menuOpen || !collapsed) return;
+    
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuOpen && collapsed && typeof window !== 'undefined' && window.innerWidth >= 768 && triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInsideTrigger = triggerRef.current?.contains(target);
+      const isInsideDropdown = document.querySelector('[data-custom-dropdown]')?.contains(target);
+      
+      if (!isInsideTrigger && !isInsideDropdown) {
         setMenuOpen(false);
         setDropdownPosition(null);
       }
     };
 
-    if (menuOpen && collapsed && typeof window !== 'undefined' && window.innerWidth >= 768) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {}; // Return empty cleanup function when not adding listener
+    // Use a small delay to prevent immediate closing
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, [menuOpen, collapsed]);
 
   return (
@@ -238,6 +251,7 @@ export default function AppSidebar() {
           <button
             ref={triggerRef}
             onClick={(e) => {
+              e.stopPropagation(); // Prevent event bubbling to click-outside handler
               // Only position outside on desktop (md+) when collapsed
               if (collapsed && typeof window !== 'undefined' && window.innerWidth >= 768) {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -248,7 +262,7 @@ export default function AppSidebar() {
               } else {
                 setDropdownPosition(null);
               }
-              setMenuOpen((v) => !v);
+              
             }}
             className="w-full flex items-center gap-3 rounded-md px-2 py-2 bg-accent/30 hover:bg-accent/50 transition-colors text-left"
             aria-haspopup="menu"
@@ -281,10 +295,10 @@ export default function AppSidebar() {
               ▾
             </span>
           </button>
-          {menuOpen && (!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+          {menuOpen && (typeof window === 'undefined' || window.innerWidth < 768 || !collapsed) && (
             <div
-              role="menu"
-              className="absolute left-3 right-3 bottom-14 z-[60] rounded-md border bg-background p-1 shadow-md"
+              data-custom-dropdown
+              className="absolute left-3 right-3 bottom-14 z-[60] rounded-md border bg-white p-1 shadow-lg"
             >
               <div className="flex items-center gap-3 px-2 py-2">
                 <div className="h-8 w-8 rounded-full overflow-hidden bg-muted shrink-0">
@@ -298,18 +312,17 @@ export default function AppSidebar() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">
+                  <div className="text-sm font-medium truncate text-gray-900">
                     {displayName}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
+                  <div className="text-xs text-gray-600 truncate">
                     {email}
                   </div>
                 </div>
               </div>
-              <div className="my-1 h-px bg-border" />
+              <div className="my-1 h-px bg-gray-200" />
               <button
-                role="menuitem"
-                className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 onClick={() => {
                   setMenuOpen(false);
                   setProfileOpen(true);
@@ -318,8 +331,7 @@ export default function AppSidebar() {
                 Account
               </button>
               <button
-                role="menuitem"
-                className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 onClick={() => {
                   setMenuOpen(false);
                   logoutUser();
@@ -332,7 +344,9 @@ export default function AppSidebar() {
         </div>
         <ProfileModal
           open={profileOpen}
-          onClose={() => setProfileOpen(false)}
+          onClose={() => {
+            setProfileOpen(false);
+          }}
         />
       </div>
     </SidebarContainer>
@@ -351,11 +365,11 @@ export default function AppSidebar() {
       </div>
     )}
     
-    {/* Profile dropdown for collapsed sidebar - positioned outside sidebar on desktop only */}
+    {/* Custom Profile dropdown for collapsed sidebar - positioned outside sidebar on desktop only */}
     {collapsed && menuOpen && dropdownPosition && typeof window !== 'undefined' && window.innerWidth >= 768 && (
       <div
-        role="menu"
-        className="fixed w-64 rounded-md border bg-background p-1 shadow-xl z-[99999]"
+        data-custom-dropdown
+        className="fixed w-64 rounded-md border bg-white p-1 shadow-xl z-[99999]"
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`
@@ -373,18 +387,17 @@ export default function AppSidebar() {
             />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium truncate">
+            <div className="text-sm font-medium truncate text-gray-900">
               {displayName}
             </div>
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="text-xs text-gray-600 truncate">
               {email}
             </div>
           </div>
         </div>
-        <div className="my-1 h-px bg-border" />
+        <div className="my-1 h-px bg-gray-200" />
         <button
-          role="menuitem"
-          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           onClick={() => {
             setMenuOpen(false);
             setProfileOpen(true);
@@ -393,8 +406,7 @@ export default function AppSidebar() {
           Account
         </button>
         <button
-          role="menuitem"
-          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+          className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           onClick={() => {
             setMenuOpen(false);
             logoutUser();
@@ -402,7 +414,7 @@ export default function AppSidebar() {
         >
           Log out
         </button>
-        <div className="absolute right-full top-4 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-border"></div>
+        <div className="absolute right-full top-4 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-gray-200"></div>
       </div>
     )}
   </>

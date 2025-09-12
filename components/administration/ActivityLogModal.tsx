@@ -129,7 +129,26 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
   const groups: { [key: string]: ActivityLog[] } = {};
 
   activities.forEach((activity) => {
-    const date = new Date(activity.timestamp);
+    // Safely parse the timestamp with validation
+    const timestamp = activity.timestamp;
+    let date: Date;
+    
+    if (timestamp instanceof Date) {
+      date = timestamp;
+    } else if (typeof timestamp === 'string') {
+      date = new Date(timestamp);
+    } else {
+      // Fallback to current date if timestamp is invalid
+      console.warn('Invalid timestamp for activity:', activity);
+      date = new Date();
+    }
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date for activity:', activity);
+      date = new Date(); // Fallback to current date
+    }
+
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -154,9 +173,26 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
     entries: entries.map((log) => {
       const action = log.action || log.actionType || "unknown";
       const { icon, bg } = getActionIcon(action);
+      
+      // Safely parse timestamp for time display
+      let logDate: Date;
+      if (log.timestamp instanceof Date) {
+        logDate = log.timestamp;
+      } else if (typeof log.timestamp === 'string') {
+        logDate = new Date(log.timestamp);
+      } else {
+        logDate = new Date();
+      }
+
+      // Validate the date before formatting
+      if (isNaN(logDate.getTime())) {
+        console.warn('Invalid timestamp for log entry:', log);
+        logDate = new Date();
+      }
+
       return {
         id: log._id?.toString() || Math.random().toString(),
-        time: format(new Date(log.timestamp), "h:mm a"),
+        time: format(logDate, "h:mm a"),
         type: action.toLowerCase(),
         icon,
         iconBg: bg,

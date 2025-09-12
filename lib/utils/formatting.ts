@@ -1,20 +1,43 @@
 /**
- * Formats a number as currency with dollar sign and commas
+ * Formats a number as currency with smart decimal handling.
+ * Hides .00 decimals but shows .01 and above.
  */
 export function formatCurrency(value: number): string {
+  if (isNaN(value)) {
+    return "$0";
+  }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  
   return value.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   });
 }
 
 /**
- * Formats a number with commas
+ * Formats a number with smart decimal handling and commas.
+ * Hides .00 decimals but shows .01 and above.
  */
 export function formatNumber(value: number): string {
-  return value.toLocaleString("en-US");
+  if (isNaN(value)) {
+    return "0";
+  }
+  
+  // Check if the value has meaningful decimal places
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
+  });
 }
 
 /**

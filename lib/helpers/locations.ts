@@ -20,6 +20,14 @@ export async function fetchLocationAndCabinets(
   timePeriod?: string
 ): Promise<{ name: string; cabinets: Cabinet[] }> {
   try {
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      console.warn(
+        "⚠️ No timePeriod provided to fetchLocationAndCabinets, returning empty cabinets"
+      );
+      return { name: "Location", cabinets: [] };
+    }
+
     // Fetch location details
     const locationRes = await axios.get(
       `/api/locations/${locationId}?basicInfo=true`
@@ -31,7 +39,7 @@ export async function fetchLocationAndCabinets(
 
     // Fetch cabinets for the location
     const params: Record<string, string> = {
-      timePeriod: timePeriod || "today",
+      timePeriod: timePeriod,
     };
     if (licencee) params.licencee = licencee;
     const cabinetsRes = await axios.get(`/api/locations/${locationId}`, {
@@ -242,13 +250,15 @@ export async function fetchLocationDetailsById(
     if (!locationData) {
       // Location not found in current licensee's locations
       // This could mean the location was deleted, moved to another licensee, or doesn't exist
-      console.warn(`Location ${locationId} not found in current licensee's locations`);
+      console.warn(
+        `Location ${locationId} not found in current licensee's locations`
+      );
       return {
         name: "Location Not Found",
         data: null,
       };
     }
-    
+
     return {
       name: locationData.name || locationData.locationName || "Location",
       data: locationData,
@@ -284,10 +294,14 @@ export const fetchLocationsData = async (
     if (licensee) params.licencee = licensee;
     if (filters) params.machineTypeFilter = filters;
 
-    if (customDateRange?.from && customDateRange?.to) {
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
-      delete params.timePeriod;
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
     }
 
     const response = await axios.get("/api/locationAggregation", { params });
@@ -328,10 +342,14 @@ export const searchLocations = async (
     if (licensee) params.licensee = licensee;
     if (filters) params.filters = filters;
 
-    if (customDateRange?.from && customDateRange?.to) {
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
-      delete params.timePeriod;
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
     }
 
     const response = await axios.get("/api/locations/search", { params });
@@ -370,6 +388,74 @@ export const searchAllLocations = async (
  * @param licencee - (Optional) Licencee filter.
  * @returns Promise resolving to location metrics array with machine and financial data.
  */
+/**
+ * Fetches aggregated location data with financial metrics for the locations page
+ * @param timePeriod - Time period filter
+ * @param licensee - Licensee filter
+ * @param filterString - Filter string for SMIB/Local Server filters
+ * @param dateRange - Custom date range for Custom time period
+ * @returns Promise resolving to an array of aggregated locations
+ */
+export async function fetchAggregatedLocationsData(
+  timePeriod: TimePeriod,
+  licensee?: string,
+  filterString?: string,
+  dateRange?: { from: Date; to: Date }
+): Promise<AggregatedLocation[]> {
+  try {
+    // Construct the URL with appropriate parameters
+    let url = `/api/reports/locations`;
+
+    // Add query parameters if they exist
+    const queryParams = [];
+    if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+    if (timePeriod)
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    if (filterString)
+      queryParams.push(`filters=${encodeURIComponent(filterString)}`);
+
+    // Always show all locations, even those with 0 meters (like cabinets page)
+    queryParams.push(`showAllLocations=true`);
+
+    // Handle custom date range
+    if (timePeriod === "Custom" && dateRange?.from && dateRange?.to) {
+      queryParams.push(`startDate=${dateRange.from.toISOString()}`);
+      queryParams.push(`endDate=${dateRange.to.toISOString()}`);
+    }
+
+    // Append query string if we have parameters
+    if (queryParams.length > 0) {
+      url += `?${queryParams.join("&")}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: getAuthHeaders(),
+    });
+
+    if (response.status !== 200) {
+      console.error(`❌ API error (${response.status}):`, response.data);
+      return [];
+    }
+
+    // Handle paginated response structure
+    const responseData = response.data;
+    if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+      // Paginated response: { data: [...], pagination: {...} }
+      return responseData.data || [];
+    } else if (Array.isArray(responseData)) {
+      // Direct array response
+      return responseData;
+    } else {
+      // Fallback for unexpected structure
+      console.warn('Unexpected API response structure:', responseData);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching locations data:", error);
+    return [];
+  }
+}
+
 export async function fetchLocationMetricsForMap(
   timePeriod: string,
   licencee?: string

@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Header from "@/components/layout/Header";
-
-import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 
 export default function NotFound() {
@@ -52,20 +50,14 @@ function NotFoundContent() {
             hideOptions={true}
             hideLicenceeFilter={true} // Hide licensee filter on 404
           />
-          <div className="text-center">
-            <h1 className="text-6xl font-bold text-buttonActive mb-4">404</h1>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Page Not Found
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Sorry, the page you are looking for does not exist.
-            </p>
-            <Link href="/dashboard">
-              <Button className="bg-buttonActive hover:bg-buttonActive/90">
-                Go to Dashboard
-              </Button>
-            </Link>
-          </div>
+          <NotFoundError
+            title="Page Not Found"
+            message="Sorry, the page you are looking for does not exist."
+            resourceType="page"
+            showRetry={false}
+            customBackText="Go to Dashboard"
+            customBackHref="/"
+          />
         </main>
       </div>
     </>

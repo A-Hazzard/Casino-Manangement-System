@@ -300,6 +300,9 @@ export type CollectionReportFiltersProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  selectedFilters: string[];
+  onFilterChange: (filter: string, checked: boolean) => void;
+  onClearFilters: () => void;
   isSearching: boolean;
 };
 

@@ -15,62 +15,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Users,
-  Activity,
-  MapPin,
+  // TrendingUp,
+  // TrendingDown,
+  // DollarSign,
+  // Users,
+  // Activity,
+  // MapPin,
 } from "lucide-react";
 import LocationMap from "@/components/reports/common/LocationMap";
+import { 
+  DashboardKPISkeleton, 
+  DashboardChartsSkeleton, 
+  LocationMapSkeleton 
+} from "@/components/ui/skeletons/ReportsSkeletons";
 
-// Sample KPI data
-const sampleKpiMetrics = [
-  {
-    title: "Total Revenue",
-    value: 2450000,
-    previousValue: 2280000,
-    format: "currency" as const,
-    trend: "up" as const,
-    change: 7.5,
-    icon: DollarSign,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-  },
-  {
-    title: "Active Players",
-    value: 1847,
-    previousValue: 1693,
-    format: "number" as const,
-    trend: "up" as const,
-    change: 9.1,
-    icon: Users,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-  },
-  {
-    title: "Games Played",
-    value: 45678,
-    previousValue: 42341,
-    format: "number" as const,
-    trend: "up" as const,
-    change: 7.9,
-    icon: Activity,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-  },
-  {
-    title: "Active Locations",
-    value: 12,
-    previousValue: 11,
-    format: "number" as const,
-    trend: "up" as const,
-    change: 9.1,
-    icon: MapPin,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50",
-  },
-];
+// TODO: Replace with actual KPI data from MongoDB
+const sampleKpiMetrics: unknown[] = [];
 
 const topPerformingMachines = [
   {
@@ -110,69 +70,8 @@ const topPerformingMachines = [
   },
 ];
 
-// Sample location data for the dashboard map
-const dashboardLocations = [
-  {
-    locationId: "LOC001",
-    locationName: "Main Casino Floor",
-    coordinates: { lat: 40.7128, lng: -74.006 },
-    metrics: {
-      grossRevenue: 108750,
-      totalDrop: 875000,
-      totalCancelledCredits: 65000,
-      actualHoldPercentage: 8.7,
-    },
-    onlineMachines: 85,
-    totalMachines: 90,
-    performance: "excellent" as const,
-    sasEnabled: true,
-  },
-  {
-    locationId: "LOC002",
-    locationName: "VIP Gaming Area",
-    coordinates: { lat: 40.7589, lng: -73.9851 },
-    metrics: {
-      grossRevenue: 76230,
-      totalDrop: 623000,
-      totalCancelledCredits: 45000,
-      actualHoldPercentage: 8.6,
-    },
-    onlineMachines: 42,
-    totalMachines: 45,
-    performance: "good" as const,
-    sasEnabled: true,
-  },
-  {
-    locationId: "LOC003",
-    locationName: "Sports Bar Gaming",
-    coordinates: { lat: 40.7282, lng: -73.7949 },
-    metrics: {
-      grossRevenue: 45360,
-      totalDrop: 396900,
-      totalCancelledCredits: 28000,
-      actualHoldPercentage: 8.0,
-    },
-    onlineMachines: 28,
-    totalMachines: 32,
-    performance: "average" as const,
-    sasEnabled: false,
-  },
-  {
-    locationId: "LOC004",
-    locationName: "Hotel Gaming Lounge",
-    coordinates: { lat: 40.6892, lng: -74.0445 },
-    metrics: {
-      grossRevenue: 32800,
-      totalDrop: 287500,
-      totalCancelledCredits: 18000,
-      actualHoldPercentage: 7.8,
-    },
-    onlineMachines: 22,
-    totalMachines: 25,
-    performance: "average" as const,
-    sasEnabled: false,
-  },
-];
+// TODO: Replace with actual location data from MongoDB
+const dashboardLocations: unknown[] = [];
 
 export default function DashboardTab() {
   const {
@@ -185,7 +84,7 @@ export default function DashboardTab() {
 
 
 
-  const [timePeriod, setTimePeriod] = useState("last7days");
+  const [timePeriod, setTimePeriod] = useState("7d");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle location selection from map
@@ -205,17 +104,9 @@ export default function DashboardTab() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Loading KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-32 bg-gray-200 rounded-lg animate-pulse"
-            />
-          ))}
-        </div>
-        {/* Loading Chart */}
-        <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
+        <DashboardKPISkeleton />
+        <DashboardChartsSkeleton />
+        <LocationMapSkeleton />
       </div>
     );
   }
@@ -289,7 +180,13 @@ export default function DashboardTab() {
 
       {/* KPI Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        {sampleKpiMetrics.map((metric, index) => (
+        {/* TODO: Replace with actual KPI metrics from MongoDB */}
+        {sampleKpiMetrics.length === 0 && (
+          <div className="col-span-full text-center py-8 text-muted-foreground">
+            No KPI metrics available - MongoDB implementation pending
+          </div>
+        )}
+        {/* {sampleKpiMetrics.map((metric, index) => (
           <motion.div
             key={metric.title}
             initial={{ opacity: 0, y: 20 }}
@@ -334,7 +231,7 @@ export default function DashboardTab() {
               </CardContent>
             </Card>
           </motion.div>
-        ))}
+        ))} */}
       </div>
 
       {/* Two Column Layout */}
@@ -351,24 +248,18 @@ export default function DashboardTab() {
           </CardHeader>
           <CardContent>
             <div className="h-64 rounded-lg overflow-hidden border">
-              <LocationMap
-                locations={dashboardLocations.map((location) => ({
-                  id: location.locationId,
-                  name: location.locationName,
-                  coordinates: location.coordinates,
-                  performance:
-                    location.performance === "excellent"
-                      ? 95
-                      : location.performance === "good"
-                      ? 80
-                      : location.performance === "average"
-                      ? 65
-                      : 50,
-                  revenue: location.metrics.grossRevenue,
-                }))}
-                onLocationSelect={handleLocationSelect}
-                compact={true}
-              />
+              {/* TODO: Replace with actual location data from MongoDB */}
+              {dashboardLocations.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No location data available - MongoDB implementation pending
+                </div>
+              ) : (
+                <LocationMap
+                  locations={[]}
+                  onLocationSelect={handleLocationSelect}
+                  compact={true}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
