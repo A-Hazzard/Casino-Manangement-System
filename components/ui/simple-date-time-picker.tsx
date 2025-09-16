@@ -19,6 +19,7 @@ export function SimpleDateTimePicker({
   disabled,
 }: SimpleDateTimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+
   const [tempDate, setTempDate] = React.useState<Date | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -60,6 +61,13 @@ export function SimpleDateTimePicker({
   const handleCancel = () => {
     setIsOpen(false);
     setTempDate(null);
+
+
+  const handleDateChange = (newDate: Date | null) => {
+    if (newDate) {
+      setDate(newDate);
+    }
+    setIsOpen(false);
   };
 
   const formatDate = (date: Date | undefined) => {
@@ -75,7 +83,10 @@ export function SimpleDateTimePicker({
   };
 
   return (
+
     <div className="relative" ref={containerRef}>
+
+    <div className="relative">
       <Button
         variant="outline"
         className={cn(
@@ -92,7 +103,10 @@ export function SimpleDateTimePicker({
       {isOpen && (
         <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
           <DatePicker
+
             selected={tempDate || date || new Date()}
+
+            selected={date || new Date()}
             onChange={handleDateChange}
             showTimeSelect
             timeFormat="HH:mm"
@@ -101,6 +115,7 @@ export function SimpleDateTimePicker({
             inline
             disabled={disabled}
           />
+
           <div className="flex justify-end gap-2 p-3 border-t border-gray-200">
             <Button
               variant="outline"
@@ -118,6 +133,7 @@ export function SimpleDateTimePicker({
               Go
             </Button>
           </div>
+
         </div>
       )}
     </div>

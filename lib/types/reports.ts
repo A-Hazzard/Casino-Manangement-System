@@ -799,6 +799,7 @@ export type TopLocationData = {
   locationName: string;
 };
 
+
 // Customer demographics and loyalty tier types for reports
 export type CustomerDemographic = {
   ageGroup: string;
@@ -846,3 +847,4 @@ export type LocationForMovement = {
   id: string;
   name: string;
 };
+

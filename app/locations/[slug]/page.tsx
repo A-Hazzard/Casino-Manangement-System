@@ -53,12 +53,27 @@ export default function LocationPage() {
   const router = useRouter();
   const locationId = params.slug as string;
 
+
   const {
     selectedLicencee,
     setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+
+  // State for tracking date filter initialization
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // Detect when date filter is properly initialized
+  useEffect(() => {
+    if (activeMetricsFilter && !dateFilterInitialized) {
+      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter, dateFilterInitialized]);
+
+  const { selectedLicencee, setSelectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
 
   // State for tracking date filter initialization
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
@@ -106,10 +121,14 @@ export default function LocationPage() {
 
   // Calculate machine status from cabinet data
   const machineStats = {
+
     onlineMachines: allCabinets.filter((cabinet) => cabinet.online === true)
       .length,
     offlineMachines: allCabinets.filter((cabinet) => cabinet.online === false)
       .length,
+
+    onlineMachines: allCabinets.filter(cabinet => cabinet.online === true).length,
+    offlineMachines: allCabinets.filter(cabinet => cabinet.online === false).length,
   };
 
   // ====== Filter Cabinets by search and sort ======
@@ -132,10 +151,13 @@ export default function LocationPage() {
       try {
         // Only proceed if we have a valid activeMetricsFilter and it's been properly initialized
         if (!activeMetricsFilter || !dateFilterInitialized) {
+
           console.warn(
             "⚠️ No activeMetricsFilter or not initialized, skipping data fetch",
             { activeMetricsFilter, dateFilterInitialized }
           );
+
+          console.warn("⚠️ No activeMetricsFilter or not initialized, skipping data fetch", { activeMetricsFilter, dateFilterInitialized });
           setAllCabinets([]);
           setError("No time period filter selected");
           setLoading(false);
@@ -195,9 +217,12 @@ export default function LocationPage() {
         try {
           // Only fetch if we have a valid activeMetricsFilter - no fallback
           if (!activeMetricsFilter) {
+
             console.warn(
               "⚠️ No activeMetricsFilter available, skipping cabinet fetch"
             );
+
+            console.warn("⚠️ No activeMetricsFilter available, skipping cabinet fetch");
             setAllCabinets([]);
             setError("No time period filter selected");
             return;
@@ -210,9 +235,12 @@ export default function LocationPage() {
             selectedLicencee,
             activeMetricsFilter, // Pass the selected filter directly
             undefined, // Don't pass searchTerm (4th parameter)
+
             activeMetricsFilter === "Custom" && customDateRange
               ? { from: customDateRange.startDate, to: customDateRange.endDate }
               : undefined // Only pass customDateRange when filter is "Custom"
+
+            activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
           );
           console.warn(
             `✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`
@@ -231,6 +259,7 @@ export default function LocationPage() {
     };
 
     fetchData();
+
   }, [
     locationId,
     selectedLicencee,
@@ -239,6 +268,8 @@ export default function LocationPage() {
     dateFilterInitialized,
     router,
   ]);
+
+  }, [locationId, selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, router]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -317,10 +348,13 @@ export default function LocationPage() {
       try {
         // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
         if (!activeMetricsFilter || !dateFilterInitialized) {
+
           console.warn(
             "⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch",
             { activeMetricsFilter, dateFilterInitialized }
           );
+
+          console.warn("⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch", { activeMetricsFilter, dateFilterInitialized });
           setAllCabinets([]);
           setError("No time period filter selected");
           return;
@@ -331,9 +365,12 @@ export default function LocationPage() {
           selectedLicencee,
           activeMetricsFilter,
           undefined, // Don't pass searchTerm
+
           activeMetricsFilter === "Custom" && customDateRange
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined // Only pass customDateRange when filter is "Custom"
+
+          activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
         );
         setAllCabinets(cabinetsData);
         setError(null); // Clear any previous errors on successful refresh
@@ -346,6 +383,7 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
+
   }, [
     selectedLicencee,
     activeMetricsFilter,
@@ -353,6 +391,8 @@ export default function LocationPage() {
     dateFilterInitialized,
     locationId,
   ]);
+
+  }, [selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, locationId]);
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (newLocationId: string) => {
@@ -362,6 +402,9 @@ export default function LocationPage() {
   };
 
   const { openCabinetModal } = useNewCabinetStore();
+
+
+
 
   return (
     <>
@@ -396,6 +439,9 @@ export default function LocationPage() {
               </h1>
             </div>
 
+
+
+            
             {/* Action buttons - stacked on mobile */}
             <div className="flex gap-2">
               <RefreshButton
@@ -608,6 +654,7 @@ export default function LocationPage() {
 
           {/* Mobile: Location Dropdown */}
           <div className="relative w-full" ref={locationDropdownRef}>
+
             <CustomSelect
               value={selectedLocation || locationId || ""}
               onValueChange={handleLocationChangeInPlace}
@@ -619,13 +666,52 @@ export default function LocationPage() {
               disabled={loading || cabinetsLoading || refreshing}
               className="w-full"
               triggerClassName={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+
+            <Button
+              variant="outline"
+              className={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
                 loading || cabinetsLoading || refreshing
                   ? "opacity-50 cursor-not-allowed"
                   : ""
               }`}
+
               searchable={true}
               emptyMessage="No locations found"
             />
+
+              disabled={loading || cabinetsLoading || refreshing}
+              onClick={() =>
+                !(loading || cabinetsLoading || refreshing) &&
+                setIsLocationDropdownOpen(!isLocationDropdownOpen)
+              }
+            >
+              <span className="truncate">
+                {selectedLocation || locationName || "Select Location"}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${
+                  isLocationDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </Button>
+            {isLocationDropdownOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200">
+                <div className="max-h-60 overflow-y-auto">
+                  {locations.map((loc) => (
+                    <button
+                      key={loc.id}
+                      className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        locationId === loc.id ? "bg-gray-100 font-medium" : ""
+                      }`}
+                      onClick={() => handleLocationChangeInPlace(loc.id)}
+                    >
+                      {loc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -879,12 +965,17 @@ export default function LocationPage() {
           <div className="mt-10 text-center text-red-500">{error}</div>
         ) : null}
 
+
         <NewCabinetModal
           currentLocationName={locationName}
           onCreated={handleRefresh}
         />
       </PageLayout>
 
+
+        <NewCabinetModal onCreated={handleRefresh} />
+      </PageLayout>
+      
       {/* Cabinet Action Modals */}
       <EditCabinetModal onCabinetUpdated={handleRefresh} />
       <DeleteCabinetModal onCabinetDeleted={handleRefresh} />

@@ -26,7 +26,9 @@ import RefreshButton from "@/components/ui/RefreshButton";
 import { RefreshCw } from "lucide-react";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
 import { NotFoundError, NetworkError } from "@/components/ui/errors";
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 // Extracted skeleton and error components
 import {
@@ -743,13 +745,16 @@ export default function CabinetDetailPage() {
                   animate="visible"
                   exit="hidden"
                 >
+
                   <TooltipProvider delayDuration={100}>
+
                   {/* Communication Mode */}
                   <motion.div variants={itemVariants}>
                     <h3 className="font-medium mb-2 text-foreground">
                       Communication Mode
                     </h3>
                     <div className="flex">
+
                       <Tooltip delayDuration={50}>
                         <TooltipTrigger asChild>
                           <div className="relative">
@@ -786,6 +791,24 @@ export default function CabinetDetailPage() {
                           <p>Under maintenance</p>
                         </TooltipContent>
                       </Tooltip>
+
+                      <select
+                        className="w-60 border border-border rounded p-2 mr-2"
+                        value={communicationMode}
+                        onChange={(e) => setCommunicationMode(e.target.value)}
+                      >
+                        <option value="sas">sas</option>
+                        <option value="non sas">non sas</option>
+                        <option value="IGT">IGT</option>
+                      </select>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button className="bg-buttonActive hover:bg-buttonActive/90 text-container">
+                          UPDATE
+                        </Button>
+                      </motion.div>
                     </div>
                   </motion.div>
 
@@ -795,6 +818,7 @@ export default function CabinetDetailPage() {
                       Firmware Update
                     </h3>
                     <div className="flex">
+
                       <Tooltip delayDuration={50}>
                         <TooltipTrigger asChild>
                           <div className="relative">
@@ -849,6 +873,32 @@ export default function CabinetDetailPage() {
                           <p>Under maintenance</p>
                         </TooltipContent>
                       </Tooltip>
+
+                      <select
+                        className="w-full border border-border rounded p-2 mr-2"
+                        value={firmwareVersion}
+                        onChange={(e) => setFirmwareVersion(e.target.value)}
+                      >
+                        <option value="Cloudy v1.0">Cloudy v1.0</option>
+                        <option value="Cloudy v1.0.4">Cloudy v1.0.4</option>
+                        <option value="Cloudy v1.0.4.1">Cloudy v1.0.4.1</option>
+                      </select>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button className="ml-auto bg-muted hover:bg-accent text-foreground border border-border">
+                          ⟳
+                        </Button>
+                      </motion.div>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button className="ml-2 bg-buttonActive hover:bg-buttonActive/90 text-container">
+                          UPDATE
+                        </Button>
+                      </motion.div>
                     </div>
                   </motion.div>
 
@@ -857,6 +907,7 @@ export default function CabinetDetailPage() {
                     variants={itemVariants}
                     className="flex flex-wrap gap-2 md:gap-4"
                   >
+
                     <Tooltip delayDuration={50}>
                       <TooltipTrigger asChild>
                         <motion.div
@@ -914,6 +965,40 @@ export default function CabinetDetailPage() {
                         <p>Under maintenance</p>
                       </TooltipContent>
                     </Tooltip>
+
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent w-full md:w-auto"
+                      >
+                        RESTART
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="border-orangeHighlight text-orangeHighlight hover:bg-accent w-full md:w-auto"
+                      >
+                        UNLOCK MACHINE
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="border-destructive text-destructive hover:bg-accent w-full md:w-auto"
+                      >
+                        LOCK MACHINE
+                      </Button>
+                    </motion.div>
                   </motion.div>
 
                   {/* Apply to all checkbox */}
@@ -921,6 +1006,7 @@ export default function CabinetDetailPage() {
                     variants={itemVariants}
                     className="flex items-center"
                   >
+
                     <Tooltip delayDuration={50}>
                       <TooltipTrigger asChild>
                         <div className="relative">
@@ -937,6 +1023,9 @@ export default function CabinetDetailPage() {
                       </TooltipContent>
                     </Tooltip>
                     <label htmlFor="applyToAll" className="text-sm text-gray-500">
+
+                    <input type="checkbox" id="applyToAll" className="mr-2" />
+                    <label htmlFor="applyToAll" className="text-sm">
                       Apply to all SMIBs at this location (
                       {cabinet?.locationName || "Unknown Location"})
                     </label>
@@ -1071,7 +1160,9 @@ export default function CabinetDetailPage() {
                       </div>
                     </div>
                   </motion.div>
+
                   </TooltipProvider>
+
                 </motion.div>
               )}
             </AnimatePresence>

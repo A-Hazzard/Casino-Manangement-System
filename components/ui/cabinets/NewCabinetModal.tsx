@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NewCabinetFormData } from "@/lib/types/cabinets";
 import { createCabinet } from "@/lib/helpers/cabinets";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
+
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
@@ -24,12 +25,19 @@ import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
 type NewCabinetModalProps = {
   locations?: { _id: string; name: string }[];
   currentLocationName?: string;
+
+import { toast } from "sonner";
+
+type NewCabinetModalProps = {
+  locations?: { _id: string; name: string }[];
   onCreated?: () => void;
 };
 
 export const NewCabinetModal = ({
   locations,
+
   currentLocationName,
+
   onCreated,
 }: NewCabinetModalProps) => {
   const { isCabinetModalOpen, locationId, closeCabinetModal } =
@@ -37,33 +45,47 @@ export const NewCabinetModal = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
   const [smibBoardError, setSmibBoardError] = useState<string>("");
   const [serialNumberError, setSerialNumberError] = useState<string>("");
   const [collectionTime, setCollectionTime] = useState<Date>(new Date());
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
+  const [serialNumberError, setSerialNumberError] = useState<string>("");
+
   // Create activity logger for cabinet operations
   const cabinetLogger = createActivityLogger("machine");
 
+
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
+
+  // Serial number validation function
+  const validateSerialNumber = (value: string): string => {
     if (!value) return "";
 
     // Check length
     if (value.length !== 12) {
+
       return "SMIB Board must be exactly 12 characters long";
+
+      return "Serial number must be exactly 12 characters long";
     }
 
     // Check if it's hexadecimal and lowercase
     const hexPattern = /^[0-9a-f]+$/;
     if (!hexPattern.test(value)) {
+
       return "SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)";
+
+      return "Serial number must contain only lowercase hexadecimal characters (0-9, a-f)";
     }
 
     // Check if it ends with 0, 4, 8, or c
     const lastChar = value.charAt(11);
     if (!["0", "4", "8", "c"].includes(lastChar)) {
+
       return "SMIB Board must end with 0, 4, 8, or c";
     }
 
@@ -76,6 +98,8 @@ export const NewCabinetModal = ({
 
     if (value.length < 3) {
       return "Serial number must be at least 3 characters long";
+
+      return "Serial number must end with 0, 4, 8, or c";
     }
 
     return ""; // No error
@@ -112,6 +136,7 @@ export const NewCabinetModal = ({
 
   useEffect(() => {
     if (isCabinetModalOpen) {
+
       // Reset collection time to current date/time when modal opens
       const currentDateTime = new Date();
       setCollectionTime(currentDateTime);
@@ -138,6 +163,7 @@ export const NewCabinetModal = ({
       };
 
       loadManufacturers();
+
 
       gsap.fromTo(
         modalRef.current,
@@ -180,11 +206,18 @@ export const NewCabinetModal = ({
     try {
       setLoading(true);
 
+
       // Validate SMIB Board before submission
       const smibError = validateSmibBoard(formData.smibBoard);
       if (smibError) {
         setSmibBoardError(smibError);
         toast.error("Please fix the SMIB Board validation errors");
+
+      // Validate serial number before submission
+      const serialError = validateSerialNumber(formData.serialNumber);
+      if (serialError) {
+        setSerialNumberError(serialError);
+        toast.error("Please fix the serial number validation errors");
         setLoading(false);
         return;
       }
@@ -234,8 +267,11 @@ export const NewCabinetModal = ({
         lastMetersOut: "0",
       },
     });
+
     setCollectionTime(new Date()); // Reset to current date/time
     setSmibBoardError(""); // Clear any validation errors
+
+    setSerialNumberError(""); // Clear any validation errors
   };
 
   // Define a consistent change handler to fix the typing issues
@@ -243,8 +279,12 @@ export const NewCabinetModal = ({
     field: keyof Omit<NewCabinetFormData, "collectionSettings">,
     value: string
   ) => {
+
     // Special handling for SMIB Board with validation
     if (field === "smibBoard") {
+
+    // Special handling for serial number with validation
+    if (field === "serialNumber") {
       // Convert to lowercase and remove any non-hex characters
       const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, "");
 
@@ -252,6 +292,7 @@ export const NewCabinetModal = ({
       const limitedValue = cleanValue.slice(0, 12);
 
       // Validate the value
+
       const error = validateSmibBoard(limitedValue);
       setSmibBoardError(error);
 
@@ -265,11 +306,16 @@ export const NewCabinetModal = ({
 
       // Validate the serial number
       const error = validateSerialNumber(upperCaseValue);
+
+      const error = validateSerialNumber(limitedValue);
       setSerialNumberError(error);
 
       setFormData((prev: NewCabinetFormData) => ({
         ...prev,
+
         [field]: upperCaseValue,
+
+        [field]: limitedValue,
       }));
     } else {
       setFormData((prev: NewCabinetFormData) => ({
@@ -343,6 +389,7 @@ export const NewCabinetModal = ({
             </Button>
           </div>
 
+
           {/* Form Content */}
           <div className="p-6">
             <div className="space-y-6">
@@ -393,7 +440,53 @@ export const NewCabinetModal = ({
                       className="bg-container border-border h-10"
                     />
                   </div>
+
+
+          {/* Form Content */}
+          <div className="p-6">
+            <div className="space-y-6">
+              {/* Serial Number & Installed Game */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    Serial Number <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="serialNumber"
+                    placeholder="12-character hex (ends with 0,4,8,c)"
+                    value={formData.serialNumber}
+                    onChange={(e) =>
+                      handleInputChange("serialNumber", e.target.value)
+                    }
+                    className={`bg-container border-border ${
+                      serialNumberError ? "border-red-500" : ""
+                    }`}
+                    maxLength={12}
+                  />
+                  {serialNumberError && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {serialNumberError}
+                    </p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Must be 12 characters, lowercase hex, ending with 0, 4, 8,
+                    or c
+                  </p>
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    Installed Game <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="game"
+                    placeholder="Enter Game Name"
+                    value={formData.game}
+                    onChange={(e) => handleInputChange("game", e.target.value)}
+                    className="bg-container border-border"
+                  />
+                </div>
+              </div>
+
 
                 {/* Game Type & Cabinet Type */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -495,6 +588,51 @@ export const NewCabinetModal = ({
                 {formData.isCronosMachine && (
                   <div>
                     <label className="text-sm font-medium text-buttonActive block mb-2">
+
+              {/* Game Type & Cronos Machine */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    Game Type <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={formData.gameType}
+                    onValueChange={(value) =>
+                      handleSelectChange("gameType", value)
+                    }
+                  >
+                    <SelectTrigger className="bg-container border-border">
+                      <SelectValue placeholder="Select Game Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Slot">Slot</SelectItem>
+                      <SelectItem value="Video Poker">Video Poker</SelectItem>
+                      <SelectItem value="Table Game">Table Game</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-y-0 pt-8">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isCronosMachine"
+                      checked={formData.isCronosMachine}
+                      onCheckedChange={handleCheckboxChange}
+                    />
+                    <label
+                      htmlFor="isCronosMachine"
+                      className="text-sm font-medium"
+                    >
+                      Cronos Machine
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accounting Denomination & Cabinet Type */}
+              <div className="grid grid-cols-2 gap-4">
+                {formData.isCronosMachine && (
+                  <div>
+                    <label className="text-sm font-medium text-buttonActive block mb-2">
                       Accounting Denomination (Only Cronos){" "}
                       <span className="text-red-500">*</span>
                     </label>
@@ -508,6 +646,7 @@ export const NewCabinetModal = ({
                           e.target.value
                         )
                       }
+
                       className="bg-container border-border h-10"
                     />
                   </div>
@@ -600,25 +739,39 @@ export const NewCabinetModal = ({
                 <div>
                   <label className="text-sm font-medium text-buttonActive block mb-2">
                     Status <span className="text-red-500">*</span>
+
+                      className="bg-container border-border"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    Cabinet Type <span className="text-red-500">*</span>
                   </label>
                   <Select
-                    value={formData.assetStatus}
+                    value={formData.cabinetType}
                     onValueChange={(value) =>
-                      handleSelectChange("assetStatus", value)
+                      handleSelectChange("cabinetType", value)
                     }
                   >
                     <SelectTrigger className="bg-container border-border">
-                      <SelectValue placeholder="Select Status" />
+                      <SelectValue placeholder="Select Cabinet Type" />
                     </SelectTrigger>
                     <SelectContent>
+
                       <SelectItem value="functional">Functional</SelectItem>
                       <SelectItem value="non_functional">
                         Non Functional
                       </SelectItem>
+
+                      <SelectItem value="Standing">Standing</SelectItem>
+                      <SelectItem value="Slant Top">Slant Top</SelectItem>
+                      <SelectItem value="Bar Top">Bar Top</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
 
               {/* Collection Settings */}
               <div className="border-t border-border pt-4 mt-4">
@@ -686,6 +839,152 @@ export const NewCabinetModal = ({
                         )
                       }
                       className="bg-container border-border h-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location & SMIB Board */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    Location <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={formData.gamingLocation}
+                    onValueChange={(value) =>
+                      handleSelectChange("gamingLocation", value)
+                    }
+                    disabled={!!locationId}
+                  >
+                    <SelectTrigger className="bg-container border-border">
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations && locations.length > 0 ? (
+                        locations.map((location) => (
+                          <SelectItem key={location._id} value={location._id}>
+                            {location.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-locations" disabled>
+                          No locations available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                    SMIB Board <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="smibBoard"
+                    placeholder="Enter Manufacturer Name"
+                    value={formData.smibBoard}
+                    onChange={(e) =>
+                      handleInputChange("smibBoard", e.target.value)
+                    }
+                    className="bg-container border-border"
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-sm font-medium text-buttonActive block mb-2">
+                  Status <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={formData.assetStatus}
+                  onValueChange={(value) =>
+                    handleSelectChange("assetStatus", value)
+                  }
+                >
+                  <SelectTrigger className="bg-container border-border">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Functional">Functional</SelectItem>
+                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                    <SelectItem value="Offline">Offline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Collection Settings */}
+              <div className="border-t border-border pt-4 mt-4">
+                <h3 className="text-sm font-medium text-buttonActive mb-4">
+                  Collection Settings
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Collection Report Multiplier
+                    </label>
+                    <Input
+                      id="multiplier"
+                      placeholder="Enter multiplier (default: 1)"
+                      value={formData.collectionSettings.multiplier}
+                      onChange={(e) =>
+                        handleCollectionSettingChange(
+                          "multiplier",
+                          e.target.value
+                        )
+                      }
+                      className="bg-container border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Last Collection Time
+                    </label>
+                    <Input
+                      id="lastCollection"
+                      type="datetime-local"
+                      value={formData.collectionSettings.lastCollectionTime}
+                      onChange={(e) =>
+                        handleCollectionSettingChange(
+                          "lastCollectionTime",
+                          e.target.value
+                        )
+                      }
+                      className="bg-container border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Last Meters In
+                    </label>
+                    <Input
+                      id="metersIn"
+                      placeholder="Enter last meters in"
+                      value={formData.collectionSettings.lastMetersIn}
+                      onChange={(e) =>
+                        handleCollectionSettingChange(
+                          "lastMetersIn",
+                          e.target.value
+                        )
+                      }
+                      className="bg-container border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Last Meters Out
+                    </label>
+                    <Input
+                      id="metersOut"
+                      placeholder="Enter last meters out"
+                      value={formData.collectionSettings.lastMetersOut}
+                      onChange={(e) =>
+                        handleCollectionSettingChange(
+                          "lastMetersOut",
+                          e.target.value
+                        )
+                      }
+                      className="bg-container border-border"
                     />
                   </div>
                 </div>

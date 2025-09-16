@@ -26,6 +26,7 @@ export async function updateCollection(
   updateData: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   const { data } = await axios.patch(`/api/collections/${collectionId}`, updateData);
+
   
   // The API returns { success: true, data: updatedCollection }
   // Extract the actual collection data from the response
@@ -34,5 +35,6 @@ export async function updateCollection(
   }
   
   // Fallback: if the response structure is different, return the data directly
+
   return data as CollectionDocument;
 }

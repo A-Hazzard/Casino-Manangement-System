@@ -8,6 +8,7 @@ import {
   itemVariants,
 } from "@/lib/constants/animationVariants";
 // import { BillValidatorTableV2 } from "./BillValidatorTableV2"; // Removed - using BillValidatorTableWithFilters instead
+
 // import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using BillValidatorSection instead
 import { BillValidatorSection } from "@/components/collectionReport/BillValidatorSection";
 
@@ -28,6 +29,8 @@ type MachineBillMetersData = {
   dollarTotal?: number;
   dollarTotalUnknown?: number;
 };
+
+import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters";
 import ActivityLogSkeleton from "./ActivityLogSkeleton";
 import { ActivityLogTable } from "./ActivityLogTable";
 import { CollectionHistoryTable } from "./CollectionHistoryTable";
@@ -418,6 +421,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   const [activityLogError, setActivityLogError] = useState<string | null>(null);
 
   // Separate date filter states for Activity Log and Bill Validator
+
   const [activityLogDateRange, setActivityLogDateRange] = useState<
     { from: Date; to: Date } | undefined
   >();
@@ -432,6 +436,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     { startTime: string; endTime: string } | undefined
   >();
 
+  const [activityLogDateRange, setActivityLogDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [activityLogTimePeriod, setActivityLogTimePeriod] = useState<TimePeriod>("7d");
+  const [billValidatorDateRange, setBillValidatorDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [billValidatorTimePeriod, setBillValidatorTimePeriod] = useState<TimePeriod>("7d");
+  const [billValidatorTimeRange, setBillValidatorTimeRange] = useState<{ startTime: string; endTime: string } | undefined>();
+
+
   // Convert billMeters data to bills array format
   const convertBillMetersToBills = (billMeters: BillMetersData) => {
     const bills: Array<{
@@ -441,6 +452,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
       location: string;
       machineId: string;
     }> = [];
+
 
     const denominationMap: Array<{ key: keyof BillMetersData; value: number }> =
       [
@@ -457,15 +469,33 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
         { key: "dollar5000", value: 5000 },
       ];
 
+    
+    const denominationMap: Array<{ key: keyof BillMetersData; value: number }> = [
+      { key: 'dollar1', value: 1 },
+      { key: 'dollar2', value: 2 },
+      { key: 'dollar5', value: 5 },
+      { key: 'dollar10', value: 10 },
+      { key: 'dollar20', value: 20 },
+      { key: 'dollar50', value: 50 },
+      { key: 'dollar100', value: 100 },
+      { key: 'dollar500', value: 500 },
+      { key: 'dollar1000', value: 1000 },
+      { key: 'dollar2000', value: 2000 },
+      { key: 'dollar5000', value: 5000 },
+    ];
+
     denominationMap.forEach(({ key, value }) => {
       const quantity = billMeters[key] || 0;
       if (quantity > 0) {
         bills.push({
           denomination: value,
           quantity: quantity,
+
           timestamp: machine?.lastActivity
             ? new Date(machine.lastActivity).toISOString()
             : new Date().toISOString(),
+
+          timestamp: machine?.lastActivity ? new Date(machine.lastActivity).toISOString() : new Date().toISOString(),
           location: cabinet?.locationName || "Unknown",
           machineId: cabinet?._id || "Unknown",
         });
@@ -476,6 +506,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   };
 
   // Debug logging for filter states
+
   console.warn("Activity Log Filters:", {
     activityLogDateRange,
     activityLogTimePeriod,
@@ -490,6 +521,11 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     "Converted bills data:",
     machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []
   );
+
+  console.warn("Activity Log Filters:", { activityLogDateRange, activityLogTimePeriod });
+  console.warn("Bill Validator Filters:", { billValidatorDateRange, billValidatorTimePeriod, billValidatorTimeRange });
+  console.warn("Machine billMeters data:", machine?.billMeters);
+  console.warn("Converted bills data:", machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []);
 
   useEffect(() => {
     async function loadData() {
@@ -560,6 +596,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
               const params = new URLSearchParams();
               params.append("id", cabinet._id);
 
+
               // Add date range parameters if custom date range is selected
               if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
                 params.append(
@@ -575,6 +612,17 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 params.append("timePeriod", activityLogTimePeriod);
               }
 
+
+              
+              // Add date range parameters if custom date range is selected
+              if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
+                params.append("startDate", activityLogDateRange.from.toISOString());
+                params.append("endDate", activityLogDateRange.to.toISOString());
+              } else if (activityLogTimePeriod && activityLogTimePeriod !== "All Time") {
+                // Add time period parameter for predefined periods
+                params.append("timePeriod", activityLogTimePeriod);
+              }
+              
               const eventsRes = await axios.get(
                 `/api/machines/by-id/events?${params.toString()}`
               );
@@ -603,12 +651,15 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
       }
     }
     loadData();
+
   }, [
     cabinet,
     activeMetricsTabContent,
     activityLogTimePeriod,
     activityLogDateRange,
   ]); // Depend on cabinet, activeMetricsTabContent, and filter states
+
+  }, [cabinet, activeMetricsTabContent, activityLogTimePeriod, activityLogDateRange]); // Depend on cabinet, activeMetricsTabContent, and filter states
 
   return (
     <motion.div
@@ -988,6 +1039,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       transition={{ duration: 0.4 }}
                     >
                       <div className="w-full max-w-4xl mx-auto">
+
                         {/* Unified Bill Validator with V1/V2 tabs and acceptedBills */}
                         <BillValidatorSection
                           machineId={cabinet._id}
@@ -1025,6 +1077,17 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                             console.warn("Collecting bills:", formData);
                             // TODO: Implement bill collection logic
                           }}
+
+                        {/* Bill Validator Table with Filters */}
+                        <BillValidatorTableWithFilters
+                          bills={machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []}
+                          onDateRangeChange={setBillValidatorDateRange}
+                          onTimePeriodChange={setBillValidatorTimePeriod}
+                          onTimeRangeChange={setBillValidatorTimeRange}
+                          dateRange={billValidatorDateRange}
+                          timePeriod={billValidatorTimePeriod}
+                          timeRange={billValidatorTimeRange}
+                          loading={loading}
                         />
                       </div>
                     </motion.div>
@@ -1047,6 +1110,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       />
                     </div>
 
+
+
+                    
                     {/* Activity Log Content */}
                     {activityLogLoading ? (
                       <ActivityLogSkeleton />

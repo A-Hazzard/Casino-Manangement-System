@@ -50,8 +50,12 @@ const sampleComplianceMetrics: ComplianceMetrics = {
   upcomingDeadlines: [],
 };
 
+
 const complianceCategories: ComplianceCategory[] = [];
 const recentAudits: RecentAudit[] = [];
+
+const complianceCategories: unknown[] = [];
+const recentAudits: unknown[] = [];
 
 export default function ComplianceTab() {
   const {
@@ -86,6 +90,7 @@ export default function ComplianceTab() {
           "Pending Checks",
           "Status",
         ],
+
         data: complianceCategories.map((c: ComplianceCategory) => {
           return [
             c.category,
@@ -93,6 +98,15 @@ export default function ComplianceTab() {
             c.checksPassed.toString(),
             (c.totalChecks - c.checksPassed).toString(),
             c.pendingChecks.toString(),
+
+        data: complianceCategories.map((category: unknown) => {
+          const c = category as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          return [
+            c.category,
+            `${c.score}%`,
+            c.passed.toString(),
+            c.failed.toString(),
+            c.pending.toString(),
             c.score >= 90
               ? "Excellent"
               : c.score >= 80
@@ -302,7 +316,11 @@ export default function ComplianceTab() {
                       No compliance data available - MongoDB implementation pending
                     </p>
                   ) : (
+
                     complianceCategories.map((c: ComplianceCategory) => {
+
+                    complianceCategories.map((category: unknown) => {
+                      const c = category as any; // eslint-disable-line @typescript-eslint/no-explicit-any
                       return (
                         <div key={c.category} className="space-y-2">
                           <div className="flex justify-between items-center">
@@ -332,9 +350,14 @@ export default function ComplianceTab() {
                             />
                           </div>
                           <div className="flex justify-between text-xs text-gray-600">
+
                             <span>Passed: {c.checksPassed}</span>
                             <span>Failed: {c.totalChecks - c.checksPassed}</span>
                             <span>Pending: {c.pendingChecks}</span>
+
+                            <span>Passed: {c.passed}</span>
+                            <span>Failed: {c.failed}</span>
+                            <span>Pending: {c.pending}</span>
                           </div>
                         </div>
                       );
@@ -410,7 +433,11 @@ export default function ComplianceTab() {
                     No audit data available - MongoDB implementation pending
                   </p>
                 ) : (
+
                   recentAudits.map((a: RecentAudit) => {
+
+                  recentAudits.map((audit: unknown) => {
+                    const a = audit as any; // eslint-disable-line @typescript-eslint/no-explicit-any
                     return (
                       <div
                         key={a.id}

@@ -30,7 +30,9 @@
         "./shared/*"
       ]
     },
+
     
+
     "target": "ES2017",
     // Strict unused code detection
     "noUnusedLocals": true,

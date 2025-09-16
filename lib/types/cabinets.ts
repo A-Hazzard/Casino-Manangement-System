@@ -46,8 +46,10 @@ export type Cabinet = {
   collectionMultiplier?: string;
   gameType?: string;
   isCronosMachine?: boolean;
+
   manufacturer?: string;
   manuf?: string;
+
   // Financial metrics from aggregation API
   moneyIn?: number;
   moneyOut?: number;
@@ -154,7 +156,9 @@ export type CabinetFormData = {
   collectionMultiplier: string;
   status: string;
   isCronosMachine: boolean;
+
   manufacturer: string;
+
 };
 
 export type NewCabinetFormData = {
@@ -341,8 +345,10 @@ export type CabinetMetrics = {
   gamesWon?: number;
 };
 
+
 // SMIB Management types
 export type SmibLocation = {
   id: string;
   name: string;
 };
+

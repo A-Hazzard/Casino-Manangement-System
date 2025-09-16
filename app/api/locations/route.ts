@@ -5,6 +5,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
 import { apiLogger } from "@/app/api/lib/utils/logger";
 import { generateMongoId } from "@/lib/utils/id";
+
 import {
   logActivity,
   calculateChanges,
@@ -12,6 +13,10 @@ import {
 import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import { Countries } from "@/app/api/lib/models/countries";
+
+import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -45,6 +50,9 @@ export async function GET(request: Request) {
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
+
+
+
 
     // Return minimal or full set based on query
     const locationsToReturn = minimal ? locations : locations;
@@ -85,6 +93,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
 
     // Additional backend validations mirroring frontend
     if (
@@ -132,6 +141,7 @@ export async function POST(request: Request) {
         )
       : undefined;
 
+
     // Create new location with proper MongoDB ObjectId-style hex string
     const locationId = await generateMongoId();
     const newLocation = new GamingLocations({
@@ -152,6 +162,7 @@ export async function POST(request: Request) {
         latitude: geoCoords?.latitude || 0,
         longitude: geoCoords?.longitude || 0,
       },
+
       billValidatorOptions: sanitizedBv || {
         denom1: false,
         denom2: false,
@@ -162,6 +173,17 @@ export async function POST(request: Request) {
         denom100: false,
         denom200: false,
         denom500: false,
+
+      billValidatorOptions: billValidatorOptions || {
+        denom1: true,
+        denom2: true,
+        denom5: true,
+        denom10: true,
+        denom20: true,
+        denom50: true,
+        denom100: true,
+        denom200: true,
+        denom500: true,
         denom1000: false,
         denom2000: false,
         denom5000: false,
@@ -182,6 +204,7 @@ export async function POST(request: Request) {
         const createChanges = [
           { field: "name", oldValue: null, newValue: name },
           { field: "country", oldValue: null, newValue: country },
+
           {
             field: "address.street",
             oldValue: null,
@@ -213,6 +236,14 @@ export async function POST(request: Request) {
             oldValue: null,
             newValue: geoCoords?.longitude || 0,
           },
+
+          { field: "address.street", oldValue: null, newValue: address?.street || "" },
+          { field: "address.city", oldValue: null, newValue: address?.city || "" },
+          { field: "rel.licencee", oldValue: null, newValue: rel?.licencee || "" },
+          { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
+          { field: "isLocalServer", oldValue: null, newValue: isLocalServer || false },
+          { field: "geoCoords.latitude", oldValue: null, newValue: geoCoords?.latitude || 0 },
+          { field: "geoCoords.longitude", oldValue: null, newValue: geoCoords?.longitude || 0 },
         ];
 
         await logActivity(
@@ -380,9 +411,12 @@ export async function PUT(request: Request) {
 
       // Handle billValidatorOptions
       if (billValidatorOptions) {
+
         updateData.billValidatorOptions = Object.fromEntries(
           Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
         ) as UpdateLocationData["billValidatorOptions"];
+
+        updateData.billValidatorOptions = billValidatorOptions;
       }
 
       // Always update the updatedAt timestamp
@@ -488,6 +522,7 @@ export async function DELETE(request: Request) {
       try {
         const deleteChanges = [
           { field: "name", oldValue: locationToDelete.name, newValue: null },
+
           {
             field: "country",
             oldValue: locationToDelete.country,
@@ -528,6 +563,15 @@ export async function DELETE(request: Request) {
             oldValue: locationToDelete.geoCoords?.longitude || 0,
             newValue: null,
           },
+
+          { field: "country", oldValue: locationToDelete.country, newValue: null },
+          { field: "address.street", oldValue: locationToDelete.address?.street || "", newValue: null },
+          { field: "address.city", oldValue: locationToDelete.address?.city || "", newValue: null },
+          { field: "rel.licencee", oldValue: locationToDelete.rel?.licencee || "", newValue: null },
+          { field: "profitShare", oldValue: locationToDelete.profitShare, newValue: null },
+          { field: "isLocalServer", oldValue: locationToDelete.isLocalServer, newValue: null },
+          { field: "geoCoords.latitude", oldValue: locationToDelete.geoCoords?.latitude || 0, newValue: null },
+          { field: "geoCoords.longitude", oldValue: locationToDelete.geoCoords?.longitude || 0, newValue: null },
         ];
 
         await logActivity(

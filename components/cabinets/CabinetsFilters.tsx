@@ -4,7 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Plus } from "lucide-react";
+
 import { CustomSelect } from "@/components/ui/custom-select";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { CabinetSortOption } from "@/lib/types/cabinets";
 
 type CabinetsFiltersProps = {
@@ -55,6 +64,7 @@ export default function CabinetsFilters({
         </div>
 
         {/* Location Filter */}
+
         <CustomSelect
           value={selectedLocation}
           onValueChange={setSelectedLocation}
@@ -89,6 +99,42 @@ export default function CabinetsFilters({
           emptyMessage="No sort options found"
         />
 
+        <Select
+          value={selectedLocation}
+          onValueChange={setSelectedLocation}
+          disabled={loading}
+        >
+          <SelectTrigger className="md:w-48">
+            <SelectValue placeholder="Select location" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Locations</SelectItem>
+            {locations.map((location) => (
+              <SelectItem key={location._id} value={location._id}>
+                {location.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Sort Options */}
+        <Select
+          value={sortOption}
+          onValueChange={(value) => setSortOption(value as CabinetSortOption)}
+          disabled={loading}
+        >
+          <SelectTrigger className="md:w-48">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="moneyIn">Money In</SelectItem>
+            <SelectItem value="gross">Gross</SelectItem>
+            <SelectItem value="lastOnline">Last Online</SelectItem>
+            <SelectItem value="locationName">Location</SelectItem>
+            <SelectItem value="assetNumber">Asset Number</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button
           variant="outline"
           size="sm"
@@ -116,7 +162,14 @@ export default function CabinetsFilters({
         >
           Movement Request
         </Button>
+
         <Button variant="outline" onClick={onUploadSmibData} disabled={loading}>
+
+        <Button
+          variant="outline"
+          onClick={onUploadSmibData}
+          disabled={loading}
+        >
           Upload SMIB Data
         </Button>
       </div>

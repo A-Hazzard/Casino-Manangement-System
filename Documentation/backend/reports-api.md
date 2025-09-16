@@ -1,6 +1,7 @@
 # Reports API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
+
 **Last Updated:** January 15th, 2025  
 **Version:** 2.0.0
 
@@ -14,9 +15,24 @@
 - **SAS Evaluation**: `sasEvaluationOnly=true` - Filter for SAS locations only
 - **Financial Data**: Default shows all locations with financial data
 
+**Last Updated:** August 29th, 2025  
+**Version:** 2.0.0
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Base URLs](#base-urls)
+3. [Core Endpoints](#core-endpoints)
+4. [Data Models](#data-models)
+5. [Business Logic](#business-logic)
+6. [Error Handling](#error-handling)
+7. [Security Features](#security-features)
+8. [Performance Considerations](#performance-considerations)
+
 ## Overview
 
 The Reports API provides comprehensive data aggregation and analytics capabilities for the Evolution One CMS system. It handles location aggregation, machine performance analysis, financial reporting, and SAS machine determination with advanced filtering and real-time analytics.
+
 
 ### System Architecture
 - **Database**: MongoDB with Mongoose ODM
@@ -75,6 +91,91 @@ The Reports API provides comprehensive data aggregation and analytics capabiliti
 **Purpose**: The API defaults to showing all locations with financial data before any location selection
 
 **Implementation Logic:**
+
+### Key Features
+- **Location Aggregation**: Comprehensive location-level metrics and analytics
+- **Machine Performance**: Detailed machine performance analysis and reporting
+- **Financial Analytics**: Revenue analysis and financial performance tracking
+- **SAS Integration**: SAS machine determination and evaluation
+- **Advanced Filtering**: Time-based and location-based filtering capabilities
+
+### System Integration
+- **Dashboard Analytics**: Real-time data for dashboard components
+- **Collection Systems**: Integration with collection and reporting systems
+- **Location Management**: Connection to location and machine management
+- **Financial Systems**: Seamless integration with financial calculations
+
+## Base URLs
+
+```
+/api/locationAggregation
+/api/reports
+/api/analytics
+```
+
+## Core Endpoints
+
+### 1. Location Aggregation API
+**Endpoint:** `GET /api/locationAggregation`
+
+#### Purpose
+Aggregates location-level metrics including machine counts, SAS status, and financial data. Defaults to showing all locations with financial data before any location selection.
+
+#### Query Parameters
+```typescript
+type LocationAggregationParams = {
+  timePeriod?: TimePeriod;           // "Today", "Yesterday", "7d", "30d", "All Time"
+  startDate?: string;                // ISO date string for custom range
+  endDate?: string;                  // ISO date string for custom range
+  licencee?: string;                 // Filter by licensee
+  machineTypeFilter?: LocationFilter; // "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation"
+  showAllLocations?: boolean;        // Include locations without metrics
+  basicList?: boolean;               // If false, returns all locations with financial data
+  page?: number;                     // Pagination page number
+  limit?: number;                    // Items per page
+  clearCache?: boolean;              // Clear cache for testing
+  sasEvaluationOnly?: boolean;       // Filter for SAS locations only
+  selectedLocations?: string[];      // Array of location IDs to filter by
+}
+```
+
+#### Response Structure
+```typescript
+type LocationAggregationResponse = {
+  data: AggregatedLocation[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+```
+
+#### Aggregated Location Data
+```typescript
+type AggregatedLocation = {
+  location: string;                  // Location ID
+  locationName: string;              // Location name
+  moneyIn: number;                   // Total drop amount
+  moneyOut: number;                  // Total cancelled credits
+  gross: number;                     // Net revenue (moneyIn - moneyOut)
+  totalMachines: number;             // Total machines at location
+  onlineMachines: number;            // Machines online (lastActivity < 3 min ago)
+  sasMachines: number;               // Count of SAS machines (isSasMachine = true)
+  nonSasMachines: number;            // Count of non-SAS machines (isSasMachine = false)
+  hasSasMachines: boolean;           // Derived: sasMachines > 0
+  hasNonSasMachines: boolean;        // Derived: nonSasMachines > 0
+  isLocalServer: boolean;            // Location server type
+  noSMIBLocation: boolean;           // Backward compatibility: !hasSasMachines
+  hasSmib: boolean;                  // Backward compatibility: hasSasMachines
+}
+```
+
+### 2. Default All Locations Behavior
+
+#### Purpose
+The API now defaults to showing all locations with financial data before any location selection, providing a better user experience for the SAS Evaluation and Revenue Analysis tabs.
+
+#### Implementation Logic
 ```typescript
 // Default behavior: Show all locations with financial data
 if (!basicList && !selectedLocations) {
@@ -88,6 +189,7 @@ if (selectedLocations && selectedLocations.length > 0) {
   const locationFilter = { _id: { $in: selectedLocations } };
 }
 ```
+
 
 ## SAS Machine Determination Logic
 
@@ -110,6 +212,34 @@ The aggregation pipeline calculates SAS metrics for each location:
 
 **MongoDB Aggregation:**
 ```javascript
+
+#### Frontend Integration
+- **SAS Evaluation Tab**: Shows all SAS locations with financial data by default
+- **Revenue Analysis Tab**: Shows all locations with financial data by default
+- **Location Selection**: When locations are selected, data is filtered to only those locations
+- **User Experience**: Users see data immediately without needing to make selections first
+
+### 3. SAS Machine Determination Logic
+
+#### Machine-Level SAS Status
+Each machine in the database has an `isSasMachine` field that determines its SAS status:
+
+```typescript
+type Machine = {
+  _id: string;
+  gamingLocation: string;            // Reference to location
+  isSasMachine: boolean;             // true = SAS machine, false = non-SAS machine
+  lastActivity: Date;                // Last activity timestamp
+  deletedAt: Date | null;            // Soft delete flag
+  // ... other machine fields
+}
+```
+
+#### Location-Level SAS Aggregation
+The aggregation pipeline calculates SAS metrics for each location:
+
+```javascript
+// MongoDB aggregation pipeline for machine lookup
 {
   $lookup: {
     from: "machines",
@@ -144,11 +274,21 @@ The aggregation pipeline calculates SAS metrics for each location:
 }
 ```
 
+
 ### SAS Evaluation Filtering
 **Purpose**: When `sasEvaluationOnly=true` is passed, the API filters locations to only include those with SAS machines
 
 **MongoDB Pipeline Filter:**
 ```javascript
+
+### 4. SAS Evaluation Filtering
+
+#### Purpose
+When `sasEvaluationOnly=true` is passed, the API filters locations to only include those with SAS machines, implementing the filtering at the database level for optimal performance.
+
+#### MongoDB Pipeline Filter
+```javascript
+// Additional pipeline stage for SAS evaluation filtering
 {
   $match: {
     sasMachines: { $gt: 0 }  // Only locations with SAS machines
@@ -156,9 +296,26 @@ The aggregation pipeline calculates SAS metrics for each location:
 }
 ```
 
+
 ## Trinidad Timezone Support
 
 ### Date Calculation Functions
+
+#### Usage
+- **SAS Evaluation Tab**: Frontend passes `sasEvaluationOnly=true` to get only SAS-enabled locations
+- **Revenue Analysis Tab**: No filtering applied, returns all locations
+- **Performance**: Database-level filtering is more efficient than frontend filtering
+
+#### SAS Calculation Logic
+1. **Machine Filtering**: Only include non-deleted machines (`deletedAt` is null or -1)
+2. **SAS Count**: Count machines where `isSasMachine = true`
+3. **Non-SAS Count**: Count machines where `isSasMachine = false`
+4. **Online Status**: Machine is online if `lastActivity` is within 3 minutes
+5. **Location SAS Status**: Location has SAS if `sasMachines > 0`
+
+### 5. Trinidad Timezone Support
+
+#### Date Calculation Functions
 **File:** `app/api/lib/utils/dates.ts`
 
 The API includes Trinidad timezone support (UTC-4) for accurate date calculations:
@@ -179,7 +336,10 @@ const getEndOfDayTrinidad = (date: Date): Date => {
 };
 ```
 
+
 ### Time Period Calculations
+
+#### Time Period Calculations
 ```typescript
 // Date range calculations with Trinidad timezone
 switch (timePeriod) {
@@ -208,9 +368,14 @@ switch (timePeriod) {
 }
 ```
 
+
 ## Data Aggregation Pipeline
 
 ### Location Metrics Aggregation
+
+### 6. Data Aggregation Pipeline
+
+#### Location Metrics Aggregation
 ```javascript
 // Main aggregation pipeline with simplified two-phase approach
 const locationPipeline = [
@@ -327,6 +492,7 @@ const locationPipeline = [
 ];
 ```
 
+
 ## Meters Report API
 
 ### GET `/api/reports/meters`
@@ -420,6 +586,22 @@ Mixed Locations = Locations where sasMachines > 0 AND nonSasMachines > 0
 ## Performance Optimizations
 
 ### Caching Strategy
+
+#### Selected Locations Filtering
+```javascript
+// Filter by selected locations if provided
+if (selectedLocations && selectedLocations.length > 0) {
+  locationPipeline.unshift({
+    $match: {
+      _id: { $in: selectedLocations }  // Direct string matching, no ObjectId conversion
+    }
+  });
+}
+```
+
+### 7. Performance Optimizations
+
+#### Caching Strategy
 ```typescript
 // In-memory cache with TTL
 const cache = new Map();
@@ -434,7 +616,10 @@ function isCacheValid(timestamp: number): boolean {
 }
 ```
 
+
 ### Database Indexing
+
+#### Database Indexing
 ```javascript
 // Required indexes for optimal performance
 machineSchema.index({ gamingLocation: 1, deletedAt: 1 });
@@ -445,16 +630,24 @@ machineSchema.index({ serialNumber: 1 });
 machineSchema.index({ lastSasMeterAt: -1 });
 ```
 
+
 ### Query Optimization
+
+#### Query Optimization
 - **Licensee Pre-filtering**: Prefetch location IDs for licensee filtering
 - **Pagination**: Server-side pagination with skip/limit
 - **Aggregation Limits**: Timeout and memory limits for large datasets
 - **Parallel Processing**: Concurrent data fetching where possible
 - **String ID Matching**: Direct string comparison without ObjectId conversion
 
+
 ## Error Handling
 
 ### Graceful Degradation
+
+### 8. Error Handling
+
+#### Graceful Degradation
 ```typescript
 try {
   const { rows, totalCount } = await getLocationsWithMetrics(
@@ -489,7 +682,10 @@ try {
 }
 ```
 
+
 ### Data Validation
+
+#### Data Validation
 ```typescript
 // Input validation
 if (timePeriod === "Custom") {
@@ -503,6 +699,7 @@ if (timePeriod === "Custom") {
   }
 }
 ```
+
 
 ## Security Considerations
 
@@ -519,6 +716,22 @@ if (timePeriod === "Custom") {
 ## Monitoring & Logging
 
 ### Performance Monitoring
+
+### 9. Security Considerations
+
+#### Authentication & Authorization
+- **JWT Token Validation**: All endpoints require valid authentication
+- **Role-based Access**: Different access levels for different user roles
+- **Resource Filtering**: Data filtered based on user permissions
+
+#### Data Protection
+- **Input Sanitization**: All query parameters validated and sanitized
+- **SQL Injection Prevention**: Parameterized queries and aggregation pipelines
+- **Rate Limiting**: Protection against API abuse
+
+### 10. Monitoring & Logging
+
+#### Performance Monitoring
 ```typescript
 // Request timing and performance logging
 const startTime = Date.now();
@@ -528,7 +741,10 @@ const duration = Date.now() - startTime;
 console.log(`Location aggregation completed in ${duration}ms`);
 ```
 
+
 ### Error Logging
+
+#### Error Logging
 ```typescript
 // Comprehensive error logging
 console.error("❌ LocationAggregation API Error:", {
@@ -538,6 +754,7 @@ console.error("❌ LocationAggregation API Error:", {
   timestamp: new Date().toISOString()
 });
 ```
+
 
 ## Data Models
 
@@ -583,6 +800,54 @@ console.error("❌ LocationAggregation API Error:", {
 ## API Response Examples
 
 ### Successful Response
+
+### 11. Data Models
+
+#### Machine Model
+```typescript
+type Machine = {
+  _id: string;
+  gamingLocation: string;            // Reference to location
+  isSasMachine: boolean;             // SAS status flag
+  lastActivity: Date;                // Last activity timestamp
+  deletedAt: Date | null;            // Soft delete flag
+  serialNumber: string;              // Machine serial number
+  manufacturer: string;              // Machine manufacturer
+  // ... other machine fields
+}
+```
+
+#### Location Model
+```typescript
+type GamingLocation = {
+  _id: string;
+  name: string;                      // Location name
+  deletedAt: Date | null;            // Soft delete flag
+  isLocalServer: boolean;            // Server type flag
+  rel: {
+    licencee: string;                // Licensee reference
+  };
+  // ... other location fields
+}
+```
+
+#### Meter Model
+```typescript
+type Meter = {
+  _id: string;
+  location: string;                  // Location reference
+  createdAt: Date;                   // Meter reading timestamp
+  movement: {
+    drop: number;                    // Drop amount
+    totalCancelledCredits: number;   // Cancelled credits
+  };
+  // ... other meter fields
+}
+```
+
+### 12. API Response Examples
+
+#### Successful Response
 ```json
 {
   "data": [
@@ -608,7 +873,10 @@ console.error("❌ LocationAggregation API Error:", {
 }
 ```
 
+
 ### Error Response
+
+#### Error Response
 ```json
 {
   "data": [],
@@ -620,6 +888,215 @@ console.error("❌ LocationAggregation API Error:", {
 }
 ```
 
+
 ---
 
 **Last Updated:** January 15th, 2025
+
+### 13. Development Guidelines
+
+#### Code Organization
+- **Helper Functions**: Business logic in separate helper files
+- **Type Safety**: Strict TypeScript usage throughout
+- **Error Boundaries**: Comprehensive error handling
+- **Performance**: Optimize for large datasets
+
+#### Testing Strategy
+- **Unit Tests**: Individual function testing
+- **Integration Tests**: API endpoint testing
+- **Performance Tests**: Load testing for large datasets
+- **Error Testing**: Error condition validation
+
+### 14. Meters Report API
+
+**Endpoint:** `GET /api/reports/meters`
+
+#### Purpose
+Provides detailed machine-level meter readings and performance data with specific field mappings that differ from other financial reports.
+
+#### Query Parameters
+```typescript
+type MetersReportParams = {
+  locations: string;              // Required: Comma-separated location IDs
+  startDate?: string;             // ISO date string for date filtering
+  endDate?: string;               // ISO date string for date filtering
+  page?: number;                  // Pagination page number (default: 1)
+  limit?: number;                 // Items per page (default: 10, max: 10)
+  search?: string;                // Search term for machine ID or location name
+  licencee?: string;              // Filter by licensee ID
+}
+```
+
+#### Response Structure
+```typescript
+type MetersReportResponse = {
+  data: MetersReportData[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  locations: string[];
+  dateRange: {
+    start: string;
+    end: string;
+  };
+}
+
+type MetersReportData = {
+  machineId: string;              // Machine identifier
+  metersIn: number;               // Coin In (total bets placed)
+  metersOut: number;              // Coin Out (automatic payouts)
+  jackpot: number;                // Jackpot payouts
+  billIn: number;                 // Drop (physical money inserted)
+  voucherOut: number;             // Net cancelled credits
+  attPaidCredits: number;         // Hand paid cancelled credits
+  gamesPlayed: number;            // Total games played
+  location: string;               // Location name
+  createdAt: string;              // Last activity timestamp
+}
+```
+
+#### Field Mapping (Meters Report Specific)
+
+⚠️ **Important**: The meters report uses **different field mappings** than other financial reports:
+
+| Field | Data Source | Context |
+|-------|-------------|---------|
+| **metersIn** | `machine.sasMeters.coinIn` | Total bets placed by players |
+| **metersOut** | `machine.sasMeters.coinOut` | Automatic winnings paid to players |
+| **billIn** | `machine.sasMeters.drop` | Physical cash inserted into machine |
+| **voucherOut** | `machine.sasMeters.totalCancelledCredits - machine.sasMeters.totalHandPaidCancelledCredits` | Net cancelled credits (voucher-only) |
+| **attPaidCredits** | `machine.sasMeters.totalHandPaidCancelledCredits` | Manual attendant payouts |
+| **jackpot** | `machine.sasMeters.jackpot` | Special jackpot payouts |
+| **gamesPlayed** | `machine.sasMeters.gamesPlayed` | Total games played |
+
+#### Implementation Details
+- **Data Sources**: All meter fields come from `machines` collection (`sasMeters` field)
+- **Validation**: All numeric values validated for non-negative numbers
+- **Machine Data**: Uses machine document with embedded `sasMeters` object
+- **Location Resolution**: Gaming location name lookup via `gamingLocation` field
+
+### 15. Financial Calculations Analysis
+
+#### Machine Reports API (`/api/reports/machines`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Money In (Drop) Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  drop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **MongoDB Pipeline**: Aggregates all meter readings within date range for each machine
+- **Business Logic**: Sums all physical money inserted into each machine
+
+##### **Handle (Coin In) Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  coinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.coinIn` field ✅ **MATCHES**
+- **Business Logic**: Sums all betting activity for each machine
+
+##### **Actual Hold Percentage Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  holdPct: {
+    $cond: [
+      { $gt: [{ $ifNull: ["$meterData.coinIn", 0] }, 0] },
+      { $multiply: [
+        { $divide: [
+          { $subtract: [
+            { $ifNull: ["$meterData.coinIn", 0] }, 
+            { $ifNull: ["$meterData.coinOut", 0] }
+          ] }, 
+          { $ifNull: ["$meterData.coinIn", 0] }
+        ] }, 
+        100
+      ] },
+      0
+    ]
+  }
+  ```
+- **Mathematical Formula**: `((coinIn - coinOut) / coinIn) * 100`
+- **Financial Guide Formula**: `actualHold% = (1 - (coinOut / coinIn)) * 100`
+- **Verification**: 
+  - Current: `((coinIn - coinOut) / coinIn) * 100`
+  - Guide: `(1 - (coinOut / coinIn)) * 100 = ((coinIn - coinOut) / coinIn) * 100`
+  - ✅ **MATCHES** (algebraically equivalent)
+
+##### **Theoretical Hold Percentage Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  theoreticalHold: (1 - Number(gameConfig.theoreticalRtp)) * 100
+  ```
+- **Financial Guide**: `theoreticalHoldPercent = (1 - gameConfig.theoreticalRtp) * 100`
+- ✅ **MATCHES**
+
+##### **Average Bet Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  avgBet: gamesPlayed > 0 ? coinIn / gamesPlayed : 0
+  ```
+- **Financial Guide**: `avgWagerPerGame = handle / gamesPlayed`
+- ✅ **MATCHES** (handle = coinIn)
+
+##### **Gross/Net Win Calculation ✅**
+- **Current Implementation**: 
+  ```javascript
+  netWin: {
+    $subtract: [
+      { $ifNull: ["$meterData.drop", 0] },
+      { $ifNull: ["$meterData.moneyOut", 0] }
+    ]
+  }
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits`
+- ✅ **MATCHES**
+
+#### Meters Report API (`/api/reports/meters`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Data Source Selection ✅**
+- **Current Implementation**: Uses `machine.sasMeters` for recent data
+- **Financial Guide**: "For Recent Data (Today/Yesterday): Use `machine.sasMeters`" ✅ **MATCHES**
+- **Business Logic**: Direct access to current meter readings without aggregation
+
+##### **Field Mappings ✅**
+- **Meters In**: `machine.sasMeters.coinIn` ✅ **MATCHES** guide specification
+- **Money Won**: `machine.sasMeters.totalWonCredits` ✅ **MATCHES** guide specification  
+- **Bill In**: `machine.sasMeters.drop` ✅ **MATCHES** guide specification
+- **Voucher Out**: `totalCancelledCredits - totalHandPaidCancelledCredits` ✅ **MATCHES** guide calculation
+- **Hand Paid Credits**: `machine.sasMeters.totalHandPaidCancelledCredits` ✅ **MATCHES** guide specification
+- **Jackpot**: `machine.sasMeters.jackpot` ✅ **MATCHES** guide specification
+- **Games Played**: `machine.sasMeters.gamesPlayed` ✅ **MATCHES** guide specification
+
+#### Location Aggregation API (`/api/locationAggregation`) Calculations
+
+**Current Implementation Analysis vs Financial Metrics Guide:**
+
+##### **Location Financial Aggregation ✅**
+- **Current Implementation**: 
+  ```javascript
+  // Aggregates meter data by location
+  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+  totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
+  ```
+- **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
+- **Business Logic**: Sums all machine movements within date range for each location
+
+##### **Gross Revenue Calculation ✅**
+- **Current Implementation**: `gross: { $subtract: ["$moneyIn", "$moneyOut"] }`
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Aggregation Level**: Calculated at location level after machine data aggregation
+
+## Related Documentation
+
+- [Meters Report API](meters-report-api.md) - Detailed meters endpoint documentation
+- [Financial Metrics Guide](../financial-metrics-guide.md) - Field mapping explanations
+- [Reports Frontend](../frontend/reports.md)
+- [Location Aggregation Helper](../api/lib/helpers/locationAggregation.ts)
+- [Machine Model](../api/lib/models/machines.ts)
+- [Analytics API](analytics-api.md)

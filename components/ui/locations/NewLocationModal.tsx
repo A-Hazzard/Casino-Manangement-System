@@ -12,21 +12,29 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+
 import axios from "axios";
+
+import { useLocationStore } from "@/lib/store/locationStore";
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation } from "@/lib/types/maps";
 import type { NewLocationModalProps } from "@/lib/types/components";
 import { fetchLicensees } from "@/lib/helpers/licensees";
 import type { Licensee } from "@/lib/types/licensee";
+
 import { fetchCountries } from "@/lib/helpers/countries";
 import type { Country } from "@/lib/helpers/countries";
+
 
 export default function NewLocationModal({
   isOpen,
   onClose,
   onCreated,
 }: NewLocationModalProps) {
+
   // Remove the store dependency since we'll call API directly
+
+  const { createLocation } = useLocationStore();
 
   // Form state - all fields blank by default
   const [formData, setFormData] = useState({
@@ -39,7 +47,9 @@ export default function NewLocationModal({
     isLocalServer: false,
     latitude: "",
     longitude: "",
+
     dayStartTime: "08:00", // Default to 8:00 AM
+
     billValidatorOptions: {
       denom1: false,
       denom2: false,
@@ -60,6 +70,7 @@ export default function NewLocationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [licenseesLoading, setLicenseesLoading] = useState(false);
+
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
@@ -117,6 +128,13 @@ export default function NewLocationModal({
     if (isOpen) {
       loadLicensees();
       loadCountries();
+
+  const [mapLoadError, setMapLoadError] = useState(false);
+
+  // Load licensees on modal open
+  useEffect(() => {
+    if (isOpen) {
+      loadLicensees();
     }
   }, [isOpen]);
 
@@ -133,7 +151,9 @@ export default function NewLocationModal({
         isLocalServer: false,
         latitude: "",
         longitude: "",
+
         dayStartTime: "08:00",
+
         billValidatorOptions: {
           denom1: false,
           denom2: false,
@@ -154,6 +174,9 @@ export default function NewLocationModal({
     }
   }, [isOpen]);
 
+
+
+
   const loadLicensees = async () => {
     setLicenseesLoading(true);
     try {
@@ -167,6 +190,7 @@ export default function NewLocationModal({
     }
   };
 
+
   const loadCountries = async () => {
     setCountriesLoading(true);
     try {
@@ -179,6 +203,7 @@ export default function NewLocationModal({
       setCountriesLoading(false);
     }
   };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -223,6 +248,7 @@ export default function NewLocationModal({
     setMapLoadError(false);
   };
 
+
   // Get user's current location when map is enabled
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -249,6 +275,7 @@ export default function NewLocationModal({
     );
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -265,6 +292,7 @@ export default function NewLocationModal({
       // Create location object matching the expected interface
       const locationData = {
         name: formData.name,
+
         address: {
           street: formData.street,
           city: formData.city,
@@ -286,6 +314,17 @@ export default function NewLocationModal({
       // Add location by calling API directly
       const response = await axios.post("/api/locations", locationData);
       console.warn("Location created successfully:", response.data);
+
+        address: formData.street, // Just pass the street as address string
+        latitude: parseFloat(formData.latitude),
+        longitude: parseFloat(formData.longitude),
+        licencee: formData.licencee, // Use selected licensee from form
+        billValidatorOptions: formData.billValidatorOptions,
+      };
+
+      // Add location
+      const createdLocation = await createLocation(locationData);
+      console.warn("Location created successfully:", createdLocation);
 
       // Show success message
       toast.success("Location added successfully");
@@ -316,6 +355,9 @@ export default function NewLocationModal({
           onSubmit={handleSubmit}
           className="p-4 md:p-6 space-y-4 md:space-y-6 max-h-[calc(95vh-120px)] md:max-h-[calc(90vh-120px)] overflow-y-auto"
         >
+
+
+
           {/* Location Name */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-grayHighlight mb-2">
@@ -354,7 +396,10 @@ export default function NewLocationModal({
               name="city"
               value={formData.city}
               onChange={handleInputChange}
+
               placeholder="Enter city name"
+
+              placeholder="City"
               className="w-full h-12 bg-container border-border text-base"
             />
           </div>
@@ -429,6 +474,7 @@ export default function NewLocationModal({
             </select>
           </div>
 
+
           {/* Day Start Time */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-grayHighlight mb-2">
@@ -450,6 +496,7 @@ export default function NewLocationModal({
             </select>
           </div>
 
+
           {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* No SMIB Location Checkbox */}
@@ -462,10 +509,13 @@ export default function NewLocationModal({
                 }
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
+
               <Label
                 htmlFor="isLocalServer"
                 className="text-sm font-medium flex-1"
               >
+
+              <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
                 No SMIB Location
               </Label>
             </div>
@@ -475,12 +525,15 @@ export default function NewLocationModal({
               <Checkbox
                 id="useMap"
                 checked={useMap}
+
                 onCheckedChange={(checked) => {
                   setUseMap(checked === true);
                   if (checked === true) {
                     getCurrentLocation();
                   }
                 }}
+
+                onCheckedChange={(checked) => setUseMap(checked === true)}
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
               <Label htmlFor="useMap" className="text-sm font-medium flex-1">
@@ -533,8 +586,11 @@ export default function NewLocationModal({
               {mapLoadError && (
                 <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md relative z-10">
                   <p className="text-xs text-yellow-700">
+
                     ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check
                     the &quot;Use Map&quot; button again.
+
+                          ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check the &quot;Use Map&quot; button again.
                   </p>
                 </div>
               )}
@@ -574,10 +630,13 @@ export default function NewLocationModal({
                 { key: "denom5000", label: "$5,000" },
                 { key: "denom10000", label: "$10,000" },
               ].map(({ key, label }) => (
+
                 <div
                   key={key}
                   className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
                 >
+
+                <div key={key} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
                   <Checkbox
                     id={key}
                     checked={

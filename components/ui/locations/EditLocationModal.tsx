@@ -14,8 +14,10 @@ import type { EditLocationModalProps } from "@/lib/types/components";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import { fetchLicensees } from "@/lib/helpers/licensees";
 import type { Licensee } from "@/lib/types/licensee";
+
 import { fetchCountries } from "@/lib/helpers/countries";
 import type { Country } from "@/lib/helpers/countries";
+
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation } from "@/lib/types/maps";
 
@@ -28,7 +30,9 @@ type LocationDetails = {
   };
   country?: string;
   profitShare?: number;
+
   gameDayOffset?: number;
+
   rel?: {
     licencee: string;
   };
@@ -68,8 +72,10 @@ export default function EditLocationModal({
   const [locationDetailsLoading, setLocationDetailsLoading] = useState(false);
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [licenseesLoading, setLicenseesLoading] = useState(false);
+
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
+
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
   const locationLogger = createActivityLogger("location");
@@ -84,7 +90,9 @@ export default function EditLocationModal({
     isLocalServer: false,
     latitude: "",
     longitude: "",
+
     dayStartTime: "08:00", // Default to 8:00 AM
+
     billValidatorOptions: {
       denom1: false,
       denom2: false,
@@ -101,6 +109,7 @@ export default function EditLocationModal({
       denom10000: false,
     },
   });
+
 
   // Generate time options for day start time dropdown (similar to the image)
   const generateTimeOptions = () => {
@@ -150,6 +159,7 @@ export default function EditLocationModal({
 
   const timeOptions = generateTimeOptions();
 
+
   // Fetch full location details when modal opens
   const fetchLocationDetails = async (locationId: string) => {
     setLocationDetailsLoading(true);
@@ -180,6 +190,7 @@ export default function EditLocationModal({
     }
   };
 
+
   // Load countries
   const loadCountries = async () => {
     setCountriesLoading(true);
@@ -194,6 +205,7 @@ export default function EditLocationModal({
     }
   };
 
+
   // Initialize form data when a location is selected
   useEffect(() => {
     if (selectedLocation && selectedLocation.location) {
@@ -202,6 +214,7 @@ export default function EditLocationModal({
 
       setFormData({
         name: selectedLocation.locationName || "",
+
         street: "", // Will be loaded from locationDetails
         city: "", // Will be loaded from locationDetails
         country: "", // Will be loaded from locationDetails
@@ -211,6 +224,15 @@ export default function EditLocationModal({
         latitude: "8.909985", // Will be loaded from locationDetails
         longitude: "-58.186204", // Will be loaded from locationDetails
         dayStartTime: "08:00", // Will be loaded from locationDetails
+
+        street: "", // AggregatedLocation doesn't have address details
+        city: "", // AggregatedLocation doesn't have address details
+        country: "Guyana", // Default since AggregatedLocation doesn't have this
+        profitShare: "50", // Default since AggregatedLocation doesn't have this
+        licencee: "", // AggregatedLocation doesn't have this
+        isLocalServer: selectedLocation.isLocalServer || false,
+        latitude: "8.909985", // Default since AggregatedLocation doesn't have coordinates
+        longitude: "-58.186204", // Default since AggregatedLocation doesn't have coordinates
         billValidatorOptions: {
           denom1: false,
           denom2: false,
@@ -230,11 +252,17 @@ export default function EditLocationModal({
     }
   }, [selectedLocation]);
 
+
   // Load licensees and countries when modal opens
   useEffect(() => {
     if (isEditModalOpen) {
       loadLicensees();
       loadCountries();
+
+  // Load licensees when modal opens
+  useEffect(() => {
+    if (isEditModalOpen) {
+      loadLicensees();
     }
   }, [isEditModalOpen]);
 
@@ -258,6 +286,7 @@ export default function EditLocationModal({
   const handleMapLoadSuccess = () => {
     setMapLoadError(false);
   };
+
 
   // Get user's current location when map is enabled
   const getCurrentLocation = () => {
@@ -292,6 +321,10 @@ export default function EditLocationModal({
       const gameDayOffset = locationDetails.gameDayOffset || 8; // Default to 8 AM
       const dayStartTime = `${gameDayOffset.toString().padStart(2, "0")}:00`;
 
+
+  // Update form data when location details are fetched
+  useEffect(() => {
+    if (locationDetails) {
       setFormData((prev) => ({
         ...prev,
         name: locationDetails.name || prev.name,
@@ -306,7 +339,9 @@ export default function EditLocationModal({
           locationDetails.geoCoords?.latitude?.toString() || prev.latitude,
         longitude:
           locationDetails.geoCoords?.longitude?.toString() || prev.longitude,
+
         dayStartTime: dayStartTime,
+
         billValidatorOptions:
           locationDetails.billValidatorOptions || prev.billValidatorOptions,
       }));
@@ -603,9 +638,11 @@ export default function EditLocationModal({
 
                 {/* City */}
                 <div className="mb-4">
+
                   <label className="block text-sm font-medium text-grayHighlight mb-2">
                     City
                   </label>
+
                   <Input
                     name="city"
                     value={formData.city}
@@ -629,6 +666,7 @@ export default function EditLocationModal({
                     className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
                   >
                     <option value="">Select Country</option>
+
                     {countriesLoading ? (
                       <option value="" disabled>
                         Loading countries...
@@ -640,6 +678,11 @@ export default function EditLocationModal({
                         </option>
                       ))
                     )}
+
+                    <option value="Guyana">Guyana</option>
+                    <option value="Trinidad and Tobago">
+                      Trinidad and Tobago
+                    </option>
                   </select>
                 </div>
 
@@ -695,6 +738,7 @@ export default function EditLocationModal({
                         Day Start Time
                       </span>
                     </div>
+
                     <select
                       name="dayStartTime"
                       value={formData.dayStartTime}
@@ -721,6 +765,25 @@ export default function EditLocationModal({
                       onCheckedChange={(checked) =>
                         handleCheckboxChange("isLocalServer", checked === true)
                       }
+
+                    <Input
+                      name="dayStartTime"
+                      value="Curr. day, 08:00"
+                      readOnly
+                      className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 bg-container rounded-r-md border border-border border-l-0 h-12 text-base"
+                    />
+                  </div>
+                </div>
+
+                {/* No SMIB Location and Map Toggle */}
+                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id="noSMIBLocation"
+                      checked={formData.isLocalServer}
+                      onCheckedChange={(checked) =>
+                        handleCheckboxChange("isLocalServer", checked === true)
+                      }
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
                     <Label
@@ -735,12 +798,15 @@ export default function EditLocationModal({
                     <Checkbox
                       id="useMap"
                       checked={useMap}
+
                       onCheckedChange={(checked) => {
                         setUseMap(checked === true);
                         if (checked === true) {
                           getCurrentLocation();
                         }
                       }}
+
+                      onCheckedChange={(checked) => setUseMap(checked === true)}
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
                     <Label htmlFor="useMap" className="text-sm font-medium">
@@ -787,8 +853,11 @@ export default function EditLocationModal({
                     {mapLoadError && (
                       <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md relative z-10">
                         <p className="text-xs text-yellow-700">
+
                           ⚠️ Map hasn&apos;t loaded properly. Please uncheck and
                           check the &quot;Use Map&quot; button again.
+
+                          ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check the &quot;Use Map&quot; button again.
                         </p>
                       </div>
                     )}

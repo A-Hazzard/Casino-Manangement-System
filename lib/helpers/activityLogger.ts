@@ -23,8 +23,11 @@ export type ActivityLogData = {
   userAgent?: string;
   userId?: string;
   username?: string;
+
   userRole?: string;
 };
+
+}
 
 /**
  * Logs user activity for audit purposes
@@ -37,6 +40,9 @@ export async function logActivity(
     // Get user information from store
     const user = useUserStore.getState().user;
 
+
+
+    
     // Get client information
     const clientInfo = {
       ipAddress: await getClientIP(),
@@ -48,7 +54,9 @@ export async function logActivity(
       ...clientInfo,
       userId: activityData.userId || user?._id || "unknown",
       username: activityData.username || user?.emailAddress || "unknown",
+
       userRole: activityData.userRole || user?.roles?.[0] || "user",
+
       timestamp: new Date().toISOString(),
     };
 
@@ -81,11 +89,14 @@ function calculateChanges(
   oldObj: Record<string, unknown>,
   newObj: Record<string, unknown>
 ): Array<{ field: string; oldValue: unknown; newValue: unknown }> {
+
   const changes: Array<{
     field: string;
     oldValue: unknown;
     newValue: unknown;
   }> = [];
+
+  const changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> = [];
 
   // Check for changed or new fields
   for (const [key, newValue] of Object.entries(newObj)) {
@@ -133,6 +144,7 @@ function generateDetailedDescription(
   if (action === "update" && changes && changes.length > 0) {
     if (changes.length === 1) {
       const change = changes[0];
+
       return `Updated ${resource} "${resourceName}": changed ${
         change.field
       } from "${String(change.oldValue || "empty")}" to "${String(
@@ -148,6 +160,13 @@ function generateDetailedDescription(
       return `Updated ${resource} "${resourceName}": ${changeDescriptions.join(
         ", "
       )}`;
+
+      return `Updated ${resource} "${resourceName}": changed ${change.field} from "${String(change.oldValue || 'empty')}" to "${String(change.newValue || 'empty')}"`;
+    } else {
+      const changeDescriptions = changes.map(change => 
+        `${change.field}: "${String(change.oldValue || 'empty')}" → "${String(change.newValue || 'empty')}"`
+      );
+      return `Updated ${resource} "${resourceName}": ${changeDescriptions.join(', ')}`;
     }
   }
 
@@ -171,9 +190,12 @@ export const createActivityLogger = (resource: ActivityResource) => {
         resourceId,
         resourceName,
         newData,
+
         details:
           details ||
           generateDetailedDescription("create", resource, resourceName),
+
+        details: details || generateDetailedDescription("create", resource, resourceName),
       }),
 
     logUpdate: (
@@ -191,6 +213,7 @@ export const createActivityLogger = (resource: ActivityResource) => {
         resourceName,
         previousData,
         newData,
+
         details:
           details ||
           generateDetailedDescription(
@@ -199,6 +222,8 @@ export const createActivityLogger = (resource: ActivityResource) => {
             resourceName,
             changes
           ),
+
+        details: details || generateDetailedDescription("update", resource, resourceName, changes),
       });
     },
 
@@ -214,9 +239,12 @@ export const createActivityLogger = (resource: ActivityResource) => {
         resourceId,
         resourceName,
         previousData,
+
         details:
           details ||
           generateDetailedDescription("delete", resource, resourceName),
+
+        details: details || generateDetailedDescription("delete", resource, resourceName),
       }),
   };
 };

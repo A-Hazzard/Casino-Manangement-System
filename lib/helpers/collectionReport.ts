@@ -803,6 +803,70 @@ export function calculateMovement(
 }
 
 
+
+/**
+ * Calculate amount to collect for a single machine
+ * @param metersIn - Current meters in value
+ * @param prevIn - Previous meters in value
+ * @param metersOut - Current meters out value
+ * @param prevOut - Previous meters out value
+ * @param profitShare - Profit share percentage (e.g., 50 for 50%)
+ * @returns Amount to collect for this machine
+ */
+export function calculateAmountToCollectForMachine(
+  metersIn: number,
+  prevIn: number,
+  metersOut: number = 0,
+  prevOut: number = 0,
+  profitShare: number = 50
+): number {
+  const drop = metersIn - prevIn;
+  const cancelledCredits = metersOut - prevOut;
+  const gross = drop - cancelledCredits;
+  
+  // Calculate partner profit: gross * profitShare / 100
+  const partnerProfit = Math.floor(gross * profitShare / 100);
+  
+  // Amount to collect = gross - partner profit
+  return gross - partnerProfit;
+}
+
+/**
+ * Calculate total amount to collect for all machines in the collection
+ * @param collectedMachines - Array of collected machine entries
+ * @param profitShare - Profit share percentage from gaming location (e.g., 50 for 50%)
+ * @returns Total amount to collect
+ */
+export function calculateTotalAmountToCollect(
+  collectedMachines: CollectionDocument[],
+  profitShare: number = 50
+): number {
+  return collectedMachines.reduce((total, machine) => {
+    const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
+    const cancelledCredits = (machine.metersOut || 0) - (machine.prevOut || 0);
+    const gross = drop - cancelledCredits;
+    
+    // Calculate partner profit: gross * profitShare / 100
+    const partnerProfit = Math.floor(gross * profitShare / 100);
+    
+    // Amount to collect = gross - partner profit
+    return total + (gross - partnerProfit);
+  }, 0);
+}
+
+/**
+ * Calculate balance correction based on amount to collect and collected amount
+ * @param amountToCollect - Total amount to collect
+ * @param collectedAmount - Amount actually collected
+ * @returns Balance correction value
+ */
+export function calculateBalanceCorrection(
+  amountToCollect: number,
+  collectedAmount: number
+): number {
+  return collectedAmount - amountToCollect;
+}
+
 /**
  * Calculate advanced financial metrics based on old system logic
  * @param collectedMachines - Array of collected machine entries

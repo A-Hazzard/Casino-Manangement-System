@@ -13,7 +13,9 @@ import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal"
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { Input } from "@/components/ui/input";
+
 import { CustomSelect } from "@/components/ui/custom-select";
+
 import { fetchCabinets, fetchCabinetLocations } from "@/lib/helpers/cabinets";
 import { mapToCabinetProps } from "@/lib/utils/cabinet";
 import {
@@ -302,6 +304,7 @@ function CabinetsPageContent() {
     <>
       <EditCabinetModal onCabinetUpdated={loadCabinets} />
       <DeleteCabinetModal onCabinetDeleted={loadCabinets} />
+
       <NewCabinetModal
         locations={locations}
         currentLocationName={
@@ -311,6 +314,8 @@ function CabinetsPageContent() {
         }
         onCreated={loadCabinets}
       />
+
+      <NewCabinetModal locations={locations} onCreated={loadCabinets} />
       <NewMovementRequestModal
         isOpen={isNewMovementRequestModalOpen}
         onClose={closeNewMovementRequestModal}
@@ -433,8 +438,12 @@ function CabinetsPageContent() {
         {/* Date Filters Row - Visible on both mobile and desktop */}
         <div className="flex items-center justify-between mt-4 mb-0 gap-4">
           <div className="flex-1 min-w-0">
+
             <DashboardDateFilters
               disabled={loading}
+
+            <DashboardDateFilters 
+              disabled={loading} 
               hideAllTime={false}
               onCustomRangeGo={loadCabinets}
             />
@@ -454,6 +463,7 @@ function CabinetsPageContent() {
               <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
             <div className="relative w-full">
+
               <CustomSelect
                 value={selectedLocation}
                 onValueChange={handleLocationChange}
@@ -545,6 +555,85 @@ function CabinetsPageContent() {
           </div>
         )}
 
+
+              <select
+                className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive text-base"
+                value={selectedLocation}
+                onChange={(e) => handleLocationChange(e.target.value)}
+              >
+                <option value="all">All Locations</option>
+                {locations.map((location) => (
+                  <option key={location._id} value={location._id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+              <ArrowDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+            <div className="relative w-full">
+              <select
+                className="w-full h-11 bg-white border border-gray-300 rounded-full px-4 pr-10 text-gray-700 appearance-none focus:ring-buttonActive focus:border-buttonActive text-base"
+                value={`${sortOption}-${sortOrder}`}
+                onChange={(e) => {
+                  const [option, order] = e.target.value.split("-");
+                  setSortOption(option as CabinetSortOption);
+                  setSortOrder(order as "asc" | "desc");
+                }}
+              >
+                <option value="moneyIn-desc">Money In (Highest First)</option>
+                <option value="moneyIn-asc">Money In (Lowest First)</option>
+                <option value="moneyOut-desc">Money Out (Highest First)</option>
+                <option value="moneyOut-asc">Money Out (Lowest First)</option>
+                <option value="gross-desc">
+                  Gross Revenue (Highest First)
+                </option>
+                <option value="gross-asc">Gross Revenue (Lowest First)</option>
+                <option value="jackpot-desc">Jackpot (Highest First)</option>
+                <option value="jackpot-asc">Jackpot (Lowest First)</option>
+                <option value="assetNumber-asc">Asset Number (A to Z)</option>
+                <option value="assetNumber-desc">Asset Number (Z to A)</option>
+                <option value="locationName-asc">Location (A to Z)</option>
+                <option value="locationName-desc">Location (Z to A)</option>
+                <option value="lastOnline-desc">
+                  Last Online (Most Recent)
+                </option>
+                <option value="lastOnline-asc">
+                  Last Online (Oldest First)
+                </option>
+              </select>
+              <ArrowDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        )}
+
+        {/* Search Row - Purple box - Only show on cabinets section */}
+        {activeSection === "cabinets" && (
+          <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+            <div className="relative flex-1 max-w-md min-w-0">
+              <Input
+                type="text"
+                placeholder="Search machines..."
+                className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            </div>
+            <select
+              value={selectedLocation}
+              onChange={(e) => handleLocationChange(e.target.value)}
+              className="w-auto h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+            >
+              <option value="all">All Locations</option>
+              {locations.map((location) => (
+                <option key={location._id} value={location._id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Section Content */}
         {activeSection === "cabinets" ? (
           <>
@@ -560,14 +649,24 @@ function CabinetsPageContent() {
               <>
                 {/* Table Skeleton for large screens */}
                 <div className="hidden md:block">
+
                   <ClientOnly fallback={<CabinetTableSkeleton />}>
+
+                  <ClientOnly
+                    fallback={<CabinetTableSkeleton />}
+                  >
                     <CabinetTableSkeleton />
                   </ClientOnly>
                 </div>
 
                 {/* Card Skeleton for small screens only */}
                 <div className="block md:hidden">
+
                   <ClientOnly fallback={<CabinetCardSkeleton />}>
+
+                  <ClientOnly
+                    fallback={<CabinetCardSkeleton />}
+                  >
                     <CabinetCardSkeleton />
                   </ClientOnly>
                 </div>

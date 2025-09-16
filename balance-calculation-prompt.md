@@ -3,6 +3,9 @@
 ## Overview
 This prompt explains the correct balance calculation logic for the NewCollectionModal component and how to implement it without causing infinite loops.
 
+**📚 For comprehensive documentation with current implementation details, see:**
+**`Documentation/frontend/collection-report-balance-calculations.md`**
+
 ## Calculation Logic
 
 ### 1. Amount to Collect (Auto-calculated, Read-only)

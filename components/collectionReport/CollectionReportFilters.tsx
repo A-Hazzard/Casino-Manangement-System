@@ -4,7 +4,9 @@ import React, { useRef, useEffect } from "react";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+
 import { CustomSelect } from "@/components/ui/custom-select";
+
 import { gsap } from "gsap";
 import type { CollectionReportFiltersProps } from "@/lib/types/components";
 
@@ -215,6 +217,71 @@ export default function CollectionReportFilters({
             Clear Filters
           </Button>
         </div>
+      </div>
+
+      {/* SMIB Filter Checkboxes */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="smibFilter"
+            checked={selectedFilters.includes("SMIBLocationsOnly")}
+            onCheckedChange={(checked) =>
+              onFilterChange("SMIBLocationsOnly", !!checked)
+            }
+            className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+          />
+          <label
+            htmlFor="smibFilter"
+            className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+          >
+            SMIB
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="noSmibFilter"
+            checked={selectedFilters.includes("NoSMIBLocation")}
+            onCheckedChange={(checked) =>
+              onFilterChange("NoSMIBLocation", !!checked)
+            }
+            className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+          />
+          <label
+            htmlFor="noSmibFilter"
+            className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+          >
+            No SMIB
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="localServerFilter"
+            checked={selectedFilters.includes("LocalServersOnly")}
+            onCheckedChange={(checked) =>
+              onFilterChange("LocalServersOnly", !!checked)
+            }
+            className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+          />
+          <label
+            htmlFor="localServerFilter"
+            className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+          >
+            Local Server
+          </label>
+        </div>
+      </div>
+
+      {/* Clear Filters Button */}
+      <div className="flex items-center w-full lg:w-auto">
+        <Button
+          variant="outline"
+          onClick={onClearFilters}
+          className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 whitespace-nowrap"
+        >
+          Clear Filters
+        </Button>
       </div>
     </div>
   );

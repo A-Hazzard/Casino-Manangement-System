@@ -694,10 +694,16 @@ function CollectionReportContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
+
         {/* Title Row - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 w-full max-w-full gap-4">
           <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">
+
+        {/* Title Row */}
+        <div className="flex items-center justify-between mt-4 w-full max-w-full">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
               Collection Report
             </h1>
             <Image
@@ -705,7 +711,10 @@ function CollectionReportContent() {
               alt="Collection Report Icon"
               width={32}
               height={32}
+
               className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8"
+
+              className="w-6 h-6 sm:w-8 sm:h-8"
             />
           </div>
 
@@ -713,10 +722,16 @@ function CollectionReportContent() {
           {activeTab === "collection" && (
             <button
               onClick={() => setShowNewCollectionModal(true)}
+
               className="bg-buttonActive text-white px-3 py-2 sm:px-4 sm:py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-xs sm:text-sm font-medium w-full sm:w-auto"
             >
               <svg
                 className="w-3 h-3 sm:w-4 sm:h-4"
+
+              className="bg-buttonActive text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <svg
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -728,8 +743,11 @@ function CollectionReportContent() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
+
               <span className="hidden xs:inline">Create Collection Report</span>
               <span className="xs:hidden">Create Report</span>
+
+              Create Collection Report
             </button>
           )}
         </div>

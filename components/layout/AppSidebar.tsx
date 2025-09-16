@@ -252,8 +252,10 @@ export default function AppSidebar() {
             ref={triggerRef}
             onClick={(e) => {
               e.stopPropagation(); // Prevent event bubbling to click-outside handler
+
               setMenuOpen(!menuOpen); // Toggle the menu state
               
+
               // Only position outside on desktop (md+) when collapsed
               if (collapsed && typeof window !== 'undefined' && window.innerWidth >= 768) {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -264,6 +266,9 @@ export default function AppSidebar() {
               } else {
                 setDropdownPosition(null);
               }
+
+
+              
             }}
             className="w-full flex items-center gap-3 rounded-md px-2 py-2 bg-accent/30 hover:bg-accent/50 transition-colors text-left"
             aria-haspopup="menu"

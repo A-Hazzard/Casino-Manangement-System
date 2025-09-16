@@ -8,6 +8,7 @@ import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
 import { Meters } from "../lib/models/meters";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
 import { generateMongoId } from "@/lib/utils/id";
+
 import {
   logActivity,
   calculateChanges,
@@ -53,6 +54,10 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
   if (!value) return value;
   return value.toLowerCase();
 }
+
+import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: NextRequest) {
   try {
@@ -452,7 +457,10 @@ export async function POST(request: NextRequest) {
       origSerialNumber: "",
       machineId: "",
       gamingBoard: "",
+
       manuf: data.manufacturer || "",
+
+      manuf: "",
       smibBoard: data.smibBoard,
       smibVersion: { firmware: "", version: "" },
       smibConfig: {
@@ -514,7 +522,10 @@ export async function POST(request: NextRequest) {
       },
       operationsWhileIdle: { extendedMeters: new Date() },
       collectionMetersHistory: [],
+
       manufacturer: data.manufacturer || "",
+
+      manufacturer: "",
       gameNumber: "",
       protocols: [],
       numberOfEnabledGames: 0,
@@ -548,6 +559,7 @@ export async function POST(request: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const createChanges = [
+
           {
             field: "serialNumber",
             oldValue: null,
@@ -577,6 +589,16 @@ export async function POST(request: NextRequest) {
             oldValue: null,
             newValue: data.accountingDenomination,
           },
+
+          { field: "serialNumber", oldValue: null, newValue: data.serialNumber },
+          { field: "game", oldValue: null, newValue: data.game },
+          { field: "gameType", oldValue: null, newValue: data.gameType || "slot" },
+          { field: "isCronosMachine", oldValue: null, newValue: data.isCronosMachine },
+          { field: "cabinetType", oldValue: null, newValue: data.cabinetType },
+          { field: "assetStatus", oldValue: null, newValue: data.assetStatus },
+          { field: "gamingLocation", oldValue: null, newValue: data.gamingLocation },
+          { field: "smibBoard", oldValue: null, newValue: data.smibBoard },
+          { field: "accountingDenomination", oldValue: null, newValue: data.accountingDenomination },
         ];
 
         await logActivity(
@@ -626,6 +648,7 @@ export async function PUT(request: NextRequest) {
 
     const data = (await request.json()) as MachineUpdateData;
 
+
     // Backend validations mirroring frontend (only when provided)
     if (data.serialNumber !== undefined) {
       const serialNumberError = validateSerialNumber(data.serialNumber);
@@ -649,6 +672,8 @@ export async function PUT(request: NextRequest) {
       data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? "";
     }
 
+
+    
     // Get original machine data for change tracking
     const originalMachine = await Machine.findById(id);
     if (!originalMachine) {
@@ -664,16 +689,20 @@ export async function PUT(request: NextRequest) {
     });
 
     // If serial number was updated, also update it in Collections
+
     if (
       data.serialNumber !== undefined &&
       data.serialNumber !== "" &&
       data.serialNumber !== originalMachine.serialNumber
     ) {
+
+    if (data.serialNumber !== undefined && data.serialNumber !== "" && data.serialNumber !== originalMachine.serialNumber) {
       try {
         await Collections.updateMany(
           { machineId: id },
           { $set: { serialNumber: data.serialNumber } }
         );
+
         console.warn(
           `Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`
         );
@@ -682,21 +711,29 @@ export async function PUT(request: NextRequest) {
           "Failed to update serial number in Collections:",
           collectionsError
         );
+
+        console.warn(`Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`);
+      } catch (collectionsError) {
+        console.error("Failed to update serial number in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
       }
     }
 
     // If game name was updated, also update it in Collections
+
     if (
       data.game !== undefined &&
       data.game !== "" &&
       data.game !== originalMachine.game
     ) {
+
+    if (data.game !== undefined && data.game !== "" && data.game !== originalMachine.game) {
       try {
         await Collections.updateMany(
           { machineId: id },
           { $set: { machineName: data.game } }
         );
+
         console.warn(
           `Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`
         );
@@ -705,6 +742,10 @@ export async function PUT(request: NextRequest) {
           "Failed to update machine name in Collections:",
           collectionsError
         );
+
+        console.warn(`Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`);
+      } catch (collectionsError) {
+        console.error("Failed to update machine name in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
       }
     }
@@ -725,9 +766,12 @@ export async function PUT(request: NextRequest) {
           "machine",
           { id, name: originalMachine.serialNumber || originalMachine.game },
           changes,
+
           `Updated machine "${
             originalMachine.serialNumber || originalMachine.game
           }"`,
+
+          `Updated machine "${originalMachine.serialNumber || originalMachine.game}"`,
           getClientIP(request) || undefined
         );
       } catch (logError) {
@@ -783,6 +827,7 @@ export async function DELETE(request: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
+
           {
             field: "serialNumber",
             oldValue: machineToDelete.serialNumber,
@@ -819,6 +864,15 @@ export async function DELETE(request: NextRequest) {
             oldValue: machineToDelete.smibBoard,
             newValue: null,
           },
+
+          { field: "serialNumber", oldValue: machineToDelete.serialNumber, newValue: null },
+          { field: "game", oldValue: machineToDelete.game, newValue: null },
+          { field: "gameType", oldValue: machineToDelete.gameType, newValue: null },
+          { field: "isCronosMachine", oldValue: machineToDelete.isCronosMachine, newValue: null },
+          { field: "cabinetType", oldValue: machineToDelete.cabinetType, newValue: null },
+          { field: "assetStatus", oldValue: machineToDelete.assetStatus, newValue: null },
+          { field: "gamingLocation", oldValue: machineToDelete.gamingLocation, newValue: null },
+          { field: "smibBoard", oldValue: machineToDelete.smibBoard, newValue: null },
         ];
 
         await logActivity(
@@ -831,9 +885,12 @@ export async function DELETE(request: NextRequest) {
           "machine",
           { id, name: machineToDelete.serialNumber || machineToDelete.game },
           deleteChanges,
+
           `Deleted machine "${
             machineToDelete.serialNumber || machineToDelete.game
           }"`,
+
+          `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game}"`,
           getClientIP(request) || undefined
         );
       } catch (logError) {
