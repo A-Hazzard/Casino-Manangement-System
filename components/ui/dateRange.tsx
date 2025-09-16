@@ -13,7 +13,13 @@ export default function DateRange({
     <div className="mt-4 flex flex-wrap justify-center gap-4">
       <input
         type="date"
-        value={CustomDateRange.startDate.toISOString().split("T")[0]}
+        value={(
+          CustomDateRange.startDate instanceof Date
+            ? CustomDateRange.startDate
+            : new Date(CustomDateRange.startDate || new Date())
+        )
+          .toISOString()
+          .split("T")[0]}
         onChange={(e) =>
           setCustomDateRange({
             ...CustomDateRange,

@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
         destination: "/collection-report",
         permanent: true,
       },
+      {
+        source: "/login/",
+        destination: "/login",
+        permanent: true,
+      },
     ];
   },
   webpack: (config) => {

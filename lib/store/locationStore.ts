@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import axios from "axios";
 import { LocationStore } from "@/lib/types/location";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 // Define a no-op version for SSR
 const dummyState: LocationStore = {
@@ -17,26 +19,38 @@ const createStore = () => {
     closeLocationModal: () => set({ isLocationModalOpen: false }),
     createLocation: async (location) => {
       try {
-        const response = await fetch("/api/locations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        const locationLogger = createActivityLogger("location");
+
+        const response = await axios.post("/api/locations", {
+          name: location.name,
+          address: {
+            street: location.address,
           },
-          body: JSON.stringify({
-            name: location.name,
-            address: {
-              street: location.address,
-            },
-            geoCoords: {
-              latitude: location.latitude,
-              longitude: location.longitude,
-            },
-          }),
+          country: "Trinidad and Tobago", // Default country
+          geoCoords: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          rel: {
+            licencee: location.licencee || "",
+          },
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to create location");
-        }
+        // Log the location creation activity
+        await locationLogger.logCreate(
+          response.data?.data?._id || location.name,
+          location.name,
+          {
+            name: location.name,
+            address: location.address,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          `Created new location: ${location.name} at ${location.address}`
+        );
+
+        // Return the created location data
+        return response.data?.data;
       } catch (error) {
         console.error("Error creating location:", error);
         throw error;

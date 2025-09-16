@@ -1,4 +1,5 @@
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import { Collections } from "@/app/api/lib/models/collections";
 import { CollectionReportRow } from "@/lib/types/componentProps";
 import { PipelineStage } from "mongoose";
 import axios from "axios";
@@ -6,8 +7,12 @@ import type {
   MonthlyReportSummary,
   MonthlyReportDetailsRow,
 } from "@/lib/types/componentProps";
-import type { CreateCollectionReportPayload, CollectionReportLocationWithMachines } from "@/lib/types/api";
+import type {
+  CreateCollectionReportPayload,
+  CollectionReportLocationWithMachines,
+} from "@/lib/types/api";
 import type { CollectionReportData } from "@/lib/types";
+import type { CollectionDocument } from "@/lib/types/collections";
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
@@ -22,21 +27,25 @@ export async function getAllCollectionReports(
   endDate?: Date
 ): Promise<CollectionReportRow[]> {
   let rawReports;
-  
+
   // Build base match criteria
   const matchCriteria: Record<string, unknown> = {};
-  
+
   // Add date range filtering if provided
   if (startDate && endDate) {
     matchCriteria.timestamp = { $gte: startDate, $lte: endDate };
   }
-  
+
   if (!licenceeId) {
     // No licencee filter, just apply date filter if present
     if (Object.keys(matchCriteria).length > 0) {
-      rawReports = await CollectionReport.find(matchCriteria).sort({ timestamp: -1 }).lean();
+      rawReports = await CollectionReport.find(matchCriteria)
+        .sort({ timestamp: -1 })
+        .lean();
     } else {
-      rawReports = await CollectionReport.find({}).sort({ timestamp: -1 }).lean();
+      rawReports = await CollectionReport.find({})
+        .sort({ timestamp: -1 })
+        .lean();
     }
   } else {
     // Apply licencee filter with aggregation, plus date filter if present
@@ -50,62 +59,99 @@ export async function getAllCollectionReports(
         },
       },
       { $unwind: "$locationDetails" },
-      { 
-        $match: { 
+      {
+        $match: {
           "locationDetails.rel.licencee": licenceeId,
-          ...matchCriteria
-        } 
+          ...matchCriteria,
+        },
       },
       { $sort: { timestamp: -1 } },
     ];
     rawReports = await CollectionReport.aggregate(aggregationPipeline);
   }
-  
-  // Map to CollectionReportRow
-  return rawReports.map((doc: Record<string, unknown>) => ({
-    _id: (doc._id as string) || "",
-    locationReportId: (doc.locationReportId as string) || "",
-    collector: (doc.collectorName as string) || "",
-    location: (doc.locationName as string) || "",
-    gross: (doc.totalGross as number) || 0,
-    machines: (doc.machinesCollected as string) || "",
-    collected: (doc.amountCollected as number) || 0,
-    uncollected:
-      typeof doc.amountUncollected === "number"
-        ? (doc.amountUncollected as number).toString()
-        : (doc.amountUncollected as string) || "-",
-    locationRevenue: (doc.partnerProfit as number) || 0,
-    time: (() => {
-      const ts = doc.timestamp;
-      if (ts) {
-        if (typeof ts === "string" || ts instanceof Date) {
-          return new Date(ts).toLocaleString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          });
+
+  // Map to CollectionReportRow and enrich with machine counts
+  const enrichedReports = await Promise.all(
+    rawReports.map(async (doc: Record<string, unknown>) => {
+      const locationReportId = (doc.locationReportId as string) || "";
+      const locationName = (doc.locationName as string) || "";
+
+      // Fetch machine count from collections (collected machines only)
+      let collectedMachines = 0;
+      try {
+        // Try to get collections by locationReportId first
+        const collectionsByReportId = await Collections.find({
+          locationReportId: locationReportId,
+        }).lean();
+        collectedMachines = collectionsByReportId.length;
+
+        // If no collections found by locationReportId, try by location name
+        if (collectedMachines === 0 && locationName) {
+          const collectionsByLocation = await Collections.find({
+            location: locationName,
+          }).lean();
+          collectedMachines = collectionsByLocation.length;
         }
-        if (
-          typeof ts === "object" &&
-          "$date" in ts &&
-          typeof ts.$date === "string"
-        ) {
-          return new Date(ts.$date).toLocaleString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          });
-        }
+      } catch (error) {
+        console.warn(
+          `⚠️ Could not fetch machine count for report ${locationReportId}:`,
+          error
+        );
+        // Fallback to the original machinesCollected field
+        collectedMachines =
+          parseInt((doc.machinesCollected as string) || "0") || 0;
       }
-      return "-";
-    })(),
-  }));
+
+      return {
+        _id: (doc._id as string) || "",
+        locationReportId,
+        collector: (doc.collectorName as string) || "",
+        location: locationName,
+        gross: (doc.totalGross as number) || 0,
+        machines: collectedMachines.toString(),
+        collected: (doc.amountCollected as number) || 0,
+        uncollected:
+          typeof doc.amountUncollected === "number"
+            ? (doc.amountUncollected as number).toString()
+            : (doc.amountUncollected as string) || "-",
+        locationRevenue: (doc.partnerProfit as number) || 0,
+        variation: (doc.variation as number) || "No SAS Data",
+        balance: (doc.currentBalance as number) || 0,
+        time: (() => {
+          const ts = doc.timestamp;
+          if (ts) {
+            if (typeof ts === "string" || ts instanceof Date) {
+              return new Date(ts).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              });
+            }
+            if (
+              typeof ts === "object" &&
+              "$date" in ts &&
+              typeof ts.$date === "string"
+            ) {
+              return new Date(ts.$date).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              });
+            }
+          }
+          return "-";
+        })(),
+      };
+    })
+  );
+
+  return enrichedReports;
 }
 
 // Helper function to safely cast distinct result to string array
@@ -208,12 +254,14 @@ export async function getCollectorsPaginated(
  * @param {Date} startDate - Start date for filtering.
  * @param {Date} endDate - End date for filtering.
  * @param {string} [locationName] - Optional location name to filter.
+ * @param {string} [licencee] - Optional licencee to filter.
  * @returns {Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }>} Aggregated sums for the summary table.
  */
 export async function getMonthlyCollectionReportSummary(
   startDate: Date,
   endDate: Date,
-  locationName?: string
+  locationName?: string,
+  licencee?: string
 ): Promise<{
   drop: string;
   cancelledCredits: string;
@@ -226,27 +274,63 @@ export async function getMonthlyCollectionReportSummary(
   if (locationName) {
     match.locationName = locationName;
   }
-  const result = await CollectionReport.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: null,
-        drop: { $sum: "$totalDrop" },
-        cancelledCredits: { $sum: "$totalCancelled" },
-        gross: { $sum: "$totalGross" },
-        sasGross: { $sum: "$totalSasGross" },
+
+  let pipeline: PipelineStage[] = [];
+
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+    pipeline = [
+      {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "location",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
       },
-    },
-  ]);
+      { $unwind: "$locationDetails" },
+      { $match: { "locationDetails.rel.licencee": licencee, ...match } },
+      {
+        $group: {
+          _id: null,
+          drop: { $sum: "$totalDrop" },
+          cancelledCredits: { $sum: "$totalCancelled" },
+          gross: { $sum: "$totalGross" },
+          sasGross: { $sum: "$totalSasGross" },
+        },
+      },
+    ];
+  } else {
+    // No licencee filter, use simple aggregation
+    pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          drop: { $sum: "$totalDrop" },
+          cancelledCredits: { $sum: "$totalCancelled" },
+          gross: { $sum: "$totalGross" },
+          sasGross: { $sum: "$totalSasGross" },
+        },
+      },
+    ];
+  }
+
+  const result = await CollectionReport.aggregate(pipeline);
   const agg = result[0] || {};
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return "-";
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
   return {
-    drop: agg.drop !== undefined ? agg.drop.toString() : "-",
-    cancelledCredits:
-      agg.cancelledCredits !== undefined
-        ? agg.cancelledCredits.toString()
-        : "-",
-    gross: agg.gross !== undefined ? agg.gross.toString() : "-",
-    sasGross: agg.sasGross !== undefined ? agg.sasGross.toString() : "-",
+    drop: formatSmartDecimal(agg.drop),
+    cancelledCredits: formatSmartDecimal(agg.cancelledCredits),
+    gross: formatSmartDecimal(agg.gross),
+    sasGross: formatSmartDecimal(agg.sasGross),
   };
 }
 
@@ -255,12 +339,14 @@ export async function getMonthlyCollectionReportSummary(
  * @param {Date} startDate - Start date for filtering.
  * @param {Date} endDate - End date for filtering.
  * @param {string} [locationName] - Optional location name to filter.
+ * @param {string} [licencee] - Optional licencee to filter.
  * @returns {Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>>} Aggregated data per location for the details table.
  */
 export async function getMonthlyCollectionReportByLocation(
   startDate: Date,
   endDate: Date,
-  locationName?: string
+  locationName?: string,
+  licencee?: string
 ): Promise<
   Array<{
     location: string;
@@ -276,25 +362,65 @@ export async function getMonthlyCollectionReportByLocation(
   if (locationName) {
     match.locationName = locationName;
   }
-  const result = await CollectionReport.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: "$locationName",
-        drop: { $sum: "$totalDrop" },
-        win: { $sum: "$totalCancelled" },
-        gross: { $sum: "$totalGross" },
-        sasGross: { $sum: "$totalSasGross" },
+
+  let pipeline: PipelineStage[] = [];
+
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+    pipeline = [
+      {
+        $lookup: {
+          from: "gaminglocations",
+          localField: "location",
+          foreignField: "_id",
+          as: "locationDetails",
+        },
       },
-    },
-    { $sort: { _id: 1 } },
-  ]);
+      { $unwind: "$locationDetails" },
+      { $match: { "locationDetails.rel.licencee": licencee, ...match } },
+      {
+        $group: {
+          _id: "$locationName",
+          drop: { $sum: "$totalDrop" },
+          win: { $sum: "$totalCancelled" },
+          gross: { $sum: "$totalGross" },
+          sasGross: { $sum: "$totalSasGross" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ];
+  } else {
+    // No licencee filter, use simple aggregation
+    pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: "$locationName",
+          drop: { $sum: "$totalDrop" },
+          win: { $sum: "$totalCancelled" },
+          gross: { $sum: "$totalGross" },
+          sasGross: { $sum: "$totalSasGross" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ];
+  }
+
+  const result = await CollectionReport.aggregate(pipeline);
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return "-";
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
   return result.map((row) => ({
     location: row._id || "-",
-    drop: row.drop !== undefined ? row.drop.toString() : "-",
-    win: row.win !== undefined ? row.win.toString() : "-",
-    gross: row.gross !== undefined ? row.gross.toString() : "-",
-    sasGross: row.sasGross !== undefined ? row.sasGross.toString() : "-",
+    drop: formatSmartDecimal(row.drop),
+    win: formatSmartDecimal(row.win),
+    gross: formatSmartDecimal(row.gross),
+    sasGross: formatSmartDecimal(row.sasGross),
   }));
 }
 
@@ -302,10 +428,12 @@ export async function fetchMonthlyReportSummaryAndDetails({
   startDate,
   endDate,
   locationName,
+  licencee,
 }: {
   startDate: Date;
   endDate: Date;
   locationName?: string;
+  licencee?: string;
 }): Promise<{
   summary: MonthlyReportSummary;
   details: MonthlyReportDetailsRow[];
@@ -316,6 +444,8 @@ export async function fetchMonthlyReportSummaryAndDetails({
   };
   if (locationName && locationName !== "all")
     params.locationName = locationName;
+  if (licencee && licencee !== "All Licensees" && licencee !== "")
+    params.licencee = licencee;
   const { data } = await axios.get("/api/collectionReport", { params });
   return {
     summary: data.summary || {
@@ -347,13 +477,10 @@ export async function getAllLocationNames(): Promise<string[]> {
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const response = await fetch("/api/collectionReport/locations");
-    if (!response.ok) {
-      throw new Error("Failed to fetch location names");
-    }
-    const data: Record<string, unknown> = await response.json();
+    const response = await axios.get("/api/collectionReport/locations");
+    const data: Record<string, unknown> = response.data;
     if ("locations" in data && Array.isArray(data.locations)) {
-      return data.locations.map((location: Record<string, unknown>) => String(location.name || "Unknown"));
+      return data.locations.map((location: unknown) => String(location));
     }
     return [];
   } catch (error: unknown) {
@@ -376,6 +503,17 @@ export async function createCollectionReport(
   return data;
 }
 
+export async function updateCollectionReport(
+  reportId: string,
+  payload: Partial<CreateCollectionReportPayload>
+) {
+  const { data } = await axios.patch(
+    `/api/collection-report/${reportId}`,
+    payload
+  );
+  return data;
+}
+
 /**
  * Fetches collection reports for a given licencee (or all) with optional date filtering.
  * @param licencee - The licencee name or "all" (optional)
@@ -390,21 +528,21 @@ export async function fetchCollectionReportsByLicencee(
 ): Promise<CollectionReportRow[]> {
   try {
     const params: Record<string, string> = {};
-    
+
     if (licencee && licencee.toLowerCase() !== "all") {
       params.licencee = licencee;
     }
-    
+
     // If timePeriod is provided and not Custom, use timePeriod
     if (timePeriod && timePeriod !== "Custom") {
       params.timePeriod = timePeriod;
-    } 
+    }
     // Otherwise, if dateRange is provided, use custom dates
     else if (dateRange?.from && dateRange?.to) {
       params.startDate = dateRange.from.toISOString();
       params.endDate = dateRange.to.toISOString();
     }
-    
+
     const { data } = await axios.get("/api/collectionReport", { params });
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -442,6 +580,7 @@ export async function fetchMachineCollectionMeters(
     const { data } = await axios.get("/api/machines", {
       params: { id: machineId },
     });
+
     if (data && data.success && data.data && data.data.collectionMeters) {
       return {
         metersIn: data.data.collectionMeters.metersIn ?? 0,
@@ -464,7 +603,21 @@ export async function fetchPreviousCollectionTime(
   machineId: string
 ): Promise<string | Date | undefined> {
   try {
-    // Try collectionReport API first
+    // Try machines API for collectionTime (the correct field name)
+    const machineRes = await axios.get(`/api/machines`, {
+      params: { id: machineId },
+    });
+
+    if (
+      machineRes.data &&
+      machineRes.data.success &&
+      machineRes.data.data &&
+      machineRes.data.data.collectionTime
+    ) {
+      return machineRes.data.data.collectionTime;
+    }
+
+    // Fallback: Try collectionReport API
     const { data } = await axios.get(`/api/collectionReport`, {
       params: { machineId, latest: 1 },
     });
@@ -472,23 +625,11 @@ export async function fetchPreviousCollectionTime(
       if (data.data.previousCollectionTime) {
         return data.data.previousCollectionTime;
       }
-      // Sometimes the field may be nested or named differently
       if (data.data.collectionTime) {
         return data.data.collectionTime;
       }
     }
-    // Fallback: Try machines API for previousCollectionTime
-    const machineRes = await axios.get(`/api/machines`, {
-      params: { id: machineId },
-    });
-    if (
-      machineRes.data &&
-      machineRes.data.success &&
-      machineRes.data.data &&
-      machineRes.data.data.previousCollectionTime
-    ) {
-      return machineRes.data.data.previousCollectionTime;
-    }
+
     return undefined;
   } catch (error) {
     console.error("Failed to fetch previous collection time:", error);
@@ -528,18 +669,206 @@ export const normalizeApiResponse = (
   data: Record<string, unknown> | CollectionReportLocationWithMachines[]
 ): CollectionReportLocationWithMachines[] => {
   // Handle the expected format
-  if (typeof data === 'object' && data !== null && 'collectionReports' in data && Array.isArray(data.collectionReports)) {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "collectionReports" in data &&
+    Array.isArray(data.collectionReports)
+  ) {
     return data.collectionReports as CollectionReportLocationWithMachines[];
   }
   // Handle the locations format (fallback) - not yet implemented but kept for future compatibility
-  if (typeof data === 'object' && data !== null && 'locations' in data && Array.isArray(data.locations)) {
-    console.warn('API returned locations format instead of collectionReports. Consider updating the backend.');
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "locations" in data &&
+    Array.isArray(data.locations)
+  ) {
+    console.warn(
+      "API returned locations format instead of collectionReports. Consider updating the backend."
+    );
     return data.locations as CollectionReportLocationWithMachines[];
   }
   // Handle direct array format
   if (Array.isArray(data)) {
     return data as CollectionReportLocationWithMachines[];
   }
-  console.error('Unexpected API response format:', data);
+  console.error("Unexpected API response format:", data);
   return [];
 };
+
+/**
+ * Calculate SAS metrics from meters collection for a specific machine and time period
+ * @param machineIdentifier - Machine identifier (serialNumber, customName, or machineId)
+ * @param sasStartTime - Start time for SAS calculation
+ * @param sasEndTime - End time for SAS calculation
+ * @returns Promise<SasMetrics> - Calculated SAS metrics
+ */
+export async function calculateSasMetrics(
+  machineIdentifier: string,
+  sasStartTime: Date,
+  sasEndTime: Date
+): Promise<{
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+  jackpot: number;
+  sasStartTime: string;
+  sasEndTime: string;
+}> {
+  try {
+    // Query meters collection for the machine and time period
+    const response = await axios.get("/api/metrics/meters", {
+      params: {
+        timePeriod: "Custom",
+        machine: machineIdentifier,
+        startDate: sasStartTime.toISOString(),
+        endDate: sasEndTime.toISOString(),
+      },
+    });
+
+    const meters = response.data || [];
+
+    // Calculate totals from movement objects
+    const totals = meters.reduce(
+      (
+        acc: {
+          drop: number;
+          totalCancelledCredits: number;
+          gross: number;
+          jackpot: number;
+        },
+        meter: {
+          movement?: {
+            drop?: number;
+            totalCancelledCredits?: number;
+            gross?: number;
+            jackpot?: number;
+          };
+        }
+      ) => {
+        const movement = meter.movement || {};
+        return {
+          drop: acc.drop + (movement.drop || 0),
+          totalCancelledCredits:
+            acc.totalCancelledCredits + (movement.totalCancelledCredits || 0),
+          gross: acc.gross + (movement.gross || 0),
+          jackpot: acc.jackpot + (movement.jackpot || 0),
+        };
+      },
+      { drop: 0, totalCancelledCredits: 0, gross: 0, jackpot: 0 }
+    );
+
+    return {
+      drop: totals.drop,
+      totalCancelledCredits: totals.totalCancelledCredits,
+      gross: totals.gross,
+      jackpot: totals.jackpot,
+      sasStartTime: sasStartTime.toISOString(),
+      sasEndTime: sasEndTime.toISOString(),
+    };
+  } catch (error) {
+    console.error("Error calculating SAS metrics:", error);
+    // Return zero values if calculation fails
+    return {
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      jackpot: 0,
+      sasStartTime: sasStartTime.toISOString(),
+      sasEndTime: sasEndTime.toISOString(),
+    };
+  }
+}
+
+/**
+ * Calculate movement object for a collection
+ * @param metersIn - Current meters in value
+ * @param metersOut - Current meters out value
+ * @returns Movement object with calculated gross
+ */
+export function calculateMovement(
+  metersIn: number,
+  metersOut: number
+): {
+  metersIn: number;
+  metersOut: number;
+  gross: number;
+} {
+  return {
+    metersIn,
+    metersOut,
+    gross: metersIn - metersOut,
+  };
+}
+
+
+/**
+ * Calculate advanced financial metrics based on old system logic
+ * @param collectedMachines - Array of collected machine entries
+ * @param financials - Financial input values
+ * @returns Advanced financial calculations
+ */
+export function calculateAdvancedFinancials(
+  collectedMachines: CollectionDocument[],
+  financials: {
+    taxes: string;
+    advance: string;
+    variance: string;
+    previousBalance: string;
+    collectedAmount: string;
+  }
+): {
+  totalDrop: number;
+  totalCancelledCredits: number;
+  totalGross: number;
+  partnerProfit: number;
+  amountToCollect: number;
+  balanceCorrection: number;
+} {
+  // Calculate total movement data for all machines
+  const totalMovementData = collectedMachines.reduce(
+    (sum, machine) => {
+      const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
+      const cancelledCredits =
+        (machine.metersOut || 0) - (machine.prevOut || 0);
+      return {
+        drop: sum.drop + drop,
+        cancelledCredits: sum.cancelledCredits + cancelledCredits,
+        gross: sum.gross + (drop - cancelledCredits),
+      };
+    },
+    { drop: 0, cancelledCredits: 0, gross: 0 }
+  );
+
+  // Extract financial values
+  const taxes = Number(financials.taxes) || 0;
+  const variance = Number(financials.variance) || 0;
+  const advance = Number(financials.advance) || 0;
+  const previousBalance = Number(financials.previousBalance) || 0;
+  const collectedAmount = Number(financials.collectedAmount) || 0;
+  const profitShare = 50; // Default profit share percentage
+
+  // Calculate partner profit
+  const partnerProfit =
+    Math.floor(
+      ((totalMovementData.gross - variance - advance) * profitShare) / 100
+    ) - taxes;
+
+  // Calculate amount to collect
+  const amountToCollect =
+    totalMovementData.gross - variance - advance - partnerProfit;
+  const finalAmountToCollect = amountToCollect + previousBalance;
+
+  // Calculate balance correction
+  const balanceCorrection = collectedAmount - finalAmountToCollect;
+
+  return {
+    totalDrop: totalMovementData.drop,
+    totalCancelledCredits: totalMovementData.cancelledCredits,
+    totalGross: totalMovementData.gross,
+    partnerProfit,
+    amountToCollect: finalAmountToCollect,
+    balanceCorrection,
+  };
+}

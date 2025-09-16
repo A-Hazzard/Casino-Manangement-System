@@ -1,65 +1,33 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import Chip from "@/components/ui/common/Chip";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
+import type { SmibLocation } from "@/lib/types/cabinets";
 
-const MOCK_SMIBS = [
-  { id: "a1", label: "afscdw67ge" },
-  { id: "b2", label: "Dev Lab" },
-  { id: "c3", label: "Dev Lab 2" },
-  { id: "d4", label: "Test Lab" },
-];
-
-const MOCK_LOCATIONS = [
-  { id: "loc1", name: "All Locations" },
-  { id: "loc2", name: "Dev Lab" },
-  { id: "loc3", name: "Test Lab" },
-  { id: "loc4", name: "Dev Lab 2" },
-];
+// TODO: Replace with MongoDB data fetching
+const MOCK_LOCATIONS: SmibLocation[] = [];
 
 export default function SMIBManagement() {
   const [search, setSearch] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState(
-    MOCK_LOCATIONS[0].id
-  );
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedSMIBs, setSelectedSMIBs] = useState<
     Array<{ id: string; label: string }>
   >([]);
-  const [customSMIB, setCustomSMIB] = useState("");
   const [applyAll, setApplyAll] = useState(false);
 
   const shiftCards = selectedSMIBs.length >= 3;
 
-  const handleSelectSMIB = (
-    smib: { id: string; label: string } | undefined
-  ) => {
-    if (smib && !selectedSMIBs.find((s) => s.id === smib.id)) {
-      setSelectedSMIBs([...selectedSMIBs, smib]);
-    }
-  };
   const handleRemoveSMIB = (id: string) => {
     setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
   };
-  const handleAddCustomSMIB = () => {
-    if (
-      customSMIB.trim() &&
-      !selectedSMIBs.find((s) => s.label === customSMIB)
-    ) {
-      setSelectedSMIBs([
-        ...selectedSMIBs,
-        { id: customSMIB, label: customSMIB },
-      ]);
-      setCustomSMIB("");
-    }
-  };
 
   const currentSelectedLocationName =
-    MOCK_LOCATIONS.find((l) => l.id === selectedLocation)?.name ||
-    "Selected Location";
+    "No locations available - MongoDB implementation pending";
 
   return (
     <div className="w-full max-w-full min-h-[80vh] flex flex-col gap-6 text-gray-700">
@@ -74,17 +42,27 @@ export default function SMIBManagement() {
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
-        <select
+        <CustomSelect
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full lg:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
-        >
-          {MOCK_LOCATIONS.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={setSelectedLocation}
+          options={
+            MOCK_LOCATIONS.length === 0
+              ? []
+              : MOCK_LOCATIONS.map((loc: SmibLocation) => ({
+                  value: loc.id,
+                  label: loc.name,
+                }))
+          }
+          placeholder={
+            MOCK_LOCATIONS.length === 0
+              ? "No locations available - MongoDB implementation pending"
+              : "Select Location"
+          }
+          disabled={MOCK_LOCATIONS.length === 0}
+          className="w-full lg:w-1/3"
+          triggerClassName="h-11 rounded-md border-none px-3 bg-white text-gray-700"
+          emptyMessage="No locations available - MongoDB implementation pending"
+        />
       </div>
 
       {/* Buttons and SMIB Selection Row */}

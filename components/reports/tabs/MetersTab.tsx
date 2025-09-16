@@ -23,8 +23,10 @@ import {
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 import { Input } from "@/components/ui/input";
+import { MetersTabSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
 import type {
   MetersReportData,
   MetersReportResponse,
@@ -91,13 +93,13 @@ export default function MetersTab() {
           `/api/reports/meters?${params}`
         );
         return response.data.data;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching all data for export:", err);
         const errorMessage =
-          err.response?.data?.error ||
-          err.message ||
+          (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error ||
+          (err as Error)?.message ||
           "Failed to load export data";
-        toast.error(errorMessage);
+        toast.error(errorMessage as string);
         return [];
       }
     },
@@ -107,8 +109,6 @@ export default function MetersTab() {
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
     try {
-      console.log("Fetching locations...");
-
       // Build API parameters
       const params: Record<string, string> = {};
       if (selectedLicencee && selectedLicencee !== "all") {
@@ -116,22 +116,20 @@ export default function MetersTab() {
       }
 
       const response = await axios.get("/api/locations", { params });
-      console.log("Locations API response:", response.data);
 
       const locationsData = response.data.locations || [];
-      const mappedLocations = locationsData.map((loc: any) => ({
+      const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
         id: loc._id,
         name: loc.name,
         sasEnabled: loc.sasEnabled || false, // Default to false if not available
       }));
 
-      console.log("Mapped locations:", mappedLocations);
       setLocations(mappedLocations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching locations:", err);
       const errorMessage =
-        err.response?.data?.error || err.message || "Failed to load locations";
-      toast.error(errorMessage);
+        (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error || (err as Error)?.message || "Failed to load locations";
+      toast.error(errorMessage as string);
     }
   }, [selectedLicencee]);
 
@@ -164,40 +162,44 @@ export default function MetersTab() {
           params.append("licencee", selectedLicencee);
         }
 
-        console.log("Fetching meters data with params:", {
-          locations: selectedLocations.join(","),
-          startDate: selectedDateRange.start.toISOString(),
-          endDate: selectedDateRange.end.toISOString(),
-          page,
-          limit: 10,
-          search,
-          licencee: selectedLicencee,
-        });
-
         const response = await axios.get<MetersReportResponse>(
           `/api/reports/meters?${params}`
         );
-        console.log("Meters API response:", response.data);
 
         setMetersData(response.data.data);
         setHasData(response.data.data.length > 0);
         setTotalCount(response.data.totalCount);
         setTotalPages(response.data.totalPages);
         setCurrentPage(response.data.currentPage);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching meters data:", err);
         const errorMessage =
-          err.response?.data?.error ||
-          err.message ||
+          (((err as Record<string, unknown>)?.response as Record<string, unknown>)?.data as Record<string, unknown>)?.error ||
+          (err as Error)?.message ||
           "Failed to load meters data";
-        setError(errorMessage);
-        toast.error(errorMessage);
+        setError(errorMessage as string);
+        toast.error(errorMessage as string);
       } finally {
         setLoading(false);
       }
     },
     [selectedLocations, selectedDateRange, selectedLicencee]
   );
+
+  // Initialize locations once
+  useEffect(() => {
+    if (!locationsInitialized.current) {
+      void fetchLocations();
+      locationsInitialized.current = true;
+    }
+  }, [fetchLocations]);
+
+  // Fetch meters data when locations or date range or licensee changes
+  useEffect(() => {
+    if (selectedLocations.length > 0) {
+      void fetchMetersData(1, searchTerm);
+    }
+  }, [selectedLocations, selectedDateRange.start, selectedDateRange.end, selectedLicencee, fetchMetersData, searchTerm]);
 
   // Handle export
   const handleExport = async () => {
@@ -237,12 +239,12 @@ export default function MetersTab() {
           "Jackpot",
           "Bill In",
           "Voucher Out",
-          "Att. Paid Credits",
+          "Hand Paid Cancelled Credits",
           "Games Played",
           "Date",
         ],
         data: allData.map((item) => [
-          `"${item.machineId}"`, // Wrap in quotes to prevent Excel formula interpretation
+          `"${(typeof (item as Record<string, unknown>).serialNumber === "string" && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === "string" && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}"`,
           `"${item.location}"`,
           item.metersIn.toString(), // Remove toLocaleString() to prevent Excel formatting issues
           item.metersOut.toString(),
@@ -285,10 +287,7 @@ export default function MetersTab() {
     }
   };
 
-  // Load locations on mount
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+  // (deduped) Load locations handled above
 
   // Auto-select all locations when locations are first loaded
   useEffect(() => {
@@ -305,100 +304,35 @@ export default function MetersTab() {
     }
   }, [selectedLocations, selectedDateRange, fetchMetersData]);
 
-  // Skeleton loader component
-  const MetersTableSkeleton = () => (
-    <div className="space-y-4">
-      {/* Desktop Skeleton */}
-      <div className="hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                {[...Array(10)].map((_, index) => (
-                  <th key={index} className="px-4 py-3 text-left">
-                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {[...Array(5)].map((_, rowIndex) => (
-                <tr key={rowIndex}>
-                  {[...Array(10)].map((_, colIndex) => (
-                    <td key={colIndex} className="px-4 py-3 whitespace-nowrap">
-                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile Skeleton */}
-      <div className="lg:hidden space-y-4">
-        {[...Array(5)].map((_, index) => (
-          <div
-            key={index}
-            className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
-              </div>
-              <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[...Array(7)].map((_, metricIndex) => (
-                <div key={metricIndex} className="space-y-1">
-                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  // Skeleton loader component - now imported from ReportsSkeletons
 
   return (
     <div className="space-y-6">
-      {/* Header with Export Buttons */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900">
-            Meters Report Dashboard
-          </h3>
-          <p className="text-sm text-gray-600">
-            Monitor meter readings and financial data by location with
-            comprehensive filtering
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Date Range: {selectedDateRange.start.toLocaleDateString()} -{" "}
-            {selectedDateRange.end.toLocaleDateString()}
-          </p>
-        </div>
+      {/* Header with Export Buttons - Mobile Responsive */}
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+       
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => fetchMetersData(currentPage, searchTerm)}
             disabled={loading || selectedLocations.length === 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
+            size="sm"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+            <span className="sm:hidden">↻</span>
           </Button>
           <Button
             variant="outline"
             onClick={handleExport}
             disabled={metersData.length === 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
+            size="sm"
           >
-            <Download className="h-4 w-4" />
-            Export
+            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Export</span>
+            <span className="sm:hidden">↓</span>
           </Button>
         </div>
       </div>
@@ -466,20 +400,7 @@ export default function MetersTab() {
           </CardContent>
         </Card>
       ) : loading ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Meters Data
-            </CardTitle>
-            <CardDescription>
-              Loading meters data for selected locations...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MetersTableSkeleton />
-          </CardContent>
-        </Card>
+        <MetersTabSkeleton />
       ) : error ? (
         <Card>
           <CardContent className="p-8 text-center">
@@ -490,41 +411,30 @@ export default function MetersTab() {
             <p className="text-gray-600">{error}</p>
           </CardContent>
         </Card>
-      ) : !hasData ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Data Found
-            </h3>
-            <p className="text-gray-600">
-              No meters data found for the selected locations and date range.
-            </p>
-          </CardContent>
-        </Card>
       ) : (
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Meters Data Table
+            <div className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+                Meters Export Report
               </CardTitle>
-              <Badge variant="secondary">{metersData.length} records</Badge>
+              <Badge variant="secondary" className="self-start sm:self-auto text-xs">
+                {metersData.length} records
+              </Badge>
             </div>
-            <CardDescription>
-              Comprehensive meter readings with financial data and machine
-              performance metrics
+            <CardDescription className="text-sm">
+              Monitor meter readings and financial data by location with comprehensive filtering
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Search bar for table */}
+            {/* Search bar for table - Always visible */}
             <div className="mb-4">
               <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search by Machine ID or Location..."
+                  placeholder="Search by Serial Number, Custom Name, or Location..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
@@ -535,39 +445,53 @@ export default function MetersTab() {
                 {searchTerm && ` (filtered by "${searchTerm}")`}
               </p>
             </div>
+
+            {!hasData ? (
+              <div className="p-8 text-center">
+                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Data Found
+                </h3>
+                <p className="text-gray-600">
+                  No meters data found for the selected locations and date range.
+                  {searchTerm && " Try adjusting your search criteria."}
+                </p>
+              </div>
+            ) : (
+              <>
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Machine ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Meters In
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Money Won
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Jackpot
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Bill In
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Voucher Out
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Att. Paid Credits
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Hand Paid Cancelled Credits
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Games Played
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                   </tr>
@@ -577,7 +501,18 @@ export default function MetersTab() {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">
-                          {item.machineId}
+                          {(() => {
+                            const serialNumber = (item as Record<string, unknown>).serialNumber as string;
+                            const customName = ((item as Record<string, unknown>).custom as Record<string, unknown>)?.name as string;
+                            
+                            if (serialNumber && serialNumber.trim()) {
+                              return serialNumber.trim();
+                            } else if (customName && customName.trim()) {
+                              return customName.trim();
+                            } else {
+                              return item.machineId;
+                            }
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -586,32 +521,32 @@ export default function MetersTab() {
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.metersIn)}`}>
                           {item.metersIn.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.metersOut)}`}>
                           {item.metersOut.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.jackpot)}`}>
                           {item.jackpot.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.billIn)}`}>
                           {item.billIn.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}>
                           {item.voucherOut.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}>
                           {item.attPaidCredits.toLocaleString()}
                         </div>
                       </td>
@@ -632,7 +567,7 @@ export default function MetersTab() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="lg:hidden space-y-4">
+            <div className="md:hidden space-y-4">
               {metersData.map((item, index) => (
                 <div
                   key={index}
@@ -642,7 +577,18 @@ export default function MetersTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-sm font-mono font-medium text-gray-900 truncate">
-                        {item.machineId}
+                        {(() => {
+                          const serialNumber = (item as Record<string, unknown>).serialNumber as string;
+                          const customName = ((item as Record<string, unknown>).custom as Record<string, unknown>)?.name as string;
+                          
+                          if (serialNumber && serialNumber.trim()) {
+                            return serialNumber.trim();
+                          } else if (customName && customName.trim()) {
+                            return customName.trim();
+                          } else {
+                            return item.machineId;
+                          }
+                        })()}
                       </h3>
                       <p className="text-xs text-gray-500 truncate">
                         {item.location}
@@ -657,37 +603,37 @@ export default function MetersTab() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-gray-500">Meters In</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.metersIn)}`}>
                         {item.metersIn.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Money Won</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.metersOut)}`}>
                         {item.metersOut.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Jackpot</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.jackpot)}`}>
                         {item.jackpot.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Bill In</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.billIn)}`}>
                         {item.billIn.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Voucher Out</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.voucherOut)}`}>
                         {item.voucherOut.toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Att. Paid Credits</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-xs text-gray-500">Hand Paid Cancelled Credits</p>
+                      <p className={`text-sm font-medium ${getFinancialColorClass(item.attPaidCredits)}`}>
                         {item.attPaidCredits.toLocaleString()}
                       </p>
                     </div>
@@ -702,51 +648,137 @@ export default function MetersTab() {
               ))}
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls - Mobile Responsive */}
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages} ({totalCount} total
-                  records)
+              <>
+                {/* Mobile Pagination */}
+                <div className="mt-4 flex flex-col space-y-3 sm:hidden">
+                  <div className="text-xs text-gray-600 text-center">
+                    Page {currentPage} of {totalPages} ({totalCount} total records)
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ««
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ‹
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600">Page</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          let val = Number(e.target.value);
+                          if (isNaN(val)) val = 1;
+                          if (val < 1) val = 1;
+                          if (val > totalPages) val = totalPages;
+                          handlePageChange(val);
+                        }}
+                        className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                        aria-label="Page number"
+                        disabled={paginationLoading}
+                      />
+                      <span className="text-xs text-gray-600">of {totalPages}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      ›
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                      className="px-2 py-1 text-xs"
+                    >
+                      »»
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(1)}
-                    disabled={currentPage === 1 || paginationLoading}
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1 || paginationLoading}
-                  >
-                    Previous
-                  </Button>
-                  <span className="px-3 py-1 text-sm bg-gray-100 rounded">
-                    {currentPage}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages || paginationLoading}
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={currentPage === totalPages || paginationLoading}
-                  >
-                    Last
-                  </Button>
+
+                {/* Desktop Pagination */}
+                <div className="mt-4 hidden sm:flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages} ({totalCount} total records)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                    >
+                      First
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || paginationLoading}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Page</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          let val = Number(e.target.value);
+                          if (isNaN(val)) val = 1;
+                          if (val < 1) val = 1;
+                          if (val > totalPages) val = totalPages;
+                          handlePageChange(val);
+                        }}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                        aria-label="Page number"
+                        disabled={paginationLoading}
+                      />
+                      <span className="text-sm text-gray-600">of {totalPages}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                    >
+                      Next
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages || paginationLoading}
+                    >
+                      Last
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </>
+            )}
+              </>
             )}
           </CardContent>
         </Card>

@@ -13,12 +13,18 @@ const PieChartLabel = (props: CustomizedLabelProps) => {
     outerRadius
   );
 
+  const svgTextAnchor = textAnchor as unknown as
+    | "start"
+    | "middle"
+    | "end"
+    | undefined;
+
   return (
     <text
       x={x}
       y={y}
       fill="white"
-      textAnchor={textAnchor}
+      textAnchor={svgTextAnchor}
       dominantBaseline="central"
     >
       {`${(percent * 100).toFixed(0)}%`}

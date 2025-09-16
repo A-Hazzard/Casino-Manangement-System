@@ -3,17 +3,21 @@
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import formatCurrency from "@/lib/utils/currency";
 import { formatDistanceToNow } from "date-fns";
-import {
-  CabinetProps,
-  CabinetSortOption,
-  CabinetTableProps,
-} from "@/lib/types/cabinets";
+import { CabinetSortOption, CabinetTableProps } from "@/lib/types/cabinets";
 import { ClockIcon, Cross1Icon, MobileIcon } from "@radix-ui/react-icons";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import { IMAGES } from "@/lib/constants/images";
 
 export default function CabinetTable({
   cabinets,
@@ -32,15 +36,12 @@ export default function CabinetTable({
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table
-        ref={tableRef}
-        className="table-fixed w-full border-collapse text-center"
-      >
-        <thead className="bg-button text-white">
-          <tr>
-            <th
-              className="p-3 border border-border border-t-0 text-sm cursor-pointer relative"
+    <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <Table ref={tableRef} className="table-fixed w-full">
+        <TableHeader>
+          <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
+            <TableHead
+              className="text-white font-semibold cursor-pointer relative"
               onClick={() => onColumnSort("assetNumber" as CabinetSortOption)}
             >
               <span>ASSET NUMBER</span>
@@ -49,9 +50,9 @@ export default function CabinetTable({
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
               )}
-            </th>
-            <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+            </TableHead>
+            <TableHead
+              className="text-white font-semibold cursor-pointer relative"
               onClick={() => onColumnSort("moneyIn" as CabinetSortOption)}
             >
               <span>MONEY IN</span>
@@ -60,22 +61,20 @@ export default function CabinetTable({
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
               )}
-            </th>
-            <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
-              onClick={() =>
-                onColumnSort("cancelledCredits" as CabinetSortOption)
-              }
+            </TableHead>
+            <TableHead
+              className="text-white font-semibold cursor-pointer relative"
+              onClick={() => onColumnSort("moneyOut" as CabinetSortOption)}
             >
-              <span>CANCELLED CREDITS</span>
-              {sortOption === "cancelledCredits" && (
+              <span>MONEY OUT</span>
+              {sortOption === "moneyOut" && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
               )}
-            </th>
-            <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+            </TableHead>
+            <TableHead
+              className="text-white font-semibold cursor-pointer relative"
               onClick={() => onColumnSort("jackpot" as CabinetSortOption)}
             >
               <span>JACKPOT</span>
@@ -84,9 +83,9 @@ export default function CabinetTable({
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
               )}
-            </th>
-            <th
-              className="p-3 border border-border border-t-0  text-sm cursor-pointer relative"
+            </TableHead>
+            <TableHead
+              className="text-white font-semibold cursor-pointer relative"
               onClick={() => onColumnSort("gross" as CabinetSortOption)}
             >
               <span>GROSS</span>
@@ -95,13 +94,11 @@ export default function CabinetTable({
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </span>
               )}
-            </th>
-            <th className="p-3 border border-border border-t-0  text-sm">
-              ACTIONS
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+            </TableHead>
+            <TableHead className="text-white font-semibold">ACTIONS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {cabinets.map((cab) => {
             const isOnline =
               cab.lastOnline &&
@@ -113,78 +110,83 @@ export default function CabinetTable({
               : "Never";
 
             return (
-              <tr
+              <TableRow
                 key={cab._id}
                 className="cursor-pointer hover:bg-grayHighlight/10"
                 onClick={(e) => {
-                  if (!(e.target as HTMLElement).closest("td:last-child")) {
-                    navigateToCabinet(cab._id);
+                  // Don't navigate if clicking on action buttons or their container
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest(".action-buttons") ||
+                    target.closest("button")
+                  ) {
+                    return;
                   }
+                  navigateToCabinet(cab._id);
                 }}
               >
-                <td className="p-3 bg-container border border-border text-sm text-left hover:bg-grayHighlight/20">
+                <TableCell className="text-left">
                   <div className="font-medium">
                     {cab.assetNumber || "(No Asset #)"}
                   </div>
-                  <div className="text-xs text-grayHighlight mt-1">
-                    {cab.game || "(No Game Name)"}
+                  <div className="text-xs text-gray-600 mt-1 font-bold">
+                    {cab.locationName || "(No Location)"}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-gray-500 mt-1">
                     SMIB: {cab.smbId || "N/A"}
                   </div>
-                  <div className="mt-2 flex flex-col space-y-1">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full self-start ${
-                        isOnline
-                          ? "bg-green-100 text-button"
-                          : "bg-red-100 text-destructive"
-                      } flex items-center gap-1`}
-                    >
-                      {isOnline ? (
-                        <MobileIcon className="w-3 h-3" />
-                      ) : (
-                        <Cross1Icon className="w-3 h-3" />
-                      )}
-                      {isOnline ? "Online" : "Offline"}
-                    </span>
-                    <span
-                      className="text-xs text-muted-foreground flex items-center gap-1"
-                      title={`Last seen: ${lastOnlineText}`}
-                    >
-                      <ClockIcon className="w-3 h-3" /> {lastOnlineText}
-                    </span>
-                  </div>
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.moneyIn)}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.cancelledCredits)}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  ${formatCurrency(cab.jackpot)}
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  <span
-                    className={((cab.gross || 0) < 0
-                      ? "text-destructive font-semibold"
-                      : "text-button font-semibold"
-                    ).trim()}
+                  <Badge
+                    variant={isOnline ? "default" : "destructive"}
+                    className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block w-fit ${
+                      isOnline
+                        ? "bg-green-100 text-green-700 hover:bg-green-200"
+                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                    } flex items-center gap-1`}
                   >
-                    ${formatCurrency(cab.gross)}
+                    {isOnline ? (
+                      <MobileIcon className="w-3 h-3" />
+                    ) : (
+                      <Cross1Icon className="w-3 h-3" />
+                    )}
+                    {isOnline ? "Online" : "Offline"}
+                  </Badge>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <ClockIcon className="w-3 h-3" /> {lastOnlineText}
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
+                  {formatCurrency(cab.moneyIn)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {formatCurrency(cab.moneyOut)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className="font-semibold">
+                    {formatCurrency(cab.jackpot)}
                   </span>
-                </td>
-                <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
-                  <div className="flex items-center justify-center gap-2">
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className="text-green-600 font-semibold">
+                    {formatCurrency(cab.gross)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-center gap-2 action-buttons">
                     <Button
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
                         onEdit(cab);
                       }}
-                      className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
-                      <Image src={editIcon} alt="Edit" width={20} height={20} />
+                      <Image
+                        src={IMAGES.editIcon}
+                        alt="Edit"
+                        width={16}
+                        height={16}
+                        className="w-4 h-4"
+                      />
                     </Button>
                     <Button
                       variant="ghost"
@@ -192,22 +194,23 @@ export default function CabinetTable({
                         e.stopPropagation();
                         onDelete(cab);
                       }}
-                      className="p-1 hover:bg-destructive/10 text-destructive"
+                      className="p-1 h-8 w-8 hover:bg-accent"
                     >
                       <Image
-                        src={deleteIcon}
+                        src={IMAGES.deleteIcon}
                         alt="Delete"
-                        width={20}
-                        height={20}
+                        width={16}
+                        height={16}
+                        className="w-4 h-4"
                       />
                     </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,5 +1,9 @@
+/**
+ * Movement requests helper functions for filtering, pagination, and API operations
+ */
+
 import axios from "axios";
-import { MovementRequest } from "@/lib/types/movementRequests";
+import type { MovementRequest } from "@/lib/types/movementRequests";
 
 /**
  * Fetch all movement requests from the API.
@@ -49,4 +53,64 @@ export async function updateMovementRequest(
  */
 export async function deleteMovementRequest(id: string): Promise<void> {
   await axios.delete(`/api/movement-requests/${id}`);
+}
+
+/**
+ * Filters movement requests based on search term and selected location
+ * @param requests - Array of movement requests to filter
+ * @param searchTerm - Search term to filter by
+ * @param selectedLocation - Selected location filter
+ * @param locations - Array of available locations for lookup
+ * @returns Filtered array of movement requests
+ */
+export function filterMovementRequests(
+  requests: MovementRequest[],
+  searchTerm: string,
+  selectedLocation: string,
+  locations: { _id: string; name: string }[]
+): MovementRequest[] {
+  return requests.filter((req) => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch =
+      req.createdBy.toLowerCase().includes(searchLower) ||
+      req.locationFrom.toLowerCase().includes(searchLower) ||
+      req.locationTo.toLowerCase().includes(searchLower) ||
+      req.cabinetIn.toLowerCase().includes(searchLower) ||
+      req.status.toLowerCase().includes(searchLower);
+    
+    const locationData = locations.find((l) => l._id === selectedLocation);
+    const matchesLocation =
+      selectedLocation === "all" ||
+      req.locationFrom === locationData?.name ||
+      req.locationTo === locationData?.name;
+    
+    return matchesSearch && matchesLocation;
+  });
+}
+
+/**
+ * Paginates movement requests
+ * @param requests - Array of requests to paginate
+ * @param currentPage - Current page number (0-based)
+ * @param itemsPerPage - Number of items per page
+ * @returns Paginated requests and total pages
+ */
+export function paginateMovementRequests(
+  requests: MovementRequest[],
+  currentPage: number,
+  itemsPerPage: number
+): {
+  paginatedRequests: MovementRequest[];
+  totalPages: number;
+} {
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const paginatedRequests = requests.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  return {
+    paginatedRequests,
+    totalPages,
+  };
 }

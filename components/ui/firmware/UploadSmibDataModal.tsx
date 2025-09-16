@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -11,14 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
 import type { UploadSmibDataModalProps } from "@/lib/types/components";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
   onClose,
+  onRefresh,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comments, setComments] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Create activity logger for firmware operations
+  const firmwareLogger = createActivityLogger("machine");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -35,35 +41,47 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('comments', comments);
-      
-      const response = await fetch('/api/firmware/upload-smib-data', {
-        method: 'POST',
-        body: formData,
-      });
+      formData.append("file", selectedFile);
+      formData.append("comments", comments);
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
+      const response = await axios.post(
+        "/api/firmware/upload-smib-data",
+        formData
+      );
+
+      // Log the SMIB data upload activity
+      await firmwareLogger.logCreate(
+        response.data?.id || "unknown",
+        `SMIB Data Upload: ${selectedFile.name}`,
+        {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          comments: comments,
+        },
+        `Uploaded SMIB data file: ${selectedFile.name} (${(
+          selectedFile.size / 1024
+        ).toFixed(2)} KB)`
+      );
+
+      // Refresh the parent page data after successful upload
+      if (onRefresh) {
+        onRefresh();
       }
 
-      const result = await response.json();
-      console.log('Upload successful:', result);
-      
       // Close modal and clear form on success
       onClose();
       setSelectedFile(null);
       setComments("");
-      
+
       // Optional: Show success message
-      if (typeof window !== 'undefined') {
-        alert('SMIB data uploaded successfully!');
+      if (typeof window !== "undefined") {
+        alert("SMIB data uploaded successfully!");
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error("Upload error:", error);
       // Optional: Show error message
-      if (typeof window !== 'undefined') {
-        alert('Upload failed. Please try again.');
+      if (typeof window !== "undefined") {
+        alert("Upload failed. Please try again.");
       }
     }
   };

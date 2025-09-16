@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -37,13 +38,10 @@ export default function PlaysChart({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/analytics/plays-trends?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch plays data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(
+          `/api/analytics/plays-trends?${params}`
+        );
+        const result = response.data;
         setData(result.data || []);
       } catch (err) {
         console.error("Error fetching plays data:", err);
@@ -154,7 +152,7 @@ export default function PlaysChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
@@ -182,15 +180,12 @@ export default function PlaysChart({
                   boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="gamesPlayed"
-                stroke="#8b5cf6"
-                strokeWidth={3}
-                dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "#8b5cf6", strokeWidth: 2 }}
+                fill="#8b5cf6"
+                radius={[4, 4, 0, 0]}
               />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

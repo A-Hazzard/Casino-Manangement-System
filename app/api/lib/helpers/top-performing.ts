@@ -23,9 +23,12 @@ export async function getTopPerformingMetrics(
 ) {
   const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod);
 
-  const filter: QueryFilter = {
-    readAt: { $gte: startDate, $lte: endDate },
-  };
+  const filter: QueryFilter = {};
+  
+  // Only add date filter if we have valid dates (not "All Time")
+  if (startDate && endDate) {
+    filter.readAt = { $gte: startDate, $lte: endDate };
+  }
 
   const aggregationQuery =
     activeTab === "Cabinets"

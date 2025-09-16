@@ -1,7 +1,7 @@
 import { ChartDataPoint } from "@/lib/types/reports";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -35,7 +35,7 @@ export default function PerformanceChart({
 
   // Transform data for Recharts
   const chartData = data.map((point) => ({
-    date: point.label || point.date,
+    date: point.label,
     value: point.value,
     formattedValue: formatCurrency(point.value),
   }));
@@ -65,7 +65,7 @@ export default function PerformanceChart({
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <BarChart
           data={chartData}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
@@ -83,15 +83,12 @@ export default function PerformanceChart({
             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
+          <Bar
             dataKey="value"
-            stroke="#5119E9"
-            strokeWidth={2}
-            dot={{ fill: "#5119E9", strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, fill: "#5119E9" }}
+            fill="#5119E9"
+            radius={[4, 4, 0, 0]}
           />
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 import type {
   CollectionDocument,
   CollectionReportMachineEntry,
@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types/api";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { createCollectionReport } from "@/lib/helpers/collectionReport";
+import { validateRamClearMeters } from "@/lib/utils/ramClearValidation";
 
 /**
  * Fetches in-progress collections for a collector
@@ -20,11 +21,10 @@ import { createCollectionReport } from "@/lib/helpers/collectionReport";
 export async function fetchInProgressCollections(
   collector: string
 ): Promise<CollectionDocument[]> {
-  const res = await fetch(
+  const res = await axios.get(
     `/api/collections?collector=${collector}&isCompleted=false`
   );
-  if (!res.ok) throw new Error("Failed to fetch collections");
-  return res.json();
+  return res.data;
 }
 
 /**
@@ -35,13 +35,8 @@ export async function fetchInProgressCollections(
 export async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
-  const res = await fetch("/api/collections", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to add machine");
-  return res.json();
+  const res = await axios.post("/api/collections", data);
+  return res.data;
 }
 
 /**
@@ -52,9 +47,8 @@ export async function addMachineCollection(
 export async function deleteMachineCollection(
   id: string
 ): Promise<{ success: boolean }> {
-  const res = await fetch(`/api/collections?id=${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete machine");
-  return res.json();
+  const res = await axios.delete(`/api/collections?id=${id}`);
+  return res.data;
 }
 
 /**
@@ -99,8 +93,13 @@ export function validateMachineEntry(
   machineForDataEntry: CollectionReportMachineSummary | undefined,
   currentMetersIn: string,
   currentMetersOut: string,
-  userId: string | undefined
-): { isValid: boolean; error?: string } {
+  userId: string | undefined,
+  ramClear?: boolean,
+  prevIn?: number,
+  prevOut?: number,
+  ramClearMetersIn?: number,
+  ramClearMetersOut?: number
+): { isValid: boolean; error?: string; warnings?: string[] } {
   if (!selectedMachineId || !machineForDataEntry) {
     return { isValid: false, error: "Please select a machine first." };
   }
@@ -130,6 +129,34 @@ export function validateMachineEntry(
     return { isValid: false, error: "Invalid meter values" };
   }
 
+  // RAM Clear validation if parameters are provided
+  if (ramClear !== undefined && prevIn !== undefined && prevOut !== undefined) {
+    const ramClearValidation = validateRamClearMeters({
+      currentMetersIn: metersIn,
+      currentMetersOut: metersOut,
+      prevIn,
+      prevOut,
+      ramClear,
+      ramClearMetersIn,
+      ramClearMetersOut
+    });
+
+    if (!ramClearValidation.isValid) {
+      return { 
+        isValid: false, 
+        error: ramClearValidation.errors.join(", "),
+        warnings: ramClearValidation.warnings
+      };
+    }
+
+    if (ramClearValidation.warnings.length > 0) {
+      return { 
+        isValid: true, 
+        warnings: ramClearValidation.warnings
+      };
+    }
+  }
+
   return { isValid: true };
 }
 
@@ -156,7 +183,7 @@ export function createMachineEntryData(params: {
   const metersOut = Number(params.currentMetersOut);
 
   return {
-    _id: uuidv4(),
+    _id: "", // Will be set by the database
     machineId: params.selectedMachineId,
     machineName: params.machineForDataEntry.name,
     machineCustomName: params.selectedMachineId,
@@ -192,7 +219,7 @@ export function createMachineEntryData(params: {
     movement: {
       metersIn,
       metersOut,
-      gross: metersOut - metersIn,
+      gross: metersIn - metersOut,
     },
   };
 }
@@ -296,7 +323,7 @@ export function createCollectionReportPayload(
     advance: Number(financials.advance) || 0,
     collectorName: userEmail || "N/A",
     locationName: selectedLocationName,
-    locationReportId: uuidv4(),
+    locationReportId: selectedLocationId || "",
     location: selectedLocationId || "",
     totalDrop: 0,
     totalCancelled: 0,
@@ -399,5 +426,72 @@ export async function processMultipleReports(
     successCount,
     totalCount: collectedMachineEntries.length,
     successfulIds,
+  };
+}
+
+/**
+ * Creates collection document payload for data entry
+ * @param params - Collection data entry parameters
+ * @returns Partial collection document
+ */
+export function createCollectionDocumentPayload(params: {
+  currentMetersIn: string;
+  currentMetersOut: string;
+  currentCollectionTime: string;
+  currentMachineNotes: string;
+  currentRamClear: boolean;
+  prevIn: number;
+  prevOut: number;
+  selectedMachineId: string;
+  machineForDataEntry: {
+    name: string;
+    serialNumber: string;
+  };
+  userId: string;
+  selectedLocationName: string;
+  selectedLocationId: string | undefined;
+}): Partial<CollectionDocument> {
+  const metersIn = Number(params.currentMetersIn);
+  const metersOut = Number(params.currentMetersOut);
+
+  return {
+    _id: "", // Will be set by the database
+    machineId: params.selectedMachineId,
+    machineName: params.machineForDataEntry.name,
+    machineCustomName: params.selectedMachineId,
+    serialNumber: params.machineForDataEntry.serialNumber,
+    timestamp: params.currentCollectionTime
+      ? new Date(params.currentCollectionTime)
+      : new Date(),
+    metersIn,
+    metersOut,
+    prevIn: params.prevIn || 0,
+    prevOut: params.prevOut || 0,
+    softMetersIn: metersIn,
+    softMetersOut: metersOut,
+    notes: params.currentMachineNotes,
+    ramClear: params.currentRamClear,
+    isCompleted: false,
+    collector: params.userId,
+    location: params.selectedLocationName,
+    locationReportId: params.selectedLocationId || "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    __v: 0,
+    sasMeters: {
+      machine: params.machineForDataEntry.name,
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      gamesPlayed: 0,
+      jackpot: 0,
+      sasStartTime: "",
+      sasEndTime: "",
+    },
+    movement: {
+      metersIn,
+      metersOut,
+      gross: metersIn - metersOut,
+    },
   };
 }

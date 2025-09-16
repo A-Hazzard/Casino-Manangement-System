@@ -1,9 +1,27 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, usePathname } from "next/navigation";
+
+// Date formatting function for SAS times
+const formatSasTime = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    };
+    return date.toLocaleDateString("en-US", options);
+  } catch {
+    return dateString; // Return original if parsing fails
+  }
+};
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -11,10 +29,21 @@ import {
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import { SyncButton } from "@/components/ui/RefreshButton";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Layout components
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
+
+import PageLayout from "@/components/layout/PageLayout";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 // Skeleton components
 import {
@@ -26,14 +55,15 @@ import {
 // Helper functions
 import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
 import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
+import { syncMetersForReport } from "@/lib/helpers/collectionReportDetailPageData";
 import { validateCollectionReportData } from "@/lib/utils/validation";
 import {
   animateDesktopTabTransition,
-  generateMachineMetricsData,
   calculateLocationTotal,
   calculateSasMetricsTotals,
 } from "@/lib/helpers/collectionReportDetailPage";
 import { formatCurrency } from "@/lib/utils/currency";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
 import type { CollectionReportData } from "@/lib/types/index";
@@ -41,20 +71,30 @@ import type { CollectionDocument } from "@/lib/types/collections";
 
 export default function CollectionReportPage() {
   const params = useParams();
-  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Initialize activeTab from URL or default to "Machine Metrics"
   const [activeTab, setActiveTab] = useState<
     "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
-  >("Machine Metrics");
+  >(() => {
+    const section = searchParams?.get("section");
+    if (section === "location") return "Location Metrics";
+    if (section === "sas") return "SAS Metrics Compare";
+    if (section === "machine") return "Machine Metrics";
+    return "Machine Metrics"; // default
+  });
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
   const tabContentRef = useRef<HTMLDivElement>(null);
 
@@ -81,15 +121,63 @@ export default function CollectionReportPage() {
       .catch(() => setCollections([]));
   }, [reportId]);
 
+  // Keep state in sync with URL changes (for browser back/forward)
+  useEffect(() => {
+    const section = searchParams?.get("section");
+    if (section === "location" && activeTab !== "Location Metrics") {
+      setActiveTab("Location Metrics");
+    } else if (section === "sas" && activeTab !== "SAS Metrics Compare") {
+      setActiveTab("SAS Metrics Compare");
+    } else if (section === "machine" && activeTab !== "Machine Metrics") {
+      setActiveTab("Machine Metrics");
+    } else if (!section && activeTab !== "Machine Metrics") {
+      setActiveTab("Machine Metrics");
+    }
+  }, [searchParams, activeTab]);
+
   useEffect(() => {
     animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
 
-  const handleRefresh = async () => {
+  // Handle scroll to show/hide floating refresh button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      setShowFloatingRefresh(scrollTop > 200);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Handle tab change with URL update
+  const handleTabChange = (
+    tab: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
+  ) => {
+    setActiveTab(tab);
+
+    // Update URL based on tab selection
+    const sectionMap: Record<string, string> = {
+      "Machine Metrics": "machine",
+      "Location Metrics": "location",
+      "SAS Metrics Compare": "sas",
+    };
+
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.set("section", sectionMap[tab]);
+    const newUrl = `/collection-report/report/${reportId}?${params.toString()}`;
+    router.push(newUrl, { scroll: false });
+  };
+
+  const handleSync = async () => {
     setRefreshing(true);
-    setLoading(true);
     setError(null);
     try {
+      // First sync the meters
+      await syncMetersForReport(reportId);
+
+      // Then refresh the data
       const data = await fetchCollectionReportById(reportId);
       if (!validateCollectionReportData(data)) {
         setError("Report not found. Please use a valid report ID.");
@@ -101,67 +189,65 @@ export default function CollectionReportPage() {
         reportId
       );
       setCollections(collectionsData);
-    } catch {
-      setError("Failed to refresh report data.");
+    } catch (error) {
+      console.error("Error syncing meters:", error);
+      setError("Failed to sync meter data.");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
 
   if (loading) {
-    return <CollectionReportSkeleton pathname={pathname} />;
+    return <CollectionReportSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
-        <Sidebar pathname={pathname} />
-        <main className="flex-1 lg:ml-4">
-          <Header
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={true}
-            containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-            disabled={loading}
-          />
-          <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-            <p className="text-xl text-red-600 mb-4">Error: {error}</p>
-            <Link href="/collection-report" legacyBehavior>
-              <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
-            </Link>
-          </div>
-        </main>
-      </div>
+      <PageLayout
+        headerProps={{
+          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          disabled: loading,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NotFoundError
+          title="Report Error"
+          message={error}
+          resourceType="report"
+          showRetry={false}
+          customBackText="Back to Collection Reports"
+          customBackHref="/collection-reports"
+        />
+      </PageLayout>
     );
   }
 
   if (!reportData) {
     return (
-      <div className="w-full md:w-[90%] lg:w-full md:mx-auto md:pl-28 lg:pl-36 min-h-screen bg-background flex flex-col">
-        <Sidebar pathname={pathname} />
-        <main className="flex-1 lg:ml-4">
-          <Header
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={true}
-            containerPaddingMobile="px-4 py-8 lg:px-0 lg:py-0"
-            disabled={loading}
-          />
-          <div className="p-4 flex flex-col justify-center items-center h-[calc(100vh-theme_header_height)]">
-            <p className="text-xl text-gray-700 mb-4">Report not found.</p>
-            <Link href="/collection-report" legacyBehavior>
-              <a className="bg-buttonActive text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
-            </Link>
-          </div>
-        </main>
-      </div>
+      <PageLayout
+        headerProps={{
+          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          disabled: loading,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NotFoundError
+          title="Report Not Found"
+          message={`The collection report with ID "${reportId}" could not be found.`}
+          resourceType="report"
+          showRetry={false}
+          customBackText="Back to Collection Reports"
+          customBackHref="/collection-reports"
+        />
+      </PageLayout>
     );
   }
 
@@ -171,7 +257,7 @@ export default function CollectionReportPage() {
     label: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare";
   }) => (
     <button
-      onClick={() => !loading && setActiveTab(label)}
+      onClick={() => !loading && handleTabChange(label)}
       disabled={loading}
       className={`px-4 py-3 text-sm font-medium rounded-md transition-colors w-full text-left ${
         activeTab === label
@@ -183,11 +269,15 @@ export default function CollectionReportPage() {
     </button>
   );
 
-  const {
-    metricsData,
-    totalPages: machineTotalPages,
-    hasData,
-  } = generateMachineMetricsData(collections, machinePage, ITEMS_PER_PAGE);
+  // Use resolved machine data from backend instead of generating from raw collections
+  const metricsData = reportData?.machineMetrics || [];
+  const machineTotalPages = Math.ceil(metricsData.length / ITEMS_PER_PAGE);
+  const hasData = metricsData.length > 0;
+
+  // Apply pagination to the resolved machine data
+  const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedMetricsData = metricsData.slice(startIndex, endIndex);
 
   const MachineMetricsContent = ({ loading }: { loading: boolean }) => {
     if (loading) {
@@ -221,103 +311,153 @@ export default function CollectionReportPage() {
           <h2 className="text-xl font-bold text-center my-4">
             Machine Metrics
           </h2>
-          {metricsData.map((metric) => (
+          {paginatedMetricsData.map((metric) => (
             <div
               key={metric.id}
               className="bg-white rounded-lg shadow-md overflow-hidden"
             >
               <div className="bg-lighterBlueHighlight text-white p-3">
-                <h3 className="font-semibold">
-                  Machine ID: {metric.machineCustomName}
+                <h3
+                  className="font-semibold cursor-pointer hover:underline"
+                  onClick={() => {
+                    if (metric.actualMachineId) {
+                      const url = `/cabinets/${metric.actualMachineId}`;
+                      console.warn("Navigating to:", url);
+                      router.push(url);
+                    } else {
+                      console.warn(
+                        "No actualMachineId found for machine:",
+                        metric.machineId
+                      );
+                    }
+                  }}
+                >
+                  {metric.machineId}
                 </h3>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Dropped / Cancelled</span>
                   <span className="font-medium text-gray-800">
-                    {metric.droppedCancelled}
+                    {metric.dropCancelled || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Meters Gross</span>
                   <span className="font-medium text-gray-800">
-                    {metric.metersGross}
+                    {metric.metersGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Gross</span>
                   <span className="font-medium text-gray-800">
-                    {metric.sasGross}
+                    {metric.sasGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variation</span>
                   <span className="font-medium text-gray-800">
-                    {metric.variation}
+                    {metric.variation?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Times</span>
                   <div className="font-medium text-gray-800 text-right">
-                    <div>{metric.sasStartTime}</div>
-                    <div>{metric.sasEndTime}</div>
+                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
+                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto pb-6">
-          <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  MACHINE ID
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto pb-6">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-button hover:bg-button">
+                <TableHead className="text-white font-semibold">
+                  MACHINE
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   DROP/CANCELLED
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   METER GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   SAS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   VARIATION
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   SAS TIMES
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {metricsData.map((metric) => (
-                <tr
-                  key={metric.id}
-                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
-                >
-                  <td className="p-3 whitespace-nowrap">
-                    <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                      {metric.machineCustomName}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedMetricsData.map((metric) => (
+                <TableRow key={metric.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">
+                    <span
+                      className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
+                      onClick={() => {
+                        console.warn("Machine click debug:", {
+                          machineId: metric.machineId,
+                          actualMachineId: metric.actualMachineId,
+                          metric: metric,
+                        });
+                        if (metric.actualMachineId) {
+                          const url = `/cabinets/${metric.actualMachineId}`;
+                          console.warn("Navigating to:", url);
+                          router.push(url);
+                        } else {
+                          console.warn(
+                            "No actualMachineId found for machine:",
+                            metric.machineId
+                          );
+                        }
+                      }}
+                    >
+                      {metric.machineId}
                     </span>
-                  </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {metric.droppedCancelled}
-                  </td>
-                  <td className="p-3 whitespace-nowrap">
-                    {metric.metersGross}
-                  </td>
-                  <td className="p-3 whitespace-nowrap">{metric.sasGross}</td>
-                  <td className="p-3 whitespace-nowrap">{metric.variation}</td>
-                  <td className="p-3 whitespace-nowrap text-xs">
-                    <div>{metric.sasStartTime}</div>
-                    <div>{metric.sasEndTime}</div>
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{metric.dropCancelled || "0.00"}</TableCell>
+                  <TableCell>
+                    {metric.metersGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    {metric.sasGross?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    {metric.variation?.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || "0.00"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
+                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <div className="mt-6 flex items-center justify-center space-x-2">
             <Button
               variant="outline"
@@ -398,101 +538,491 @@ export default function CollectionReportPage() {
 
     return (
       <>
+        {/* Mobile layout */}
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             Location Metrics
           </h2>
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-lighterBlueHighlight text-white p-3">
-              <h3 className="font-semibold">
-                Location: {reportData?.locationName || "Unknown"}
-              </h3>
+            <div className="bg-button text-white p-3">
+              <h3 className="font-semibold">Location Total</h3>
             </div>
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Dropped / Cancelled</span>
-                <span className="font-medium text-black">
+                <span className="font-medium text-gray-800">
                   {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Meters Gross</span>
-                <span className="font-medium text-green-600">
-                  {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                    "0"}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.metersGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.metersGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross</span>
-                <span className="font-medium text-green-600">
-                  {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                    "0"}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.sasGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Variation</span>
-                <span className="font-medium text-yellow-600">
-                  {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                    "0"}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    reportData?.locationMetrics?.variation
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.variation?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </span>
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Variance</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.variance) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.variance ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Variance Reason</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.varianceReason || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount To Collect</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.amountToCollect) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.amountToCollect ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Collected Amount</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.collectedAmount) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.collectedAmount ||
+                      0}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Location Revenue</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.locationRevenue) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.locationRevenue ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount Uncollected</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.amountUncollected) ||
+                        0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.amountUncollected ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Machines Number</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.machinesNumber || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Reason For Shortage</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.reasonForShortage || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Taxes</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.taxes) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.taxes ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Advance</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.advance) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.advance ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Previous Balance Owed</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(
+                        reportData?.locationMetrics?.previousBalanceOwed
+                      ) || 0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.previousBalanceOwed ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Balance Owed</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.currentBalanceOwed) ||
+                        0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.currentBalanceOwed ||
+                      0}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Balance Correction</span>
+                  <span
+                    className={`font-medium ${getFinancialColorClass(
+                      Number(reportData?.locationMetrics?.balanceCorrection) ||
+                        0
+                    )}`}
+                  >
+                    {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
+                      reportData?.locationMetrics?.balanceCorrection ||
+                      0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Correction Reason</span>
+                  <span className="font-medium">
+                    {reportData?.locationMetrics?.correctionReason || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
+
+        {/* Desktop layout */}
+        <div className="hidden lg:block bg-white rounded-lg shadow-md">
+          {/* Top summary table */}
+          <div className="bg-button text-white rounded-t-lg px-4 py-2 font-semibold">
+            Location Total
+          </div>
           <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  LOCATION
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  DROPPED / CANCELLED
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  METERS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  SAS GROSS
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
-                  VARIATION
-                </th>
-              </tr>
-            </thead>
             <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap">
-                  <span className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold">
-                    {reportData?.locationName || "Unknown"}
-                  </span>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">
+                  Dropped / Cancelled
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-black">
-                    {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
-                  </span>
+                <td className="p-3 text-right">
+                  {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-green-600">
-                    {reportData?.locationMetrics?.metersGross?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">Meters Gross</td>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.metersGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.metersGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-green-600">
-                    {reportData?.locationMetrics?.sasGross?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-3 font-medium text-gray-700">SAS Gross</td>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.sasGross
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.sasGross?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
-                <td className="p-3 whitespace-nowrap">
-                  <span className="font-medium text-yellow-600">
-                    {reportData?.locationMetrics?.variation?.toLocaleString() ||
-                      "0"}
-                  </span>
+              </tr>
+              <tr>
+                <td className="p-3 font-medium text-gray-700">Variation</td>
+                <td
+                  className={`p-3 text-right ${getFinancialColorClass(
+                    reportData?.locationMetrics?.variation
+                  )}`}
+                >
+                  {reportData?.locationMetrics?.variation?.toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  ) || "0.00"}
                 </td>
               </tr>
             </tbody>
           </table>
+
+          {/* Detail grids */}
+          <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-4">
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Variance</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.variance) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.variance?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.variance ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Variance Reason</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.varianceReason || "-"}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Amount To Collect</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.amountToCollect) ||
+                          0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.amountToCollect?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.amountToCollect ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Collected Amount</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.collectedAmount) ||
+                          0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.collectedAmount?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.collectedAmount ||
+                        0}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Location Revenue</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.locationRevenue) ||
+                          0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.locationRevenue?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.locationRevenue ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Amount Uncollected</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.amountUncollected
+                        ) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.amountUncollected?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.amountUncollected ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Machines Number</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.machinesNumber || "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Reason For Shortage</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.reasonForShortage || "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Taxes</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.taxes) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.taxes?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.taxes ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Advance</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(reportData?.locationMetrics?.advance) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.advance?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.advance ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Previous Balance Owed</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.previousBalanceOwed
+                        ) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.previousBalanceOwed?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.previousBalanceOwed ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Current Balance Owed</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.currentBalanceOwed
+                        ) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.currentBalanceOwed?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.currentBalanceOwed ||
+                        0}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-3 text-gray-700">Balance Correction</td>
+                    <td
+                      className={`p-3 text-right ${getFinancialColorClass(
+                        Number(
+                          reportData?.locationMetrics?.balanceCorrection
+                        ) || 0
+                      )}`}
+                    >
+                      {reportData?.locationMetrics?.balanceCorrection?.toLocaleString?.() ||
+                        reportData?.locationMetrics?.balanceCorrection ||
+                        0}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-gray-700">Correction Reason</td>
+                    <td className="p-3 text-right">
+                      {reportData?.locationMetrics?.correctionReason || "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </>
     );
@@ -512,8 +1042,20 @@ export default function CollectionReportPage() {
       );
     }
 
+    // Use the sasMetrics from reportData if available, otherwise calculate from collections
+    const sasMetrics = reportData?.sasMetrics || {
+      dropped: 0,
+      cancelled: 0,
+      gross: 0,
+    };
     const { totalSasDrop, totalSasCancelled, totalSasGross } =
-      calculateSasMetricsTotals(collections);
+      reportData?.sasMetrics
+        ? {
+            totalSasDrop: sasMetrics.dropped,
+            totalSasCancelled: sasMetrics.cancelled,
+            totalSasGross: sasMetrics.gross,
+          }
+        : calculateSasMetricsTotals(collections);
 
     return (
       <>
@@ -528,64 +1070,92 @@ export default function CollectionReportPage() {
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Drop Total</span>
-                <span className="font-medium text-gray-800">
-                  {totalSasDrop.toLocaleString()}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasDrop
+                  )}`}
+                >
+                  {totalSasDrop.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Cancelled Total</span>
-                <span className="font-medium text-gray-800">
-                  {totalSasCancelled.toLocaleString()}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasCancelled
+                  )}`}
+                >
+                  {totalSasCancelled.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Gross Total</span>
-                <span className="font-medium text-gray-800">
-                  {totalSasGross.toLocaleString()}
+                <span
+                  className={`font-medium ${getFinancialColorClass(
+                    totalSasGross
+                  )}`}
+                >
+                  {totalSasGross.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <div className="hidden lg:block bg-white p-0 rounded-lg shadow-md overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-button text-white">
-              <tr>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-button hover:bg-button">
+                <TableHead className="text-white font-semibold">
                   METRIC
-                </th>
-                <th className="p-3 text-left font-semibold whitespace-nowrap">
+                </TableHead>
+                <TableHead className="text-white font-semibold">
                   VALUE
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
-                  SAS Drop Total
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {totalSasDrop.toLocaleString()}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">SAS Drop Total</TableCell>
+                <TableCell className={getFinancialColorClass(totalSasDrop)}>
+                  {totalSasDrop.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">
                   SAS Cancelled Total
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {totalSasCancelled.toLocaleString()}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="p-3 whitespace-nowrap font-medium">
-                  SAS Gross Total
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {totalSasGross.toLocaleString()}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </TableCell>
+                <TableCell
+                  className={getFinancialColorClass(totalSasCancelled)}
+                >
+                  {totalSasCancelled.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-gray-50">
+                <TableCell className="font-medium">SAS Gross Total</TableCell>
+                <TableCell className={getFinancialColorClass(totalSasGross)}>
+                  {totalSasGross.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </>
     );
@@ -605,126 +1175,126 @@ export default function CollectionReportPage() {
   };
 
   return (
-    <div className="w-full xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex flex-col">
-      <Sidebar pathname={pathname} />
-      <main className="flex-1 xl:ml-4">
-        <Header
-          pageTitle=""
-          hideOptions={true}
-          hideLicenceeFilter={true}
-          containerPaddingMobile="px-4 py-8 xl:px-0 xl:py-0"
-          disabled={loading || refreshing}
-        />
-
-        <div className="px-2 xl:px-6 pt-6 hidden xl:block">
-          <div className="flex items-center justify-between">
-            <Link href="/collection-report" legacyBehavior>
-              <a className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Collections
-              </a>
+    <PageLayout
+      headerProps={{
+        containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+        disabled: loading || refreshing,
+      }}
+      pageTitle=""
+      hideOptions={true}
+      hideLicenceeFilter={true}
+      mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+      showToaster={false}
+    >
+      <div className="px-2 lg:px-6 pt-6 hidden lg:block">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Link href="/collection-report">
+              <Button
+                variant="ghost"
+                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+              >
+                <ArrowLeft size={18} className="h-5 w-5" />
+              </Button>
             </Link>
-            <Button
-              onClick={handleRefresh}
+            <h1 className="text-2xl font-bold">Collection Report Details</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <SyncButton
+              onClick={handleSync}
+              isSyncing={refreshing}
+              label="Sync Meters"
               disabled={loading || refreshing}
-              className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 ${
-                loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
+        <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
+          <div className="text-center py-2 lg:py-4 px-4">
+            <div className="lg:hidden text-xs text-gray-500 mb-2">
+              COLLECTION REPORT
+            </div>
+            <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
+              {reportData.locationName}
+            </h1>
+            <p className="text-sm lg:text-base text-gray-600 mb-4">
+              Report ID: {reportData.reportId}
+            </p>
+            {(() => {
+              const locationTotal = calculateLocationTotal(collections);
+              const textColorClass =
+                locationTotal < 0 ? "text-red-600" : "text-green-600";
+              return (
+                <p className={`text-lg font-semibold`}>
+                  Location Total:{" "}
+                  <span className={textColorClass}>
+                    {formatCurrency(locationTotal)}
+                  </span>
+                </p>
+              );
+            })()}
+            <div className="lg:hidden mt-4">
+              <SyncButton
+                onClick={handleSync}
+                isSyncing={refreshing}
+                label="Sync Meters"
+                disabled={loading || refreshing}
+                className="w-full justify-center"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
+        <div className="lg:w-1/4 mb-6 lg:mb-0">
+          <div className="space-y-2 bg-white p-3 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Report Sections
+            </h3>
+            <div className="space-y-2">
+              <TabButton label="Machine Metrics" />
+              <TabButton label="Location Metrics" />
+              <TabButton label="SAS Metrics Compare" />
+            </div>
+          </div>
+        </div>
+        <div className="lg:w-3/4" ref={tabContentRef}>
+          {renderDesktopTabContent()}
+        </div>
+      </div>
+      <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
+        <MachineMetricsContent loading={false} />
+        <LocationMetricsContent loading={false} />
+        <SASMetricsCompareContent loading={false} />
+      </div>
+
+      {/* Floating Refresh Button */}
+      <AnimatePresence>
+        {showFloatingRefresh && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <motion.button
+              onClick={handleSync}
+              disabled={refreshing}
+              className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
-              {refreshing ? (
-                <span className="loader mr-2" />
-              ) : (
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
-                  />
-                </svg>
-              )}
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        <div className="px-2 xl:px-6 pt-2 xl:pt-4 pb-6">
-          <div className="bg-white xl:bg-container rounded-lg shadow xl:border-t-4 xl:border-lighterBlueHighlight py-4 xl:py-8">
-            <div className="text-center py-2 xl:py-4 px-4">
-              <div className="xl:hidden text-xs text-gray-500 mb-2">
-                COLLECTION REPORT
-              </div>
-              <h1 className="text-2xl xl:text-4xl font-bold text-gray-800 mb-2">
-                {reportData.locationName}
-              </h1>
-              <p className="text-sm xl:text-base text-gray-600 mb-4">
-                Report ID: {reportData.reportId}
-              </p>
-              <p className="text-lg font-semibold text-gray-700">
-                Location Total: $
-                {formatCurrency(calculateLocationTotal(collections))}
-              </p>
-              <div className="xl:hidden mt-4">
-                <Button
-                  onClick={handleRefresh}
-                  disabled={loading || refreshing}
-                  className={`bg-buttonActive text-white px-4 py-2 rounded-md flex items-center gap-2 w-full justify-center ${
-                    loading || refreshing ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {refreshing ? (
-                    <span className="loader mr-2" />
-                  ) : (
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582"
-                      />
-                    </svg>
-                  )}
-                  Refresh
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-2 xl:px-6 pb-6 hidden xl:flex xl:flex-row xl:space-x-6">
-          <div className="xl:w-1/4 mb-6 xl:mb-0">
-            <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Machine Metrics
-                </span>
-                <div className="w-4 h-4 bg-buttonActive rounded-full"></div>
-              </div>
-              <p className="text-xs text-gray-500">
-                Detailed machine performance data
-              </p>
-            </div>
-          </div>
-          <div className="xl:w-3/4" ref={tabContentRef}>
-            {renderDesktopTabContent()}
-          </div>
-        </div>
-        <div className="px-2 xl:px-6 pb-6 xl:hidden space-y-6">
-          <MachineMetricsContent loading={false} />
-          <LocationMetricsContent loading={false} />
-          <SASMetricsCompareContent loading={false} />
-        </div>
-      </main>
-    </div>
+              <RefreshCw
+                className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </PageLayout>
   );
 }

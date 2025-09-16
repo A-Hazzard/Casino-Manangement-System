@@ -2,6 +2,10 @@ import { Schema, model, models, Types } from "mongoose";
 
 const firmwareSchema = new Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+    },
     product: { type: String, required: true },
     version: { type: String, required: true },
     versionDetails: { type: String },

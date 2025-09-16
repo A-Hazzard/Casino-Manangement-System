@@ -5,29 +5,54 @@ import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
 } from "@/lib/types/api";
-import type { Machine as MachineType } from "@/lib/types/machines";
+import type { Machine as _MachineType } from "@/lib/types/machines";
 import { CollectionReportData } from "@/lib/types";
 import { CollectionReport } from "../models/collectionReport";
+
+/**
+ * Formats a number with smart decimal handling
+ */
+const formatSmartDecimal = (value: number): string => {
+  if (isNaN(value)) return "0";
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = value % 1;
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+  return value.toFixed(hasSignificantDecimals ? 2 : 0);
+};
+import { Collections } from "../models/collections";
 import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
+import { getDatesForTimePeriod } from "../utils/dates";
+import type { TimePeriod } from "@/app/api/lib/types";
 
 /**
  * Fetches accepted bills for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of AcceptedBillType.
  */
 export async function getAcceptedBillsByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<AcceptedBillType[]> {
-  console.log(
-    "[API] getAcceptedBillsByMachine: querying for machine",
-    machineId
-  );
   try {
-    const result = (await AcceptedBill.find({
-      machine: machineId,
-    }).lean()) as AcceptedBillType[];
-    console.log("[API] getAcceptedBillsByMachine: result count", result.length);
+    const query: Record<string, unknown> = { machine: machineId };
+
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        query.createdAt = {
+          $gte: dateRange.startDate,
+          $lte: dateRange.endDate,
+        };
+      }
+    }
+
+    const result = (await AcceptedBill.find(
+      query
+    ).lean()) as AcceptedBillType[];
+
     return result;
   } catch (error) {
     console.error(
@@ -42,47 +67,43 @@ export async function getAcceptedBillsByMachine(
  * Fetches machine events for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of MachineEventType.
  */
 export async function getMachineEventsByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<MachineEventType[]> {
-  console.log(
-    "[API] getMachineEventsByMachine: querying for machine",
-    machineId
-  );
   try {
-    console.log(
-      "[API] getMachineEventsByMachine: checking model",
-      !!MachineEvent
-    );
-
     // Check if MachineEvent model is properly initialized
     if (!MachineEvent || typeof MachineEvent.find !== "function") {
       console.error(
         "[API] getMachineEventsByMachine: MachineEvent model is not properly initialized"
       );
-      // Return mock data as fallback
-      return getMockMachineEvents(machineId);
+      // Return empty array instead of mock data
+      return [];
     }
 
-    const query = { machine: machineId };
-    console.log(
-      "[API] getMachineEventsByMachine: executing query with filter",
-      query
-    );
+    const query: Record<string, unknown> = { machine: machineId };
+
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        query.timestamp = {
+          $gte: dateRange.startDate,
+          $lte: dateRange.endDate,
+        };
+      }
+    }
 
     const result = (await MachineEvent.find(
       query
     ).lean()) as MachineEventType[];
-    console.log("[API] getMachineEventsByMachine: result count", result.length);
 
-    // If no results, return mock data
+    // If no results, return empty array
     if (!result || result.length === 0) {
-      console.log(
-        "[API] getMachineEventsByMachine: No results found, returning mock data"
-      );
-      return getMockMachineEvents(machineId);
+      return [];
     }
 
     return result;
@@ -91,233 +112,45 @@ export async function getMachineEventsByMachine(
       "[API] getMachineEventsByMachine: error fetching data",
       error
     );
-    // Return mock data on error
-    return getMockMachineEvents(machineId);
+    return [];
   }
-}
-
-/**
- * Provides mock machine events data when real data is unavailable.
- *
- * @param machineId - The machine ID to use in mock data.
- * @returns An array of mock MachineEventType objects.
- */
-function getMockMachineEvents(machineId: string): MachineEventType[] {
-  console.log(
-    "[API] getMockMachineEvents: generating mock data for",
-    machineId
-  );
-
-  // Current date/time
-  const now = new Date();
-
-  // Generate mock data with correct structure matching the DB schema
-  const mockEvents: MachineEventType[] = [
-    {
-      _id: "1",
-      machine: machineId,
-      command: "7E",
-      commandType: "exp",
-      description: "Game has started",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-      message: {
-        incomingMessage: {
-          typ: "exp",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "7E",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      _id: "2",
-      machine: machineId,
-      command: "7F",
-      commandType: "exp",
-      description: "Game has ended",
-      relay: machineId.substring(0, 8),
-      date: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(), // 2 hours and 3 minutes ago
-      message: {
-        incomingMessage: {
-          typ: "exp",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "7F",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 2 - 1000 * 60 * 3
-      ).toISOString(),
-    },
-    {
-      _id: "3",
-      machine: machineId,
-      command: "2A",
-      commandType: "cmd",
-      description: "Collect meters",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "2A",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
-      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-      _id: "4",
-      machine: machineId,
-      command: "1D",
-      commandType: "cmd",
-      description: "Door opened",
-      relay: machineId.substring(0, 8),
-      date: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "1D",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3
-      ).toISOString(),
-    },
-    {
-      _id: "5",
-      machine: machineId,
-      command: "1E",
-      commandType: "cmd",
-      description: "Door closed",
-      relay: machineId.substring(0, 8),
-      date: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(), // 3 days and 15 mins ago
-      message: {
-        incomingMessage: {
-          typ: "cmd",
-          rly: machineId.substring(0, 8),
-          mac: "",
-          pyd: "1E",
-        },
-        serialNumber: "",
-        game: "",
-        gamingLocation: "",
-      },
-      cabinetId: "",
-      gameName: "",
-      location: "",
-      createdAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(),
-      updatedAt: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 15
-      ).toISOString(),
-    },
-  ];
-
-  console.log(
-    "[API] getMockMachineEvents: returning",
-    mockEvents.length,
-    "mock events with correct schema structure"
-  );
-  return mockEvents;
 }
 
 /**
  * Fetches collection meters history for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of CollectionMetersHistoryEntry.
  */
 export async function getCollectionMetersHistoryByMachine(
-  machineId: string
+  machineId: string,
+  timePeriod?: string | null
 ): Promise<CollectionMetersHistoryEntry[]> {
-  console.log(
-    "[API] getCollectionMetersHistoryByMachine: querying for machine",
-    machineId
-  );
   try {
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: checking Machine model exists",
-      !!Machine
-    );
-
     // Use findOne with specific projection for collectionMetersHistory
     const query = { _id: machineId };
     const projection = { collectionMetersHistory: 1 };
 
-    console.log("[API] getCollectionMetersHistoryByMachine: executing query", {
-      query,
-      projection,
-    });
     const machine = (await Machine.findOne(query, projection).lean()) as Record<
       string,
       unknown
     >;
 
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: machine found?",
-      !!machine
-    );
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: collectionMetersHistory exists?",
-      !!machine?.collectionMetersHistory
-    );
-
-    const result = (machine?.collectionMetersHistory ||
+    let result = (machine?.collectionMetersHistory ||
       []) as CollectionMetersHistoryEntry[];
-    console.log(
-      "[API] getCollectionMetersHistoryByMachine: result count",
-      result.length
-    );
 
-    // If no results found, return mock data
-    if (!result || result.length === 0) {
-      console.log(
-        "[API] getCollectionMetersHistoryByMachine: No results found, returning mock data"
-      );
-      return getMockCollectionMetersHistory(machineId);
+    // Apply date filtering if timePeriod is provided
+    if (timePeriod && timePeriod !== "All Time") {
+      const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
+      if (dateRange.startDate && dateRange.endDate) {
+        result = result.filter((entry) => {
+          const entryDate = new Date(entry.timestamp);
+          return (
+            entryDate >= dateRange.startDate! && entryDate <= dateRange.endDate!
+          );
+        });
+      }
     }
 
     return result;
@@ -326,99 +159,29 @@ export async function getCollectionMetersHistoryByMachine(
       "[API] getCollectionMetersHistoryByMachine: error fetching data",
       error
     );
-    return getMockCollectionMetersHistory(machineId);
+    return [];
   }
-}
-
-/**
- * Provides mock collection meters history data when real data is unavailable.
- *
- * @param machineId - The machine ID to use in mock data.
- * @returns An array of mock CollectionMetersHistoryEntry objects.
- */
-function getMockCollectionMetersHistory(
-  machineId: string
-): CollectionMetersHistoryEntry[] {
-  console.log(
-    "[API] getMockCollectionMetersHistory: generating mock data for",
-    machineId
-  );
-
-  // Current date/time
-  const now = new Date();
-
-  // Generate mock data
-  const mockHistory: CollectionMetersHistoryEntry[] = [
-    {
-      _id: "1",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 7
-      ).toISOString(), // 1 week ago
-      metersIn: 25000,
-      metersOut: 20000,
-      prevMetersIn: 20000,
-      prevMetersOut: 18000,
-      locationReportId: "",
-    },
-    {
-      _id: "2",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 14
-      ).toISOString(), // 2 weeks ago
-      metersIn: 20000,
-      metersOut: 16000,
-      prevMetersIn: 15000,
-      prevMetersOut: 12000,
-      locationReportId: "",
-    },
-    {
-      _id: "3",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 21
-      ).toISOString(), // 3 weeks ago
-      metersIn: 15000,
-      metersOut: 12000,
-      prevMetersIn: 10000,
-      prevMetersOut: 8000,
-      locationReportId: "",
-    },
-    {
-      _id: "4",
-      timestamp: new Date(
-        now.getTime() - 1000 * 60 * 60 * 24 * 28
-      ).toISOString(), // 4 weeks ago
-      metersIn: 10000,
-      metersOut: 8000,
-      prevMetersIn: 5000,
-      prevMetersOut: 4000,
-      locationReportId: "",
-    },
-  ];
-
-  console.log(
-    "[API] getMockCollectionMetersHistory: returning",
-    mockHistory.length,
-    "mock entries"
-  );
-  return mockHistory;
 }
 
 /**
  * Fetches all accounting details for a given machine ID.
  *
  * @param machineId - The machine ID to filter by.
+ * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an object with acceptedBills, machineEvents, collectionMetersHistory, and machine.
  */
-export async function getAccountingDetails(machineId: string) {
-  console.log("[API] getAccountingDetails called with", machineId);
+export async function getAccountingDetails(
+  machineId: string,
+  timePeriod?: string | null
+) {
   const [acceptedBills, machineEvents, collectionMetersHistory, machine] =
     await Promise.all([
-      getAcceptedBillsByMachine(machineId),
-      getMachineEventsByMachine(machineId),
-      getCollectionMetersHistoryByMachine(machineId),
+      getAcceptedBillsByMachine(machineId, timePeriod),
+      getMachineEventsByMachine(machineId, timePeriod),
+      getCollectionMetersHistoryByMachine(machineId, timePeriod),
       Machine.findOne({ _id: machineId }).lean(),
     ]);
-  console.log("[API] getAccountingDetails finished DB queries");
+
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
 }
 
@@ -435,22 +198,137 @@ export async function getCollectionReportById(
   }).lean();
   if (!report) return null;
 
-  // Fetch machine metrics for this report
-  // (Assume Machine model and collectionMetersHistory are available)
-  const machines = await Machine.find({
-    "collectionMetersHistory.locationReportId": report.locationReportId,
-  }).lean();
+  // Fetch actual collections for this report with machine details resolved
+  const collections = await Collections.aggregate([
+    {
+      $match: {
+        locationReportId: reportId,
+      },
+    },
+    {
+      $lookup: {
+        from: "machines",
+        localField: "sasMeters.machine",
+        foreignField: "_id",
+        as: "machineDetails",
+      },
+    },
+    {
+      $addFields: {
+        "sasMeters.machine": {
+          $let: {
+            vars: {
+              machine: { $arrayElemAt: ["$machineDetails", 0] },
+            },
+            in: {
+              $cond: {
+                if: { $ne: ["$$machine", null] },
+                then: {
+                  $cond: {
+                    if: { $ne: ["$$machine.serialNumber", null] },
+                    then: "$$machine.serialNumber",
+                    else: {
+                      $cond: {
+                        if: { $ne: ["$$machine.custom.name", null] },
+                        then: "$$machine.custom.name",
+                        else: {
+                          $cond: {
+                            if: { $ne: ["$$machine.machineId", null] },
+                            then: "$$machine.machineId",
+                            else: "$$machine._id",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                else: {
+                  // Fallback to collection fields if no machine found
+                  $cond: {
+                    if: { $ne: ["$machineCustomName", null] },
+                    then: "$machineCustomName",
+                    else: {
+                      $cond: {
+                        if: { $ne: ["$serialNumber", null] },
+                        then: "$serialNumber",
+                        else: {
+                          $cond: {
+                            if: { $ne: ["$machineName", null] },
+                            then: "$machineName",
+                            else: {
+                              $cond: {
+                                if: { $ne: ["$machineId", null] },
+                                then: "$machineId",
+                                else: "$sasMeters.machine",
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        machineDetails: 0, // Remove the temporary machineDetails field
+      },
+    },
+  ]);
 
-  // Map location metrics
+  // Calculate location metrics from actual collections using the same logic as individual machines
+  const totalDrop = collections.reduce(
+    (sum, col) => sum + ((col.metersIn || 0) - (col.prevIn || 0)),
+    0
+  );
+  const totalCancelled = collections.reduce(
+    (sum, col) => sum + ((col.metersOut || 0) - (col.prevOut || 0)),
+    0
+  );
+
+  const totalMetersGross = collections.reduce(
+    (sum, col) => sum + (col.movement?.gross || 0),
+    0
+  );
+  const totalSasGross = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.gross || 0),
+    0
+  );
+  const totalVariation = totalMetersGross - totalSasGross;
+
+  // Get total number of machines for this location
+  let totalMachinesForLocation = collections.length; // Default fallback
+  try {
+    if (report.location) {
+      const totalMachinesCount = await Machine.countDocuments({
+        gamingLocation: report.location,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      });
+      totalMachinesForLocation = totalMachinesCount;
+    }
+  } catch (error) {
+    console.warn("Could not count total machines for location:", error);
+    // Keep the fallback value
+  }
+
+  // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
   const locationMetrics = {
-    droppedCancelled: `${report.totalDrop || 0}/${report.totalCancelled || 0}`,
-    metersGross: report.totalGross || 0,
-    variation: report.variance || 0,
-    sasGross: report.totalSasGross || 0,
+    droppedCancelled: `${totalDrop}/${totalCancelled}`,
+    metersGross: totalMetersGross,
+    variation: totalVariation,
+    sasGross: totalSasGross,
     locationRevenue: report.partnerProfit || 0,
     amountUncollected: report.amountUncollected || 0,
     amountToCollect: report.amountToCollect || 0,
-    machinesNumber: report.machinesCollected || "-",
+    machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
     collectedAmount: report.amountCollected || 0,
     reasonForShortage: report.reasonShortagePayment || "-",
     taxes: report.taxes || 0,
@@ -463,11 +341,25 @@ export async function getCollectionReportById(
     varianceReason: report.varianceReason || "-",
   };
 
-  // Map SAS metrics
+  // Calculate SAS-specific metrics from sasMeters data
+  const sasDropTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.drop || 0),
+    0
+  );
+  const sasCancelledTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.totalCancelledCredits || 0),
+    0
+  );
+  const sasGrossTotal = collections.reduce(
+    (sum, col) => sum + (col.sasMeters?.gross || 0),
+    0
+  );
+
+  // Map SAS metrics from actual collections
   const sasMetrics = {
-    dropped: report.totalSasGross || 0, // TODO: Replace with actual SAS dropped if available
-    cancelled: 0, // TODO: Replace with actual SAS cancelled if available
-    gross: report.totalSasGross || 0,
+    dropped: sasDropTotal,
+    cancelled: sasCancelledTotal,
+    gross: sasGrossTotal,
   };
 
   return {
@@ -476,26 +368,51 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toLocaleString()
       : "-",
-    machineMetrics: machines.map((machineRaw, idx: number) => {
-      const machine = machineRaw as unknown as MachineType;
-      const historyEntry = (machine.collectionMetersHistory || []).find(
-        (entry: CollectionMetersHistoryEntry) =>
-          entry.locationReportId === report.locationReportId
-      );
-      const metersInDiff =
-        (historyEntry?.metersIn || 0) - (historyEntry?.prevMetersIn || 0);
-      const metersOutDiff =
-        (historyEntry?.metersOut || 0) - (historyEntry?.prevMetersOut || 0);
-      const meterGross = metersInDiff - metersOutDiff;
+    machineMetrics: collections.map((collection, idx: number) => {
+      // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
+      // Use a helper function to check for valid non-empty strings
+      const isValidString = (str: string | undefined | null): string | null => {
+        return str && typeof str === "string" && str.trim() !== ""
+          ? str.trim()
+          : null;
+      };
+
+      const machineDisplayName =
+        isValidString(collection.serialNumber) ||
+        isValidString(collection.machineName) ||
+        isValidString(collection.machineCustomName) ||
+        isValidString(collection.machineId) ||
+        isValidString(collection.sasMeters?.machine) ||
+        `Machine ${idx + 1}`;
+
+      // Calculate drop/cancelled from the difference between current and previous meters
+      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
+      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
+      const meterGross = collection.movement?.gross || 0;
+      const sasGross = collection.sasMeters?.gross || 0;
+      // Check if SAS data exists - if not, show "No SAS Data"
+       const variation =
+         !collection.sasMeters ||
+         collection.sasMeters.gross === undefined ||
+         collection.sasMeters.gross === null ||
+         collection.sasMeters.gross === 0
+           ? "No SAS Data"
+           : meterGross - sasGross;
+
       return {
         id: String(idx + 1),
-        machineId: machine.serialNumber || machine._id,
-        dropCancelled: `${metersInDiff} / 0`, // TODO: Replace 0 with actual cancelled credits if available
-        meterGross,
-        sasGross: "-", // TODO: Replace with actual SAS gross if available
-        variation: "-", // TODO: Replace with actual variation if available
-        sasTimes: historyEntry ? `${historyEntry.timestamp}` : "-",
-        hasIssue: false, // TODO: Set true if there is an issue
+        machineId: machineDisplayName,
+        actualMachineId: collection.machineId, // The actual machine ID for navigation
+        dropCancelled: `${drop} / ${cancelled}`,
+        metersGross: meterGross,
+        sasGross: formatSmartDecimal(sasGross),
+        variation:
+          typeof variation === "string"
+            ? variation
+            : formatSmartDecimal(variation),
+        sasStartTime: collection.sasMeters?.sasStartTime || "-",
+        sasEndTime: collection.sasMeters?.sasEndTime || "-",
+        hasIssue: false,
       };
     }),
     locationMetrics,

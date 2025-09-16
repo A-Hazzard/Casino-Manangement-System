@@ -34,6 +34,7 @@ const movementRequestSchema = new Schema<MovementRequestType>(
     __v: { type: Number },
     approvedBy: { type: String },
     approvedBySecond: { type: String },
+    deletedAt: { type: Date },
   },
   { timestamps: true }
 );

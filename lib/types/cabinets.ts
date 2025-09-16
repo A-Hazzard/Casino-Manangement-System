@@ -46,11 +46,20 @@ export type Cabinet = {
   collectionMultiplier?: string;
   gameType?: string;
   isCronosMachine?: boolean;
+  manufacturer?: string;
+  manuf?: string;
+  // Financial metrics from aggregation API
   moneyIn?: number;
   moneyOut?: number;
-  jackpot?: number;
   cancelledCredits?: number;
+  jackpot?: number;
   gross?: number;
+  // Additional metrics for comprehensive financial tracking
+  coinIn?: number;
+  coinOut?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  handle?: number; // Same as coinIn for betting activity
   sasMeters?: SasMeters;
   online?: boolean;
   meterData?: {
@@ -62,11 +71,13 @@ export type Cabinet = {
     movement?: {
       drop?: number;
       totalCancelledCredits?: number;
+      totalHandPaidCancelledCredits?: number;
+      currentCredits?: number;
       gamesPlayed?: number;
+      gamesWon?: number;
       jackpot?: number;
       coinIn?: number;
       coinOut?: number;
-      gamesWon?: number;
     };
     coinIn?: number;
     coinOut?: number;
@@ -105,12 +116,28 @@ export type Cabinet = {
     metersOut?: number;
   };
   collectionTime?: string | Date;
+  collectorDenomination?: number;
   collectionMetersHistory?: Array<{
     metersIn?: number;
     metersOut?: number;
     timestamp?: string;
     _id?: string;
   }>;
+  billMeters?: {
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+  };
   deletedAt?: string | Date | null;
   locationId?: string;
   locationName?: string;
@@ -122,9 +149,12 @@ export type CabinetFormData = {
   assetNumber: string;
   smbId: string;
   installedGame: string;
+  gameType: string;
   accountingDenomination: string;
   collectionMultiplier: string;
   status: string;
+  isCronosMachine: boolean;
+  manufacturer: string;
 };
 
 export type NewCabinetFormData = {
@@ -137,6 +167,7 @@ export type NewCabinetFormData = {
   assetStatus: string;
   gamingLocation: string;
   smibBoard: string;
+  manufacturer: string;
   collectionSettings: {
     multiplier?: string;
     lastCollectionTime: string;
@@ -230,6 +261,7 @@ export type TimePeriod =
   | "7d"
   | "last30days"
   | "30d"
+  | "All Time"
   | "Custom";
 
 /**
@@ -258,4 +290,59 @@ export type CabinetWithMeters = {
   } | null;
   sasMeters?: Record<string, unknown> | null;
   smbId?: string;
+};
+
+// Frontend-specific cabinet types
+export type CabinetDetails = Cabinet & {
+  // Any additional properties specific to cabinet details endpoint
+  gameConfig?: {
+    accountingDenomination?: number;
+    theoreticalRtp?: number;
+    maxBet?: string;
+    payTableId?: string;
+  };
+  smibVersion?: {
+    firmware?: string;
+    version?: string;
+  };
+  smibConfig?: {
+    net?: {
+      netMode?: number;
+      netStaSSID?: string;
+      netStaPwd?: string;
+      netStaChan?: number;
+    };
+    mqtt?: {
+      mqttSecure?: number;
+      mqttQOS?: number;
+      mqttURI?: string;
+      mqttSubTopic?: string;
+      mqttPubTopic?: string;
+      mqttCfgTopic?: string;
+      mqttIdleTimeS?: number;
+    };
+    coms?: {
+      comsAddr?: number;
+      comsMode?: number;
+      comsRateMs?: number;
+      comsRTE?: number;
+      comsGPC?: number;
+    };
+  };
+};
+
+export type CabinetMetrics = {
+  moneyIn: number;
+  moneyOut: number;
+  jackpot: number;
+  cancelledCredits: number;
+  gross: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+};
+
+// SMIB Management types
+export type SmibLocation = {
+  id: string;
+  name: string;
 };

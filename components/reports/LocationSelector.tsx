@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -10,9 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, ChevronDown, X, Monitor } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Monitor } from "lucide-react";
 import type { LocationSelectorProps } from "@/lib/types/components";
 import LocationMultiSelect from "@/components/ui/common/LocationMultiSelect";
 
@@ -31,10 +27,8 @@ type Location = {
 export default function LocationSelector({
   onLocationSelect,
   selectedLocations,
-  maxSelections = 5,
-  placeholder = "Select locations...",
 }: LocationSelectorProps) {
-  const [locations, setLocations] = useState<Location[]>([
+  const locations: Location[] = [
     {
       _id: "loc1",
       name: "Downtown Casino",
@@ -90,9 +84,8 @@ export default function LocationSelector({
       },
       sasEnabled: false,
     },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  ];
+  const loading = false;
 
   if (loading) {
     return (

@@ -1,5 +1,13 @@
 import React from "react";
-import type { MonthlyReportSummary } from "@/lib/types/componentProps"; // Assuming this is a type
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { MonthlyReportSummary } from "@/lib/types/componentProps";
 
 type ExtendedMonthlyReportSummaryTableProps = {
   summary: MonthlyReportSummary;
@@ -9,27 +17,27 @@ export default function MonthlyReportSummaryTable({
   summary,
 }: ExtendedMonthlyReportSummaryTableProps) {
   return (
-    <div className="overflow-x-auto bg-white shadow mb-0">
-      <table className="min-w-full text-sm text-left">
-        <thead className="bg-button">
-          <tr>
-            <th className="px-4 py-2 text-white font-bold">DROP</th>
-            <th className="px-4 py-2 text-white font-bold">
+    <div className="overflow-x-auto bg-white rounded-lg shadow mb-0">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">DROP</TableHead>
+            <TableHead className="text-white font-semibold">
               CANCELLED CREDITS
-            </th>
-            <th className="px-4 py-2 text-white font-bold">GROSS</th>
-            <th className="px-4 py-2 text-white font-bold">SAS GROSS</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="px-4 py-2 font-bold">{summary.drop}</td>
-            <td className="px-4 py-2 font-bold">{summary.cancelledCredits}</td>
-            <td className="px-4 py-2 font-bold">{summary.gross}</td>
-            <td className="px-4 py-2 font-bold">{summary.sasGross}</td>
-          </tr>
-        </tbody>
-      </table>
+            </TableHead>
+            <TableHead className="text-white font-semibold">GROSS</TableHead>
+            <TableHead className="text-white font-semibold">SAS GROSS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow className="hover:bg-gray-50">
+            <TableCell className="font-medium">{summary.drop}</TableCell>
+            <TableCell className="font-medium">{summary.cancelledCredits}</TableCell>
+            <TableCell className="font-medium">{summary.gross}</TableCell>
+            <TableCell className="font-medium">{summary.sasGross}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
   );
 }

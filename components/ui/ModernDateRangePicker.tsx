@@ -7,6 +7,7 @@ type ModernDateRangePickerProps = {
   value?: DateRange;
   onChange: (range?: DateRange) => void;
   onGo: () => void;
+  onCancel: () => void;
   onSetLastMonth: () => void;
 };
 
@@ -14,6 +15,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   value,
   onChange,
   onGo,
+  onCancel,
   onSetLastMonth,
 }) => {
   return (
@@ -38,6 +40,12 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
         disabled={!value?.from || !value?.to}
       >
         Go
+      </button>
+      <button
+        className="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-600"
+        onClick={onCancel}
+      >
+        Cancel
       </button>
     </div>
   );

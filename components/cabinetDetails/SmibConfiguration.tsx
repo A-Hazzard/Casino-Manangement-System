@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
+import axios from "axios";
 import type { CabinetDetail, SmibConfig } from "@/lib/types/cabinets";
 import {
   configContentVariants,
@@ -69,18 +70,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
         },
       };
 
-      const response = await fetch(`/api/cabinets/${cabinet._id}/smib-config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Failed to update SMIB configuration."
-        );
-      }
+      await axios.post(`/api/cabinets/${cabinet._id}/smib-config`, payload);
       toast.success("SMIB configuration updated successfully!");
       setCurrentSmibConfig((prevConfig) => ({
         ...prevConfig,

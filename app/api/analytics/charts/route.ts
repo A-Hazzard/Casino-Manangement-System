@@ -65,17 +65,14 @@ export async function GET(request: NextRequest) {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } },
           totalDrop: { $sum: { $ifNull: ["$drop", 0] } },
-          cancelledCredits: { $sum: { $ifNull: ["$totalCancelledCredits", 0] } },
+          cancelledCredits: {
+            $sum: { $ifNull: ["$totalCancelledCredits", 0] },
+          },
           gross: {
             $sum: {
               $subtract: [
-                { $ifNull: ["$coinIn", 0] },
-                {
-                  $add: [
-                    { $ifNull: ["$coinOut", 0] },
-                    { $ifNull: ["$jackpot", 0] },
-                  ],
-                },
+                { $ifNull: ["$drop", 0] },
+                { $ifNull: ["$totalCancelledCredits", 0] },
               ],
             },
           },
@@ -101,8 +98,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching chart data:", error);
     return NextResponse.json(
-      { message: "Failed to fetch chart data", error: (error as Error).message },
+      {
+        message: "Failed to fetch chart data",
+        error: (error as Error).message,
+      },
       { status: 500 }
     );
   }
-} 
+}

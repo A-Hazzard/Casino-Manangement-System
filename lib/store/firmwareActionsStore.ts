@@ -1,17 +1,12 @@
 import { create } from "zustand";
-import type { Firmware } from "@/lib/types/firmware";
+
 
 // This is a store for firmware actions (delete modal)
 
-export type FirmwareActionsState = {
-  selectedFirmware: Firmware | null;
-  isDeleteModalOpen: boolean;
-  isDownloadModalOpen: boolean;
-  openDeleteModal: (firmware: Firmware) => void;
-  closeDeleteModal: () => void;
-  openDownloadModal: (firmware: Firmware) => void;
-  closeDownloadModal: () => void;
-};
+import type { FirmwareActionsState } from "@/lib/types/store";
+
+// Re-export frontend-specific types for convenience
+export type { FirmwareActionsState };
 
 // Define a no-op version for SSR
 const dummyState: FirmwareActionsState = {

@@ -25,22 +25,28 @@ import { formatISODate } from "@/shared/utils/dateFormat";
  * Calls the `/api/metrics/meters` endpoint using a time period, and optionally a custom date range and licencee filter.
  * Normalizes the data into the dashboardData shape, groups records by day or hour, and sorts chronologically.
  *
- * @param timePeriod - The time period to fetch metrics for (default: "7d").
+ * @param timePeriod - The time period to fetch metrics for.
  * @param startDate - (Optional) Start date for a custom range.
  * @param endDate - (Optional) End date for a custom range.
  * @param licencee - (Optional) Licencee ID to filter metrics.
  * @returns Promise resolving to an array of aggregated dashboardData objects.
  */
 export async function getMetrics(
-  timePeriod: TimePeriod = "7d",
-  startDate?: Date,
-  endDate?: Date,
+  timePeriod: TimePeriod,
+  startDate?: Date | string,
+  endDate?: Date | string,
   licencee?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
+    let normalizedStart: Date | undefined;
+    let normalizedEnd: Date | undefined;
     if (timePeriod === "Custom" && startDate && endDate) {
-      url += `&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      const sd = startDate instanceof Date ? startDate : new Date(startDate);
+      const ed = endDate instanceof Date ? endDate : new Date(endDate);
+      normalizedStart = sd;
+      normalizedEnd = ed;
+      url += `&startDate=${sd.toISOString()}&endDate=${ed.toISOString()}`;
     }
     if (licencee && licencee !== "all") {
       url += `&licencee=${licencee}`;
@@ -49,7 +55,17 @@ export async function getMetrics(
     const { data } = await axios.get<Metrics[]>(url);
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    const groupByHour = timePeriod === "Today" || timePeriod === "Yesterday";
+    // Determine if we should group by hour
+    let groupByHour = timePeriod === "Today" || timePeriod === "Yesterday";
+    
+    // For custom ranges, check if it spans only one day
+    if (timePeriod === "Custom" && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffInMs = end.getTime() - start.getTime();
+      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+      groupByHour = diffInDays <= 1; // Use hourly format for single day or less
+    }
 
     const rawData = data.map((doc): dashboardData => {
       const day = doc.day;
@@ -99,8 +115,8 @@ export async function getMetrics(
     const filledData = fillMissingIntervals(
       sortedData,
       timePeriod,
-      startDate,
-      endDate
+      normalizedStart,
+      normalizedEnd
     );
 
     return filledData;
@@ -129,7 +145,15 @@ function fillMissingIntervals(
 ): dashboardData[] {
   if (data.length === 0) return [];
 
-  const isHourly = timePeriod === "Today" || timePeriod === "Yesterday";
+  // Determine if this should be an hourly chart
+  let isHourly = timePeriod === "Today" || timePeriod === "Yesterday";
+  
+  // For custom ranges, check if it spans only one day
+  if (timePeriod === "Custom" && startDate && endDate) {
+    const diffInMs = endDate.getTime() - startDate.getTime();
+    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+    isHourly = diffInDays <= 1; // Use hourly format for single day or less
+  }
   const filledData: dashboardData[] = [];
 
   if (isHourly) {
@@ -161,6 +185,7 @@ function fillMissingIntervals(
     let end: Date;
 
     if (timePeriod === "Custom" && startDate && endDate) {
+      // For custom dates, use the original date strings directly to avoid timezone issues
       start = new Date(startDate);
       end = new Date(endDate);
     } else if (timePeriod === "7d") {
@@ -178,9 +203,10 @@ function fillMissingIntervals(
       start.setDate(end.getDate() - 6);
     }
 
-    let current = new Date(start);
+    const current = new Date(start);
     while (current <= end) {
-      const dayKey = formatISODate(current);
+      // Use the date directly as YYYY-MM-DD format to avoid timezone conversion issues
+      const dayKey = current.toISOString().split('T')[0];
       const existingData = data.find((item) => item.day === dayKey);
 
       if (existingData) {

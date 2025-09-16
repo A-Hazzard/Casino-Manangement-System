@@ -6,9 +6,9 @@ export async function GET() {
   await connectDB();
   try {
     const locationNames = await getAllLocationNames();
-    return NextResponse.json(locationNames);
+    return NextResponse.json({ locations: locationNames });
   } catch (error) {
     console.error("Error in locations API:", error);
-    return NextResponse.json([], { status: 500 });
+    return NextResponse.json({ locations: [] }, { status: 500 });
   }
 }

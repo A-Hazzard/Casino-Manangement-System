@@ -60,7 +60,10 @@ export type MongoQuery<T = Record<string, unknown>> = T & {
 export type MeterMovement = {
   drop?: number;
   totalCancelledCredits?: number;
+  totalHandPaidCancelledCredits?: number;
+  currentCredits?: number;
   gamesPlayed?: number;
+  gamesWon?: number;
   jackpot?: number;
   coinIn?: number;
   coinOut?: number;
@@ -70,11 +73,13 @@ export type MeterMovement = {
 export type SasMeters = {
   coinIn: number;
   coinOut: number;
+  drop: number; // Money physically inserted (Money In)
   jackpot: number;
   gamesPlayed: number;
   gamesWon: number;
   currentCredits: number;
-  totalCancelledCredits?: number;
+  totalCancelledCredits?: number; // Manual payouts (Money Out)
+  totalHandPaidCancelledCredits?: number; // Total hand paid cancelled credits
   [key: string]: unknown;
 };
 
@@ -119,6 +124,8 @@ export type CollectionMetersHistoryEntry = {
 
 // Bill validator data
 export type BillValidatorData = {
+  balance?: number;
+  notes?: Array<{ denomination: number; quantity: number }>;
   manufacturer?: string;
   model?: string;
   serialNumber?: string;
@@ -126,4 +133,4 @@ export type BillValidatorData = {
   billsAccepted?: Array<{ denomination: number; count: number }>;
   lastActivity?: string;
   status?: string;
-}; 
+};

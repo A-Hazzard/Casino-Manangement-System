@@ -1,62 +1,14 @@
-import axios, { CancelTokenSource } from "axios";
-import {
-  Cabinet,
-  NewCabinetFormData,
-  CabinetFormData,
-} from "../types/cabinets";
-import mongoose from "mongoose";
+import axios from "axios";
+import { NewCabinetFormData, CabinetFormData } from "../types/cabinets";
+
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
-// Define the CabinetDetails type based on Cabinet with any additional properties that might be returned from API
-export type CabinetDetails = Cabinet & {
-  // Any additional properties specific to cabinet details endpoint
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    maxBet?: string;
-    payTableId?: string;
-  };
-  smibVersion?: {
-    firmware?: string;
-    version?: string;
-  };
-  smibConfig?: {
-    net?: {
-      netMode?: number;
-      netStaSSID?: string;
-      netStaPwd?: string;
-      netStaChan?: number;
-    };
-    mqtt?: {
-      mqttSecure?: number;
-      mqttQOS?: number;
-      mqttURI?: string;
-      mqttSubTopic?: string;
-      mqttPubTopic?: string;
-      mqttCfgTopic?: string;
-      mqttIdleTimeS?: number;
-    };
-    coms?: {
-      comsAddr?: number;
-      comsMode?: number;
-      comsRateMs?: number;
-      comsRTE?: number;
-      comsGPC?: number;
-    };
-  };
-};
+import type { CabinetDetails, CabinetMetrics } from "@/lib/types/cabinets";
 
-// Define CabinetMetrics type
-export type CabinetMetrics = {
-  moneyIn: number;
-  moneyOut: number;
-  jackpot: number;
-  cancelledCredits: number;
-  gross: number;
-  gamesPlayed?: number;
-  gamesWon?: number;
-};
+// Re-export frontend-specific types for convenience
+export type { CabinetDetails, CabinetMetrics };
 
 /**
  * Fetch all cabinets with optional filtering by licensee and time period.
@@ -79,9 +31,14 @@ export const fetchCabinets = async (
     const queryParams = [];
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
 
-    if (customDateRange?.from && customDateRange?.to) {
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
       queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
       queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
@@ -122,15 +79,43 @@ export const fetchCabinets = async (
 };
 
 /**
- * Fetch a single cabinet by its ID.
+ * Fetch a single cabinet by its ID with optional date filtering.
  *
  * @param cabinetId - The unique identifier for the cabinet.
+ * @param timePeriod - Optional time period filter (Today, Yesterday, 7d, 30d, All Time).
  * @returns Promise resolving to the cabinet details, or throws on error.
  */
-export const fetchCabinetById = async (cabinetId: string) => {
+export const fetchCabinetById = async (
+  cabinetId: string,
+  timePeriod?: string,
+  customDateRange?: DateRange
+) => {
   try {
-    const response = await axios.get("/api/machines", {
-      params: { id: cabinetId },
+    // Use the main machines endpoint with time period filtering
+    let endpoint = `/api/machines/${cabinetId}`;
+
+    // Add query parameters
+    const queryParams = [];
+
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
+      queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    } else if (timePeriod) {
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
+
+    if (queryParams.length > 0) {
+      endpoint += `?${queryParams.join("&")}`;
+    }
+
+    console.warn("[DEBUG] fetchCabinetById calling:", endpoint);
+    const response = await axios.get(endpoint, {
+      headers: getAuthHeaders(),
     });
 
     if (response.data && response.data.success) {
@@ -154,43 +139,53 @@ export const createCabinet = async (
   data: NewCabinetFormData | CabinetFormData
 ) => {
   try {
+    const cabinetLogger = createActivityLogger("machine");
+
     let apiData;
     let endpoint = "/api/machines";
 
     if ("serialNumber" in data) {
       apiData = data;
-      if (
-        data.gamingLocation &&
-        mongoose.Types.ObjectId.isValid(data.gamingLocation)
-      ) {
+
+      if (data.gamingLocation) {
         endpoint = `/api/locations/${data.gamingLocation}/cabinets`;
+      } else {
+        throw new Error("Gaming location is required to create a cabinet");
       }
     } else {
-      apiData = {
-        serialNumber: data.assetNumber,
-        game: data.installedGame,
-        gameType: "",
-        isCronosMachine: false,
-        accountingDenomination: data.accountingDenomination,
-        cabinetType: "",
-        assetStatus: data.status,
-        gamingLocation: data.location,
-        smibBoard: data.smbId,
-        collectionSettings: {
-          lastCollectionTime: new Date(),
-          lastMetersIn: "0",
-          lastMetersOut: "0",
-        },
-      };
-
-      if (data.location && mongoose.Types.ObjectId.isValid(data.location)) {
+      apiData = data;
+      if (data.location) {
         endpoint = `/api/locations/${data.location}/cabinets`;
+      } else {
+        throw new Error("Location is required to create a cabinet");
       }
     }
 
     const response = await axios.post(endpoint, apiData);
 
     if (response.data && response.data.success) {
+      // Log the cabinet creation activity
+      const cabinetId = response.data.data._id || "unknown";
+      const cabinetName =
+        "serialNumber" in apiData
+          ? apiData.serialNumber
+          : "assetNumber" in apiData
+          ? apiData.assetNumber
+          : "Unknown";
+      const gameName =
+        "game" in apiData
+          ? apiData.game
+          : "installedGame" in apiData
+          ? apiData.installedGame
+          : "Unknown";
+
+      await cabinetLogger.logCreate(
+        cabinetId,
+        `${gameName} - ${cabinetName}`,
+        apiData,
+        `Created new cabinet: ${gameName} (${cabinetName})`
+      );
+
       return response.data.data;
     }
 
@@ -205,13 +200,53 @@ export const createCabinet = async (
  * Update an existing cabinet with provided form data.
  *
  * @param data - CabinetFormData object.
+ * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to the updated cabinet data, or throws on error.
  */
-export const updateCabinet = async (data: CabinetFormData) => {
+export const updateCabinet = async (
+  data: CabinetFormData,
+  timePeriod?: string
+) => {
   try {
-    const response = await axios.put("/api/machines", data);
+    const cabinetLogger = createActivityLogger("machine");
+
+    // Get the machine data with gamingLocation from the new endpoint
+    let cabinetUrl = `/api/machines/${data.id}`;
+    if (timePeriod) {
+      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    }
+
+    const cabinetResponse = await axios.get(cabinetUrl, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
+      throw new Error("Failed to fetch cabinet data");
+    }
+
+    const cabinet = cabinetResponse.data.data;
+    if (!cabinet.gamingLocation) {
+      throw new Error("Cabinet location not found");
+    }
+
+    const locationId = cabinet.gamingLocation;
+    const response = await axios.put(
+      `/api/locations/${locationId}/cabinets/${data.id}`,
+      data
+    );
 
     if (response.data && response.data.success) {
+      // Log the cabinet update activity
+      await cabinetLogger.logUpdate(
+        data.id,
+        `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}`,
+        data,
+        data,
+        `Updated cabinet: ${data.installedGame || "Unknown"} (${
+          data.assetNumber || "Unknown"
+        })`
+      );
+
       return response.data.data;
     }
 
@@ -226,15 +261,46 @@ export const updateCabinet = async (data: CabinetFormData) => {
  * Delete a cabinet by its ID.
  *
  * @param cabinetId - The unique identifier for the cabinet.
+ * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to true if deleted, or throws on error.
  */
-export const deleteCabinet = async (cabinetId: string) => {
+export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
   try {
-    const response = await axios.delete("/api/machines", {
-      params: { id: cabinetId },
+    const cabinetLogger = createActivityLogger("machine");
+
+    // Get the machine data with gamingLocation from the new endpoint
+    let cabinetUrl = `/api/machines/${cabinetId}`;
+    if (timePeriod) {
+      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    }
+
+    const cabinetResponse = await axios.get(cabinetUrl, {
+      headers: getAuthHeaders(),
     });
 
+    if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
+      throw new Error("Failed to fetch cabinet data");
+    }
+
+    const cabinet = cabinetResponse.data.data;
+    if (!cabinet.gamingLocation) {
+      throw new Error("Cabinet location not found");
+    }
+
+    const locationId = cabinet.gamingLocation;
+    const response = await axios.delete(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`
+    );
+
     if (response.data && response.data.success) {
+      // Log the cabinet deletion activity
+      await cabinetLogger.logDelete(
+        cabinetId,
+        "Cabinet",
+        { id: cabinetId },
+        `Deleted cabinet with ID: ${cabinetId}`
+      );
+
       return true;
     }
 
@@ -274,7 +340,6 @@ export const fetchCabinetLocations = async (licensee?: string) => {
     const locationsList = response.data?.locations || response.data?.data || [];
 
     if (Array.isArray(locationsList)) {
-      console.log("Locations data:", locationsList);
       return locationsList;
     } else {
       console.error("Locations data is not an array:", locationsList);
@@ -291,21 +356,28 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  *
  * @param locationId - The unique identifier for the location.
  * @param licencee - (Optional) Licencee filter.
- * @param searchTerm - (Optional) Search term filter.
  * @param timePeriod - (Optional) Time period filter.
+ * @param searchTerm - (Optional) Search term filter.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
 export async function fetchCabinetsForLocation(
   locationId: string,
   licencee?: string,
+  timePeriod?: string,
   searchTerm?: string,
-  timePeriod?: string
+  customDateRange?: DateRange
 ) {
-  console.log(`🔍 Fetching cabinets for location: ${locationId}`);
-
   try {
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      console.warn(
+        "⚠️ No timePeriod provided to fetchCabinetsForLocation, returning empty array"
+      );
+      return [];
+    }
+
     const params: Record<string, string> = {
-      timePeriod: timePeriod || "today",
+      timePeriod: timePeriod,
     };
 
     if (licencee) {
@@ -316,8 +388,20 @@ export async function fetchCabinetsForLocation(
       params.search = searchTerm;
     }
 
+    // Handle custom date range
+    if (
+      timePeriod === "Custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      console.warn("Custom date range:", customDateRange);
+      params.startDate = customDateRange.from.toISOString();
+      params.endDate = customDateRange.to.toISOString();
+      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
+      console.warn("Custom date params:", params);
+    }
+
     const queryString = new URLSearchParams(params).toString();
-    console.log(`📡 API call to /api/locations/${locationId}?${queryString}`);
 
     const response = await axios.get(
       `/api/locations/${locationId}?${queryString}`,
@@ -331,8 +415,6 @@ export async function fetchCabinetsForLocation(
 
     if (response.status !== 200) {
       console.error(`❌ API error (${response.status}):`, response.data);
-      // Don't throw, just return empty array
-      console.log(`⚠️ Returning empty array due to API error`);
       return [];
     }
 
@@ -343,7 +425,6 @@ export async function fetchCabinetsForLocation(
       return [];
     }
 
-    console.log(`✅ Received ${data.length} cabinets from API`);
     return data;
   } catch (error) {
     console.error("❌ Error in fetchCabinetsForLocation:", error);
@@ -367,9 +448,7 @@ export async function fetchCabinetDetails(
   timePeriod?: string,
   lang?: string
 ): Promise<CabinetDetails | null> {
-  console.log(
-    `🔍 Fetching cabinet details for: ${cabinetId} at location: ${locationId}`
-  );
+  // Fetching cabinet details for: ${cabinetId} at location: ${locationId}
 
   try {
     const params: Record<string, string> = {};
@@ -389,8 +468,6 @@ export async function fetchCabinetDetails(
     const url = `/api/locations/${locationId}/cabinets/${cabinetId}${
       queryString ? `?${queryString}` : ""
     }`;
-
-    console.log(`📡 API call to ${url}`);
 
     const response = await axios.get(url, {
       headers: {
@@ -413,7 +490,6 @@ export async function fetchCabinetDetails(
       return null;
     }
 
-    console.log(`✅ Received cabinet details for ${cabinetId}`);
     return data as CabinetDetails;
   } catch (error) {
     console.error("❌ Error fetching cabinet details:", error);
@@ -471,13 +547,21 @@ export async function loadCabinetsForLocation(
   timePeriod?: string
 ) {
   try {
-    console.log(`Fetching cabinets for location: ${locationId}`);
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      console.warn(
+        "⚠️ No timePeriod provided to loadCabinetsForLocation, returning empty array"
+      );
+      return [];
+    }
+
+    // Fetching cabinets for location: ${locationId}
 
     // Create a cancel token for this request
     const cancelToken = axios.CancelToken.source();
 
     const params: Record<string, string> = {
-      timePeriod: timePeriod || "today",
+      timePeriod: timePeriod,
     };
 
     if (licencee) {
@@ -494,54 +578,13 @@ export async function loadCabinetsForLocation(
       return [];
     }
 
-    console.log(`Found ${response.data.length} cabinets for location`);
     return response.data;
   } catch (err) {
     if (axios.isCancel(err)) {
-      console.log("Cabinet fetch cancelled");
       return [];
     }
     console.error("Error fetching cabinet data:", err);
     return []; // Return empty array on error
-  }
-}
-
-/**
- * Update cabinet metrics data from the API.
- *
- * @param cabinetId - The ID of the cabinet.
- * @param timePeriod - The time period to fetch metrics for.
- * @param cancelToken - (Optional) Axios cancel token for request cancellation.
- * @returns Promise resolving to the updated cabinet data or null if error.
- */
-export async function updateCabinetMetricsData(
-  cabinetId: string,
-  timePeriod: string,
-  cancelToken?: CancelTokenSource
-): Promise<Cabinet | null> {
-  try {
-    // Add timestamp to prevent caching
-    const timestamp = new Date().getTime();
-    const url = `/api/machines?id=${cabinetId}&timePeriod=${timePeriod}&cacheBust=${timestamp}`;
-
-    const response = await axios.get(url, {
-      cancelToken: cancelToken?.token,
-      timeout: 10000,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.data || !response.data.data) {
-      throw new Error("No data returned from metrics API");
-    }
-
-    return response.data.data;
-  } catch (error) {
-    if (!axios.isCancel(error)) {
-      console.error(`Error updating cabinet metrics data:`, error);
-    }
-    return null;
   }
 }
 
@@ -584,5 +627,47 @@ export const fetchMachineEvents = async (machineId: string) => {
       error
     );
     return [];
+  }
+};
+
+/**
+ * Update machine's collectionMetersHistory array.
+ *
+ * @param machineId - The unique identifier for the machine.
+ * @param collectionHistoryEntry - The collection history entry to add/update.
+ * @param operation - The operation to perform: 'add', 'update', or 'delete'.
+ * @param entryId - The ID of the entry to update or delete (required for 'update' and 'delete' operations).
+ * @returns Promise resolving to success status.
+ */
+export const updateMachineCollectionHistory = async (
+  machineId: string,
+  collectionHistoryEntry?: {
+    _id?: string;
+    metersIn: number;
+    metersOut: number;
+    prevMetersIn: number;
+    prevMetersOut: number;
+    timestamp: Date;
+    locationReportId: string;
+  },
+  operation: "add" | "update" | "delete" = "add",
+  entryId?: string
+) => {
+  try {
+    const response = await axios.patch(
+      `/api/machines/${machineId}/collection-history`,
+      {
+        operation,
+        entry: collectionHistoryEntry,
+        entryId,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error updating collection history for machine ${machineId}:`,
+      error
+    );
+    throw error;
   }
 };

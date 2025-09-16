@@ -10,6 +10,14 @@ import { ChevronDownIcon } from "@radix-ui/react-icons";
 import creditCardIcon from "@/public/creditCardIcon.svg";
 import editIcon from "@/public/editIcon.svg";
 import deleteIcon from "@/public/deleteIcon.svg";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type LicenseeTableProps = {
   licensees: Licensee[];
@@ -46,64 +54,64 @@ export default function LicenseeTable({
   }, []);
   return (
     <div ref={tableRef} className="hidden lg:block">
-      <table className="min-w-full bg-white rounded-lg shadow-md">
-        <thead className="bg-button text-white">
-          <tr>
-            <th className="py-3 px-4 text-left font-semibold text-sm">NAME</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+      <Table className="bg-white rounded-lg shadow-md">
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">NAME</TableHead>
+            <TableHead centered className="text-white font-semibold">
               DESCRIPTION
-            </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               COUNTRY
-            </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               VALID FROM
-            </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               EXPIRES
-            </th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               PAYMENT STATUS
-            </th>
-            <th className="py-3 px-4 text-left font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               LAST EDITED
-            </th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            </TableHead>
+            <TableHead centered className="text-white font-semibold">
               ACTIONS
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {licensees.length === 0 ? (
-            <tr>
-              <td colSpan={8} className="text-center text-gray-500 py-6">
+            <TableRow>
+              <TableCell colSpan={8} className="text-center text-gray-500 py-6">
                 No licensees found.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ) : (
             licensees.map((licensee) => {
               const isPaid = isLicenseePaid(licensee);
               return (
-                <tr
+                <TableRow
                   key={licensee._id}
-                  className="border-b last:border-b-0 hover:bg-gray-50 transition-colors"
+                  className="hover:bg-gray-50 transition-colors"
                 >
-                  <td className="py-3 px-4 font-medium text-gray-700">
+                  <TableCell className="font-medium text-gray-700">
                     {licensee.name}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">
+                  </TableCell>
+                  <TableCell centered className="text-gray-700">
                     {licensee.description || "-"}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">
+                  </TableCell>
+                  <TableCell centered className="text-gray-700">
                     {licensee.countryName || licensee.country}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">
+                  </TableCell>
+                  <TableCell centered className="text-gray-700">
                     {formatLicenseeDate(licensee.startDate)}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">
+                  </TableCell>
+                  <TableCell centered className="text-gray-700">
                     {formatLicenseeDate(licensee.expiryDate)}
-                  </td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell centered>
                     {!isPaid || canChangePaymentStatus(licensee) ? (
                       <div className="flex justify-center items-center w-full h-full">
                         <div className="relative">
@@ -182,11 +190,11 @@ export default function LicenseeTable({
                         </span>
                       </div>
                     )}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">
+                  </TableCell>
+                  <TableCell centered className="text-gray-700">
                     {formatLicenseeDate(licensee.lastEdited)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
+                  </TableCell>
+                  <TableCell centered>
                     <div className="flex items-center justify-center gap-3">
                       <Image
                         src={creditCardIcon}
@@ -213,13 +221,13 @@ export default function LicenseeTable({
                         onClick={() => onDelete(licensee)}
                       />
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

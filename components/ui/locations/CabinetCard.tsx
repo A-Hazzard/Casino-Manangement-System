@@ -52,7 +52,7 @@ export default function CabinetCard(props: CabinetCardProps) {
     smbId: props.smbId,
     serialNumber: props.serialNumber,
     moneyIn: props.moneyIn,
-    cancelledCredits: props.cancelledCredits,
+    cancelledCredits: props.moneyOut,
     jackpot: props.jackpot,
     gross: props.gross,
     lastOnline: props.lastOnline,
@@ -88,7 +88,7 @@ export default function CabinetCard(props: CabinetCardProps) {
   };
 
   // Determine if cabinet is online
-  const isOnline = props.status === "Functional" || props.online === true;
+  const isOnline = props.status === "functional" || props.online === true;
 
   return (
     <div
@@ -127,8 +127,8 @@ export default function CabinetCard(props: CabinetCardProps) {
       {/* SMIB ID and Location */}
       <div className="mb-3">
         <p className="text-sm text-button">SMIB ID: {props.smbId || "N/A"}</p>
-        <p className="text-sm text-grayHighlight">
-          {props.locationName || props.game || "Unknown Location"}
+        <p className="text-sm text-grayHighlight font-bold">
+          {props.locationName || "Unknown Location"}
         </p>
       </div>
 
@@ -136,24 +136,30 @@ export default function CabinetCard(props: CabinetCardProps) {
       <div className="text-sm">
         <div className="flex justify-between py-1">
           <span>Wager</span>
-          <span>${formatCurrency(props.moneyIn || 0)}</span>
+          <span className="break-words text-right">
+            {formatCurrency(props.moneyIn || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
           <span>Cancelled Credits</span>
-          <span>${formatCurrency(props.cancelledCredits || 0)}</span>
+          <span className="break-words text-right">
+            {formatCurrency(props.moneyOut || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
           <span>Jackpot</span>
-          <span>${formatCurrency(props.jackpot || 0)}</span>
+          <span className="break-words text-right">
+            {formatCurrency(props.jackpot || 0)}
+          </span>
         </div>
         <div className="flex justify-between py-1">
           <span>Gross</span>
           <span
-            className={`${
+            className={`break-words text-right ${
               (props.gross || 0) < 0 ? "text-destructive" : "text-button"
             }`}
           >
-            ${formatCurrency(props.gross || 0)}
+            {formatCurrency(props.gross || 0)}
           </span>
         </div>
       </div>

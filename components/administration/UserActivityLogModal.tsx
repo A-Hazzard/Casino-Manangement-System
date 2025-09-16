@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -9,44 +10,23 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import ActivityDetailsModal from "@/components/administration/ActivityDetailsModal";
-import { DateRange } from "react-day-picker";
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { ReactNode } from "react";
 
-const filterButtons = [
-  { label: "Date Range", color: "bg-buttonActive text-white", key: "date" },
-  { label: "Activity Type", color: "bg-green-500 text-white", key: "type" },
-];
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+import type { ActivityGroup } from "@/lib/types/components";
+import { format } from "date-fns";
+import { ReactNode } from "react";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 type UserActivityLogModalProps = {
   open: boolean;
   onClose: () => void;
 };
 
-type ActivityGroup = {
-  range: string;
-  entries: ProcessedActivityEntry[];
-};
-
-type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  type: string;
-  icon: ReactNode;
-  iconBg: string;
-  user: {
-    email: string;
-    role: string;
-  };
-  description: ReactNode;
-  originalActivity: ActivityLog;
-};
-
 const getActionIcon = (actionType: string) => {
-  switch (actionType.toLowerCase()) {
+  const action = actionType.toLowerCase();
+  switch (action) {
     case "create":
       return { icon: <UserPlus className="w-4 h-4" />, bg: "bg-blue-500" };
     case "update":
@@ -54,14 +34,18 @@ const getActionIcon = (actionType: string) => {
       return { icon: <Settings className="w-4 h-4" />, bg: "bg-green-500" };
     case "delete":
       return { icon: <X className="w-4 h-4" />, bg: "bg-red-500" };
+    case "view":
+      return { icon: <User className="w-4 h-4" />, bg: "bg-gray-500" };
     default:
       return { icon: <Settings className="w-4 h-4" />, bg: "bg-gray-500" };
   }
 };
 
 const generateDescription = (log: ActivityLog): ReactNode => {
-  const actorEmail = log.actor.email;
-  const entityName = log.entity.name;
+  // Use new fields if available, fallback to legacy fields
+  const actorEmail = log.username || log.actor?.email || "Unknown User";
+  const entityName = log.resourceName || log.entity?.name || "Unknown Resource";
+  const action = log.action || log.actionType || "unknown";
 
   if (log.changes && log.changes.length > 0) {
     if (log.changes.length === 1) {
@@ -100,7 +84,17 @@ const generateDescription = (log: ActivityLog): ReactNode => {
     }
   }
 
-  switch (log.actionType.toLowerCase()) {
+  // Use details field if available
+  if (log.details) {
+    return (
+      <>
+        <span className="font-semibold text-gray-800">{actorEmail}</span>{" "}
+        {log.details}
+      </>
+    );
+  }
+
+  switch (action.toLowerCase()) {
     case "create":
       return (
         <>
@@ -122,9 +116,8 @@ const generateDescription = (log: ActivityLog): ReactNode => {
         <>
           <span className="font-semibold text-gray-800">{actorEmail}</span>{" "}
           performed{" "}
-          <span className="text-blue-600 font-semibold">{log.actionType}</span>{" "}
-          action on{" "}
-          <span className="text-blue-600 font-semibold">{entityName}</span>
+          <span className="text-blue-600 font-semibold">{action}</span> action
+          on <span className="text-blue-600 font-semibold">{entityName}</span>
         </>
       );
   }
@@ -134,7 +127,26 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
   const groups: { [key: string]: ActivityLog[] } = {};
 
   activities.forEach((activity) => {
-    const date = new Date(activity.timestamp);
+    // Safely parse the timestamp with validation
+    const timestamp = activity.timestamp;
+    let date: Date;
+    
+    if (timestamp instanceof Date) {
+      date = timestamp;
+    } else if (typeof timestamp === 'string') {
+      date = new Date(timestamp);
+    } else {
+      // Fallback to current date if timestamp is invalid
+      console.warn('Invalid timestamp for activity:', activity);
+      date = new Date();
+    }
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date for activity:', activity);
+      date = new Date(); // Fallback to current date
+    }
+
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -157,16 +169,34 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
   return Object.entries(groups).map(([range, entries]) => ({
     range,
     entries: entries.map((log) => {
-      const { icon, bg } = getActionIcon(log.actionType);
+      const action = log.action || log.actionType || "unknown";
+      const { icon, bg } = getActionIcon(action);
+      
+      // Safely parse timestamp for time display
+      let logDate: Date;
+      if (log.timestamp instanceof Date) {
+        logDate = log.timestamp;
+      } else if (typeof log.timestamp === 'string') {
+        logDate = new Date(log.timestamp);
+      } else {
+        logDate = new Date();
+      }
+
+      // Validate the date before formatting
+      if (isNaN(logDate.getTime())) {
+        console.warn('Invalid timestamp for log entry:', log);
+        logDate = new Date();
+      }
+
       return {
         id: log._id?.toString() || Math.random().toString(),
-        time: format(new Date(log.timestamp), "h:mm a"),
-        type: log.actionType.toLowerCase(),
+        time: format(logDate, "h:mm a"),
+        type: action.toLowerCase(),
         icon,
         iconBg: bg,
         user: {
-          email: log.actor.email,
-          role: log.actor.role,
+          email: log.username || log.actor?.email || "Unknown User",
+          role: log.actor?.role || "User",
         },
         description: generateDescription(log),
         originalActivity: log,
@@ -180,12 +210,13 @@ export default function UserActivityLogModal({
   onClose,
 }: UserActivityLogModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [activeFilter, setActiveFilter] = useState("date");
+  const [activeFilter] = useState("date");
   const [activityType, setActivityType] = useState("update");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [pendingDateRange, setPendingDateRange] = useState<
-    DateRange | undefined
-  >(dateRange);
+
+  // Use dashboard store for date filtering
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
+
+
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,35 +244,81 @@ export default function UserActivityLogModal({
 
     try {
       const params = new URLSearchParams({
-        entityType: "User",
+        resource: "user",
         limit: itemsPerPage.toString(),
-        skip: ((currentPage - 1) * itemsPerPage).toString(),
+        page: currentPage.toString(),
       });
 
       if (activeFilter === "type" && activityType) {
-        params.append("actionType", activityType.toUpperCase());
+        params.append("action", activityType);
       }
 
-      if (dateRange?.from) {
-        params.append("startDate", dateRange.from.toISOString());
+      // Use dashboard store date filtering
+      if (activeMetricsFilter === "Custom" && customDateRange) {
+        const sd =
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate as unknown as string);
+        const ed =
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate as unknown as string);
+        params.append("startDate", sd.toISOString());
+        params.append("endDate", ed.toISOString());
+      } else if (activeMetricsFilter !== "All Time") {
+        // Add date filtering based on activeMetricsFilter
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date = now;
+
+        switch (activeMetricsFilter) {
+          case "Today":
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            );
+            break;
+          case "Yesterday":
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1
+            );
+            endDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1,
+              23,
+              59,
+              59
+            );
+            break;
+          case "last7days":
+          case "7d":
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case "last30days":
+          case "30d":
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // Default to last 7 days
+        }
+
+        params.append("startDate", startDate.toISOString());
+        params.append("endDate", endDate.toISOString());
       }
 
-      if (dateRange?.to) {
-        params.append("endDate", dateRange.to.toISOString());
-      }
+      const response = await axios.get(`/api/activity-logs?${params}`);
 
-      const response = await fetch(`/api/activity-logs?${params}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch activity logs");
-      }
-
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
-        setActivities(data.data || []);
+        // Fix: The API returns data.data.activities, not data.data
+        setActivities(data.data.activities || []);
         setTotalPages(
-          Math.ceil((data.total || data.count || 0) / itemsPerPage)
+          Math.ceil((data.data.pagination?.totalCount || 0) / itemsPerPage)
         );
       } else {
         throw new Error(data.message || "Failed to fetch activity logs");
@@ -258,7 +335,14 @@ export default function UserActivityLogModal({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, activeFilter, activityType, dateRange]);
+  }, [
+    currentPage,
+    itemsPerPage,
+    activeFilter,
+    activityType,
+    activeMetricsFilter,
+    customDateRange,
+  ]);
 
   useEffect(() => {
     if (open) {
@@ -268,27 +352,11 @@ export default function UserActivityLogModal({
 
   const activityGroups = groupActivitiesByDate(activities);
 
-  const handleFilterChange = (filterKey: string) => {
-    setActiveFilter(filterKey);
-    setCurrentPage(1);
-    if (filterKey === "type") {
-      setActivityType("update");
-    }
-  };
+
 
   const handleActivityTypeChange = (type: string) => {
     setActivityType(type);
     setCurrentPage(1);
-  };
-
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setPendingDateRange(range);
-  };
-
-  const handleGoClick = () => {
-    setDateRange(pendingDateRange);
-    setCurrentPage(1);
-    fetchActivities();
   };
 
   const handleActivityClick = (activity: ActivityLog) => {
@@ -296,61 +364,48 @@ export default function UserActivityLogModal({
     setIsDetailsModalOpen(true);
   };
 
-  const handleSetLastMonth = () => {
-    const now = new Date();
-    const lastMonth = subMonths(now, 1);
-    setPendingDateRange({
-      from: startOfMonth(lastMonth),
-      to: endOfMonth(lastMonth),
-    });
-  };
-
   if (!open) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black bg-opacity-50 p-2 md:p-4">
         <div
           ref={modalRef}
-          className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+          className="bg-gray-50 rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="relative bg-white border-b border-gray-200 px-6 py-6">
+          <div className="relative bg-white border-b border-gray-200 px-4 md:px-6 py-4 md:py-6">
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+              className="absolute top-3 md:top-4 right-3 md:right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
               onClick={onClose}
               aria-label="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 md:w-6 md:h-6" />
             </button>
-            <h2 className="text-3xl font-bold text-center text-gray-900 pr-12">
+            <h2 className="text-xl md:text-3xl font-bold text-center text-gray-900 pr-10 md:pr-12">
               User Activity Log
             </h2>
           </div>
 
           {/* Filter Section */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
-              <span className="font-semibold text-lg text-gray-700 flex-shrink-0">
+          <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4">
+            <div className="flex flex-col gap-4 w-full">
+              <span className="font-semibold text-lg text-gray-700">
                 Filter By:
               </span>
-              <div className="flex flex-wrap gap-3 flex-1">
-                {filterButtons.map((btn) => (
-                  <button
-                    key={btn.key}
-                    className={`rounded-xl px-6 py-2.5 font-semibold text-base focus:outline-none transition-all duration-200 ${
-                      activeFilter === btn.key
-                        ? btn.color + " shadow-md transform scale-105"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                    onClick={() => handleFilterChange(btn.key)}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-                {activeFilter === "type" && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Date Filters */}
+                <div className="flex-1 min-w-0">
+                  <ActivityLogDateFilter />
+                </div>
+
+                {/* Activity Type Filter */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                    Activity Type:
+                  </span>
                   <select
-                    className="rounded-xl px-4 py-2.5 font-semibold text-base bg-white border-2 border-gray-300 text-gray-700 focus:outline-none focus:border-blue-500 transition-colors"
+                    className="rounded-xl px-3 md:px-4 py-2 md:py-2.5 font-semibold text-sm md:text-base bg-white border-2 border-gray-300 text-gray-700 focus:outline-none focus:border-blue-500 transition-colors min-w-0"
                     value={activityType}
                     onChange={(e) => handleActivityTypeChange(e.target.value)}
                   >
@@ -358,26 +413,14 @@ export default function UserActivityLogModal({
                     <option value="create">Create</option>
                     <option value="delete">Delete</option>
                   </select>
-                )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Date Range Filter */}
-          {activeFilter === "date" && (
-            <div className="bg-white border-b border-gray-200">
-              <ModernDateRangePicker
-                value={pendingDateRange}
-                onChange={handleDateRangeChange}
-                onGo={handleGoClick}
-                onSetLastMonth={handleSetLastMonth}
-              />
-            </div>
-          )}
-
           {/* Activity Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6">
+            <div className="px-4 md:px-6 py-4 md:py-6">
               {loading && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -514,33 +557,126 @@ export default function UserActivityLogModal({
                   </div>
                 )}
 
-                {/* Pagination Controls */}
+                {/* Pagination Controls - Mobile Responsive */}
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
-                      disabled={currentPage === 1 || loading}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="px-3 py-1 text-sm">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) =>
-                          Math.min(totalPages, prev + 1)
-                        )
-                      }
-                      disabled={currentPage === totalPages || loading}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <>
+                    {/* Mobile Pagination */}
+                    <div className="flex flex-col space-y-2 sm:hidden">
+                      <div className="text-xs text-gray-600 text-center">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1 || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ««
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                          }
+                          disabled={currentPage === 1 || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ‹
+                        </button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-600">Page</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalPages}
+                            value={currentPage}
+                            onChange={(e) => {
+                              let val = Number(e.target.value);
+                              if (isNaN(val)) val = 1;
+                              if (val < 1) val = 1;
+                              if (val > totalPages) val = totalPages;
+                              setCurrentPage(val);
+                            }}
+                            className="w-10 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                            aria-label="Page number"
+                            disabled={loading}
+                          />
+                          <span className="text-xs text-gray-600">of {totalPages}</span>
+                        </div>
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                          }
+                          disabled={currentPage === totalPages || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ›
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages || loading}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          »»
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Pagination */}
+                    <div className="hidden sm:flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1 || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        First
+                      </button>
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(1, prev - 1))
+                        }
+                        disabled={currentPage === 1 || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Page</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={totalPages}
+                          value={currentPage}
+                          onChange={(e) => {
+                            let val = Number(e.target.value);
+                            if (isNaN(val)) val = 1;
+                            if (val < 1) val = 1;
+                            if (val > totalPages) val = totalPages;
+                            setCurrentPage(val);
+                          }}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                          aria-label="Page number"
+                          disabled={loading}
+                        />
+                        <span className="text-sm text-gray-600">of {totalPages}</span>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                        }
+                        disabled={currentPage === totalPages || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages || loading}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Last
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 {/* Save Button */}

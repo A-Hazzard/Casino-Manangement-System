@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { usePathname } from "next/navigation";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
+
 
 export default function NotFound() {
   // Add client-side initialization
@@ -37,14 +35,13 @@ export default function NotFound() {
 
 // Client component with store access
 function NotFoundContent() {
-  const pathname = usePathname();
   // Need to initialize store hooks even if not directly used for layout consistency
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
           <Header
             selectedLicencee={selectedLicencee}
@@ -53,20 +50,14 @@ function NotFoundContent() {
             hideOptions={true}
             hideLicenceeFilter={true} // Hide licensee filter on 404
           />
-          <div className="text-center">
-            <h1 className="text-6xl font-bold text-buttonActive mb-4">404</h1>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Page Not Found
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Sorry, the page you are looking for does not exist.
-            </p>
-            <Link href="/dashboard">
-              <Button className="bg-buttonActive hover:bg-buttonActive/90">
-                Go to Dashboard
-              </Button>
-            </Link>
-          </div>
+          <NotFoundError
+            title="Page Not Found"
+            message="Sorry, the page you are looking for does not exist."
+            resourceType="page"
+            showRetry={false}
+            customBackText="Go to Dashboard"
+            customBackHref="/"
+          />
         </main>
       </div>
     </>

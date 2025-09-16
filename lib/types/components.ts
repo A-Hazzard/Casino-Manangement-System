@@ -1,42 +1,9 @@
 // UI Component types
 import type { ExtendedCabinetDetail } from "./pages";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import type { ButtonProps } from "./componentProps";
-import type { MovementRequest } from "@/lib/types/movementRequests";
 import type { MachineMovementRecord } from "@/lib/types/reports";
-import type { Licensee } from "@/lib/types/licensee";
-import type {
-  Location,
-  Cabinet,
-  Firmware,
-  dateRange as DateRange,
-} from "@/lib/types";
-import type { ICollectionReport as CollectionReport } from "@/lib/types/api";
 import type { AggregatedLocation } from "@/lib/types/location";
-
-// Define missing types locally until they are properly exported
-export type ActivityLog = {
-  _id: string;
-  timestamp: Date;
-  actor: {
-    id: string;
-    email: string;
-    role: string;
-  };
-  actionType: string;
-  entityType: string;
-  entity: {
-    id: string;
-    name: string;
-  };
-  changes: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-  description?: string;
-  ipAddress?: string;
-};
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
 export type SmibConfig = {
   firmwareVersion: string;
@@ -108,6 +75,7 @@ export type EmptyStateProps = {
 export type UploadSmibDataModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onRefresh?: () => void;
 };
 
 // Reports component types
@@ -135,19 +103,14 @@ export type Option = Record<"value" | "label", string>;
 export type NewLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: () => void;
 };
 
 export type EditLocationModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  location: Location | null;
   onLocationUpdated?: () => void;
 };
 
 export type DeleteLocationModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  location: Location | null;
   onDelete: () => void;
 };
 
@@ -176,6 +139,7 @@ export type NewMovementModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: MachineMovementRecord) => void;
+  onRefresh?: () => void;
   locations?: { _id: string; name: string }[];
 };
 
@@ -269,6 +233,12 @@ export type LocationMapProps = {
   height?: string;
   showMetrics?: boolean;
   selectedLocationId?: string;
+  // Optional pre-aggregated metrics to avoid duplicate API calls
+  aggregates?: Record<string, unknown>[];
+  // Two-phase loading props
+  gamingLocations?: Record<string, unknown>[]; // Basic location data for immediate display
+  gamingLocationsLoading?: boolean; // Loading state for gaming locations
+  financialDataLoading?: boolean; // Loading state for financial data
 };
 
 // Chart Props Types
@@ -330,6 +300,9 @@ export type CollectionReportFiltersProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  selectedFilters: string[];
+  onFilterChange: (filter: string, checked: boolean) => void;
+  onClearFilters: () => void;
   isSearching: boolean;
 };
 
@@ -397,4 +370,50 @@ export type CabinetGridProps = {
   currentPage: number;
   itemsPerPage: number;
   router: AppRouterInstance;
+};
+
+export type ActivityLogModalProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+export type ActivityGroup = {
+  range: string;
+  entries: ProcessedActivityEntry[];
+};
+
+export type ProcessedActivityEntry = {
+  id: string;
+  time: string;
+  type: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  user: {
+    email: string;
+    role: string;
+  };
+  description: React.ReactNode;
+  originalActivity: ActivityLog;
+};
+
+// StackedChart component types
+export type StackedChartProps = {
+  title: string;
+  icon: React.ReactNode;
+  data: Array<{
+    hour: string;
+    [locationId: string]:
+      | {
+          handle: number;
+          winLoss: number;
+          jackpot: number;
+          plays: number;
+        }
+      | string;
+  }>;
+  dataKey: "handle" | "winLoss" | "jackpot" | "plays";
+  machines: string[]; // This will contain location IDs
+  colors: string[];
+  formatter: (value: number) => string;
+  locationNames?: Record<string, string>; // Map of location ID to location name
 };

@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
-import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { usePathname } from "next/navigation";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 export default function LocationDetailNotFound() {
   const pathname = usePathname();
@@ -14,8 +12,8 @@ export default function LocationDetailNotFound() {
 
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
+
+      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
         <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
           <Header
             selectedLicencee={selectedLicencee}
@@ -24,27 +22,14 @@ export default function LocationDetailNotFound() {
             hideOptions={true}
             hideLicenceeFilter={false}
           />
-          <div className="text-center">
-            <h1 className="text-6xl font-bold text-buttonActive mb-4">404</h1>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Location Not Found
-            </h2>
-            <p className="text-gray-500 mb-6">
-              The location with ID{" "}
-              <code className="bg-gray-200 px-1 rounded">{slug}</code> could not
-              be found for the selected licensee.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/locations">
-                <Button variant="outline">Back to Locations</Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button className="bg-buttonActive hover:bg-buttonActive/90">
-                  Go to Dashboard
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <NotFoundError
+            title="Location Not Found"
+            message={`The location with ID "${slug}" could not be found for the selected licensee.`}
+            resourceType="location"
+            showRetry={false}
+            customBackText="Back to Locations"
+            customBackHref="/locations"
+          />
         </main>
       </div>
     </>

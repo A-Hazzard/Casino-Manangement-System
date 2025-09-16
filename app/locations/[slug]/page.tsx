@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
+import PageLayout from "@/components/layout/PageLayout";
+
 import { Button } from "@/components/ui/button";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
+import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
-import { useParams, useRouter, usePathname } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
 import {
@@ -19,36 +21,55 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { Input } from "@/components/ui/input";
 import gsap from "gsap";
 import { RefreshButton } from "@/components/ui/RefreshButton";
-import {
-  fetchAllGamingLocations,
-  fetchLocationDetailsById,
-} from "@/lib/helpers/locations";
+import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import {
   animateTableRows,
   animateSortDirection,
   animateColumnSort,
   filterAndSortCabinets as filterAndSortCabinetsUtil,
 } from "@/lib/utils/ui";
+import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import CabinetCardsSkeleton from "@/components/ui/locations/CabinetCardsSkeleton";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
+import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
+import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
+import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 import Link from "next/link";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 
 export default function LocationPage() {
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
-  const pathname = usePathname();
 
-  const { selectedLicencee, setSelectedLicencee, activeMetricsFilter } =
-    useDashBoardStore();
+  const {
+    selectedLicencee,
+    setSelectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+  } = useDashBoardStore();
+
+  // State for tracking date filter initialization
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // Detect when date filter is properly initialized
+  useEffect(() => {
+    if (activeMetricsFilter && !dateFilterInitialized) {
+      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter, dateFilterInitialized]);
 
   const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,8 +93,6 @@ export default function LocationPage() {
     []
   );
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [selectedLocationId, setSelectedLocationId] =
-    useState<string>(locationId);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   // Add back error state
@@ -82,8 +101,16 @@ export default function LocationPage() {
   // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
 
-  // To prevent double fetch on initial load
-  const hasFetchedOnce = useRef(false);
+  // Calculate financial totals from cabinet data
+  const financialTotals = calculateCabinetFinancialTotals(allCabinets);
+
+  // Calculate machine status from cabinet data
+  const machineStats = {
+    onlineMachines: allCabinets.filter((cabinet) => cabinet.online === true)
+      .length,
+    offlineMachines: allCabinets.filter((cabinet) => cabinet.online === false)
+      .length,
+  };
 
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
@@ -97,73 +124,105 @@ export default function LocationPage() {
     setCurrentPage(0); // Reset to first page when filters change
   }, [allCabinets, searchTerm, sortOption, sortOrder]);
 
-  // Use useEffect to update selectedLocation when locationName changes
-  useEffect(() => {
-    if (locationName && !selectedLocation) {
-      setSelectedLocation(locationName);
-    }
-  }, [locationName, selectedLocation]);
-
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setCabinetsLoading(true);
       try {
-        // On initial load, fetch locations only ONCE
-        if (!hasFetchedOnce.current) {
-          try {
-            const formattedLocations = await fetchAllGamingLocations();
-            setLocations(formattedLocations);
-
-            // Set initial selected location based on URL slug
-            const currentLocation = formattedLocations.find(
-              (loc) => loc.id === locationId
-            );
-            if (currentLocation) {
-              setSelectedLocation(currentLocation.name);
-              setLocationName(currentLocation.name);
-              // Ensure selectedLocationId is set to the URL slug initially
-              setSelectedLocationId(locationId);
-            } else {
-              // If URL location not found in list, still set it for API calls
-              setSelectedLocationId(locationId);
-            }
-          } catch {
-            setError("Failed to load locations. Please try again later.");
-          }
-          hasFetchedOnce.current = true;
+        // Only proceed if we have a valid activeMetricsFilter and it's been properly initialized
+        if (!activeMetricsFilter || !dateFilterInitialized) {
+          console.warn(
+            "⚠️ No activeMetricsFilter or not initialized, skipping data fetch",
+            { activeMetricsFilter, dateFilterInitialized }
+          );
+          setAllCabinets([]);
+          setError("No time period filter selected");
+          setLoading(false);
+          setCabinetsLoading(false);
+          return;
         }
 
-        // Fetch location details for the page title (always from URL slug)
-        if (!locationName) {
-          try {
-            const locationData = await fetchLocationDetailsById(locationId);
-            setLocationName(locationData.name);
-            // If this is the first load and no location selected yet, set it
-            if (!selectedLocation) {
-              setSelectedLocation(locationData.name);
-            }
-          } catch {
-            setLocationName("Location"); // Default name on error
-            setError(
-              "Failed to load location details. Please try again later."
-            );
-          }
+        // Fetch locations for the selected licensee
+        const formattedLocations = await fetchAllGamingLocations(
+          selectedLicencee
+        );
+        setLocations(formattedLocations);
+
+        // Find the current location in the licensee's locations
+        const currentLocation = formattedLocations.find(
+          (loc) => loc.id === locationId
+        );
+
+        // Also check with toString() in case of ObjectId issues
+        const currentLocationAlt = formattedLocations.find(
+          (loc) => loc.id.toString() === locationId
+        );
+
+        // Use the first match found
+        const foundLocation = currentLocation || currentLocationAlt;
+
+        // Check if current location exists in new licensee's locations
+        if (!foundLocation) {
+          // Location doesn't exist for this licensee, show 404 error
+          setSelectedLocation("");
+          setLocationName("");
+          setAllCabinets([]);
+          setError("Location not found");
+          setLoading(false);
+          setCabinetsLoading(false);
+          return;
+        } else if (formattedLocations.length === 0) {
+          // No locations for this licensee, clear selection
+          setSelectedLocation("");
+          setLocationName("");
+          setAllCabinets([]);
+          setError("No locations found for the selected licensee.");
+          return;
         }
 
-        // Fetch cabinets data for the SELECTED location
+        // Use the found location data instead of making another API call
+        if (foundLocation) {
+          setLocationName(foundLocation.name);
+          setSelectedLocation(foundLocation.name);
+        } else {
+          // Fallback if location not found
+          setLocationName(locationId);
+          setSelectedLocation(locationId);
+        }
+
+        // Fetch cabinets data for the location
         try {
+          // Only fetch if we have a valid activeMetricsFilter - no fallback
+          if (!activeMetricsFilter) {
+            console.warn(
+              "⚠️ No activeMetricsFilter available, skipping cabinet fetch"
+            );
+            setAllCabinets([]);
+            setError("No time period filter selected");
+            return;
+          }
+
+          console.warn(`🔍 Using timePeriod: ${activeMetricsFilter}`);
+
           const cabinetsData = await fetchCabinetsForLocation(
-            selectedLocationId,
+            locationId, // Always use the URL slug for cabinet fetching
             selectedLicencee,
-            activeMetricsFilter
+            activeMetricsFilter, // Pass the selected filter directly
+            undefined, // Don't pass searchTerm (4th parameter)
+            activeMetricsFilter === "Custom" && customDateRange
+              ? { from: customDateRange.startDate, to: customDateRange.endDate }
+              : undefined // Only pass customDateRange when filter is "Custom"
+          );
+          console.warn(
+            `✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`
           );
           setAllCabinets(cabinetsData);
           setError(null); // Clear any previous errors on successful fetch
-        } catch {
+        } catch (error) {
+          console.error("Error fetching cabinets:", error);
           setAllCabinets([]);
-          setError("Failed to load cabinets. Please try again later.");
+          setError("Failed to fetch cabinets data.");
         }
       } finally {
         setLoading(false);
@@ -176,15 +235,15 @@ export default function LocationPage() {
     locationId,
     selectedLicencee,
     activeMetricsFilter,
-    selectedLocationId,
-    locationName,
-    selectedLocation,
+    customDateRange,
+    dateFilterInitialized,
+    router,
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
     applyFiltersAndSort();
-  }, [allCabinets, searchTerm, sortOption, sortOrder, applyFiltersAndSort]);
+  }, [applyFiltersAndSort]);
 
   // ====== Sorting / Pagination Logic ======
   const handleSortToggle = () => {
@@ -256,10 +315,25 @@ export default function LocationPage() {
     try {
       // Fetch cabinets data for the SELECTED location
       try {
+        // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
+        if (!activeMetricsFilter || !dateFilterInitialized) {
+          console.warn(
+            "⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch",
+            { activeMetricsFilter, dateFilterInitialized }
+          );
+          setAllCabinets([]);
+          setError("No time period filter selected");
+          return;
+        }
+
         const cabinetsData = await fetchCabinetsForLocation(
-          selectedLocationId,
+          locationId, // Always use the URL slug for cabinet fetching
           selectedLicencee,
-          activeMetricsFilter
+          activeMetricsFilter,
+          undefined, // Don't pass searchTerm
+          activeMetricsFilter === "Custom" && customDateRange
+            ? { from: customDateRange.startDate, to: customDateRange.endDate }
+            : undefined // Only pass customDateRange when filter is "Custom"
         );
         setAllCabinets(cabinetsData);
         setError(null); // Clear any previous errors on successful refresh
@@ -272,282 +346,428 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
-  }, [selectedLicencee, activeMetricsFilter, selectedLocationId]);
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    dateFilterInitialized,
+    locationId,
+  ]);
 
   // Handle location change without navigation - just update the selected location
-  const handleLocationChangeInPlace = (
-    newLocationId: string,
-    locationName: string
-  ) => {
-    setSelectedLocationId(newLocationId);
-    setSelectedLocation(locationName);
+  const handleLocationChangeInPlace = (newLocationId: string) => {
+    // Navigate to the new location URL
+    router.push(`/locations/${newLocationId}`);
     setIsLocationDropdownOpen(false);
   };
 
+  const { openCabinetModal } = useNewCabinetStore();
+
   return (
     <>
-      <Sidebar pathname={pathname} />
-      <div className="xl:w-full xl:mx-auto xl:pl-36 min-h-screen bg-background flex overflow-hidden">
-        <main className="flex flex-col flex-1 p-6 w-full max-w-full overflow-x-hidden">
-          <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
-            hideOptions={true}
-            hideLicenceeFilter={false}
-            disabled={loading || cabinetsLoading || refreshing}
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: loading || cabinetsLoading || refreshing,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        {/* Title Row - Responsive Layout */}
+        <div className="mt-4 w-full max-w-full">
+          {/* Mobile Layout (below sm) */}
+          <div className="sm:hidden space-y-3">
+            {/* Back button and title */}
+            <div className="flex items-center gap-3">
+              <Link href="/locations">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-xl font-bold text-gray-800 flex-1">
+                Location Details
+              </h1>
+            </div>
+
+            {/* Action buttons - stacked on mobile */}
+            <div className="flex gap-2">
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
+                className="flex-1"
+              />
+              <Button
+                variant="default"
+                className="flex-1 bg-button text-white"
+                disabled={loading || cabinetsLoading || refreshing}
+                onClick={() => openCabinetModal(locationId)}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+
+          {/* Desktop Layout (sm and above) */}
+          <div className="hidden sm:flex items-center justify-between">
+            <div className="flex items-center gap-3 w-full">
+              <Link href="/locations" className="mr-2">
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Location Details
+              </h1>
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={loading || cabinetsLoading || refreshing}
+                label="Refresh"
+                className="ml-auto"
+              />
+              <Button
+                variant="default"
+                className="ml-2 bg-button text-white"
+                disabled={loading || cabinetsLoading || refreshing}
+                onClick={() => openCabinetModal(locationId)}
+              >
+                Create Machine
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Financial Metrics Cards */}
+        <div className="mt-6">
+          <FinancialMetricsCards
+            totals={financialTotals}
+            loading={loading || cabinetsLoading}
+            title={`Financial Metrics for ${locationName || "Location"}`}
           />
+        </div>
 
-          <div className="flex items-center mb-6">
-            <Link href="/locations" className="mr-4">
-              <Button
-                variant="ghost"
-                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
-              >
-                <ArrowLeftIcon className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold">Location Details</h1>
-
-            {/* Remove Location Dropdown */}
-            <div className="ml-auto">
-              <RefreshButton
-                onClick={handleRefresh}
-                isSyncing={refreshing}
+        {/* Date Filters and Machine Status Row - Responsive */}
+        <div className="mt-4">
+          {/* Desktop and md: Side by side layout */}
+          <div className="hidden md:flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
-                label="Refresh"
+                hideAllTime={false}
+                onCustomRangeGo={handleRefresh}
+              />
+            </div>
+            <div className="flex-shrink-0 ml-4 w-auto">
+              <MachineStatusWidget
+                isLoading={loading || cabinetsLoading}
+                onlineCount={machineStats.onlineMachines}
+                offlineCount={machineStats.offlineMachines}
               />
             </div>
           </div>
 
-          {/* Search bar and controls container */}
-          <div className="mt-6 bg-buttonActive p-4 flex flex-col md:flex-row md:items-center gap-4">
-            {/* Search Input */}
-            <div className="relative md:w-1/2 lg:w-2/5">
-              <Input
-                type="text"
-                placeholder="Search machines (Asset, SMID, Serial, Game)..."
-                className={`w-full pr-10 bg-white border-border rounded-md ${
-                  loading || cabinetsLoading || refreshing
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                value={searchTerm}
+          {/* Mobile: Stacked layout */}
+          <div className="md:hidden flex flex-col gap-4">
+            <div className="w-full">
+              <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
-                onChange={(e) => {
-                  if (loading || cabinetsLoading || refreshing) return;
-                  setSearchTerm(e.target.value);
-
-                  // Highlight matched items when searching
-                  if (tableRef.current && e.target.value.trim() !== "") {
-                    // Add a subtle highlight pulse animation
-                    gsap.to(tableRef.current, {
-                      backgroundColor: "rgba(59, 130, 246, 0.05)",
-                      duration: 0.2,
-                      onComplete: () => {
-                        gsap.to(tableRef.current, {
-                          backgroundColor: "transparent",
-                          duration: 0.5,
-                        });
-                      },
-                    });
-                  }
-                }}
+                hideAllTime={false}
+                onCustomRangeGo={handleRefresh}
               />
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
-                aria-label="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
             </div>
+            <div className="w-full">
+              <MachineStatusWidget
+                isLoading={loading || cabinetsLoading}
+                onlineCount={machineStats.onlineMachines}
+                offlineCount={machineStats.offlineMachines}
+              />
+            </div>
+          </div>
+        </div>
 
-            {/* Locations Dropdown */}
-            <div className="relative md:w-1/3" ref={locationDropdownRef}>
-              <Button
-                variant="outline"
-                className={`w-full md:w-auto flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
-                  loading || cabinetsLoading || refreshing
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                disabled={loading || cabinetsLoading || refreshing}
-                onClick={() =>
-                  !(loading || cabinetsLoading || refreshing) &&
-                  setIsLocationDropdownOpen(!isLocationDropdownOpen)
+        {/* Search Row - Purple box for md and lg */}
+        <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+          <div className="relative flex-1 max-w-md min-w-0">
+            <Input
+              type="text"
+              placeholder="Search machines (Asset, SMID, Serial, Game)..."
+              className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              value={searchTerm}
+              disabled={loading || cabinetsLoading || refreshing}
+              onChange={(e) => {
+                if (loading || cabinetsLoading || refreshing) return;
+                setSearchTerm(e.target.value);
+
+                // Highlight matched items when searching
+                if (tableRef.current && e.target.value.trim() !== "") {
+                  // Add a subtle highlight pulse animation
+                  gsap.to(tableRef.current, {
+                    backgroundColor: "rgba(59, 130, 246, 0.05)",
+                    duration: 0.2,
+                    onComplete: () => {
+                      gsap.to(tableRef.current, {
+                        backgroundColor: "transparent",
+                        duration: 0.5,
+                      });
+                    },
+                  });
                 }
-              >
-                <span className="truncate">{selectedLocation}</span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform ${
-                    isLocationDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </Button>
-              {isLocationDropdownOpen && (
-                <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0">
-                  <div className="max-h-60 overflow-y-auto">
-                    {locations.map((loc) => (
-                      <button
-                        key={loc.id}
-                        className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                          selectedLocationId === loc.id
-                            ? "bg-gray-100 font-medium"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          handleLocationChangeInPlace(loc.id, loc.name)
-                        }
-                      >
-                        {loc.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+              }}
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           </div>
 
-          {/* Sort by dropdown with refresh button on mobile view */}
-          <div className="mt-4 flex flex-col md:hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center rounded-md bg-buttonActive px-4 py-2">
-                <span className="text-white text-sm mr-2">Sort by:</span>
-                <div className="relative inline-block">
-                  <select
-                    value={sortOption}
-                    onChange={(e) =>
-                      handleColumnSort(e.target.value as CabinetSortOption)
-                    }
-                    className="appearance-none bg-buttonActive text-white border-none pr-6 text-sm font-medium focus:outline-none"
-                  >
-                    <option value="moneyIn">Today</option>
-                    <option value="gross">Yesterday</option>
-                    <option value="assetNumber">Last 7 days</option>
-                    <option value="jackpot">Last 30 days</option>
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-white"
-                  />
-                </div>
-              </div>
-
-              <RefreshButton
-                onClick={handleRefresh}
-                isSyncing={refreshing}
-                disabled={loading || cabinetsLoading || refreshing}
-                label="Refresh"
-                size="sm"
-                className="px-3"
+          {/* Locations Dropdown */}
+          <div className="relative flex-shrink-0" ref={locationDropdownRef}>
+            <Button
+              variant="outline"
+              className={`flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+                loading || cabinetsLoading || refreshing
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              }`}
+              disabled={loading || cabinetsLoading || refreshing}
+              onClick={() =>
+                !(loading || cabinetsLoading || refreshing) &&
+                setIsLocationDropdownOpen(!isLocationDropdownOpen)
+              }
+            >
+              <span className="truncate">
+                {selectedLocation || locationName || "Select Location"}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${
+                  isLocationDropdownOpen ? "rotate-180" : ""
+                }`}
               />
-            </div>
-          </div>
-
-          {/* Filter Radio Buttons - Matching image */}
-          <div className="flex md:hidden mt-4 gap-4 justify-start">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <div
-                className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                  selectedStatus === "All"
-                    ? "bg-[#5119e9] border border-[#5119e9]"
-                    : "bg-white border border-[#5119e9]"
-                }`}
-                onClick={() => handleFilterChange("All")}
-              >
-                {selectedStatus === "All" && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                )}
-              </div>
-              <span className="text-xs font-medium text-gray-700">All</span>
-            </label>
-
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <div
-                className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                  selectedStatus === "Online"
-                    ? "bg-[#5119e9] border border-[#5119e9]"
-                    : "bg-white border border-[#5119e9]"
-                }`}
-                onClick={() => handleFilterChange("Online")}
-              >
-                {selectedStatus === "Online" && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                )}
-              </div>
-              <span className="text-xs font-medium text-gray-700">Online</span>
-            </label>
-
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <div
-                className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                  selectedStatus === "Offline"
-                    ? "bg-[#5119e9] border border-[#5119e9]"
-                    : "bg-white border border-[#5119e9]"
-                }`}
-                onClick={() => handleFilterChange("Offline")}
-              >
-                {selectedStatus === "Offline" && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                )}
-              </div>
-              <span className="text-xs font-medium text-gray-700">Offline</span>
-            </label>
-          </div>
-
-          {/* Sort and Filter buttons */}
-          <div className="flex md:hidden justify-between mt-4">
-            <Button
-              variant="default"
-              className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
-              onClick={handleSortToggle}
-            >
-              <ArrowUpDown size={16} />
-              <span>Sort</span>
             </Button>
-
-            <Button
-              variant="default"
-              className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
-              onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-            >
-              <Filter size={16} />
-              <span>Filter</span>
-            </Button>
-
-            {isFilterMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute right-4 z-10 mt-12 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-              >
-                <div className="p-2 text-sm font-semibold border-b">
-                  Sort by:
+            {isLocationDropdownOpen && (
+              <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0">
+                <div className="max-h-60 overflow-y-auto">
+                  {locations.map((loc) => (
+                    <button
+                      key={loc.id}
+                      className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        locationId === loc.id ? "bg-gray-100 font-medium" : ""
+                      }`}
+                      onClick={() => handleLocationChangeInPlace(loc.id)}
+                    >
+                      {loc.name}
+                    </button>
+                  ))}
                 </div>
-                {[
-                  { label: "Today", value: "moneyIn" },
-                  { label: "Yesterday", value: "gross" },
-                  { label: "Last 7 days", value: "assetNumber" },
-                  { label: "Last 30 days", value: "jackpot" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() =>
-                      handleColumnSort(opt.value as CabinetSortOption)
-                    }
-                    className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                      sortOption === opt.value ? "bg-gray-100 font-medium" : ""
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </motion.div>
+              </div>
             )}
           </div>
+        </div>
 
+        {/* Mobile: Search and Location Dropdown */}
+        <div className="md:hidden flex flex-col gap-4 mt-4">
+          <div className="relative w-full">
+            <Input
+              type="text"
+              placeholder="Search machines (Asset, SMID, Serial, Game)..."
+              className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
+              value={searchTerm}
+              disabled={loading || cabinetsLoading || refreshing}
+              onChange={(e) => {
+                if (loading || cabinetsLoading || refreshing) return;
+                setSearchTerm(e.target.value);
+
+                // Highlight matched items when searching
+                if (tableRef.current && e.target.value.trim() !== "") {
+                  // Add a subtle highlight pulse animation
+                  gsap.to(tableRef.current, {
+                    backgroundColor: "rgba(59, 130, 246, 0.05)",
+                    duration: 0.2,
+                    onComplete: () => {
+                      gsap.to(tableRef.current, {
+                        backgroundColor: "transparent",
+                        duration: 0.5,
+                      });
+                    },
+                  });
+                }
+              }}
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+
+          {/* Mobile: Location Dropdown */}
+          <div className="relative w-full" ref={locationDropdownRef}>
+            <CustomSelect
+              value={selectedLocation || locationId || ""}
+              onValueChange={handleLocationChangeInPlace}
+              options={locations.map((loc) => ({
+                value: loc.id,
+                label: loc.name,
+              }))}
+              placeholder={locationName || "Select Location"}
+              disabled={loading || cabinetsLoading || refreshing}
+              className="w-full"
+              triggerClassName={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
+                loading || cabinetsLoading || refreshing
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              }`}
+              searchable={true}
+              emptyMessage="No locations found"
+            />
+          </div>
+        </div>
+
+        {/* Sort by dropdown with refresh button on mobile view */}
+        <div className="mt-4 flex flex-col md:hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center rounded-md bg-buttonActive px-4 py-2">
+              <span className="text-white text-sm mr-2">Sort by:</span>
+              <div className="relative inline-block">
+                <select
+                  value={sortOption}
+                  onChange={(e) =>
+                    handleColumnSort(e.target.value as CabinetSortOption)
+                  }
+                  className="appearance-none bg-buttonActive text-white border-none pr-6 text-sm font-medium focus:outline-none"
+                >
+                  <option value="moneyIn">Today</option>
+                  <option value="gross">Yesterday</option>
+                  <option value="assetNumber">Last 7 days</option>
+                  <option value="jackpot">Last 30 days</option>
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-white"
+                />
+              </div>
+            </div>
+
+            <RefreshButton
+              onClick={handleRefresh}
+              isSyncing={refreshing}
+              disabled={loading || cabinetsLoading || refreshing}
+              label="Refresh"
+              size="sm"
+              className="px-3"
+            />
+          </div>
+        </div>
+
+        {/* Filter Radio Buttons - Matching image */}
+        <div className="flex md:hidden mt-4 gap-4 justify-start">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <div
+              className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                selectedStatus === "All"
+                  ? "bg-[#5119e9] border border-[#5119e9]"
+                  : "bg-white border border-[#5119e9]"
+              }`}
+              onClick={() => handleFilterChange("All")}
+            >
+              {selectedStatus === "All" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+              )}
+            </div>
+            <span className="text-xs font-medium text-gray-700">All</span>
+          </label>
+
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <div
+              className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                selectedStatus === "Online"
+                  ? "bg-[#5119e9] border border-[#5119e9]"
+                  : "bg-white border border-[#5119e9]"
+              }`}
+              onClick={() => handleFilterChange("Online")}
+            >
+              {selectedStatus === "Online" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+              )}
+            </div>
+            <span className="text-xs font-medium text-gray-700">Online</span>
+          </label>
+
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <div
+              className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                selectedStatus === "Offline"
+                  ? "bg-[#5119e9] border border-[#5119e9]"
+                  : "bg-white border border-[#5119e9]"
+              }`}
+              onClick={() => handleFilterChange("Offline")}
+            >
+              {selectedStatus === "Offline" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+              )}
+            </div>
+            <span className="text-xs font-medium text-gray-700">Offline</span>
+          </label>
+        </div>
+
+        {/* Sort and Filter buttons */}
+        <div className="flex md:hidden justify-between mt-4">
+          <Button
+            variant="default"
+            className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
+            onClick={handleSortToggle}
+          >
+            <ArrowUpDown size={16} />
+            <span>Sort</span>
+          </Button>
+
+          <Button
+            variant="default"
+            className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
+            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+          >
+            <Filter size={16} />
+            <span>Filter</span>
+          </Button>
+
+          {isFilterMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-4 z-10 mt-12 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+            >
+              <div className="p-2 text-sm font-semibold border-b">Sort by:</div>
+              {[
+                { label: "Today", value: "moneyIn" },
+                { label: "Yesterday", value: "gross" },
+                { label: "Last 7 days", value: "assetNumber" },
+                { label: "Last 30 days", value: "jackpot" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() =>
+                    handleColumnSort(opt.value as CabinetSortOption)
+                  }
+                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                    sortOption === opt.value ? "bg-gray-100 font-medium" : ""
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </div>
+
+        {/* Content Section */}
+        <div className="flex-1 w-full">
           {loading || cabinetsLoading ? (
             <>
               {/* Use CabinetTableSkeleton for lg+ only */}
@@ -573,7 +793,7 @@ export default function LocationPage() {
                 <CabinetGrid
                   filteredCabinets={
                     filteredCabinets
-                      .filter((cab) => cab.serialNumber)
+                      .filter((cab) => getSerialNumberIdentifier(cab) !== "N/A")
                       .map((cab) => ({
                         ...cab,
                         isOnline: cab.online,
@@ -644,14 +864,30 @@ export default function LocationPage() {
               )}
             </>
           )}
+        </div>
 
-          {error && (
-            <div className="mt-10 text-center text-red-500">{error}</div>
-          )}
+        {error === "Location not found" ? (
+          <NotFoundError
+            title="Location Not Found"
+            message={`The location with ID "${locationId}" could not be found for the selected licensee.`}
+            resourceType="location"
+            showRetry={false}
+            customBackText="Back to Locations"
+            customBackHref="/locations"
+          />
+        ) : error ? (
+          <div className="mt-10 text-center text-red-500">{error}</div>
+        ) : null}
 
-          <NewCabinetModal />
-        </main>
-      </div>
+        <NewCabinetModal
+          currentLocationName={locationName}
+          onCreated={handleRefresh}
+        />
+      </PageLayout>
+
+      {/* Cabinet Action Modals */}
+      <EditCabinetModal onCabinetUpdated={handleRefresh} />
+      <DeleteCabinetModal onCabinetDeleted={handleRefresh} />
     </>
   );
 }

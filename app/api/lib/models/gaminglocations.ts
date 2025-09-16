@@ -2,7 +2,10 @@ import { model, models, Schema } from "mongoose";
 
 const GamingLocationsSchema = new Schema(
   {
-    _id: String,
+    _id: {
+      type: String,
+      required: true,
+    },
     name: String,
     country: String,
     address: {
@@ -35,7 +38,7 @@ const GamingLocationsSchema = new Schema(
     geoCoords: {
       latitude: Number,
       longitude: Number,
-      longtitude: Number,  
+      longtitude: Number,
     },
     createdAt: Date,
     updatedAt: Date,

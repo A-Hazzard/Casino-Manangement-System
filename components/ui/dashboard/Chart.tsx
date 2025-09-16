@@ -10,7 +10,8 @@ import {
 } from "recharts";
 import { formatTime, formatDisplayDate } from "@/shared/utils/dateFormat";
 import { ChartProps } from "@/lib/types/componentProps";
-import { ChartSkeleton } from "@/components/ui/SkeletonLoader";
+import { DashboardChartSkeleton } from "@/components/ui/skeletons/DashboardSkeletons";
+import type { DashboardData } from "@/shared/types/analytics";
 
 export default function Chart({
   loadingChartData,
@@ -18,9 +19,14 @@ export default function Chart({
   activeMetricsFilter,
 }: ChartProps) {
   // Chart data received for rendering
+  
+  // Debug: Log the chart data to see what values we're getting
+  if (process.env.NODE_ENV === "development" && chartData && chartData.length > 0) {
+    console.warn("Chart data received:", chartData);
+  }
 
   if (loadingChartData) {
-    return <ChartSkeleton />;
+    return <DashboardChartSkeleton />;
   }
 
   if (!chartData || chartData.length === 0) {
@@ -54,9 +60,26 @@ export default function Chart({
     }
   };
 
+  // Determine if we should use hourly or daily formatting
+  const shouldUseHourlyFormat = () => {
+    if (activeMetricsFilter === "Today" || activeMetricsFilter === "Yesterday") {
+      return true;
+    }
+    
+    if (activeMetricsFilter === "Custom") {
+      // Check if custom range spans only one day
+      const uniqueDays = new Set(chartData.map(d => d.day).filter(Boolean));
+      return uniqueDays.size === 1;
+    }
+    
+    return false;
+  };
+
+  const isHourlyChart = shouldUseHourlyFormat();
+
   // For hourly charts, filter to only the most common day
   let filteredChartData = chartData;
-  if (activeMetricsFilter === "Today" || activeMetricsFilter === "Yesterday") {
+  if (isHourlyChart) {
     const dayCounts: Record<string, number> = {};
     chartData.forEach((d) => {
       if (d.day) dayCounts[d.day] = (dayCounts[d.day] || 0) + 1;
@@ -69,11 +92,8 @@ export default function Chart({
   }
 
   const sortedChartData = filteredChartData.slice().sort((a, b) => {
-    // If filtering by hour (Today/Yesterday), sort by day then time
-    if (
-      activeMetricsFilter === "Today" ||
-      activeMetricsFilter === "Yesterday"
-    ) {
+    // If using hourly format, sort by day then time
+    if (isHourlyChart) {
       const dayDiff = parseDay(a.day) - parseDay(b.day);
       if (dayDiff !== 0) return dayDiff;
       return parseTime(a.time, a.day) - parseTime(b.time, b.day);
@@ -82,24 +102,73 @@ export default function Chart({
     return parseDay(a.day) - parseDay(b.day);
   });
 
+  // For hourly charts, we need to aggregate the data by hour to avoid showing individual meter readings
+  let finalChartData = sortedChartData;
+  if (isHourlyChart) {
+    // Group by hour and sum the values
+    const hourlyData: Record<string, DashboardData> = {};
+    
+    sortedChartData.forEach((item) => {
+      if (!item.time) return;
+      
+      // Extract hour from time (e.g., "22:40" -> "22:00", "00:50" -> "00:00")
+      const hour = item.time.split(':')[0] + ':00';
+      const key = `${item.day}_${hour}`;
+      
+      if (!hourlyData[key]) {
+        hourlyData[key] = {
+          day: item.day,
+          time: hour,
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          location: item.location,
+          geoCoords: item.geoCoords,
+        };
+      }
+      
+      // Debug: Log what we're aggregating
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`Aggregating ${item.day} ${item.time} -> ${hour}:`, {
+          moneyIn: item.moneyIn,
+          moneyOut: item.moneyOut,
+          gross: item.gross
+        });
+      }
+      
+      hourlyData[key].moneyIn += item.moneyIn || 0;
+      hourlyData[key].moneyOut += item.moneyOut || 0;
+      hourlyData[key].gross += item.gross || 0;
+    });
+    
+    // Convert back to array and sort
+    finalChartData = Object.values(hourlyData).sort((a, b) => {
+      const dayDiff = parseDay(a.day) - parseDay(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return parseTime(a.time, a.day) - parseTime(b.time, b.day);
+    });
+    
+    // Debug: Log the final aggregated data
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Hourly aggregation result:", finalChartData);
+    }
+  }
+
+  // Debug: Log the final aggregated data
+  if (process.env.NODE_ENV === "development" && finalChartData && finalChartData.length > 0) {
+    console.warn("Final chart data (aggregated):", finalChartData);
+  }
+
   return (
     <div className="bg-container p-6 rounded-lg shadow-md">
       <ResponsiveContainer width="100%" height={320}>
-        <AreaChart data={sortedChartData}>
+        <AreaChart data={finalChartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
-            dataKey={
-              activeMetricsFilter === "Today" ||
-              activeMetricsFilter === "Yesterday"
-                ? "time"
-                : "day"
-            }
+            dataKey={isHourlyChart ? "time" : "day"}
             tickFormatter={(val, index) => {
-              if (
-                activeMetricsFilter === "Today" ||
-                activeMetricsFilter === "Yesterday"
-              ) {
-                const day = sortedChartData[index]?.day;
+              if (isHourlyChart) {
+                const day = finalChartData[index]?.day;
                 const fullUTCDate = `${day}T${val}:00Z`;
                 return formatTime(fullUTCDate);
               } else {
@@ -108,7 +177,20 @@ export default function Chart({
             }}
           />
           <YAxis />
-          <Tooltip />
+          <Tooltip 
+            formatter={(value, name) => {
+              // Debug: Log the tooltip values
+              if (process.env.NODE_ENV === "development") {
+                console.warn("Tooltip value:", value, "name:", name);
+              }
+              // Ensure values are displayed correctly without scaling
+              return [value, name];
+            }}
+            labelFormatter={(label) => {
+              // Format the date label properly
+              return label;
+            }}
+          />
           <Legend
             formatter={(value) => {
               if (value === "moneyIn") return "Money In";

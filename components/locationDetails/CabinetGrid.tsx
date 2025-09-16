@@ -1,21 +1,25 @@
 import React from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import type { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
 import type { CabinetGridProps } from "@/lib/types/components";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import CabinetTable from "@/components/ui/cabinets/CabinetTable";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
+import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import gsap from "gsap";
 
 function CabinetCardMobile({
   cabinet,
   router,
+  onEdit,
+  onDelete,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
+  onEdit: (cabinet: ExtendedCabinetDetail) => void;
+  onDelete: (cabinet: ExtendedCabinetDetail) => void;
 }) {
   const statusRef = React.useRef<HTMLSpanElement>(null);
   React.useEffect(() => {
@@ -36,6 +40,7 @@ function CabinetCardMobile({
         tl.kill();
       };
     }
+    return undefined;
   }, [cabinet.isOnline]);
   return (
     <div
@@ -44,16 +49,52 @@ function CabinetCardMobile({
       onClick={() => router.push(`/cabinets/${cabinet._id}`)}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold truncate max-w-[80%]">
-          {cabinet.serialNumber || "Unknown"}
+        <h3 className="font-semibold truncate max-w-[60%]">
+          {getSerialNumberIdentifier(cabinet)}
         </h3>
-        <span
-          ref={statusRef}
-          className={`inline-flex items-center justify-center w-3 h-3 rounded-full ${
-            cabinet.isOnline ? "bg-green-500" : "bg-red-500"
-          }`}
-          title={cabinet.isOnline ? "Online" : "Offline"}
-        ></span>
+        <div className="flex items-center gap-2">
+          <span
+            ref={statusRef}
+            className={`inline-flex items-center justify-center w-3 h-3 rounded-full ${
+              cabinet.isOnline ? "bg-green-500" : "bg-red-500"
+            }`}
+            title={cabinet.isOnline ? "Online" : "Offline"}
+          ></span>
+          <div className="flex gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(cabinet);
+              }}
+              className="p-1 hover:bg-gray-100 rounded"
+              title="Edit"
+            >
+              <Image
+                src="/editIcon.svg"
+                alt="Edit"
+                width={16}
+                height={16}
+                className="w-4 h-4"
+              />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(cabinet);
+              }}
+              className="p-1 hover:bg-gray-100 rounded text-red-600"
+              title="Delete"
+            >
+              <Image
+                src="/deleteIcon.svg"
+                alt="Delete"
+                width={16}
+                height={16}
+                className="w-4 h-4"
+              />
+            </button>
+          </div>
+        </div>
       </div>
       <p className="text-sm text-gray-600 mb-1">
         Game: {cabinet.game || cabinet.installedGame || "Unknown"}
@@ -96,10 +137,8 @@ export default function CabinetGrid({
     React.useState<CabinetSortOption>("moneyIn");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
-  // Modal states
-  const [selectedCabinet, setSelectedCabinet] = React.useState<ExtendedCabinetDetail | null>(null);
-  const [showEditModal, setShowEditModal] = React.useState(false);
-  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  // Use cabinet actions store for modal management
+  const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   const handleColumnSort = (column: CabinetSortOption) => {
     if (sortOption === column) {
@@ -110,39 +149,13 @@ export default function CabinetGrid({
     }
   };
 
-  // Handle cabinet actions
+  // Handle cabinet actions using store
   const handleEdit = (cabinet: ExtendedCabinetDetail) => {
-    setSelectedCabinet(cabinet);
-    setShowEditModal(true);
+    openEditModal(cabinet as Cabinet);
   };
 
   const handleDelete = (cabinet: ExtendedCabinetDetail) => {
-    setSelectedCabinet(cabinet);
-    setShowDeleteModal(true);
-  };
-
-  const handleEditSuccess = () => {
-    setShowEditModal(false);
-    setSelectedCabinet(null);
-    // Optionally refresh the cabinet data
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  };
-
-  const handleDeleteSuccess = () => {
-    setShowDeleteModal(false);
-    setSelectedCabinet(null);
-    // Optionally refresh the cabinet data
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  };
-
-  const handleCloseModals = () => {
-    setShowEditModal(false);
-    setShowDeleteModal(false);
-    setSelectedCabinet(null);
+    openDeleteModal(cabinet as Cabinet);
   };
 
   return (
@@ -175,6 +188,8 @@ export default function CabinetGrid({
                 key={cabinet._id}
                 cabinet={cabinet}
                 router={router}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))}
         </div>
@@ -198,15 +213,7 @@ export default function CabinetGrid({
         </div>
       )}
 
-      {/* Edit Cabinet Modal */}
-      {showEditModal && selectedCabinet && (
-        <EditCabinetModal />
-      )}
-
-      {/* Delete Cabinet Modal */}
-      {showDeleteModal && selectedCabinet && (
-        <DeleteCabinetModal />
-      )}
+      {/* Modals are managed globally by the cabinet actions store */}
     </div>
   );
 }

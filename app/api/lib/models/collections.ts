@@ -45,6 +45,8 @@ const collectionsSchema = new Schema(
     machineId: { type: String },
     machineName: { type: String },
     ramClear: { type: Boolean },
+    ramClearMetersIn: { type: Number },
+    ramClearMetersOut: { type: Number },
     serialNumber: { type: String },
     createdAt: { type: Date },
     updatedAt: { type: Date },

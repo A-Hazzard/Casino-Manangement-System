@@ -1,19 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Pencil } from "lucide-react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
 import { toast } from "sonner";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import defaultAvatar from "@/public/defaultAvatar.svg";
+import cameraIcon from "@/public/cameraIcon.svg";
+import CircleCropModal from "@/components/ui/image/CircleCropModal";
 
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
-    const response = await fetch(`/api/users/${userId}`);
-    if (!response.ok) {
-      return null;
-    }
-    const { user } = await response.json();
+    const response = await axios.get(`/api/users/${userId}`);
+    const { user } = response.data;
     return user;
   } catch (error) {
     console.error("Failed to fetch user data", error);
@@ -38,6 +41,12 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const userLogger = createActivityLogger("user");
+
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && authUser?._id) {
@@ -47,10 +56,16 @@ export default function ProfileModal({
           if (data) {
             setUserData(data);
             setFormData(data.profile || {});
+            setProfilePicture(data.profilePicture || null);
           } else {
             toast.error("Could not load user profile.");
             onClose();
           }
+        })
+        .catch((error) => {
+          console.error("Error fetching user data:", error);
+          toast.error("Failed to load user profile.");
+          onClose();
         })
         .finally(() => setIsLoading(false));
     } else if (!open) {
@@ -83,20 +98,51 @@ export default function ProfileModal({
     });
   };
 
-  const handlePasswordChange = (field: string, value: string) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setRawImageSrc(e.target?.result as string);
+        setIsCropOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditProfilePicture = () => {
+    if (profilePicture || userData?.profilePicture) {
+      // If there's an existing profile picture, open it for editing
+      setRawImageSrc(profilePicture || userData?.profilePicture || null);
+      setIsCropOpen(true);
+    } else {
+      // If no profile picture, open file selector
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleRemoveProfilePicture = () => {
+    setProfilePicture(null);
+  };
+
+  const handleCropComplete = (croppedImageUrl: string) => {
+    setProfilePicture(croppedImageUrl);
+    setIsCropOpen(false);
+    setRawImageSrc(null);
   };
 
   const handleSave = async () => {
     if (!userData) return;
 
-    const payload: { 
-      _id: string; 
-      profile: typeof formData; 
-      password?: { current: string; new: string } 
+    const payload: {
+      _id: string;
+      profile: typeof formData;
+      password?: { current: string; new: string };
+      profilePicture?: string | null;
     } = {
       _id: userData._id,
       profile: formData,
+      profilePicture: profilePicture ?? null,
     };
 
     if (
@@ -117,22 +163,36 @@ export default function ProfileModal({
     }
 
     try {
-      const response = await fetch(`/api/users/${userData._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const previousData = { ...userData };
 
-      const result = await response.json();
+      await axios.put(`/api/users/${userData._id}`, payload);
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to update profile");
-      }
+      // Log the profile update activity
+      await userLogger.logUpdate(
+        userData._id,
+        userData.username,
+        previousData,
+        payload,
+        `Updated profile for user: ${userData.username}`
+      );
 
       toast.success("Profile updated successfully!");
+      // Emit a browser event so the sidebar can update immediately
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("profile-updated", {
+            detail: {
+              profilePicture,
+              username: userData.username,
+              email: userData.email,
+            },
+          })
+        );
+      }
       onClose();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update profile.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update profile.";
       toast.error(errorMessage);
       console.error(error);
     }
@@ -141,19 +201,23 @@ export default function ProfileModal({
   const handleCancelEdit = () => {
     if (userData) {
       setFormData(userData.profile || {});
+      setProfilePicture(userData.profilePicture || null);
     }
     setIsEditMode(false);
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onClose}>
+    <Dialog.Root open={open} onOpenChange={() => {
+      onClose();
+    }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[100] grid w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
-          <div className="flex justify-between items-center">
-            <Dialog.Title className="text-2xl font-bold text-center">
-              My Profile
-            </Dialog.Title>
+        <Dialog.Overlay className="fixed inset-0 z-[99998] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" style={{ display: open ? 'block' : 'none' }} />
+        <Dialog.Content className="fixed inset-0 z-[99999] flex flex-col w-full bg-background shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:grid sm:gap-4 sm:border sm:p-6 sm:overflow-visible data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]" style={{ display: open ? 'flex' : 'none' }}>
+          <div className="p-4 space-y-4 sm:p-0 sm:space-y-0 sm:gap-4 sm:grid">
+            <div className="flex justify-between items-center">
+              <Dialog.Title className="text-2xl font-bold text-center">
+                My Profile
+              </Dialog.Title>
             {!isEditMode && (
               <Button
                 variant="ghost"
@@ -175,22 +239,154 @@ export default function ProfileModal({
           </Dialog.Close>
 
           {isLoading ? (
-            <div className="flex justify-center items-center h-96">
-              <div className="loader" />
+            <div className="max-h-[80vh] overflow-y-auto pr-4">
+              <div className="flex flex-col lg:flex-row gap-8 items-start">
+                {/* Left section skeleton */}
+                <div className="w-full lg:w-1/3 flex flex-col items-center">
+                  <Skeleton className="w-40 h-40 rounded-full" />
+                  <Skeleton className="h-6 w-32 mt-4" />
+                  <Skeleton className="h-4 w-48 mt-2" />
+                </div>
+
+                {/* Right section skeleton */}
+                <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Skeleton className="h-6 w-48 mb-4" />
+                  </div>
+                  
+                  {/* Personal Information Fields */}
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-24 mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-18 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-36 mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Section Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-6 w-32 mb-4" />
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-28 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-36 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             userData && (
-              <div className="max-h-[80vh] overflow-y-auto pr-4">
+              <div className="max-h-[80vh] overflow-y-auto pr-4 relative z-[100000]">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                   {/* Left section */}
                   <div className="w-full lg:w-1/3 flex flex-col items-center">
-                    <Image
-                      src={userData.profilePicture || "/defaultAvatar.svg"}
-                      alt="Avatar"
-                      width={160}
-                      height={160}
-                      className="rounded-full border-4 border-gray-200"
-                    />
+                    <div className="relative">
+                      <Image
+                        src={profilePicture || userData.profilePicture || defaultAvatar}
+                        alt="Avatar"
+                        width={160}
+                        height={160}
+                        className="rounded-full border-4 border-gray-200"
+                      />
+                      {isEditMode && (
+                        <>
+                          <button
+                            type="button"
+                            className="absolute bottom-2 right-2 rounded-full border-2 border-border bg-white p-1 shadow"
+                            onClick={handleEditProfilePicture}
+                            aria-label="Edit avatar"
+                          >
+                            <Image src={cameraIcon} alt="Edit" width={24} height={24} />
+                          </button>
+                          {(profilePicture || userData.profilePicture) && (
+                            <button
+                              type="button"
+                              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow"
+                              onClick={handleRemoveProfilePicture}
+                              aria-label="Remove avatar"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4"><path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm2 4h2v10h-2V7Zm-4 0h2v10H7V7Zm8 0h2v10h-2V7Z"/></svg>
+                            </button>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                        </>
+                      )}
+                    </div>
                     <h3 className="text-xl font-semibold mt-4">
                       {userData.username}
                     </h3>
@@ -322,7 +518,9 @@ export default function ProfileModal({
                           }
                         />
                       ) : (
-                        <p className="p-2">{formData?.address?.street || "-"}</p>
+                        <p className="p-2">
+                          {formData?.address?.street || "-"}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -360,7 +558,9 @@ export default function ProfileModal({
                           }
                         />
                       ) : (
-                        <p className="p-2">{formData?.address?.region || "-"}</p>
+                        <p className="p-2">
+                          {formData?.address?.region || "-"}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -427,7 +627,9 @@ export default function ProfileModal({
                           type="date"
                           className="w-full rounded-md p-2 bg-white border border-border"
                           value={
-                            formData?.identification?.dateOfBirth?.split("T")[0] || ""
+                            formData?.identification?.dateOfBirth?.split(
+                              "T"
+                            )[0] || ""
                           }
                           onChange={(e) =>
                             handleInputChange(
@@ -519,56 +721,6 @@ export default function ProfileModal({
                 </div>
 
                 {isEditMode && (
-                  <div className="mt-8">
-                    <h4 className="text-lg font-semibold mb-2 border-b pb-1">
-                      Change Password
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.currentPassword}
-                          onChange={(e) =>
-                            handlePasswordChange("currentPassword", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>{/* Spacer */}</div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.newPassword}
-                          onChange={(e) =>
-                            handlePasswordChange("newPassword", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={passwordData.confirmPassword}
-                          onChange={(e) =>
-                            handlePasswordChange("confirmPassword", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isEditMode && (
                   <div className="flex justify-end mt-8 gap-4">
                     <Button
                       onClick={handleCancelEdit}
@@ -588,8 +740,22 @@ export default function ProfileModal({
               </div>
             )
           )}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      {/* Profile Picture Cropping Modal */}
+      {isCropOpen && rawImageSrc && (
+        <CircleCropModal
+          open={isCropOpen}
+          onClose={() => {
+            setIsCropOpen(false);
+            setRawImageSrc(null);
+          }}
+          imageSrc={rawImageSrc}
+          onCropped={handleCropComplete}
+        />
+      )}
     </Dialog.Root>
   );
-} 
+}

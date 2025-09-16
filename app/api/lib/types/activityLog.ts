@@ -18,10 +18,22 @@ export type ActivityLogChange = {
 export type ActivityLog = {
   _id?: string;
   timestamp: Date;
-  actor: ActivityLogActor;
-  actionType: string;
-  entityType: string;
-  entity: ActivityLogEntity;
+  // New fields
+  userId?: string;
+  username?: string;
+  action?: string;
+  resource?: string;
+  resourceId?: string;
+  resourceName?: string;
+  details?: string;
+  previousData?: Record<string, unknown>;
+  newData?: Record<string, unknown>;
+  userAgent?: string;
+  // Legacy fields for backward compatibility
+  actor?: ActivityLogActor;
+  actionType?: string;
+  entityType?: string;
+  entity?: ActivityLogEntity;
   changes?: ActivityLogChange[];
   description?: string;
   ipAddress?: string;

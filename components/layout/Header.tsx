@@ -1,28 +1,22 @@
 "use client";
 import { HeaderProps } from "@/lib/types/componentProps";
-import {
-  HamburgerMenuIcon,
-  Cross2Icon,
-  ExitIcon,
-  DrawingPinFilledIcon,
-} from "@radix-ui/react-icons";
+import { ExitIcon } from "@radix-ui/react-icons";
+import { PanelLeft } from "lucide-react";
 import { usePathname, useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { filterValueMap } from "@/lib/constants/uiConstants";
-import { handleFilterChange } from "@/lib/utils/metrics";
-import { ActiveFilters } from "@/lib/types";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logoutUser } from "@/lib/helpers/auth";
 import LicenceeSelect from "@/components/ui/LicenceeSelect";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { fetchMetricsData } from "@/lib/helpers/dashboard";
 
 export default function Header({
   selectedLicencee,
   pageTitle,
   setSelectedLicencee,
-  hideOptions,
+  hideOptions: _hideOptions,
   hideLicenceeFilter,
   containerPaddingMobile,
   disabled = false,
@@ -31,17 +25,44 @@ export default function Header({
   const params = useParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const {
-    activeFilters,
-    setActiveFilters,
-    activeMetricsFilter,
-    setActiveMetricsFilter,
-    loadingChartData,
-    setLoadingChartData,
-    setChartData,
+  const { isOpen } = useSidebar();
+  const { 
+    activeMetricsFilter, 
+    customDateRange, 
+    setTotals, 
+    setChartData, 
+    setActiveFilters, 
     setShowDatePicker,
+    setLoadingChartData 
   } = useDashBoardStore();
+
+  // Wrapper function to handle licensee changes
+  const handleLicenseeChange = async (newLicensee: string) => {
+    if (setSelectedLicencee) {
+      setSelectedLicencee(newLicensee);
+    }
+    
+    // If we're on the dashboard and have an active filter, refresh data
+    if (pathname === "/" && activeMetricsFilter) {
+      setLoadingChartData(true);
+      try {
+        await fetchMetricsData(
+          activeMetricsFilter,
+          customDateRange,
+          newLicensee,
+          setTotals,
+          setChartData,
+          setActiveFilters,
+          setShowDatePicker
+        );
+      } catch (error) {
+        console.error("Error refreshing data after licensee change:", error);
+      } finally {
+        setLoadingChartData(false);
+      }
+    }
+  };
+
 
   // Check if the current path is related to locations
   const isLocationPath =
@@ -55,75 +76,69 @@ export default function Header({
   const isReportsPath =
     pathname === "/reports" || pathname.startsWith("/reports/");
 
+  // Check if the current path is related to members
+  const isMembersPath =
+    pathname === "/members" || pathname.startsWith("/members/");
+
+  // Check if the current path is related to sessions
+  const isSessionsPath =
+    pathname === "/sessions" || pathname.startsWith("/sessions/");
+
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =
     pathname.startsWith("/locations/") &&
     params.slug &&
     !pathname.includes("/details");
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
   return (
     <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
-      <header className="flex flex-col p-0 w-full lg:pt-6 lg:pl-4">
+      <header className="flex flex-col p-0 w-full">
         {/* Menu Button and Main Title Row */}
         <div className="flex items-center justify-start">
-          <button
-            onClick={toggleMobileMenu}
-            className="xl:hidden cursor-pointer text-grayHighlight p-0"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? (
-              <Cross2Icon className="h-5 w-5" />
-            ) : (
-              <HamburgerMenuIcon className="h-5 w-5" />
+          {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
+          <SidebarTrigger
+            className={cn(
+              "md:hidden cursor-pointer text-foreground p-2 relative z-20",
+              isOpen && "invisible"
             )}
-          </button>
-
+            aria-label="Toggle sidebar"
+          >
+            <PanelLeft className="h-6 w-6" />
+          </SidebarTrigger>
           <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
           </h1>
 
-          {!hideOptions && !hideLicenceeFilter && (
-            <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start">
+          {!hideLicenceeFilter && (
+            <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start gap-2">
               <LicenceeSelect
                 selected={selectedLicencee || ""}
-                onChange={setSelectedLicencee || (() => {})}
+                onChange={handleLicenseeChange}
                 disabled={disabled}
               />
             </div>
           )}
         </div>
-      </header>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-30 xl:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-0 max-w-[300px] bg-container z-40 xl:hidden shadow-lg"
-            >
-              <button
-                className="absolute top-4 right-4 p-2 bg-muted rounded-full"
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
                 onClick={() => setMobileMenuOpen(false)}
+              />
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "tween", duration: 0.3 }}
+                className="fixed left-0 top-0 h-full w-80 bg-container shadow-xl z-[100] flex flex-col"
               >
-                <Cross2Icon className="w-4 h-4" />
-              </button>
-              <div className="flex flex-col h-full pt-20 px-6">
-                <div className="flex flex-col items-center space-y-8 pt-10">
+                <div className="flex flex-col h-full p-6 space-y-4">
                   {/* Dashboard button */}
                   <motion.button
                     initial={{ opacity: 0, y: 20 }}
@@ -142,7 +157,7 @@ export default function Header({
                     <span className="text-lg font-medium">Dashboard</span>
                   </motion.button>
 
-                  {/* Location button */}
+                  {/* Locations button */}
                   <motion.button
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -233,13 +248,51 @@ export default function Header({
                   >
                     <span className="text-lg font-medium">Reports</span>
                   </motion.button>
+
+                  {/* Members button */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                      isMembersPath
+                        ? "bg-buttonActive text-container shadow-md"
+                        : "bg-muted text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => {
+                      router.push("/members");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <span className="text-lg font-medium">Members</span>
+                  </motion.button>
+
+                  {/* Members Summary button removed */}
+
+                  {/* Sessions button */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                      isSessionsPath
+                        ? "bg-buttonActive text-container shadow-md"
+                        : "bg-muted text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => {
+                      router.push("/sessions");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <span className="text-lg font-medium">Sessions</span>
+                  </motion.button>
                 </div>
 
                 {/* Logout button */}
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
+                  transition={{ delay: 0.9 }}
                   onClick={() => {
                     logoutUser();
                     setMobileMenuOpen(false);
@@ -250,66 +303,26 @@ export default function Header({
                   <ExitIcon className="w-6 h-6" />
                   <span className="font-medium">Logout</span>
                 </motion.button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
-      {pageTitle && (
-        <div className="flex flex-col space-y-6 xl:flex-row items-center justify-between">
-          <div className="flex flex-col xl:flex-row items-center gap-2 mx-auto xl:mx-0 w-fit">
-            {isSpecificLocationPath && (
-              <>
-                {/* Icon above title on mobile */}
-                <DrawingPinFilledIcon className="w-6 h-6 text-grayHighlight xl:hidden" />
-                {/* Icon beside title on large screens */}
-                <DrawingPinFilledIcon className="w-7 h-7 text-grayHighlight hidden xl:block" />
-              </>
-            )}
-            <h1 className="text-3xl xl:text-4xl font-semibold text-center xl:text-left">
-              {pageTitle}
-            </h1>
-            {(pathname === "/locations" || pathname === "/cabinets") && (
-              <div className="hidden xl:flex space-between gap-3 ml-4">
-                {Object.entries(activeFilters).map(([filter, value]) => (
-                  <Button
-                    key={filter}
-                    disabled={loadingChartData}
-                    className={cn(
-                      "px-4 py-2 text-container rounded-full",
-                      loadingChartData && "opacity-50 cursor-not-allowed",
-                      filterValueMap[filter as keyof typeof filterValueMap] ===
-                        activeMetricsFilter || value
-                        ? "bg-buttonActive"
-                        : "bg-button"
-                    )}
-                    onClick={async () => {
-                      // Show skeleton in child components
-                      setLoadingChartData(true);
-                      setChartData([]);
-
-                      // Only update filter states (no fetching) – fetching is handled by page.tsx
-                      await handleFilterChange(
-                        filter as keyof ActiveFilters,
-                        setActiveFilters,
-                        setShowDatePicker,
-                        setActiveMetricsFilter
-                      );
-                    }}
-                  >
-                    {filter === "last7days"
-                      ? "Last 7 Days"
-                      : filter === "last30days"
-                      ? "Last 30 Days"
-                      : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                  </Button>
-                ))}
-              </div>
-            )}
+        {pageTitle && (
+          <div className="flex flex-col space-y-6 xl:flex-row">
+            <div className="flex flex-col space-y-2">
+              <h1 className="mb-2 text-2xl sm:text-3xl font-bold text-gray-800">
+                {pageTitle}
+              </h1>
+              {isSpecificLocationPath && (
+                <p className="text-sm text-gray-600">
+                  Location ID: {params.slug}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
     </div>
   );
 }

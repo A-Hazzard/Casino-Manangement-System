@@ -1,26 +1,16 @@
 import { gsap } from "gsap";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import axios from "axios";
 import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
-export type ActivityGroup = {
-  range: string;
-  entries: ProcessedActivityEntry[];
-};
+import type {
+  ActivityGroup,
+  ProcessedActivityEntry,
+} from "@/lib/types/activity";
 
-export type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  type: string;
-  icon: string;
-  iconBg: string;
-  user: {
-    email: string;
-    role: string;
-  };
-  description: string;
-  originalActivity: ActivityLog;
-};
+// Re-export frontend-specific types for convenience
+export type { ActivityGroup, ProcessedActivityEntry };
 
 /**
  * Gets appropriate icon and background color for activity action type
@@ -59,8 +49,8 @@ export function generateActivityDescription(
   log: ActivityLog,
   entityType?: string
 ): string {
-  const actorEmail = log.actor.email;
-  const entityName = log.entity.name;
+  const actorEmail = log.actor?.email || log.username || "Unknown User";
+  const entityName = log.entity?.name || log.resourceName || "Unknown Resource";
   const isUserEntity = entityType?.toLowerCase() === "user";
   const entityDisplayName = isUserEntity ? "user" : "licensee";
 
@@ -77,7 +67,7 @@ export function generateActivityDescription(
     }
   }
 
-  switch (log.actionType.toLowerCase()) {
+  switch ((log.actionType || log.action || "unknown").toLowerCase()) {
     case "create":
       return `${actorEmail} created a new ${entityDisplayName} ${
         isUserEntity ? "account for" : ""
@@ -129,16 +119,19 @@ export function groupActivitiesByDate(
   return Object.entries(groups).map(([range, entries]) => ({
     range,
     entries: entries.map((log) => {
-      const { icon, bg } = getActionIcon(log.actionType, entityType);
+      const { icon, bg } = getActionIcon(
+        log.actionType || log.action || "unknown",
+        entityType
+      );
       return {
         id: log._id?.toString() || Math.random().toString(),
         time: format(new Date(log.timestamp), "h:mm a"),
-        type: log.actionType.toLowerCase(),
+        type: (log.actionType || log.action || "unknown").toLowerCase(),
         icon,
         iconBg: bg,
         user: {
-          email: log.actor.email,
-          role: log.actor.role,
+          email: log.actor?.email || log.username || "Unknown User",
+          role: log.actor?.role || "User",
         },
         description: generateActivityDescription(log, entityType),
         originalActivity: log,
@@ -201,13 +194,8 @@ export async function fetchActivityLogs(params: {
       searchParams.append("endDate", params.dateRange.to.toISOString());
     }
 
-    const response = await fetch(`/api/activity-logs?${searchParams}`);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch activity logs");
-    }
-
-    const data = await response.json();
+    const response = await axios.get(`/api/activity-logs?${searchParams}`);
+    const data = response.data;
 
     if (data.success) {
       return {

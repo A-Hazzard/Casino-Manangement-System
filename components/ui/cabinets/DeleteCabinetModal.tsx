@@ -7,13 +7,27 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { deleteCabinet } from "@/lib/helpers/cabinets";
-import deleteIcon from "@/public/deleteIcon.svg";
+import { IMAGES } from "@/lib/constants/images";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
+import { toast } from "sonner";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 
-export const DeleteCabinetModal = () => {
+export const DeleteCabinetModal = ({
+  onCabinetDeleted,
+}: {
+  onCabinetDeleted?: () => void;
+}) => {
   const { isDeleteModalOpen, selectedCabinet, closeDeleteModal } =
     useCabinetActionsStore();
+  const { activeMetricsFilter } = useDashBoardStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Create activity logger for cabinet operations
+  const cabinetLogger = createActivityLogger("machine");
+
+
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -57,16 +71,31 @@ export const DeleteCabinetModal = () => {
   const handleDelete = async () => {
     if (!selectedCabinet) return;
     try {
-      const success = await deleteCabinet(selectedCabinet._id);
+      const cabinetData = { ...selectedCabinet };
+      
+      const success = await deleteCabinet(selectedCabinet._id, activeMetricsFilter);
       if (success) {
+        // Log the cabinet deletion activity
+        await cabinetLogger.logDelete(
+          selectedCabinet._id,
+          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}`,
+          cabinetData,
+          `Deleted cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"})`
+        );
+
+        // Call the callback to refresh data
+        onCabinetDeleted?.();
+        
+        // Show success feedback
+        toast.success("Cabinet deleted successfully");
+        
+        // Close the modal
         handleClose();
-        // You could add a toast notification here
       }
     } catch (err) {
-      // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to delete cabinet:", err);
-      }
+      console.error("Failed to delete cabinet:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete cabinet";
+      toast.error(errorMessage);
     }
   };
 
@@ -101,7 +130,7 @@ export const DeleteCabinetModal = () => {
           <div className="p-6">
             <div className="text-center text-foreground space-y-4">
               <div className="flex justify-center mb-4">
-                <Image src={deleteIcon} alt="Delete" width={64} height={64} />
+                <Image src={IMAGES.deleteIcon} alt="Delete" width={64} height={64} />
               </div>
               <p className="text-lg font-semibold">
                 Are you sure you want to mark this cabinet as deleted?

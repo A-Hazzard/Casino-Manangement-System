@@ -1,47 +1,195 @@
 import React from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import CabinetDetailsSkeleton from "@/components/ui/cabinets/CabinetDetailsSkeleton";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import PageLayout from "@/components/layout/PageLayout";
 
 type CabinetDetailsLoadingStateProps = {
-  pathname: string;
   selectedLicencee: string;
   setSelectedLicencee: (licencee: string) => void;
   error?: string | null;
 };
 
 /**
+ * Specific skeleton component for Cabinet Detail page that matches the exact layout
+ */
+const CabinetDetailPageSkeleton = () => (
+  <div className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
+    {/* Back button skeleton */}
+    <div className="mt-4 mb-2">
+      <Skeleton className="h-9 w-32" />
+    </div>
+
+    {/* Cabinet Info Header skeleton */}
+    <div className="mt-6 mb-6 relative">
+      <div className="flex flex-col md:flex-row md:items-center justify-between">
+        <div className="mb-4 md:mb-0">
+          {/* Cabinet name and edit button */}
+          <div className="flex items-center mb-2">
+            <Skeleton className="h-8 w-48 mr-2" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+          
+          {/* Cabinet details */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+        </div>
+
+        {/* Online status and refresh button */}
+        <div className="mt-2 md:mt-0 flex items-center gap-2">
+          <div className="flex items-center px-3 py-1.5 rounded-lg bg-container shadow-sm border">
+            <Skeleton className="h-2.5 w-2.5 rounded-full mr-2" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <Skeleton className="h-9 w-20" />
+        </div>
+      </div>
+    </div>
+
+    {/* SMIB Configuration skeleton */}
+    <div className="mt-4 bg-container rounded-lg shadow-md shadow-purple-200">
+      <div className="px-6 py-4 flex justify-between items-center">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-5 w-5" />
+      </div>
+      <div className="px-6 pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="md:text-right space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-36" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Date filtering UI skeleton */}
+    <div className="mt-4 mb-2 max-w-full">
+      {/* Mobile select dropdown skeleton */}
+      <div className="w-full xl:hidden mb-4">
+        <Skeleton className="h-12 w-full md:w-48" />
+      </div>
+
+      {/* Desktop time period filters skeleton */}
+      <div className="hidden xl:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-20 rounded-full" />
+        ))}
+      </div>
+
+      {/* Mobile horizontal slider skeleton */}
+      <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 w-full p-2 rounded-md">
+        <div className="flex space-x-2 min-w-max px-1 pb-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-24 rounded" />
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Accounting Details skeleton */}
+    <div className="space-y-6">
+      {/* Sidebar skeleton */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="lg:w-64 lg:flex-shrink-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-6 w-32" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main content skeleton */}
+        <div className="flex-1">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-2" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+                <Skeleton className="h-8 w-16" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Metrics cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-8 w-16" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4" />
+                          <Skeleton className="h-4 w-12" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Table skeleton */}
+              <div className="space-y-3">
+                <div className="h-12 bg-gray-200 rounded animate-pulse" />
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-14 bg-gray-100 rounded animate-pulse" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/**
  * Loading state component for cabinet details page
  */
 export const CabinetDetailsLoadingState = ({
-  pathname,
   selectedLicencee,
   setSelectedLicencee,
   error,
 }: CabinetDetailsLoadingStateProps) => (
-  <>
-    <Sidebar pathname={pathname} />
-    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
-      <main className="flex flex-col flex-1 p-6">
-        <Header
-          selectedLicencee={selectedLicencee}
-          setSelectedLicencee={setSelectedLicencee}
-          pageTitle="Cabinet Details"
-          hideOptions={true}
-          hideLicenceeFilter={false}
-        />
-        <CabinetDetailsSkeleton />
-        {error && (
-          <div className="mt-4 text-destructive text-center">{error}</div>
-        )}
-      </main>
-    </div>
-  </>
+  <PageLayout
+    headerProps={{
+      selectedLicencee,
+      setSelectedLicencee,
+    }}
+    pageTitle=""
+    hideOptions={true}
+    hideLicenceeFilter={false}
+    mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+    showToaster={false}
+  >
+    <CabinetDetailPageSkeleton />
+    {error && (
+      <div className="mt-4 text-destructive text-center">{error}</div>
+    )}
+  </PageLayout>
 );
 
 type CabinetDetailsErrorStateProps = {
-  pathname: string;
   selectedLicencee: string;
   setSelectedLicencee: (licencee: string) => void;
   error: string;
@@ -52,33 +200,51 @@ type CabinetDetailsErrorStateProps = {
  * Error state component for cabinet details page
  */
 export const CabinetDetailsErrorState = ({
-  pathname,
   selectedLicencee,
   setSelectedLicencee,
   error,
   onRetry,
 }: CabinetDetailsErrorStateProps) => (
-  <>
-    <Sidebar pathname={pathname} />
-    <div className="md:w-[80%] lg:w-full md:mx-auto md:pl-20 lg:pl-36 min-h-screen bg-background flex">
-      <main className="flex flex-col flex-1 p-6">
-        <Header
-          selectedLicencee={selectedLicencee}
-          setSelectedLicencee={setSelectedLicencee}
-          pageTitle="Cabinet Details"
-          hideOptions={true}
-          hideLicenceeFilter={false}
-        />
-        <div className="p-6 bg-container rounded-lg shadow-sm">
-          <h1 className="text-2xl font-bold mb-4">
-            Error Loading Cabinet Details
-          </h1>
-          <p className="text-destructive">{error}</p>
-          <Button onClick={onRetry} className="mt-4">
-            Retry
-          </Button>
-        </div>
-      </main>
+  <PageLayout
+    headerProps={{
+      selectedLicencee,
+      setSelectedLicencee,
+    }}
+    pageTitle=""
+    hideOptions={true}
+    hideLicenceeFilter={false}
+    mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+    showToaster={false}
+  >
+    <div className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
+      {/* Back button */}
+      <div className="mt-4 mb-2">
+        <Button
+          variant="outline"
+          className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+          size="sm"
+        >
+          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+          Back to Cabinets
+        </Button>
+      </div>
+
+      {/* Error message */}
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center text-destructive">
+              Error Loading Cabinet Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={onRetry} className="w-full">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  </>
+  </PageLayout>
 );

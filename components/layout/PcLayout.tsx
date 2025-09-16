@@ -3,19 +3,24 @@
 import MapPreview from "@/components/ui/MapPreview";
 import { timeFrames } from "@/lib/constants/uiConstants";
 import { PcLayoutProps } from "@/lib/types/componentProps";
-import { formatNumber } from "@/lib/utils/metrics";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { formatCurrency } from "@/lib/utils/currency";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import CustomSelect from "../ui/CustomSelect";
-import StatCardSkeleton, {
-  ChartSkeleton,
-} from "@/components/ui/SkeletonLoader";
+import {
+  DashboardFinancialMetricsSkeleton,
+  DashboardChartSkeleton,
+} from "@/components/ui/skeletons/DashboardSkeletons";
 import Chart from "@/components/ui/dashboard/Chart";
-import { RefreshCw, BarChart3 } from "lucide-react";
-import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function PcLayout(props: PcLayoutProps) {
+  const { activeMetricsFilter, customDateRange, selectedLicencee } = useDashBoardStore();
+
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
       <div className="text-gray-500 text-lg mb-2">No Data Available</div>
@@ -24,49 +29,69 @@ export default function PcLayout(props: PcLayoutProps) {
   );
 
   // State for aggregated location data
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
+  const [locationAggregates, setLocationAggregates] = useState<
+    Record<string, unknown>[]
+  >([]);
   const [aggLoading, setAggLoading] = useState(true);
 
+  // Only fetch locationAggregation for MapPreview when needed
   useEffect(() => {
-    const fetchLocationAggregation = async () => {
+    let aborted = false;
+    const fetchAgg = async () => {
+      // Only fetch if we have a valid activeMetricsFilter - no fallback
+      if (!activeMetricsFilter) {
+        console.warn("⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch");
+        setLocationAggregates([]);
+        setAggLoading(false);
+        return;
+      }
+
       setAggLoading(true);
       try {
-        const res = await fetch("/api/locationAggregation?timePeriod=Today");
-        const response = await res.json();
-        // Extract the data array from the response
-        setLocationAggregates(response.data || []);
+        const params = new URLSearchParams();
+        params.append("timePeriod", activeMetricsFilter);
+        
+        // Add custom date range if applicable
+        if (activeMetricsFilter === "Custom" && customDateRange) {
+          if (customDateRange.startDate && customDateRange.endDate) {
+            const sd = customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as unknown as string);
+            const ed = customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as unknown as string);
+            params.append("startDate", sd.toISOString());
+            params.append("endDate", ed.toISOString());
+          }
+        }
+        
+        // Add licensee filter if applicable
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.append("licencee", selectedLicencee);
+        }
+        
+        const res = await axios.get(
+          `/api/locationAggregation?${params.toString()}`
+        );
+        const json = res.data;
+        if (!aborted) setLocationAggregates(json.data || []);
       } catch {
-        setLocationAggregates([]);
+        if (!aborted) setLocationAggregates([]);
       } finally {
-        setAggLoading(false);
+        if (!aborted) setAggLoading(false);
       }
     };
-    fetchLocationAggregation();
-  }, []);
-
-  // Calculate total online/offline from aggregation
-  const onlineCount = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce(
-        (sum, loc) => sum + (loc.onlineMachines || 0),
-        0
-      )
-    : 0;
-  const totalMachines = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
-    : 0;
-  const offlineCount = totalMachines - onlineCount;
+    fetchAgg();
+    return () => {
+      aborted = true;
+    };
+  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
 
   return (
-    <div className="hidden xl:block">
+    <div className="hidden md:block">
       <div className="grid grid-cols-5 gap-6">
         {/* Left Section (Dashboard Content) - 60% Width (3/5 columns) */}
         <div className="col-span-3 space-y-6">
-          {/* Dashboard Title Section */}
-          <div className="flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-buttonActive" />
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          </div>
-
           {/* Date Filter Controls */}
           <div className="flex flex-wrap items-center gap-2">
             <DashboardDateFilters
@@ -101,49 +126,74 @@ export default function PcLayout(props: PcLayoutProps) {
             </div>
           </div>
 
-          {/* Three Metric Cards (Horizontal Row) */}
-          <div className="grid grid-cols-3 gap-4">
-            {props.loadingChartData ? (
-              <StatCardSkeleton count={3} />
-            ) : (
+
+          {/* Three Metric Cards (Vertical on mobile, Horizontal on md) */}
+          {props.loadingChartData ? (
+            <DashboardFinancialMetricsSkeleton />
+          ) : (
+            <div className="flex flex-col md:flex-row gap-4">
               <>
-                {/* Wager Card */}
-                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                {/* Money In Card */}
+                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                     Money In
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-                  <p className="font-bold text-lg">
-                    {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-                  </p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <p
+                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                        props.totals?.moneyIn
+                      )}`}
+                    >
+                      {props.totals
+                        ? formatCurrency(props.totals.moneyIn)
+                        : "--"}
+                    </p>
+                  </div>
                 </div>
-                {/* Games Won Card */}
-                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                {/* Money Out Card */}
+                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                     Money Out
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-                  <p className="font-bold text-lg">
-                    {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-                  </p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <p
+                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                        props.totals?.moneyOut
+                      )}`}
+                    >
+                      {props.totals
+                        ? formatCurrency(props.totals.moneyOut)
+                        : "--"}
+                    </p>
+                  </div>
                 </div>
                 {/* Gross Card */}
-                <div className="px-6 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-                  <p className="text-gray-500 text-sm lg:text-lg font-medium">
+                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                     Gross
                   </p>
                   <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-                  <p className="font-bold text-lg">
-                    {props.totals ? formatNumber(props.totals.gross) : "--"}
-                  </p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <p
+                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                        props.totals?.gross
+                      )}`}
+                    >
+                      {props.totals
+                        ? formatCurrency(props.totals.gross)
+                        : "--"}
+                    </p>
+                  </div>
                 </div>
               </>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Trend Chart Section */}
           {props.loadingChartData ? (
-            <ChartSkeleton />
+            <DashboardChartSkeleton />
           ) : (
             <div className="bg-container rounded-lg shadow-md p-6">
               <Chart
@@ -157,24 +207,56 @@ export default function PcLayout(props: PcLayoutProps) {
 
         {/* Right Section (Map & Status) - 40% Width (2/5 columns) */}
         <div className="col-span-2 space-y-6">
-          {/* Online/Offline Status Widget */}
-          <div className="bg-container rounded-lg shadow-md p-6">
-            <MachineStatusWidget
-              isLoading={aggLoading}
-              onlineCount={onlineCount}
-              offlineCount={offlineCount}
-            />
-          </div>
-
           {/* Map Preview Section */}
           <div className="bg-container rounded-lg shadow-md p-6">
-            <MapPreview gamingLocations={props.gamingLocations} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Location Map</h3>
+              {aggLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span>Updating financial data...</span>
+                </div>
+              )}
+            </div>
+            
+            {aggLoading ? (
+              <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+                <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
+              </div>
+            ) : (
+              <MapPreview
+                gamingLocations={props.gamingLocations}
+                locationAggregates={locationAggregates}
+                aggLoading={aggLoading}
+              />
+            )}
           </div>
 
           {/* Top Performing Section */}
           <div className="bg-container rounded-lg shadow-md p-6">
-            {props.topPerformingData.length === 0 &&
-            !props.loadingTopPerforming ? (
+            {props.loadingTopPerforming ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Top Performing</h2>
+                  <div className="w-32 h-8 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center space-x-2">
+                        <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            ) : props.topPerformingData.length === 0 ? (
               <NoDataMessage message="No top performing data available for the selected period" />
             ) : (
               <div className="space-y-4">

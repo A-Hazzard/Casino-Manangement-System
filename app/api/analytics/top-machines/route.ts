@@ -10,21 +10,33 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     if (!locationId) {
-      return NextResponse.json({ error: "Location ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Location ID is required" },
+        { status: 400 }
+      );
     }
 
     const db = await connectDB();
     if (!db) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
     }
-    
+
     // Calculate date range based on time period
     let start, end;
     const now = new Date();
-    
+
     if (timePeriod === "Custom" && startDate && endDate) {
-      start = new Date(startDate);
-      end = new Date(endDate);
+      // Parse custom dates and apply timezone handling
+      // Create dates in Trinidad timezone (UTC-4)
+      const customStartDate = new Date(startDate + 'T00:00:00-04:00');
+      const customEndDate = new Date(endDate + 'T23:59:59-04:00');
+      
+      // Convert to UTC for database queries
+      start = new Date(customStartDate.getTime());
+      end = new Date(customEndDate.getTime());
     } else {
       switch (timePeriod) {
         case "24h":
@@ -45,68 +57,74 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Aggregate top machines for the location
+    // Aggregate top machines for the location using meters collection
     const pipeline = [
       {
         $match: {
           location: locationId,
-          createdAt: { $gte: start, $lte: end },
-          deletedAt: { $in: [null, new Date(-1)] }
-        }
+          readAt: { $gte: start, $lte: end },
+        },
       },
       {
         $group: {
           _id: "$machine",
-          revenue: { $sum: "$gross" },
-          drop: { $sum: "$moneyIn" },
-          cancelledCredits: { $sum: "$moneyOut" },
-          count: { $sum: 1 }
-        }
+          totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+          totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } },
+          totalGamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+          count: { $sum: 1 },
+        },
       },
       {
         $lookup: {
           from: "machines",
           localField: "_id",
           foreignField: "_id",
-          as: "machineInfo"
-        }
+          as: "machineInfo",
+        },
       },
       {
         $unwind: {
           path: "$machineInfo",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
           id: "$_id",
-          name: { $ifNull: ["$machineInfo.name", "Unknown Machine"] },
-          revenue: 1,
-          drop: 1,
-          cancelledCredits: 1,
+          name: { $ifNull: ["$machineInfo.serialNumber", "Unknown Machine"] },
+          revenue: { $subtract: ["$totalDrop", "$totalCancelledCredits"] },
+          drop: "$totalDrop",
+          cancelledCredits: "$totalCancelledCredits",
+          gamesPlayed: "$totalGamesPlayed",
           count: 1,
           hold: {
             $cond: [
-              { $gt: ["$drop", 0] },
-              { $multiply: [{ $divide: ["$revenue", "$drop"] }, 100] },
-              0
-            ]
-          }
-        }
+              { $gt: ["$totalDrop", 0] },
+              { $multiply: [{ $divide: [{ $subtract: ["$totalDrop", "$totalCancelledCredits"] }, "$totalDrop"] }, 100] },
+              0,
+            ],
+          },
+        },
       },
       {
-        $sort: { revenue: -1 }
+        $sort: { revenue: -1 },
       },
       {
-        $limit: 5
-      }
+        $limit: 5,
+      },
     ];
 
-    const topMachines = await db.collection("collectionReports").aggregate(pipeline).toArray();
+    const topMachines = await db
+      .collection("meters")
+      .aggregate(pipeline)
+      .toArray();
 
     return NextResponse.json(topMachines);
   } catch (error) {
     console.error("Error fetching top machines data:", error);
-    return NextResponse.json({ error: "Failed to fetch top machines data" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch top machines data" },
+      { status: 500 }
+    );
   }
-} 
+}

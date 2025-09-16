@@ -59,147 +59,8 @@ const gamingDayConfig = {
   timezone: "America/New_York",
 };
 
-// Sample scheduled reports with automated email functionality
-const sampleScheduledReports: ScheduledReport[] = [
-  {
-    id: "SCH001",
-    name: "Daily GLI Compliance Report",
-    config: {
-      title: "Daily GLI Compliance Report",
-      reportType: "machineRevenue",
-      category: "compliance",
-      dateRange: {
-        start: new Date(),
-        end: new Date(),
-      },
-      timeGranularity: "daily",
-      filters: {
-        complianceStatus: ["requires_attention", "failed"],
-      },
-      fields: ["machine", "location", "event_type", "compliance_status"],
-      chartType: "table",
-      exportFormat: "pdf",
-      includeCharts: true,
-      includeSummary: true,
-    },
-    schedule: {
-      frequency: "daily",
-      time: "07:00",
-      timezone: "America/New_York",
-      enabled: true,
-    },
-    recipients: [
-      {
-        email: "compliance@casino.com",
-        role: "Compliance Manager",
-        deliveryMethod: "email",
-      },
-      {
-        email: "operations@casino.com",
-        role: "Operations Director",
-        deliveryMethod: "email",
-      },
-    ],
-    lastRun: "2024-01-20T07:00:00Z",
-    nextRun: "2024-01-21T07:00:00Z",
-    status: "active",
-    createdBy: "admin",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "SCH002",
-    name: "Weekly Machine Performance Summary",
-    config: {
-      title: "Weekly Machine Performance Summary",
-      reportType: "machineRevenue",
-      category: "operational",
-      dateRange: {
-        start: new Date(),
-        end: new Date(),
-      },
-      timeGranularity: "weekly",
-      filters: {},
-      fields: ["machine", "location", "net_win", "drop", "hold_percentage"],
-      chartType: "bar",
-      exportFormat: "excel",
-      includeCharts: true,
-      includeSummary: true,
-    },
-    schedule: {
-      frequency: "weekly",
-      time: "08:00",
-      dayOfWeek: 1, // Monday
-      timezone: "America/New_York",
-      enabled: true,
-    },
-    recipients: [
-      {
-        email: "management@casino.com",
-        role: "Casino Manager",
-        deliveryMethod: "email",
-      },
-      {
-        email: "analysts@casino.com",
-        role: "Data Analysts",
-        deliveryMethod: "email",
-      },
-    ],
-    lastRun: "2024-01-15T08:00:00Z",
-    nextRun: "2024-01-22T08:00:00Z",
-    status: "active",
-    createdBy: "manager",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "SCH003",
-    name: "Monthly Revenue & Drop Analysis",
-    config: {
-      title: "Monthly Revenue & Drop Analysis with Gaming Day Alignment",
-      reportType: "locationPerformance",
-      category: "financial",
-      dateRange: {
-        start: new Date(),
-        end: new Date(),
-      },
-      timeGranularity: "monthly",
-      filters: {},
-      fields: [
-        "location",
-        "gross_revenue",
-        "drop",
-        "cancelled_credits",
-        "gaming_day_metrics",
-      ],
-      chartType: "line",
-      exportFormat: "pdf",
-      includeCharts: true,
-      includeSummary: true,
-    },
-    schedule: {
-      frequency: "monthly",
-      time: "09:00",
-      dayOfMonth: 1,
-      timezone: "America/New_York",
-      enabled: false, // Paused
-    },
-    recipients: [
-      {
-        email: "finance@casino.com",
-        role: "Finance Director",
-        deliveryMethod: "email",
-      },
-      {
-        email: "executives@casino.com",
-        role: "Executive Team",
-        deliveryMethod: "email",
-      },
-    ],
-    nextRun: "2024-02-01T09:00:00Z",
-    status: "paused",
-    createdBy: "finance_admin",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-];
+// TODO: Replace with MongoDB data fetching
+const sampleScheduledReports: ScheduledReport[] = [];
 
 const reportTypes = [
   {
@@ -240,6 +101,7 @@ export default function ScheduledTab() {
     []
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("scheduled");
   // Commented out unused variables
   // const [selectedReport, setSelectedReport] = useState<ScheduledReport | null>(null);
   // const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -318,6 +180,7 @@ export default function ScheduledTab() {
           role: "User",
           deliveryMethod: "email" as const,
         })),
+      lastRun: "Never", // New report hasn't run yet
       nextRun: calculateNextRun(formData),
       status: formData.enabled ? "active" : "paused",
       createdBy: "current_user",
@@ -439,8 +302,9 @@ export default function ScheduledTab() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="scheduled" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="scheduled"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -460,6 +324,19 @@ export default function ScheduledTab() {
             Gaming Day Config
           </TabsTrigger>
         </TabsList>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="scheduled">Scheduled Reports</option>
+            <option value="history">Execution History</option>
+            <option value="gaming-day">Gaming Day Config</option>
+          </select>
+        </div>
 
         <TabsContent value="scheduled" className="space-y-4">
           {/* Header */}

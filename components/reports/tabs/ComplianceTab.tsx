@@ -34,92 +34,24 @@ import { useReportsStore } from "@/lib/store/reportsStore";
 import { exportData } from "@/lib/utils/exportUtils";
 
 // Types
-import type { ComplianceMetrics } from "@/lib/types/reports";
+import type { ComplianceMetrics, ComplianceCategory, RecentAudit } from "@/lib/types/reports";
 
-// Sample data
+// TODO: Replace with MongoDB data fetching
 const sampleComplianceMetrics: ComplianceMetrics = {
-  totalChecks: 156,
-  passedChecks: 142,
-  failedChecks: 8,
-  pendingChecks: 6,
-  complianceScore: 91.0,
-  criticalIssues: 2,
-  resolvedIssues: 134,
-  pendingIssues: 14,
-  averageResolutionTime: 2.3,
-  upcomingDeadlines: [
-    {
-      requirement: "Quarterly Gaming Commission Report",
-      deadline: "2024-03-31",
-      status: "on-track",
-    },
-    {
-      requirement: "Anti-Money Laundering Review",
-      deadline: "2024-02-15",
-      status: "at-risk",
-    },
-    {
-      requirement: "Security Audit Update",
-      deadline: "2024-01-30",
-      status: "overdue",
-    },
-  ],
+  totalChecks: 0,
+  passedChecks: 0,
+  failedChecks: 0,
+  pendingChecks: 0,
+  complianceScore: 0,
+  criticalIssues: 0,
+  resolvedIssues: 0,
+  pendingIssues: 0,
+  averageResolutionTime: 0,
+  upcomingDeadlines: [],
 };
 
-const complianceCategories = [
-  {
-    category: "Gaming Regulations",
-    passed: 45,
-    failed: 2,
-    pending: 1,
-    score: 94,
-  },
-  {
-    category: "Financial Compliance",
-    passed: 38,
-    failed: 1,
-    pending: 2,
-    score: 95,
-  },
-  {
-    category: "Security Standards",
-    passed: 32,
-    failed: 3,
-    pending: 1,
-    score: 89,
-  },
-  { category: "Data Protection", passed: 27, failed: 2, pending: 2, score: 87 },
-];
-
-const recentAudits = [
-  {
-    id: "AUD001",
-    type: "Internal Security Audit",
-    date: "2024-01-15",
-    auditor: "Security Team",
-    status: "passed",
-    findings: 3,
-    severity: "low",
-  },
-  {
-    id: "AUD002",
-    type: "Gaming Commission Review",
-    date: "2024-01-10",
-    auditor: "External Auditor",
-    status: "failed",
-    findings: 7,
-    severity: "high",
-  },
-  {
-    id: "AUD003",
-    type: "Financial Controls Check",
-    date: "2024-01-08",
-    auditor: "Internal Audit",
-    status: "passed",
-    findings: 1,
-    severity: "low",
-  },
-];
+const complianceCategories: ComplianceCategory[] = [];
+const recentAudits: RecentAudit[] = [];
 
 export default function ComplianceTab() {
   const {
@@ -154,18 +86,20 @@ export default function ComplianceTab() {
           "Pending Checks",
           "Status",
         ],
-        data: complianceCategories.map((category) => [
-          category.category,
-          `${category.score}%`,
-          category.passed.toString(),
-          category.failed.toString(),
-          category.pending.toString(),
-          category.score >= 90
-            ? "Excellent"
-            : category.score >= 80
-            ? "Good"
-            : "Needs Attention",
-        ]),
+        data: complianceCategories.map((c: ComplianceCategory) => {
+          return [
+            c.category,
+            `${c.score}%`,
+            c.checksPassed.toString(),
+            (c.totalChecks - c.checksPassed).toString(),
+            c.pendingChecks.toString(),
+            c.score >= 90
+              ? "Excellent"
+              : c.score >= 80
+              ? "Good"
+              : "Needs Attention",
+          ];
+        }),
         summary: [
           {
             label: "Overall Compliance Score",
@@ -198,7 +132,7 @@ export default function ComplianceTab() {
         },
       };
 
-      await exportData(exportDataObj, "pdf");
+      await exportData(exportDataObj);
       toast.success("Compliance management data exported successfully");
     } catch (error) {
       const errorMessage =
@@ -313,7 +247,8 @@ export default function ComplianceTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="overview"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -334,6 +269,19 @@ export default function ComplianceTab() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeSubTab}
+            onChange={(e) => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="overview">Overview</option>
+            <option value="audits">Recent Audits</option>
+            <option value="deadlines">Deadlines</option>
+          </select>
+        </div>
+
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Compliance by Category */}
@@ -349,41 +297,49 @@ export default function ComplianceTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {complianceCategories.map((category) => (
-                    <div key={category.category} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{category.category}</span>
-                        <Badge
-                          variant={
-                            category.score >= 90
-                              ? "default"
-                              : category.score >= 80
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {category.score}%
-                        </Badge>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            category.score >= 90
-                              ? "bg-green-500"
-                              : category.score >= 80
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          }`}
-                          style={{ width: `${category.score}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-600">
-                        <span>Passed: {category.passed}</span>
-                        <span>Failed: {category.failed}</span>
-                        <span>Pending: {category.pending}</span>
-                      </div>
-                    </div>
-                  ))}
+                  {complianceCategories.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">
+                      No compliance data available - MongoDB implementation pending
+                    </p>
+                  ) : (
+                    complianceCategories.map((c: ComplianceCategory) => {
+                      return (
+                        <div key={c.category} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{c.category}</span>
+                            <Badge
+                              variant={
+                                c.score >= 90
+                                  ? "default"
+                                  : c.score >= 80
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {c.score}%
+                            </Badge>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                c.score >= 90
+                                  ? "bg-green-500"
+                                  : c.score >= 80
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{ width: `${c.score}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>Passed: {c.checksPassed}</span>
+                            <span>Failed: {c.totalChecks - c.checksPassed}</span>
+                            <span>Pending: {c.pendingChecks}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -406,7 +362,7 @@ export default function ComplianceTab() {
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <span className="font-medium">Resolved Issues</span>
                     </div>
-                    <span className="text-2xl font-bold text-green-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                       {metrics.resolvedIssues}
                     </span>
                   </div>
@@ -416,7 +372,7 @@ export default function ComplianceTab() {
                       <AlertTriangle className="w-5 h-5 text-red-600" />
                       <span className="font-medium">Critical Issues</span>
                     </div>
-                    <span className="text-2xl font-bold text-red-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
                       {metrics.criticalIssues}
                     </span>
                   </div>
@@ -426,7 +382,7 @@ export default function ComplianceTab() {
                       <Clock className="w-5 h-5 text-blue-600" />
                       <span className="font-medium">Avg. Resolution Time</span>
                     </div>
-                    <span className="text-2xl font-bold text-blue-600">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                       {metrics.averageResolutionTime} days
                     </span>
                   </div>
@@ -449,59 +405,67 @@ export default function ComplianceTab() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentAudits.map((audit) => (
-                  <div
-                    key={audit.id}
-                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {audit.type}
-                          </h3>
-                          <Badge
-                            variant={
-                              audit.status === "passed"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {audit.status}
-                          </Badge>
-                          <Badge
-                            variant={
-                              audit.severity === "low"
-                                ? "secondary"
-                                : audit.severity === "medium"
-                                ? "outline"
-                                : "destructive"
-                            }
-                          >
-                            {audit.severity} risk
-                          </Badge>
-                        </div>
+                {recentAudits.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">
+                    No audit data available - MongoDB implementation pending
+                  </p>
+                ) : (
+                  recentAudits.map((a: RecentAudit) => {
+                    return (
+                      <div
+                        key={a.id}
+                        className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-semibold text-lg">
+                                {a.type}
+                              </h3>
+                              <Badge
+                                variant={
+                                  a.status === "passed"
+                                    ? "default"
+                                    : "destructive"
+                                }
+                              >
+                                {a.status}
+                              </Badge>
+                              <Badge
+                                variant={
+                                  a.severity === "low"
+                                    ? "secondary"
+                                    : a.severity === "medium"
+                                    ? "outline"
+                                    : "destructive"
+                                }
+                              >
+                                {a.severity} risk
+                              </Badge>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>
-                              {new Date(audit.date).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="font-medium">Auditor:</span>{" "}
-                            {audit.auditor}
-                          </div>
-                          <div>
-                            <span className="font-medium">Findings:</span>{" "}
-                            {audit.findings}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  {new Date(a.date).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Auditor:</span>{" "}
+                                {a.auditor}
+                              </div>
+                              <div>
+                                <span className="font-medium">Findings:</span>{" "}
+                                {a.findings}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>

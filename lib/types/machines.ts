@@ -1,5 +1,4 @@
 import { MongoDBQueryValue } from "./mongo";
-import mongoose from "mongoose";
 
 export type Machine = {
   _id: string;
@@ -37,8 +36,9 @@ export type MachineMatchStage = {
 };
 
 export type MachineAggregationMatchStage = {
-  deletedAt?: { $in: (Date | null)[] };
-  _id?: mongoose.Types.ObjectId;
+  $or?: Array<{ deletedAt: null } | { deletedAt: { $lt: Date } }>;
+  deletedAt?: { $in: (Date | null)[] } | { $exists: false };
+  _id?: string; // Changed from mongoose.Types.ObjectId to string
   "rel.licencee"?: string;
   locations?: string;
   "start_date.date"?: { $lte: Date };
@@ -59,6 +59,7 @@ export type NewMachineData = {
   assetStatus: string;
   gamingLocation: string;
   smibBoard: string;
+  manufacturer: string;
   collectionSettings?: {
     multiplier?: string;
     lastCollectionTime?: string;
@@ -72,6 +73,7 @@ export type MachineUpdateData = {
   game?: string;
   gameType?: string;
   isCronosMachine?: boolean;
+  smibBoard?: string;
   gameConfig?: {
     accountingDenomination?: number;
   };

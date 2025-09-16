@@ -20,13 +20,17 @@ import type { CollectorSchedule } from "@/lib/types/components";
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
   topPerformingData: TopPerformingData[];
-  activeMetricsFilter: TimePeriod;
-  activePieChartFilter: TimePeriod;
+  activeMetricsFilter: TimePeriod | "";
+  activePieChartFilter: TimePeriod | "";
   activeFilters: ActiveFilters;
   pieChartSortIsOpen: boolean;
   totals: dashboardData | null;
   chartData: dashboardData[];
   gamingLocations: locations[];
+  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
+  locationAggregates?: Record<string, unknown>[];
+  /** Optional loading flag when aggregation is being fetched externally */
+  aggLoading?: boolean;
   loadingChartData: boolean;
   loadingTopPerforming?: boolean;
   refreshing: boolean;
@@ -34,7 +38,7 @@ export type DashboardLayoutProps = {
   setLoadingChartData: (_state: boolean) => void;
   setRefreshing: (_state: boolean) => void;
   setActiveTab: (_state: ActiveTab) => void;
-  setActivePieChartFilter: (_state: TimePeriod) => void;
+  setActivePieChartFilter: (_state: TimePeriod | "") => void;
   setActiveFilters: (_state: ActiveFilters) => void;
   setActiveMetricsFilter: (_state: TimePeriod) => void;
   setTotals: (_state: dashboardData | null) => void;
@@ -53,11 +57,15 @@ export type PcLayoutProps = DashboardLayoutProps;
 export type ChartProps = {
   loadingChartData: boolean;
   chartData: dashboardData[];
-  activeMetricsFilter: TimePeriod;
+  activeMetricsFilter: TimePeriod | "";
 };
 
 export type MapPreviewProps = {
   gamingLocations: locations[];
+  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
+  locationAggregates?: Record<string, unknown>[];
+  /** Optional loading flag when aggregation is being fetched externally */
+  aggLoading?: boolean;
 };
 
 export type DateRangeProps = {
@@ -76,9 +84,9 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   };
 
 export type CustomSelectProps = {
-  selectedFilter: TimePeriod;
+  selectedFilter: TimePeriod | "";
   placeholder?: string;
-  activePieChartFilter?: TimePeriod;
+  activePieChartFilter?: TimePeriod | "";
   isActive: boolean;
   timeFrames: TimeFrames[];
   activeFilters: ActiveFilters;
@@ -100,6 +108,14 @@ export type licenceeSelectProps = {
   selected: string;
   onChange: (_value: string) => void;
   disabled?: boolean;
+};
+
+// Centralized props type for date filters to comply with Next.js rules on shared typing
+export type DashboardDateFiltersProps = {
+  disabled?: boolean;
+  onCustomRangeGo?: () => void;
+  hideAllTime?: boolean;
+  mode?: "auto" | "mobile" | "desktop";
 };
 
 export type HeaderProps = {
@@ -141,12 +157,16 @@ export type CollectionReportRow = {
   locationReportId: string;
   collector: string;
   location: string;
-  gross: number;
+  gross: number | string;
   machines: string;
-  collected: number;
+  collected: number | string;
   uncollected: string;
-  locationRevenue: number;
+  variation: number | string;
+  balance: number | string;
+  locationRevenue: number | string;
   time: string;
+  noSMIBLocation?: boolean;
+  isLocalServer?: boolean;
 };
 
 export type SchedulerTableRow = {
@@ -180,6 +200,7 @@ export type NewCollectionModalProps = {
   show: boolean;
   onClose: () => void;
   locations: CollectionReportLocationWithMachines[];
+  onRefresh?: () => void;
 };
 
 // Collection Report UI Props Types
@@ -202,7 +223,11 @@ export type CollectionDesktopUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  selectedFilters: string[];
+  onFilterChange: (filter: string, checked: boolean) => void;
+  onClearFilters: () => void;
   isSearching: boolean;
+  onEdit?: (reportId: string) => void;
 };
 
 export type CollectionMobileUIProps = {
@@ -224,7 +249,11 @@ export type CollectionMobileUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  selectedFilters: string[];
+  onFilterChange: (filter: string, checked: boolean) => void;
+  onClearFilters: () => void;
   isSearching: boolean;
+  onEdit?: (reportId: string) => void;
 };
 
 export type MonthlyDesktopUIProps = {
@@ -254,6 +283,7 @@ export type MonthlyMobileUIProps = {
   pendingRange?: RDPDateRange;
   onPendingRangeChange: (range?: RDPDateRange) => void;
   onApplyDateRange: () => void;
+  onSetLastMonth: () => void;
   monthlySummary: MonthlyReportSummary;
   monthlyDetails: MonthlyReportDetailsRow[];
   monthlyLoading: boolean;
@@ -348,7 +378,8 @@ export type CollectionReportDateFilter =
   | "yesterday"
   | "last7"
   | "last30"
-  | "custom";
+  | "custom"
+  | "alltime";
 
 export type DateRangeFilterProps = {
   dateRange?: RDPDateRange;

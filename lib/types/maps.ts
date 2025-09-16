@@ -27,13 +27,13 @@ export type LocationPickerMapProps = {
   initialLng: number;
   mapType: MapType;
   onLocationSelect: (location: SelectedLocation) => void;
-  userLocation?: LocationCoordinates | null;
+  onMapLoadError?: () => void;
+  onMapLoadSuccess?: () => void;
 };
 
 export type NewLocationModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLocationSave: (location: SelectedLocation) => void;
-  userLocation?: LocationCoordinates | null;
   initialMapType?: MapType;
 }; 

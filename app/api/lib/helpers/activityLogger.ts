@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { ActivityLog } from "../models/activityLog";
 import type {
   ActivityLog as ActivityLogType,
@@ -39,15 +40,33 @@ export async function logActivity(
       changes
     );
 
+  const normalizedAction = actionType.toLowerCase();
+  const normalizedResource = entityType.toLowerCase();
+
   const activityLog = await ActivityLog.create({
+    // Required _id field
+    _id: new mongoose.Types.ObjectId().toString(),
+    // New required fields
+    userId: actor.id,
+    username: actor.email,
+    action: normalizedAction,
+    resource: normalizedResource,
+    resourceId: entity.id,
+    resourceName: entity.name,
+    // Details
+    details: finalDescription,
+    previousData: undefined,
+    newData: undefined,
+    ipAddress,
+    userAgent: undefined,
     timestamp: new Date(),
+    // Legacy fields for backward compatibility
     actor,
     actionType: actionType.toUpperCase(),
     entityType,
     entity,
     changes: changes || [],
     description: finalDescription,
-    ipAddress,
   });
 
   return activityLog.toObject();

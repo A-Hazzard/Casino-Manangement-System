@@ -1,5 +1,6 @@
 import React from "react";
 import CollectionReportCards from "@/components/collectionReport/CollectionReportCards";
+import CollectionReportCardSkeleton from "@/components/collectionReport/CollectionReportCardSkeleton";
 import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
 import PaginationControls from "@/components/ui/PaginationControls";
 import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
@@ -21,10 +22,14 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
+  selectedFilters,
+  onFilterChange,
+  onClearFilters,
   isSearching,
+  onEdit,
 }) => {
   return (
-    <div className="w-full absolute left-0 right-0 lg:hidden bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
+    <div className="lg:hidden w-full bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
       {/* Filter Container - positioned at the top */}
       <CollectionReportFilters
         locations={locations}
@@ -35,32 +40,66 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
         onSearchSubmit={onSearchSubmit}
         showUncollectedOnly={showUncollectedOnly}
         onShowUncollectedOnlyChange={onShowUncollectedOnlyChange}
+        selectedFilters={selectedFilters}
+        onFilterChange={onFilterChange}
+        onClearFilters={onClearFilters}
         isSearching={isSearching}
       />
-      
+
       {/* Cards Content - below filters */}
       <div ref={mobileCardsRef} className="space-y-4">
         {loading ? (
-          <p>Loading...</p>
-        ) : filteredReports.length === 0 ? (
-          <p className="text-center text-gray-500 py-10">
-            No collection reports found.
-          </p>
-        ) : (
           <>
-            <div className="grid grid-cols-1 gap-4">
-              <CollectionReportCards data={mobileCurrentItems} />
+            {/* Mobile skeleton (single column) - hidden on md and above */}
+            <div className="md:hidden">
+              <CollectionReportCardSkeleton gridLayout={false} count={4} />
+            </div>
+
+            {/* Medium breakpoint skeleton (2x2 grid) - visible only on md */}
+            <div className="hidden md:block lg:hidden">
+              <CollectionReportCardSkeleton gridLayout={true} count={4} />
+            </div>
+          </>
+        ) : filteredReports.length === 0 ? (
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2">
+            <p className="text-center text-gray-500 py-10">
+              No collection reports found.
+            </p>
+          </div>
+        ) : (
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2">
+            {/* Mobile cards (single column) - hidden on md and above */}
+            <div className="md:hidden">
+              <CollectionReportCards
+                data={mobileCurrentItems}
+                gridLayout={false}
+                onEdit={onEdit}
+              />
+            </div>
+
+            {/* Medium breakpoint cards (2x2 grid) - visible only on md */}
+            <div className="hidden md:block lg:hidden">
+              <CollectionReportCards
+                data={mobileCurrentItems}
+                gridLayout={true}
+                onEdit={onEdit}
+              />
             </div>
 
             {/* Pagination - below cards */}
             {mobileTotalPages > 1 && (
-              <PaginationControls
-                currentPage={mobilePage - 1}
-                totalPages={mobileTotalPages}
-                setCurrentPage={(page) => onPaginateMobile(page + 1)}
-              />
+              <div
+                className="animate-in fade-in-0 slide-in-from-bottom-2"
+                style={{ animationDelay: "200ms" }}
+              >
+                <PaginationControls
+                  currentPage={mobilePage - 1}
+                  totalPages={mobileTotalPages}
+                  setCurrentPage={(page) => onPaginateMobile(page + 1)}
+                />
+              </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

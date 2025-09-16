@@ -1,4 +1,13 @@
 import React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import type { SchedulerTableRow } from "@/lib/types/componentProps";
 
 type Props = {
@@ -29,43 +38,50 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
   }
 
   return (
-    <div className="hidden md:block overflow-x-auto bg-white shadow w-full min-w-0 max-w-[90vw]">
-      <table className="w-full min-w-0 text-sm text-left">
-        <thead className="bg-button">
-          <tr>
-            <th className="px-4 py-2 text-white font-bold">COLLECTOR</th>
-            <th className="px-4 py-2 text-white font-bold">LOCATION</th>
-            <th className="px-4 py-2 text-white font-bold">MANAGER</th>
-            <th className="px-4 py-2 text-white font-bold">VISIT TIME</th>
-            <th className="px-4 py-2 text-white font-bold">CREATED AT</th>
-            <th className="px-4 py-2 text-white font-bold">STATUS</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow w-full min-w-0 max-w-[90vw]">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-button hover:bg-button">
+            <TableHead className="text-white font-semibold">COLLECTOR</TableHead>
+            <TableHead className="text-white font-semibold">LOCATION</TableHead>
+            <TableHead className="text-white font-semibold">MANAGER</TableHead>
+            <TableHead className="text-white font-semibold">VISIT TIME</TableHead>
+            <TableHead className="text-white font-semibold">CREATED AT</TableHead>
+            <TableHead className="text-white font-semibold">STATUS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((row) => (
-            <tr key={row.id} className="border-b hover:bg-gray-50">
-              <td className="px-4 py-2 font-bold">{row.collector}</td>
-              <td className="px-4 py-2">{row.location}</td>
-              <td className="px-4 py-2">{row.creator}</td>
-              <td className="px-4 py-2">{row.visitTime}</td>
-              <td className="px-4 py-2">{row.createdAt}</td>
-              <td className="px-4 py-2 capitalize">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs ${
+            <TableRow key={row.id} className="hover:bg-gray-50">
+              <TableCell className="font-medium">{row.collector}</TableCell>
+              <TableCell>{row.location}</TableCell>
+              <TableCell>{row.creator}</TableCell>
+              <TableCell>{row.visitTime}</TableCell>
+              <TableCell>{row.createdAt}</TableCell>
+              <TableCell>
+                <Badge
+                  variant={
                     row.status === "pending"
-                      ? "bg-yellow-100 text-yellow-800"
+                      ? "secondary"
                       : row.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                      ? "default"
+                      : "destructive"
+                  }
+                  className={
+                    row.status === "pending"
+                      ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                      : row.status === "completed"
+                      ? "bg-green-100 text-green-800 hover:bg-green-200"
+                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                  }
                 >
                   {row.status}
-                </span>
-              </td>
-            </tr>
+                </Badge>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function UserTableSkeleton() {
   return (
     <div className="overflow-x-auto mt-6">
@@ -23,7 +25,7 @@ export default function UserTableSkeleton() {
             <tr key={idx} className="border-b last:border-b-0">
               {Array.from({ length: 5 }).map((__, colIdx) => (
                 <td key={colIdx} className="py-3 px-4">
-                  <div className="h-4 w-3/4 skeleton-bg rounded" />
+                  <Skeleton className="h-4 w-3/4" />
                 </td>
               ))}
             </tr>

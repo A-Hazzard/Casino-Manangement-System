@@ -68,13 +68,15 @@ export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
     <Card className="bg-container border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-grayHighlight">
-          {metric.title}
+          {metric.label}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div className="text-2xl font-bold text-gray-900">
-            {formatValue(metric.value, metric.format)}
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
+            {typeof metric.value === "number"
+              ? formatValue(metric.value, metric.format)
+              : metric.value}
           </div>
 
           {metric.change !== undefined && (

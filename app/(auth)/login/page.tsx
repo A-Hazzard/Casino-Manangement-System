@@ -4,17 +4,18 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { loginUser } from "@/lib/helpers/auth";
-import { validateEmail, validatePassword } from "@/lib/utils/validation";
+import { validatePassword } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import LiquidGradient from "@/components/ui/LiquidGradient";
 import LoginForm from "@/components/auth/LoginForm";
+import { LoginPageSkeleton } from "@/components/ui/skeletons/LoginSkeletons";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>(
     {}
   );
   const [message, setMessage] = useState("");
@@ -31,8 +32,8 @@ export default function LoginPage() {
     e.preventDefault();
     setErrors({});
     let valid = true;
-    if (!validateEmail(email)) {
-      setErrors((prev) => ({ ...prev, email: "Invalid email address." }));
+    if (!identifier) {
+      setErrors((prev) => ({ ...prev, identifier: "Enter email or username." }));
       valid = false;
     }
     if (!validatePassword(password)) {
@@ -45,7 +46,7 @@ export default function LoginPage() {
     if (!valid) return;
     setLoading(true);
     try {
-      const response = await loginUser({ emailAddress: email, password });
+      const response = await loginUser({ identifier, password });
       if (response.success) {
         toast.success("Login successful. Redirecting...");
         setRedirecting(true);
@@ -53,14 +54,10 @@ export default function LoginPage() {
       } else {
         const backendMsg =
           response.message || "Invalid email or password. Please try again.";
-        setMessage(backendMsg);
-        setMessageType("error");
         toast.error(backendMsg);
       }
     } catch {
       const fallbackMsg = "An unexpected error occurred. Please try again.";
-      setMessage(fallbackMsg);
-      setMessageType("error");
       toast.error(fallbackMsg);
     } finally {
       setLoading(false);
@@ -68,11 +65,7 @@ export default function LoginPage() {
   };
 
   if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p>Loading login...</p>
-      </div>
-    );
+    return <LoginPageSkeleton />;
   }
 
   return (
@@ -93,8 +86,8 @@ export default function LoginPage() {
                   />
                 </div>
                 <LoginForm
-                  email={email}
-                  setEmail={setEmail}
+                  identifier={identifier}
+                  setIdentifier={setIdentifier}
                   password={password}
                   setPassword={setPassword}
                   showPassword={showPassword}

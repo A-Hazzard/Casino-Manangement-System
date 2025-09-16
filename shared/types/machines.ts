@@ -4,6 +4,7 @@ import type { TimePeriod } from "./common";
 // Machine data structure from API (optimized)
 export type MachineData = {
   machineId: string;
+  serialNumber?: string;
   machineName: string;
   locationName: string;
   locationId: string;
@@ -20,6 +21,7 @@ export type MachineData = {
   gamesPlayed: number;
   theoreticalHold: number;
   netWin: number;
+  gross: number;
   lastActivity: string;
   installDate?: string;
   avgBet?: number;
@@ -163,13 +165,6 @@ export type MachineEvaluationSummary = {
   }[];
 };
 
-export type MachineEvaluationChartData = {
-  category: string;
-  primary: number;
-  secondary: number;
-  primaryLabel: string;
-  secondaryLabel: string;
-};
 
 export type MachineEvaluationFilters = {
   manufacturer?: string;

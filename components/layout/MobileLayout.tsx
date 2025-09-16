@@ -1,64 +1,99 @@
 "use client";
 
-import CustomSelect from "@/components/ui/CustomSelect";
 import MapPreview from "@/components/ui/MapPreview";
-import { timeFrames } from "@/lib/constants/uiConstants";
 import { MobileLayoutProps } from "@/lib/types/componentProps";
 import { formatNumber } from "@/lib/utils/metrics";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import StatCardSkeleton, {
-  ChartSkeleton,
-} from "@/components/ui/SkeletonLoader";
+import {
+  DashboardFinancialMetricsSkeleton,
+  DashboardChartSkeleton,
+} from "@/components/ui/skeletons/DashboardSkeletons";
 import Chart from "@/components/ui/dashboard/Chart";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import axios from "axios";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function MobileLayout(props: MobileLayoutProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
-    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
+    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md" suppressHydrationWarning>
       <div className="text-gray-500 text-lg mb-2">No Data Available</div>
       <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
   );
 
-  // State for aggregated location data
-  const [locationAggregates, setLocationAggregates] = useState<any[]>([]);
-  const [aggLoading, setAggLoading] = useState(true);
+  // Use online/offline counts from props if provided, otherwise fetch from API
+  const [machineStats, setMachineStats] = useState<{
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null>(null);
+  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
 
+  // Fetch machine stats for online/offline counts (similar to reports tab)
   useEffect(() => {
-    const fetchLocationAggregation = async () => {
-      setAggLoading(true);
+    let aborted = false;
+    const fetchMachineStats = async () => {
+      setMachineStatsLoading(true);
       try {
-        const res = await fetch("/api/locationAggregation?timePeriod=Today");
-        const response = await res.json();
-        // Extract the data array from the response
-        setLocationAggregates(response.data || []);
+        const params = new URLSearchParams();
+        params.append("licensee", "all"); // Get all machines
+
+        const res = await axios.get(
+          `/api/analytics/machines/stats?${params.toString()}`
+        );
+        const data = res.data;
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: data.totalMachines || 0,
+            onlineMachines: data.onlineMachines || 0,
+            offlineMachines: data.offlineMachines || 0,
+          });
+        }
       } catch {
-        setLocationAggregates([]);
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
       } finally {
-        setAggLoading(false);
+        if (!aborted) setMachineStatsLoading(false);
       }
     };
-    fetchLocationAggregation();
+    fetchMachineStats();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
-  // Calculate total online/offline from aggregation
-  const onlineCount = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce(
-        (sum, loc) => sum + (loc.onlineMachines || 0),
-        0
-      )
-    : 0;
-  const totalMachines = Array.isArray(locationAggregates)
-    ? locationAggregates.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
-    : 0;
-  const offlineCount = totalMachines - onlineCount;
+  // Use machine stats for online/offline counts
+  const onlineCount = machineStats?.onlineMachines || 0;
+  const offlineCount = machineStats?.offlineMachines || 0;
 
   return (
     <div className="xl:hidden space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <h2 className="text-lg">Total for all Locations and Machines</h2>
+      {/* Date Filter Controls (mobile) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <DashboardDateFilters
+          disabled={props.loadingChartData || props.refreshing}
+        />
+      </div>
+
+      {/* Machine Status Widget */}
+      <div className="mb-4">
+        <MachineStatusWidget
+          isLoading={machineStatsLoading}
+          onlineCount={onlineCount}
+          offlineCount={offlineCount}
+        />
+      </div>
+
+      {/* Refresh button below Machine Status on mobile */}
+      <div className="flex justify-end">
         <div
           className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
             props.loadingChartData || props.refreshing
@@ -66,8 +101,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
               : "hover:bg-buttonActive/90"
           }`}
           onClick={() => {
-            if (!(props.loadingChartData || props.refreshing))
-              props.onRefresh();
+            if (!(props.loadingChartData || props.refreshing)) props.onRefresh();
           }}
           aria-disabled={props.loadingChartData || props.refreshing}
           tabIndex={0}
@@ -81,54 +115,52 @@ export default function MobileLayout(props: MobileLayoutProps) {
         </div>
       </div>
 
-      {/* Machine Status Widget */}
-      <div className="mb-4">
-        <MachineStatusWidget
-          isLoading={aggLoading}
-          onlineCount={onlineCount}
-          offlineCount={offlineCount}
-        />
-      </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {props.loadingChartData ? (
-          <StatCardSkeleton count={3} />
-        ) : (
+      {props.loadingChartData ? (
+        <DashboardFinancialMetricsSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Money In
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyIn)}`}>
+                  {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
+                </p>
+              </div>
             </div>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Money Out
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyOut)}`}>
+                  {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
+                </p>
+              </div>
             </div>
-            <div className="px-8 py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent">
-              <p className="text-gray-500 text-sm lg:text-lg font-medium">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                 Gross
               </p>
               <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-              <p className="font-bold">
-                {props.totals ? formatNumber(props.totals.gross) : "--"}
-              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.gross)}`}>
+                  {props.totals ? formatNumber(props.totals.gross) : "--"}
+                </p>
+              </div>
             </div>
           </>
-        )}
-      </div>
+        </div>
+      )}
 
       {props.loadingChartData ? (
-        <ChartSkeleton />
+        <DashboardChartSkeleton />
       ) : (
         <Chart
           loadingChartData={props.loadingChartData}
@@ -137,10 +169,42 @@ export default function MobileLayout(props: MobileLayoutProps) {
         />
       )}
 
-      <MapPreview gamingLocations={props.gamingLocations} />
+      {props.loadingChartData ? (
+        <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+          <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
+        </div>
+      ) : (
+        <MapPreview gamingLocations={props.gamingLocations} />
+      )}
 
       {/* Top Performing Section */}
-      {props.topPerformingData.length === 0 && !props.loadingTopPerforming ? (
+      {props.loadingTopPerforming ? (
+        <div className="space-y-2">
+          <h2 className="text-lg">Top Performing</h2>
+          <div className="relative flex flex-col bg-container w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md">
+            <div className="flex">
+              <div className="w-full px-4 py-2 rounded-tr-3xl rounded-tl-xl bg-gray-100"></div>
+              <div className="w-full px-4 py-2 rounded-tr-3xl bg-gray-100"></div>
+            </div>
+            <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
+              <div className="flex justify-between items-center mb-4">
+                {/* Skeleton for sort by select */}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : props.topPerformingData.length === 0 ? (
         <NoDataMessage message="No top performing data available for the selected period" />
       ) : (
         <div className="space-y-2">
@@ -199,22 +263,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
 
             <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
               <div className="flex justify-between items-center mb-4">
-                <div className="mb-4">
-                  <CustomSelect
-                    timeFrames={timeFrames}
-                    selectedFilter={props.activePieChartFilter}
-                    activePieChartFilter={props.activePieChartFilter}
-                    activeFilters={props.activeFilters}
-                    onSelect={(value) => {
-                      if (!props.loadingTopPerforming) {
-                        props.setActivePieChartFilter(value);
-                      }
-                    }}
-                    isActive={true}
-                    placeholder="Select Time Frame"
-                    disabled={props.loadingTopPerforming}
-                  />
-                </div>
+                {/* Removed sort by select input on mobile */}
               </div>
               <div className="flex items-center justify-between">
                 <ul className="space-y-2">

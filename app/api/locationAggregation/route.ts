@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocationsWithMetrics } from "@/app/api/lib/helpers/locationAggregation";
 import { TimePeriod } from "@/app/api/lib/types";
 import { getDatesForTimePeriod } from "../lib/utils/dates";
+import { trinidadTimeToUtc } from "../lib/utils/timezone";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { LocationFilter } from "@/lib/types/location";
+import { getCacheKey, getCachedData, setCachedData, clearCache } from "@/app/api/lib/helpers/cacheUtils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,13 +14,26 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
-    
+
+
+    const clearCacheParam = searchParams.get("clearCache") === "true";
+    const sasEvaluationOnly = searchParams.get("sasEvaluationOnly") === "true";
+    const basicList = searchParams.get("basicList") === "true";
+    const selectedLocations = searchParams.get("selectedLocations");
+
+    // Clear cache if requested (useful for testing)
+    if (clearCacheParam) {
+      clearCache();
+    }
+
     // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const skip = (page - 1) * limit;
+    // For dropdown/basic lists and selectedLocations, ignore limit by passing a very large value
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? parseInt(limitParam) : 1000000;
 
-    let startDate: Date, endDate: Date;
+
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (timePeriod === "Custom") {
       const customStart = searchParams.get("startDate");
@@ -29,12 +44,37 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      startDate = new Date(customStart);
-      endDate = new Date(customEnd);
+      // For custom date ranges, convert from Trinidad time to UTC
+      startDate = trinidadTimeToUtc(new Date(customStart));
+      endDate = trinidadTimeToUtc(new Date(customEnd));
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
       endDate = e;
+    }
+
+    // Check cache first (unless cache was cleared)
+    const cacheKey = getCacheKey({
+      timePeriod,
+      licencee,
+      machineTypeFilter,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sasEvaluationOnly,
+      basicList,
+      selectedLocations,
+    });
+
+    const skipCacheForSelected = Boolean(selectedLocations);
+    
+    // Check cache first
+    if (!clearCacheParam && !skipCacheForSelected) {
+      const cachedResult = getCachedData(cacheKey);
+      if (cachedResult) {
+        return NextResponse.json(cachedResult);
+      }
     }
 
     const db = await connectDB();
@@ -44,36 +84,88 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
 
-    // Get total count first
-    const totalData = await getLocationsWithMetrics(
-      db,
-      { startDate, endDate },
-      true,
-      licencee,
-      machineTypeFilter
+    // Quick data availability check with timeout
+    const dataCheckPromise = Promise.all([
+      db.collection("meters").countDocuments({}, { limit: 1 }),
+      db.collection("gaminglocations").countDocuments({}, { limit: 1 }),
+    ]);
+
+    const dataCheckTimeout = new Promise(
+      (_, reject) =>
+        setTimeout(() => reject(new Error("Data check timeout")), 10000) // Increased timeout
     );
 
-    const totalCount = totalData.length;
-    const totalPages = Math.ceil(totalCount / limit);
+    try {
+      await Promise.race([dataCheckPromise, dataCheckTimeout]);
+    } catch (error) {
+      console.warn("Data availability check failed, proceeding anyway:", error);
+    }
 
-    // Get paginated data
-    const paginatedData = totalData.slice(skip, skip + limit);
+    // Get aggregated data with optimized performance
+    const { rows, totalCount } = await getLocationsWithMetrics(
+      db,
+      { startDate, endDate },
+      licencee,
+      page,
+      limit,
+      sasEvaluationOnly,
+      basicList,
+      selectedLocations || undefined
+    );
 
-    return NextResponse.json({
-      data: paginatedData,
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    });
-  } catch (err: unknown) {
-    console.error("Error in locationAggregation route:", err);
+    // Apply filters if needed
+    let filteredRows = rows;
+    if (machineTypeFilter) {
+      // Handle comma-separated multiple filters
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      
+      filteredRows = rows.filter((loc) => {
+        // Apply AND logic - location must match ALL selected filters
+        return filters.every((filter) => {
+          switch (filter.trim()) {
+            case "LocalServersOnly":
+              return loc.isLocalServer === true;
+            case "SMIBLocationsOnly":
+              return loc.noSMIBLocation === false;
+            case "NoSMIBLocation":
+              return loc.noSMIBLocation === true;
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
+    // Sort by money in descending order
+    const sortedRows = filteredRows.sort(
+      (a, b) => (b.moneyIn || 0) - (a.moneyIn || 0)
+    );
+
+    const result = {
+      data: sortedRows,
+      totalCount: totalCount,
+      page,
+      limit,
+      hasMore: false,
+    };
+
+    // Cache the result (unless cache was cleared)
+    if (!clearCacheParam && !skipCacheForSelected) {
+      setCachedData(cacheKey, result);
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error(
+      "❌ LocationAggregation API Error:",
+      error instanceof Error ? error.message : String(error)
+    );
+
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Server Error" },
+      {
+        error: "Failed to fetch location data",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

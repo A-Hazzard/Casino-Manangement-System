@@ -1,5 +1,5 @@
 import React from "react";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
+import { MonthlyDatePicker } from "@/components/ui/MonthlyDatePicker";
 import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
 import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
 import type { MonthlyDesktopUIProps } from "@/lib/types/componentProps";
@@ -65,10 +65,14 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
       </div>
 
       {/* Date Filters Bar */}
-      <ModernDateRangePicker
+      <MonthlyDatePicker
         value={pendingRange}
         onChange={onPendingRangeChange}
         onGo={onApplyDateRange}
+        onCancel={() => {
+          // Reset the pending range when canceling
+          onPendingRangeChange(undefined);
+        }}
         onSetLastMonth={onSetLastMonth}
       />
 

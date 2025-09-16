@@ -11,7 +11,7 @@ import { colorPalette } from "@/lib/constants/uiConstants";
  */
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
-  timePeriod: string = "7d"
+  timePeriod: string
 ): Promise<TopPerformingData[]> {
   try {
     const params = { activeTab, timePeriod };
@@ -21,6 +21,7 @@ export async function fetchTopPerformingData(
       headers,
     });
 
+    // The API returns { activeTab, timePeriod, data }
     const rawData: TopPerformingData[] = response.data.data || [];
 
     // Assign colors from the palette

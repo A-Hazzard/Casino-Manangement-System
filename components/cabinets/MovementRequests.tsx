@@ -13,7 +13,10 @@ import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { useMovementRequestActionsStore } from "@/lib/store/movementRequestActionsStore";
 import EditMovementRequestModal from "@/components/ui/movements/EditMovementRequestModal";
 import DeleteMovementRequestModal from "@/components/ui/movements/DeleteMovementRequestModal";
+import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -22,6 +25,10 @@ export default function MovementRequests({
 }: {
   locations: { _id: string; name: string }[];
 }) {
+  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] = useState(false);
+  
+  const openNewMovementRequestModal = () => setIsNewMovementRequestModalOpen(true);
+  const closeNewMovementRequestModal = () => setIsNewMovementRequestModalOpen(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
@@ -94,9 +101,23 @@ export default function MovementRequests({
     <div className="w-full max-w-full flex flex-col p-1">
       <EditMovementRequestModal onSaved={loadRequests} />
       <DeleteMovementRequestModal onDeleted={loadRequests} />
+      <NewMovementRequestModal
+        isOpen={isNewMovementRequestModalOpen}
+        onClose={closeNewMovementRequestModal}
+        locations={locations}
+        onSubmit={loadRequests}
+      />
 
       {/* Mobile: Search and filters stacked */}
       <div className="lg:hidden flex flex-col gap-4 p-4 bg-buttonActive rounded-lg shadow-sm mb-4">
+        {/* Mobile: Create Movement Request button */}
+        <Button
+          onClick={openNewMovementRequestModal}
+          className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+        >
+          <Plus size={20} />
+          Create Movement Request
+        </Button>
         <div className="relative w-full">
           <Input
             placeholder="Search requests..."
@@ -122,6 +143,16 @@ export default function MovementRequests({
 
       {/* Desktop: Search and filters in row */}
       <div className="hidden lg:flex flex-col md:flex-row gap-4 items-center p-4 bg-buttonActive rounded-t-lg shadow-sm">
+        {/* Desktop: Create Movement Request button */}
+        <Button
+          onClick={openNewMovementRequestModal}
+          className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+        >
+          <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
+            <Plus className="w-4 h-4 text-white" />
+          </div>
+          <span>Create Movement Request</span>
+        </Button>
         <div className="relative w-full md:w-2/3">
           <Input
             placeholder="Search requests... (e.g., Creator, Location, Cabinet, Status)"

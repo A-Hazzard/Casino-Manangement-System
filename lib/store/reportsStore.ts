@@ -358,22 +358,18 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
 
       refreshDashboard: async () => {
         // Implementation would fetch dashboard data from API
-        console.log("Refreshing dashboard data...");
       },
 
       refreshCustomerData: async () => {
         // Implementation would fetch customer data from API
-        console.log("Refreshing customer data...");
       },
 
       refreshVoucherData: async () => {
         // Implementation would fetch voucher data from API
-        console.log("Refreshing voucher data...");
       },
 
       refreshComplianceData: async () => {
         // Implementation would fetch compliance data from API
-        console.log("Refreshing compliance data...");
       },
     }),
     {

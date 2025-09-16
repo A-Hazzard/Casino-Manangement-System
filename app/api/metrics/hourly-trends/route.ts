@@ -24,21 +24,22 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get("locationId");
+    const locationIds = searchParams.get("locationIds"); // Support multiple location IDs
     const timePeriod =
       (searchParams.get("timePeriod") as TimePeriod) || "Today";
     const licencee = searchParams.get("licencee");
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
-    if (!locationId) {
+    if (!locationId && !locationIds) {
       return NextResponse.json(
-        { error: "Location ID is required" },
+        { error: "Location ID or Location IDs are required" },
         { status: 400 }
       );
     }
 
     // Get date range - handle both timePeriod and startDate/endDate parameters
-    let startDate: Date, endDate: Date;
+    let startDate: Date | undefined, endDate: Date | undefined;
 
     if (startDateParam && endDateParam) {
       // Use provided startDate and endDate
@@ -50,12 +51,25 @@ export async function GET(req: NextRequest) {
       startDate = dateRange.startDate;
       endDate = dateRange.endDate;
     }
+    
+    // For All Time, we need to set a reasonable default range or handle differently
+    if (!startDate || !endDate) {
+      // For All Time in hourly trends, default to last 7 days to avoid performance issues
+      const now = new Date();
+      endDate = now;
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Determine which locations to query
+    const targetLocations = locationIds 
+      ? locationIds.split(",").map(id => id.trim())
+      : [locationId!];
 
     // 1. Fetch current period revenue (actual total for this period)
     const currentPipeline = [
       {
         $match: {
-          location: locationId,
+          location: { $in: targetLocations },
           readAt: { $gte: startDate, $lte: endDate },
         },
       },
@@ -85,7 +99,7 @@ export async function GET(req: NextRequest) {
     const prevPipeline = [
       {
         $match: {
-          location: locationId,
+          location: { $in: targetLocations },
           readAt: { $gte: prevStart, $lte: prevEnd },
         },
       },
@@ -116,11 +130,11 @@ export async function GET(req: NextRequest) {
     );
     const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;
 
-    // 3. Build hourly trend for chart (as before)
+    // 3. Build hourly trend for chart with consistent calculations
     const pipeline = [
       {
         $match: {
-          location: locationId,
+          location: { $in: targetLocations },
           readAt: { $gte: startDate, $lte: endDate },
         },
       },
@@ -148,8 +162,8 @@ export async function GET(req: NextRequest) {
       {
         $group: {
           _id: {
+            location: "$location",
             hour: { $hour: "$readAt" },
-            day: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } },
           },
           revenue: {
             $sum: {
@@ -165,12 +179,12 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      { $sort: { "_id.day": 1, "_id.hour": 1 } },
+      { $sort: { "_id.location": 1, "_id.hour": 1 } },
       {
         $project: {
           _id: 0,
+          location: "$_id.location",
           hour: "$_id.hour",
-          day: "$_id.day",
           revenue: "$revenue",
           drop: "$drop",
           cancelledCredits: "$cancelledCredits",
@@ -181,40 +195,93 @@ export async function GET(req: NextRequest) {
       .collection("meters")
       .aggregate(pipeline)
       .toArray();
-    const hourSums: Record<number, { total: number; count: number }> = {};
-    for (let i = 0; i < 24; i++) {
-      hourSums[i] = { total: 0, count: 0 };
-    }
-    for (const item of hourlyData) {
-      const hour =
-        typeof item.hour === "number" ? item.hour : parseInt(item.hour, 10);
-      if (hour >= 0 && hour < 24) {
-        hourSums[hour].total += item.revenue;
-        hourSums[hour].count += 1;
+    
+    // Process data for multiple locations
+    if (locationIds) {
+      // Multiple locations - return data for each location
+      const locationData: Record<string, {
+        hourlyTrends: Array<{ hour: string; revenue: number }>;
+        totalRevenue: number;
+        peakRevenue: number;
+        avgRevenue: number;
+      }> = {};
+      
+      // Group data by location
+      const locationGroups: Record<string, typeof hourlyData> = {};
+      for (const item of hourlyData) {
+        const locationId = item.location;
+        if (!locationGroups[locationId]) {
+          locationGroups[locationId] = [];
+        }
+        locationGroups[locationId].push(item);
       }
-    }
-    const hourlyTrends = Array.from({ length: 24 }, (_, hour) => {
-      const sum = hourSums[hour].total;
-      const count = hourSums[hour].count;
-      const avgRevenue = count > 0 ? sum / count : 0;
-      return {
-        hour: `${hour.toString().padStart(2, "0")}:00`,
-        revenue: Math.round(avgRevenue),
-      };
-    });
 
-    return NextResponse.json({
-      locationId,
-      timePeriod,
-      hourlyTrends,
-      currentPeriodRevenue,
-      previousPeriodAverage,
-      totalRevenue: hourlyTrends.reduce((sum, item) => sum + item.revenue, 0),
-      peakRevenue: Math.max(...hourlyTrends.map((item) => item.revenue)),
-      avgRevenue: Math.round(
-        hourlyTrends.reduce((sum, item) => sum + item.revenue, 0) / 24
-      ),
-    });
+      // Process each location
+      for (const locationId of targetLocations) {
+        const locationHourlyData = locationGroups[locationId] || [];
+        
+        // Create hourly trends array for this location
+        const hourlyTrends = Array.from({ length: 24 }, (_, hour) => {
+          const hourData = locationHourlyData.find(item => item.hour === hour);
+          const revenue = hourData ? hourData.revenue : 0;
+          return {
+            hour: `${hour.toString().padStart(2, "0")}:00`,
+            revenue: Math.round(revenue),
+          };
+        });
+
+        // Calculate totals for this location
+        const totalRevenue = hourlyTrends.reduce((sum, item) => sum + item.revenue, 0);
+        const peakRevenue = Math.max(...hourlyTrends.map((item) => item.revenue));
+        const avgRevenue = Math.round(totalRevenue / 24);
+
+        locationData[locationId] = {
+          hourlyTrends,
+          totalRevenue,
+          peakRevenue,
+          avgRevenue,
+        };
+      }
+
+      return NextResponse.json({
+        locationIds: targetLocations,
+        timePeriod,
+        locationData,
+        currentPeriodRevenue,
+        previousPeriodAverage,
+      });
+    } else {
+      // Single location - return data in original format
+      const hourlyTrends = Array.from({ length: 24 }, (_, hour) => {
+        const hourData = hourlyData.find(item => item.hour === hour);
+        const revenue = hourData ? hourData.revenue : 0;
+        return {
+          hour: `${hour.toString().padStart(2, "0")}:00`,
+          revenue: Math.round(revenue),
+        };
+      });
+
+      // Calculate totals from the same dataset for consistency
+      const totalRevenue = hourlyTrends.reduce((sum, item) => sum + item.revenue, 0);
+      const peakRevenue = Math.max(...hourlyTrends.map((item) => item.revenue));
+      const avgRevenue = Math.round(totalRevenue / 24);
+
+      // Validate data consistency
+      if (peakRevenue > totalRevenue) {
+        console.warn(`Data inconsistency detected: Peak (${peakRevenue}) > Total (${totalRevenue}) for location ${locationId}`);
+      }
+
+      return NextResponse.json({
+        locationId,
+        timePeriod,
+        hourlyTrends,
+        currentPeriodRevenue,
+        previousPeriodAverage,
+        totalRevenue,
+        peakRevenue,
+        avgRevenue,
+      });
+    }
   } catch (error) {
     console.error("Error fetching hourly trends:", error);
     return NextResponse.json(

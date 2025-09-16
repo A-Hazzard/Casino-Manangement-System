@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import Chip from "@/components/ui/common/Chip";
 import { motion, AnimatePresence } from "framer-motion";
@@ -74,17 +75,18 @@ export default function SMIBManagement() {
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
-        <select
+        <CustomSelect
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full lg:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
-        >
-          {MOCK_LOCATIONS.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={setSelectedLocation}
+          options={MOCK_LOCATIONS.map((loc) => ({
+            value: loc.id,
+            label: loc.name,
+          }))}
+          placeholder="Select Location"
+          className="w-full lg:w-1/3"
+          triggerClassName="h-11 rounded-md border-none px-3 bg-white text-gray-700"
+          emptyMessage="No locations found"
+        />
       </div>
 
       {/* Buttons and SMIB Selection Row */}

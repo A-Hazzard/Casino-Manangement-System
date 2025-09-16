@@ -1,4 +1,5 @@
 import { CollectorSchedule } from "@/lib/types/components";
+import axios from "axios";
 
 export async function fetchCollectorSchedules(
   licencee?: string,
@@ -20,13 +21,8 @@ export async function fetchCollectorSchedules(
     if (endDate) params.append("endDate", endDate);
 
     const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ""}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const response = await axios.get(url);
+    const data = response.data;
     return data;
   } catch (error) {
     console.error("Error fetching collector schedules:", error);
@@ -62,13 +58,8 @@ export async function fetchCollectorSchedulesWithFilters(
     if (endDate) params.append("endDate", endDate);
 
     const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ""}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const response = await axios.get(url);
+    const data = response.data;
     return data;
   } catch (error) {
     console.error("Error fetching collector schedules with filters:", error);

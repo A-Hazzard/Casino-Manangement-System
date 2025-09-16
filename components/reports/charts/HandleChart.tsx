@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -37,13 +38,10 @@ export default function HandleChart({
             locationIds.length > 0 && { locationIds: locationIds.join(",") }),
         });
 
-        const response = await fetch(`/api/analytics/handle-trends?${params}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch handle data");
-        }
-
-        const result = await response.json();
+        const response = await axios.get(
+          `/api/analytics/handle-trends?${params}`
+        );
+        const result = response.data;
         setData(result.data || []);
       } catch (err) {
         console.error("Error fetching handle data:", err);
@@ -88,7 +86,7 @@ export default function HandleChart({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Handle Trends
+            Money In Trends
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -104,7 +102,7 @@ export default function HandleChart({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Handle Trends
+            Money In Trends
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -125,7 +123,7 @@ export default function HandleChart({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Handle Trends
+            Money In Trends
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -133,7 +131,7 @@ export default function HandleChart({
             <div className="text-center">
               <div className="text-sm font-medium">No data available</div>
               <div className="text-xs">
-                No handle data for the selected time period
+                No money in data for the selected time period
               </div>
             </div>
           </div>
@@ -160,7 +158,7 @@ export default function HandleChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
@@ -176,7 +174,10 @@ export default function HandleChart({
                 tickLine={false}
               />
               <Tooltip
-                formatter={(value: number) => [formatCurrency(value), "Handle"]}
+                formatter={(value: number) => [
+                  formatCurrency(value),
+                  "Money In",
+                ]}
                 labelFormatter={formatTime}
                 contentStyle={{
                   backgroundColor: "#ffffff",
@@ -185,15 +186,8 @@ export default function HandleChart({
                   boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 }}
               />
-              <Line
-                type="monotone"
-                dataKey="handle"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
-              />
-            </LineChart>
+              <Bar dataKey="handle" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

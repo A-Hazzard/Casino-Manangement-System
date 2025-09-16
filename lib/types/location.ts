@@ -1,4 +1,10 @@
-import type { Location as SharedLocation, Address, RelationshipInfo, GeoCoordinates, AggregatedLocation } from "@shared/types";
+import type {
+  Location as SharedLocation,
+  Address,
+  RelationshipInfo,
+  GeoCoordinates,
+  AggregatedLocation,
+} from "@shared/types";
 
 // Re-export shared location types
 export type { Address, RelationshipInfo, GeoCoordinates, AggregatedLocation };
@@ -12,6 +18,7 @@ export type UpdateLocationData = {
   address?: Partial<Address>;
   rel?: Partial<RelationshipInfo>;
   profitShare?: number;
+  gameDayOffset?: number;
   geoCoords?: Partial<GeoCoordinates>;
   isLocalServer?: boolean;
   billValidatorOptions?: Record<string, unknown>;
@@ -44,6 +51,7 @@ export type LocationSortOption =
   | "locationName"
   | "moneyIn"
   | "moneyOut"
+  | "jackpot"
   | "gross"
   | "totalMachines";
 
@@ -91,15 +99,21 @@ export type LocationStore = {
   isLocationModalOpen: boolean;
   openLocationModal: () => void;
   closeLocationModal: () => void;
-  createLocation: (location: { name: string; address: string; latitude: number; longitude: number }) => Promise<void>;
+  createLocation: (location: {
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    licencee?: string;
+  }) => Promise<void>;
 };
 
 export type LocationActionsState = {
-  selectedLocation: Partial<Location>;
+  selectedLocation: Partial<AggregatedLocation>;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
-  openEditModal: (_location: Partial<Location>) => void;
-  openDeleteModal: (_location: Partial<Location>) => void;
+  openEditModal: (_location: Partial<AggregatedLocation>) => void;
+  openDeleteModal: (_location: Partial<AggregatedLocation>) => void;
   closeEditModal: () => void;
   closeDeleteModal: () => void;
 };
@@ -126,7 +140,7 @@ export type MetricsMatchStage = {
 };
 
 export type MeterMatchStage = {
-  createdAt: DateRangeFilter;
+  readAt: DateRangeFilter;
   "rel.licencee"?: string;
   [key: string]: MongoDBQueryValue | undefined;
 };
@@ -178,11 +192,9 @@ export type LocationData = {
 };
 
 export type LocationDateRange = {
-  startDate: Date;
-  endDate: Date;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
 };
-
-
 
 import { ObjectId } from "mongodb";
 
@@ -194,8 +206,6 @@ export type GamingLocation = {
   isLocalServer?: boolean;
   noSMIBLocation?: boolean;
 };
-
-
 
 export type LocationInfo = {
   _id?: string;

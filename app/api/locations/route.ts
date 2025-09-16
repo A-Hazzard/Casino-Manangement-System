@@ -1,88 +1,63 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import path from "path";
-import fs from "fs";
+
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { UpdateLocationData } from "@/lib/types/location";
+import { apiLogger } from "@/app/api/lib/utils/logger";
+import { generateMongoId } from "@/lib/utils/id";
+import {
+  logActivity,
+  calculateChanges,
+} from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
+import { Countries } from "@/app/api/lib/models/countries";
 
 export async function GET(request: Request) {
+  const context = apiLogger.createContext(
+    request as NextRequest,
+    "/api/locations"
+  );
+  apiLogger.startLogging();
+
   try {
     await connectDB();
-    
+
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
-    
+    const licencee = searchParams.get("licencee");
+    const minimal = searchParams.get("minimal") === "1";
+
     // Build query filter
-    const queryFilter: Record<string, string> = {};
+    const queryFilter: Record<string, unknown> = {};
     if (licencee && licencee !== "all") {
       queryFilter["rel.licencee"] = licencee;
     }
-    
-    // Fetch locations, only include `geoCoords`, `name`, and `_id`, sorted alphabetically by name
-    const locations = await GamingLocations.find(queryFilter)
+
+    // Exclude deleted locations
+    queryFilter.$or = [
+      { deletedAt: null },
+      { deletedAt: { $lt: new Date("2020-01-01") } },
+    ];
+
+    // Fetch locations. If minimal is requested, project minimal fields only.
+    const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
+    const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
 
-    console.log(`🔍 Found ${locations.length} total locations`);
-    
-    const missingGeoCoords: string[] = [];
-    const zeroGeoCoords: string[] = [];
-    const validLocations: any[] = [];
+    // Return minimal or full set based on query
+    const locationsToReturn = minimal ? locations : locations;
 
-    // Process all locations
-    locations.forEach((location) => {
-      if (!location.geoCoords && location._id) {
-        // Case: Missing geoCoords
-        missingGeoCoords.push(`${location._id.toString()} (${location.name})`);
-      } else if (location.geoCoords) {
-        const { latitude, longitude, longtitude } = location.geoCoords;
-        
-        // Use longitude if available, otherwise fallback to longtitude
-        const validLongitude = longitude !== undefined ? longitude : longtitude;
-
-        if ((latitude === 0 || validLongitude === 0) && location._id) {
-          // Case: Zero-valued geoCoords
-          zeroGeoCoords.push(`${location._id.toString()} (${location.name})`);
-        } else {
-          // Case: Valid coordinates
-          validLocations.push(location);
-        }
-      }
-    });
-
-    console.log(`✅ Valid locations with coordinates: ${validLocations.length}`);
-    console.log(`❌ Missing geoCoords: ${missingGeoCoords.length}`);
-    console.log(`⚠️ Zero-valued geoCoords: ${zeroGeoCoords.length}`);
-
-    // TEMPORARILY: Return all locations for debugging
-    // TODO: Change back to validLocations once we have proper coordinates
-    const locationsToReturn = locations; // Changed from validLocations to locations
-
-    // Prepare log directory
-    const logDir = path.join(process.cwd(), "logs");
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-
-    const logFile = path.join(logDir, "missing_geoCoords.log");
-    const logData = [
-      `[${new Date().toISOString()}] - Missing/Invalid GeoCoords Report`,
-      `Missing geoCoords:\n ${
-        missingGeoCoords.length ? missingGeoCoords.join(", \n") : "None"
-      }`,
-      `Zero-valued geoCoords:\n ${
-        zeroGeoCoords.length ? zeroGeoCoords.join(", \n") : "None"
-      }`,
-      "---------------------------------------------\n",
-    ].join("\n");
-
-    // Append log entry
-    fs.appendFileSync(logFile, logData);
-
+    apiLogger.logSuccess(
+      context,
+      `Successfully fetched ${locationsToReturn.length} locations (minimal: ${minimal})`
+    );
     return NextResponse.json({ locations: locationsToReturn }, { status: 200 });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error:", errorMessage);
+    apiLogger.logError(context, "Failed to fetch locations", errorMessage);
     return NextResponse.json({ success: false, message: errorMessage });
   }
 }
@@ -96,9 +71,11 @@ export async function POST(request: Request) {
       address,
       country,
       profitShare,
+      gameDayOffset,
       rel,
       isLocalServer,
       geoCoords,
+      billValidatorOptions,
     } = body;
 
     // Validate required fields
@@ -109,8 +86,56 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create new location
+    // Additional backend validations mirroring frontend
+    if (
+      typeof profitShare === "number" &&
+      (profitShare < 0 || profitShare > 100)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Profit share must be between 0 and 100" },
+        { status: 400 }
+      );
+    }
+    if (
+      typeof gameDayOffset === "number" &&
+      (gameDayOffset < 0 || gameDayOffset > 23)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Day start time (gameDayOffset) must be between 0 and 23",
+        },
+        { status: 400 }
+      );
+    }
+    if (country && typeof country !== "string") {
+      return NextResponse.json(
+        { success: false, message: "Country must be a country ID string" },
+        { status: 400 }
+      );
+    }
+
+    // If a country ID is provided, verify it exists
+    if (typeof country === "string" && country.trim().length > 0) {
+      const countryDoc = await Countries.findById(country).lean();
+      if (!countryDoc) {
+        return NextResponse.json(
+          { success: false, message: "Invalid country ID" },
+          { status: 400 }
+        );
+      }
+    }
+    // Sanitize billValidatorOptions: ensure booleans
+    const sanitizedBv = billValidatorOptions
+      ? Object.fromEntries(
+          Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
+        )
+      : undefined;
+
+    // Create new location with proper MongoDB ObjectId-style hex string
+    const locationId = await generateMongoId();
     const newLocation = new GamingLocations({
+      _id: locationId,
       name,
       country,
       address: {
@@ -121,17 +146,92 @@ export async function POST(request: Request) {
         licencee: rel?.licencee || "",
       },
       profitShare: profitShare || 50,
+      gameDayOffset: gameDayOffset || 8,
       isLocalServer: isLocalServer || false,
       geoCoords: {
         latitude: geoCoords?.latitude || 0,
         longitude: geoCoords?.longitude || 0,
       },
+      billValidatorOptions: sanitizedBv || {
+        denom1: false,
+        denom2: false,
+        denom5: false,
+        denom10: false,
+        denom20: false,
+        denom50: false,
+        denom100: false,
+        denom200: false,
+        denom500: false,
+        denom1000: false,
+        denom2000: false,
+        denom5000: false,
+        denom10000: false,
+      },
       createdAt: new Date(),
       updatedAt: new Date(),
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
 
     // Save the new location
     await newLocation.save();
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "name", oldValue: null, newValue: name },
+          { field: "country", oldValue: null, newValue: country },
+          {
+            field: "address.street",
+            oldValue: null,
+            newValue: address?.street || "",
+          },
+          {
+            field: "address.city",
+            oldValue: null,
+            newValue: address?.city || "",
+          },
+          {
+            field: "rel.licencee",
+            oldValue: null,
+            newValue: rel?.licencee || "",
+          },
+          { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
+          {
+            field: "isLocalServer",
+            oldValue: null,
+            newValue: isLocalServer || false,
+          },
+          {
+            field: "geoCoords.latitude",
+            oldValue: null,
+            newValue: geoCoords?.latitude || 0,
+          },
+          {
+            field: "geoCoords.longitude",
+            oldValue: null,
+            newValue: geoCoords?.longitude || 0,
+          },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "location",
+          { id: locationId, name },
+          createChanges,
+          `Created new location "${name}" in ${country}`,
+          getClientIP(request as NextRequest) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
 
     return NextResponse.json(
       { success: true, location: newLocation },
@@ -154,26 +254,34 @@ export async function PUT(request: Request) {
     const body = await request.json();
 
     const {
-      locationName,
+      locationName, // This should be the location ID
       name,
       address,
       country,
       profitShare,
+      gameDayOffset,
       rel,
       isLocalServer,
       geoCoords,
+      billValidatorOptions,
     } = body;
 
     if (!locationName) {
       return NextResponse.json(
-        { success: false, message: "Location name is required" },
+        { success: false, message: "Location ID is required" },
         { status: 400 }
       );
     }
 
     try {
-      // Find the location by name - use exact match with the locationName
-      const location = await GamingLocations.findOne({ name: locationName });
+      // Find the location by ID (not by name) and ensure it's not deleted
+      const location = await GamingLocations.findOne({
+        _id: locationName,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      });
 
       if (!location) {
         return NextResponse.json(
@@ -183,6 +291,56 @@ export async function PUT(request: Request) {
       }
 
       const locationId = location._id.toString();
+
+      // Backend validations mirroring frontend for provided fields
+      if (name !== undefined && typeof name !== "string") {
+        return NextResponse.json(
+          { success: false, message: "Location name must be a string" },
+          { status: 400 }
+        );
+      }
+      if (country !== undefined && typeof country !== "string") {
+        return NextResponse.json(
+          { success: false, message: "Country must be a country ID string" },
+          { status: 400 }
+        );
+      }
+      if (
+        profitShare !== undefined &&
+        (typeof profitShare !== "number" ||
+          profitShare < 0 ||
+          profitShare > 100)
+      ) {
+        return NextResponse.json(
+          { success: false, message: "Profit share must be between 0 and 100" },
+          { status: 400 }
+        );
+      }
+      if (
+        gameDayOffset !== undefined &&
+        (typeof gameDayOffset !== "number" ||
+          gameDayOffset < 0 ||
+          gameDayOffset > 23)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Day start time (gameDayOffset) must be between 0 and 23",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Verify country exists when updating
+      if (typeof country === "string" && country.trim().length > 0) {
+        const countryDoc = await Countries.findById(country).lean();
+        if (!countryDoc) {
+          return NextResponse.json(
+            { success: false, message: "Invalid country ID" },
+            { status: 400 }
+          );
+        }
+      }
 
       // Create update data object with only the fields that are present in the request
       const updateData: UpdateLocationData = {};
@@ -194,17 +352,20 @@ export async function PUT(request: Request) {
       // Handle nested objects
       if (address) {
         updateData.address = {};
-        if (address.street) updateData.address.street = address.street;
-        if (address.city) updateData.address.city = address.city;
+        if (address.street !== undefined)
+          updateData.address.street = address.street;
+        if (address.city !== undefined) updateData.address.city = address.city;
       }
 
       if (rel) {
         updateData.rel = {};
-        if (rel.licencee) updateData.rel.licencee = rel.licencee;
+        if (rel.licencee !== undefined) updateData.rel.licencee = rel.licencee;
       }
 
       // Handle primitive types with explicit checks to handle zero values
       if (typeof profitShare === "number") updateData.profitShare = profitShare;
+      if (typeof gameDayOffset === "number")
+        updateData.gameDayOffset = gameDayOffset;
       if (typeof isLocalServer === "boolean")
         updateData.isLocalServer = isLocalServer;
 
@@ -217,8 +378,18 @@ export async function PUT(request: Request) {
           updateData.geoCoords.longitude = geoCoords.longitude;
       }
 
+      // Handle billValidatorOptions
+      if (billValidatorOptions) {
+        updateData.billValidatorOptions = Object.fromEntries(
+          Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
+        ) as UpdateLocationData["billValidatorOptions"];
+      }
+
       // Always update the updatedAt timestamp
       updateData.updatedAt = new Date();
+
+      // Get original location data for change tracking
+      const originalLocation = location.toObject();
 
       // Update the location
       const result = await GamingLocations.updateOne(
@@ -231,6 +402,30 @@ export async function PUT(request: Request) {
           { success: false, message: "No changes were made to the location" },
           { status: 400 }
         );
+      }
+
+      // Log activity
+      const currentUser = await getUserFromServer();
+      if (currentUser && currentUser.emailAddress) {
+        try {
+          const changes = calculateChanges(originalLocation, updateData);
+
+          await logActivity(
+            {
+              id: currentUser._id as string,
+              email: currentUser.emailAddress as string,
+              role: (currentUser.roles as string[])?.[0] || "user",
+            },
+            "UPDATE",
+            "location",
+            { id: locationId, name: location.name },
+            changes,
+            `Updated location "${location.name}"`,
+            getClientIP(request as NextRequest) || undefined
+          );
+        } catch (logError) {
+          console.error("Failed to log activity:", logError);
+        }
       }
 
       return NextResponse.json(
@@ -251,7 +446,6 @@ export async function PUT(request: Request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error in PUT /api/locations:", errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -272,18 +466,86 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Get location data before deletion for logging
+    const locationToDelete = await GamingLocations.findById(id);
+    if (!locationToDelete) {
+      return NextResponse.json(
+        { success: false, message: "Location not found" },
+        { status: 404 }
+      );
+    }
+
     // Soft delete by setting deletedAt
-    const deletedLocation = await GamingLocations.findByIdAndUpdate(
+    await GamingLocations.findByIdAndUpdate(
       id,
       { deletedAt: new Date() },
       { new: true }
     );
 
-    if (!deletedLocation) {
-      return NextResponse.json(
-        { success: false, message: "Location not found" },
-        { status: 404 }
-      );
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const deleteChanges = [
+          { field: "name", oldValue: locationToDelete.name, newValue: null },
+          {
+            field: "country",
+            oldValue: locationToDelete.country,
+            newValue: null,
+          },
+          {
+            field: "address.street",
+            oldValue: locationToDelete.address?.street || "",
+            newValue: null,
+          },
+          {
+            field: "address.city",
+            oldValue: locationToDelete.address?.city || "",
+            newValue: null,
+          },
+          {
+            field: "rel.licencee",
+            oldValue: locationToDelete.rel?.licencee || "",
+            newValue: null,
+          },
+          {
+            field: "profitShare",
+            oldValue: locationToDelete.profitShare,
+            newValue: null,
+          },
+          {
+            field: "isLocalServer",
+            oldValue: locationToDelete.isLocalServer,
+            newValue: null,
+          },
+          {
+            field: "geoCoords.latitude",
+            oldValue: locationToDelete.geoCoords?.latitude || 0,
+            newValue: null,
+          },
+          {
+            field: "geoCoords.longitude",
+            oldValue: locationToDelete.geoCoords?.longitude || 0,
+            newValue: null,
+          },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "DELETE",
+          "location",
+          { id, name: locationToDelete.name },
+          deleteChanges,
+          `Deleted location "${locationToDelete.name}"`,
+          getClientIP(request as NextRequest) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
     }
 
     return NextResponse.json(

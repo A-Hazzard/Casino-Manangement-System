@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import {
   LocationResponse,
-  LocationMatchStage,
   MetricsMatchStage,
   MeterMatchStage,
   Metric,
@@ -25,8 +24,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim() || "";
 
     // Build location matching
-    const locationMatch: LocationMatchStage = {
-      deletedAt: { $in: [null, new Date(-1)] },
+    const locationMatch: Record<string, unknown> = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
     };
 
     if (search) {
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Build metrics aggregation
     const matchStage: MeterMatchStage = {
-      createdAt: { $gte: startDate, $lte: endDate },
+      readAt: { $gte: startDate, $lte: endDate },
     };
     if (licencee) {
       matchStage["rel.licencee"] = licencee;
@@ -88,7 +90,10 @@ export async function GET(request: NextRequest) {
               {
                 $match: {
                   $expr: { $eq: ["$gamingLocation", "$$id"] },
-                  deletedAt: { $in: [null, new Date(-1)] },
+                  $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
                 },
               },
               {

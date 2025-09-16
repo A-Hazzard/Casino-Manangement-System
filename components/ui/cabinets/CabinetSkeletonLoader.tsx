@@ -1,6 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export function CabinetCardSkeleton() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return null; // Don't render on server to prevent hydration mismatch
+  }
+
   return (
     <div className="space-y-4 mt-4">
       {[...Array(5)].map((_, i) => (
@@ -36,6 +48,16 @@ export function CabinetCardSkeleton() {
 }
 
 export function CabinetTableSkeleton() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return null; // Don't render on server to prevent hydration mismatch
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="table-fixed w-full border-collapse text-center">
@@ -46,13 +68,10 @@ export function CabinetTableSkeleton() {
               <span>ASSET NUMBER</span>
             </th>
             <th className="p-3 border border-border border-t-0 text-sm">
-              <span>LOCATION</span>
-            </th>
-            <th className="p-3 border border-border border-t-0 text-sm">
               <span>MONEY IN</span>
             </th>
             <th className="p-3 border border-border border-t-0 text-sm">
-              <span>CANCELLED CREDITS</span>
+              <span>MONEY OUT</span>
             </th>
             <th className="p-3 border border-border border-t-0 text-sm">
               <span>JACKPOT</span>
@@ -74,10 +93,6 @@ export function CabinetTableSkeleton() {
                 <div className="h-3 w-1/2 mb-1 skeleton-bg rounded"></div>
                 <div className="h-3 w-1/3 mb-2 skeleton-bg rounded"></div>
                 <div className="h-5 w-20 mt-2 skeleton-bg rounded-full"></div>
-              </td>
-              {/* Location Column */}
-              <td className="p-3 bg-white text-sm border border-gray-200">
-                <div className="h-4 w-5/6 mx-auto skeleton-bg rounded"></div>
               </td>
               {/* Financial Columns */}
               {[...Array(4)].map((_, colIndex) => (

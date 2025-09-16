@@ -13,10 +13,9 @@ export class PerformanceMonitor {
   /**
    * Log the completion of an operation with timing information
    */
-  complete(additionalInfo?: Record<string, any>) {
+  complete(additionalInfo?: Record<string, unknown>) {
     const duration = Date.now() - this.startTime;
-    const info = additionalInfo ? ` | ${JSON.stringify(additionalInfo)}` : '';
-    console.log(`⏱️ ${this.operationName} completed in ${duration}ms${info}`);
+    console.warn(`⏱️ ${this.operationName} completed in ${duration}ms${additionalInfo ? ` | ${JSON.stringify(additionalInfo)}` : ''}`);
     return duration;
   }
 
@@ -28,23 +27,4 @@ export class PerformanceMonitor {
   }
 }
 
-/**
- * Decorator function to monitor API endpoint performance
- */
-export function monitorPerformance(operationName: string) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
-    const method = descriptor.value;
-
-    descriptor.value = async function (...args: any[]) {
-      const monitor = new PerformanceMonitor(operationName);
-      try {
-        const result = await method.apply(this, args);
-        monitor.complete();
-        return result;
-      } catch (error) {
-        monitor.complete({ error: error instanceof Error ? error.message : 'Unknown error' });
-        throw error;
-      }
-    };
-  };
-} 
+ 

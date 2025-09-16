@@ -27,6 +27,17 @@ export async function getUserByEmail(
 }
 
 /**
+ * Finds a user by username (case-insensitive).
+ */
+export async function getUserByUsername(
+  username: string
+): Promise<UserDocumentWithPassword | null> {
+  return UserModel.findOne({
+    username: { $regex: new RegExp(`^${username}$`, "i") },
+  });
+}
+
+/**
  * Formats user data for frontend consumption
  */
 export function formatUsersForResponse(users: UserDocument[]) {
@@ -47,7 +58,15 @@ export function formatUsersForResponse(users: UserDocument[]) {
  * Retrieves all users from database
  */
 export async function getAllUsers() {
-  return await UserModel.find({}, "-password");
+  return await UserModel.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    },
+    "-password"
+  );
 }
 
 /**
@@ -87,6 +106,7 @@ export async function createUser(
 
   const hashedPassword = await hashPassword(password);
   const newUser = await UserModel.create({
+    _id: new (await import("mongoose")).default.Types.ObjectId().toHexString(),
     username,
     emailAddress,
     password: hashedPassword,
@@ -95,6 +115,7 @@ export async function createUser(
     isEnabled,
     profilePicture,
     resourcePermissions,
+    deletedAt: new Date(-1), // SMIB boards require all fields to be present
   });
 
   const currentUser = await getUserFromServer();
@@ -137,8 +158,10 @@ export async function createUser(
     }
   }
 
-  const { password: _unused, ...userWithoutPassword } = newUser.toObject();
-  return userWithoutPassword;
+  const userObject = newUser.toObject();
+  // Password is intentionally excluded from return value for security
+  delete userObject.password;
+  return userObject;
 }
 
 /**
@@ -187,10 +210,17 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user with activity logging
+ * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
-  const deletedUser = await UserModel.findByIdAndDelete(_id);
+  const deletedUser = await UserModel.findByIdAndUpdate(
+    _id,
+    {
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
   if (!deletedUser) {
     throw new Error("User not found");
   }

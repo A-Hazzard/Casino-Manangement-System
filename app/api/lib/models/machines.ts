@@ -1,202 +1,220 @@
 import { model, models, Schema } from "mongoose";
 
-/**
- * Mongoose model for gaming machines, including all schema fields for meters, configuration, and history.
- */
 export const machineSchema = new Schema(
   {
-    _id: String,
+    _id: {
+      type: String,
+      required: true,
+    },
     billValidator: {
-      balance: { type: Number },
-      notes: [
-        {
-          _id: { type: String },
-          denomination: { type: Number },
-          quantity: { type: Number },
-        },
-      ],
+      balance: Number,
+      notes: [{ _id: String, denomination: Number, quantity: Number }],
     },
     config: {
-      enableRte: { type: Boolean },
-      lockMachine: { type: Boolean },
-      lockBvOnLogOut: { type: Boolean },
+      enableRte: Boolean,
+      lockMachine: Boolean,
+      lockBvOnLogOut: Boolean,
     },
-    playableBalance: { type: Number },
-    machineId: { type: String },
-    relayId: { type: String },
-    deletedAt: { type: Date },
-    createdAt: { type: Date },
-    updatedAt: { type: Date },
-    __v: { type: Number },
-    gamingLocation: { type: String },
-    game: { type: String },
-    Custom: {
-      name: { type: String },
+    playableBalance: Number,
+    custom: { name: String },
+    balances: { cashable: Number },
+    curProcess: { name: String, next: String },
+    tasks: {
+      type: new Schema(
+        {
+          pendingHandpay: {
+            name: String,
+            steps: [{ name: String }],
+            currentStepIndex: Number,
+            retryAttempts: Number,
+          },
+        },
+        { _id: false, strict: false }
+      ),
+      default: undefined,
     },
-    lastActivity: { type: Date },
+    origSerialNumber: String,
+    machineId: String,
+    relayId: String,
+    deletedAt: Date,
+    createdAt: Date,
+    updatedAt: Date,
+    __v: Number,
+    gamingLocation: String,
+    game: String,
+    gameType: String, // Added: "slot", "roulette", etc.
+    lastActivity: Date,
+    loggedIn: Boolean, // Added: Whether machine is currently logged in
+    machineMembershipSettings: {
+      // Added: Membership configuration
+      isPointsAllowed: Boolean,
+      isFreePlayAllowed: Boolean,
+      pointsAwardMethod: String,
+      freePlayAmount: Number,
+      freePlayCreditsTimeout: Number,
+    },
+    nonRestricted: Number, // Added: Non-restricted credits
+    restricted: Number, // Added: Restricted credits
+    sasVersion: String, // Added: SAS protocol version
+    uaccount: Number, // Added: User account balance
     sasMeters: {
-      drop: { type: Number },
-      totalCancelledCredits: { type: Number },
-      gamesPlayed: { type: Number },
-      moneyOut: { type: Number },
-      slotDoorOpened: { type: Number },
-      powerReset: { type: Number },
-      totalHandPaidCancelledCredits: { type: Number },
-      coinIn: { type: Number },
-      coinOut: { type: Number },
-      totalWonCredits: { type: Number },
-      jackpot: { type: Number },
-      currentCredits: { type: Number },
-      gamesWon: { type: Number },
+      drop: Number,
+      totalCancelledCredits: Number,
+      gamesPlayed: Number,
+      moneyOut: Number,
+      slotDoorOpened: Number,
+      powerReset: Number,
+      totalHandPaidCancelledCredits: Number,
+      coinIn: Number,
+      coinOut: Number,
+      totalWonCredits: Number,
+      jackpot: Number,
+      currentCredits: Number,
+      gamesWon: Number,
     },
-    operationsWhileIdle: {
-      extendedMeters: { type: Date },
-    },
+    operationsWhileIdle: { extendedMeters: Date },
     gameConfig: {
-      accountingDenomination: { type: Number },
-      additionalId: { type: String },
-      gameOptions: { type: String },
-      maxBet: { type: String },
-      payTableId: { type: String },
-      progressiveGroup: { type: String },
-      theoreticalRtp: { type: Number },
+      accountingDenomination: Number,
+      additionalId: String,
+      gameOptions: String,
+      maxBet: String,
+      payTableId: String,
+      progressiveGroup: String,
+      theoreticalRtp: Number,
     },
-    collectionMeters: {
-      metersIn: { type: Number },
-      metersOut: { type: Number },
-    },
-    collectionTime: { type: Date },
-    previousCollectionTime: { type: Date },
+    collectionMeters: { metersIn: Number, metersOut: Number },
+    collectionTime: Date,
+    previousCollectionTime: Date, // Added: Previous collection timestamp
     collectionMetersHistory: [
       {
-        _id: { type: String },
-        metersIn: { type: Number },
-        metersOut: { type: Number },
-        prevMetersIn: { type: Number },
-        prevMetersOut: { type: Number },
-        timestamp: { type: Date },
-        locationReportId: { type: String },
+        _id: String,
+        metersIn: Number,
+        metersOut: Number,
+        prevMetersIn: Number,
+        prevMetersOut: Number,
+        timestamp: Date,
+        locationReportId: String,
       },
     ],
-    assetStatus: { type: String },
-    cabinetType: { type: String },
-    gamingBoard: { type: String },
-    manuf: { type: String },
-    smibBoard: { type: String },
-    smibVersion: {
-      firmware: { type: String },
-      version: { type: String },
-    },
+    assetStatus: String,
+    cabinetType: String,
+    gamingBoard: String,
+    manuf: String,
+    smibBoard: String,
+    smibVersion: { firmware: String, version: String },
     smibConfig: {
       mqtt: {
-        mqttSecure: { type: Number },
-        mqttQOS: { type: Number },
-        mqttURI: { type: String },
-        mqttSubTopic: { type: String },
-        mqttPubTopic: { type: String },
-        mqttCfgTopic: { type: String },
-        mqttIdleTimeS: { type: Number },
+        mqttSecure: Number,
+        mqttQOS: Number,
+        mqttURI: String,
+        mqttSubTopic: String,
+        mqttPubTopic: String,
+        mqttCfgTopic: String,
+        mqttIdleTimeS: Number,
       },
       net: {
-        netMode: { type: Number },
-        netStaSSID: { type: String },
-        netStaPwd: { type: String },
-        netStaChan: { type: Number },
+        netMode: Number,
+        netStaSSID: String,
+        netStaPwd: String,
+        netStaChan: Number,
       },
       coms: {
-        comsAddr: { type: Number },
-        comsMode: { type: Number },
-        comsRateMs: { type: Number },
-        comsRTE: { type: Number },
-        comsGPC: { type: Number },
+        comsAddr: Number,
+        comsMode: Number,
+        comsRateMs: Number,
+        comsRTE: Number,
+        comsGPC: Number,
+      },
+      ota: {
+        // Added: OTA (Over-The-Air) configuration
+        otaURL: String,
       },
     },
     billMeters: {
-      dollar1: { type: Number },
-      dollar2: { type: Number },
-      dollar5: { type: Number },
-      dollar10: { type: Number },
-      dollar20: { type: Number },
-      dollar50: { type: Number },
-      dollar100: { type: Number },
-      dollar500: { type: Number },
-      dollar1000: { type: Number },
-      dollar2000: { type: Number },
-      dollar5000: { type: Number },
-      dollarTotal: { type: Number },
-      dollarTotalUnknown: { type: Number },
+      dollar1: Number,
+      dollar2: Number,
+      dollar5: Number,
+      dollar10: Number,
+      dollar20: Number,
+      dollar50: Number,
+      dollar100: Number,
+      dollar500: Number,
+      dollar1000: Number,
+      dollar2000: Number,
+      dollar5000: Number,
+      dollarTotal: Number,
+      dollarTotalUnknown: Number,
     },
     orig: {
       meters: {
-        coinIn: { type: String },
-        coinOut: { type: String },
-        drop: { type: String },
-        jackpot: { type: String },
-        gamesPlayed: { type: String },
-        moneyOut: { type: String },
-        slotDoorOpened: { type: String },
-        powerReset: { type: String },
+        coinIn: String,
+        coinOut: String,
+        drop: String,
+        jackpot: String,
+        gamesPlayed: String,
+        moneyOut: String,
+        slotDoorOpened: String,
+        powerReset: String,
       },
-      deletedAt: { type: Number },
+      deletedAt: Number,
     },
-    manufacturer: { type: String },
-    serialNumber: { type: String },
-    gameNumber: { type: String },
-    protocols: [
-      {
-        protocol: { type: String },
-        version: { type: String },
-      },
-    ],
-    numberOfEnabledGames: { type: Number },
-    enabledGameNumbers: [{ type: String }],
-    noOfGames: { type: Number },
+    manufacturer: String,
+    serialNumber: String,
+    gameNumber: String,
+    protocols: [{ protocol: String, version: String }],
+    numberOfEnabledGames: Number,
+    enabledGameNumbers: [String],
+    noOfGames: Number,
     viewingAccountDenomination: [
       {
-        asOf: { type: Date },
-        denomination: { type: Number },
-        meters: [{ type: String }],
-        user: {
-          role: { type: String },
-        },
+        asOf: Date,
+        denomination: Number,
+        meters: [String],
+        user: { role: String },
       },
     ],
-    isSunBoxDevice: { type: Boolean },
+    isSunBoxDevice: Boolean,
     sessionHistory: [
       {
-        gamingLocation: { type: String },
-        date: { type: Date },
-        reason: { type: String },
-        performedBy: { type: String },
-        _id: { type: String },
+        gamingLocation: String,
+        date: Date,
+        reason: String,
+        performedBy: String,
+        _id: String,
       },
     ],
-    currentSession: { type: String },
+    currentSession: String,
     viewingAccountDenominationHistory: [
       {
-        asOf: { type: Date },
-        denomination: { type: Number },
-        meters: [{ type: String }],
-        user: {
-          role: { type: String },
-        },
+        asOf: Date,
+        denomination: Number,
+        meters: [String],
+        user: { role: String },
       },
     ],
-    selectedDenomination: {
-      drop: { type: Number },
-      totalCancelledCredits: { type: Number },
-    },
-    isSasMachine: { type: Boolean },
-    lastBillMeterAt: { type: Date },
-    lastSasMeterAt: { type: Date },
+    selectedDenomination: { drop: Number, totalCancelledCredits: Number },
+    isSasMachine: Boolean,
+    lastBillMeterAt: Date,
+    lastSasMeterAt: Date,
+    machineType: String,
+    machineStatus: String,
+    lastMaintenanceDate: Date,
+    nextMaintenanceDate: Date,
+    maintenanceHistory: [
+      { date: Date, description: String, performedBy: String },
+    ],
+    // --- BEGIN: Added missing fields from provided JSON example ---
+    collectorDenomination: Number,
+    // --- END: Added missing fields from provided JSON example ---
   },
   { timestamps: true }
 );
 
-// Critical indexes for aggregation performance
-machineSchema.index({ gamingLocation: 1, deletedAt: 1 }); // For location-based queries
-machineSchema.index({ deletedAt: 1 }); // For active machines
-machineSchema.index({ lastActivity: 1 }); // For online status queries
-machineSchema.index({ isSasMachine: 1 }); // For SAS machine filtering
+machineSchema.index({ gamingLocation: 1, deletedAt: 1 });
+machineSchema.index({ deletedAt: 1 });
+machineSchema.index({ lastActivity: 1 });
+machineSchema.index({ isSasMachine: 1 });
+machineSchema.index({ serialNumber: 1 });
+machineSchema.index({ lastSasMeterAt: -1 });
 
 export const Machine = models["machines"] ?? model("machines", machineSchema);

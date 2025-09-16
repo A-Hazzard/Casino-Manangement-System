@@ -8,6 +8,7 @@ import "react-day-picker/dist/style.css";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -126,45 +127,63 @@ export function DateTimePicker({
               </div>
             </div>
             <div className="flex items-center justify-center mt-2 space-x-2">
-              <select
-                className="w-16 rounded border border-input p-1 text-sm"
+              <Input
+                type="number"
+                min="1"
+                max="12"
+                className="w-16 text-center text-sm"
                 value={time.hours}
-                onChange={(e) => setTime({ ...time, hours: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (
+                    value === "" ||
+                    (parseInt(value) >= 1 && parseInt(value) <= 12)
+                  ) {
+                    setTime({ ...time, hours: value });
+                  }
+                }}
                 disabled={disabled || !date}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
-                  <option key={hour} value={hour}>
-                    {hour}
-                  </option>
-                ))}
-              </select>
+              />
               <span className="text-sm font-medium">:</span>
-              <select
-                className="w-16 rounded border border-input p-1 text-sm"
+              <Input
+                type="number"
+                min="0"
+                max="59"
+                className="w-16 text-center text-sm"
                 value={time.minutes}
-                onChange={(e) => setTime({ ...time, minutes: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (
+                    value === "" ||
+                    (parseInt(value) >= 0 && parseInt(value) <= 59)
+                  ) {
+                    setTime({ ...time, minutes: value.padStart(2, "0") });
+                  }
+                }}
                 disabled={disabled || !date}
-              >
-                {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
-                  <option
-                    key={minute}
-                    value={minute.toString().padStart(2, "0")}
-                  >
-                    {minute.toString().padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="w-16 rounded border border-input p-1 text-sm"
-                value={time.period}
-                onChange={(e) =>
-                  setTime({ ...time, period: e.target.value as "AM" | "PM" })
-                }
-                disabled={disabled || !date}
-              >
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-              </select>
+              />
+              <div className="flex">
+                <Button
+                  type="button"
+                  variant={time.period === "AM" ? "default" : "outline"}
+                  size="sm"
+                  className="w-12 text-xs rounded-r-none"
+                  onClick={() => setTime({ ...time, period: "AM" })}
+                  disabled={disabled || !date}
+                >
+                  AM
+                </Button>
+                <Button
+                  type="button"
+                  variant={time.period === "PM" ? "default" : "outline"}
+                  size="sm"
+                  className="w-12 text-xs rounded-l-none"
+                  onClick={() => setTime({ ...time, period: "PM" })}
+                  disabled={disabled || !date}
+                >
+                  PM
+                </Button>
+              </div>
             </div>
           </div>
         </div>

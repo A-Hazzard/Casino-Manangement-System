@@ -16,23 +16,26 @@ const CollectorMobileUI: React.FC<CollectorScheduleMobileUIProps> = ({
   collectorSchedules,
   loadingCollectorSchedules,
 }) => {
-  // Mobile container for Collector Schedule, adjust styling as needed for card appearance
   return (
-    <div className="md:hidden w-full absolute left-0 right-0 px-4">
-      <CollectorScheduleFilters
-        selectedLocation={selectedLocation}
-        onLocationChange={onLocationChange}
-        selectedStatus={selectedStatus}
-        onStatusChange={onStatusChange}
-        selectedCollector={selectedCollector}
-        onCollectorChange={onCollectorChange}
-        collectors={collectors}
-        locations={locations}
-        onResetFilters={onResetFilters}
-        loading={loadingCollectorSchedules} // Pass loading state to filters if it has loading indicators
-      />
-      
-      <CollectorScheduleCards data={collectorSchedules} loading={loadingCollectorSchedules} />
+    <div className="md:hidden w-full px-4">
+      <div className="mx-auto max-w-xl bg-white p-4 rounded-lg shadow-md space-y-4">
+        <CollectorScheduleFilters
+          selectedLocation={selectedLocation}
+          onLocationChange={onLocationChange}
+          selectedStatus={selectedStatus}
+          onStatusChange={onStatusChange}
+          selectedCollector={selectedCollector}
+          onCollectorChange={onCollectorChange}
+          collectors={collectors}
+          locations={locations}
+          onResetFilters={onResetFilters}
+          loading={loadingCollectorSchedules}
+        />
+        <CollectorScheduleCards
+          data={collectorSchedules}
+          loading={loadingCollectorSchedules}
+        />
+      </div>
     </div>
   );
 };

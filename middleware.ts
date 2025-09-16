@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
 const publicPaths = ["/login", "/forgot-password"];
 
 // For development purposes, set this to true to bypass authentication
-const BYPASS_AUTH_FOR_DEV = true;
+const BYPASS_AUTH_FOR_DEV = false;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const userIdStr = searchParams.get("userId");
   const timePeriod = searchParams.get("timePeriod");
   if (!userIdStr || !timePeriod) {
-    console.log("Missing userId or timePeriod parameter");
+    // console.log("Missing userId or timePeriod parameter");
     return NextResponse.json(
       { error: "Missing userId or timePeriod parameter" },
       { status: 400 }
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const debugFile = path.join(logDir, "casinoMetricsByUser_debug.json");
     fs.appendFileSync(debugFile, JSON.stringify(debugEntry, null, 2) + "\n");
 
-    console.log("Debug log written successfully");
+    // console.log("Debug log written successfully");
     return NextResponse.json(metricsForLocations, { status: 200 });
   } catch (err) {
     console.error("Error fetching aggregated metrics:", err);
@@ -83,6 +83,6 @@ export async function GET(request: Request) {
     );
   } finally {
     await client.close();
-    console.log("MongoDB connection closed");
+    // console.log("MongoDB connection closed");
   }
 }

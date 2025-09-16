@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MovementRequest } from "@/app/api/lib/models/movementrequests";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { logActivity } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "@/lib/utils/user";
+import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const licensee = searchParams.get("licensee");
 
-    let requests = await MovementRequest.find().sort({ createdAt: -1 }).lean();
+    let requests = await MovementRequest.find({
+      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     // Filter by licensee if provided
     if (licensee && licensee !== "all") {
       // Get locations that match the licensee
       const licenseeLocations = await GamingLocations.find(
-        { "rel.licencee": licensee },
-        { _id: 1 }
+        {
+          "rel.licencee": licensee,
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
+        },
+        { _id: 1, name: 1 }
       ).lean();
 
       const licenseeLocationIds = licenseeLocations.map((loc) =>
-        (loc as any)._id.toString()
+        (loc as { _id: string })._id.toString()
       );
 
       // Filter requests to only include those from/to licensee locations
@@ -30,7 +43,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch all locations for lookup, sorted alphabetically by name
-    const locations = await GamingLocations.find({}, { _id: 1, name: 1 })
+    const locations = await GamingLocations.find(
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("1970-01-01") } },
+        ],
+      },
+      { _id: 1, name: 1 }
+    )
       .sort({ name: 1 })
       .lean();
     const idToName = Object.fromEntries(
@@ -53,12 +74,58 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json();
+    let data;
+    try {
+      data = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Invalid JSON in request body",
+          details: "Request body must be valid JSON",
+        },
+        { status: 400 }
+      );
+    }
     const created = await MovementRequest.create({ ...data });
+
+    // Log activity
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          { field: "cabinetIn", oldValue: null, newValue: data.cabinetIn },
+          { field: "locationFrom", oldValue: null, newValue: data.locationFrom },
+          { field: "locationTo", oldValue: null, newValue: data.locationTo },
+          { field: "reason", oldValue: null, newValue: data.reason || "" },
+          { field: "status", oldValue: null, newValue: data.status || "pending" },
+        ];
+
+        await logActivity(
+          {
+            id: currentUser._id as string,
+            email: currentUser.emailAddress as string,
+            role: (currentUser.roles as string[])?.[0] || "user",
+          },
+          "CREATE",
+          "machine",
+          { id: created._id.toString(), name: `Cabinet ${data.cabinetIn}` },
+          createChanges,
+          `Created movement request for cabinet ${data.cabinetIn} from ${data.locationFrom} to ${data.locationTo}`,
+          getClientIP(req) || undefined
+        );
+      } catch (logError) {
+        console.error("Failed to log activity:", logError);
+      }
+    }
+
     return NextResponse.json(created, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error("Movement request creation error:", error);
     return NextResponse.json(
-      { error: "Failed to create movement request" },
+      {
+        error: "Failed to create movement request",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 400 }
     );
   }

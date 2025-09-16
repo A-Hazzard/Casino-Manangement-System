@@ -68,9 +68,10 @@ export type SmibConfigurationProps = {
   cabinet: Cabinet;
 };
 
+// Props for AccountingDetails component
 export type AccountingDetailsProps = {
   cabinet: Cabinet;
-  metricsLoading: boolean;
+  loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
 };

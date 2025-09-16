@@ -35,39 +35,21 @@ import { useReportsStore } from "@/lib/store/reportsStore";
 import { exportData } from "@/lib/utils/exportUtils";
 
 // Types
-import type { CustomerMetrics } from "@/lib/types/reports";
+import type { CustomerMetrics, CustomerDemographic, LoyaltyTier } from "@/lib/types/reports";
 
-// Sample data - would come from API in real implementation
+// TODO: Replace with MongoDB data fetching
 const sampleCustomerMetrics: CustomerMetrics = {
-  totalCustomers: 15420,
-  activeCustomers: 8765,
-  newCustomers: 324,
-  returningCustomers: 8441,
-  averageSessionTime: 45.6,
-  averageSpend: 127.5,
-  topSpenders: [
-    { customerId: "C001", totalSpend: 15420, visits: 45 },
-    { customerId: "C002", totalSpend: 12350, visits: 32 },
-    { customerId: "C003", totalSpend: 9876, visits: 28 },
-    { customerId: "C004", totalSpend: 8765, visits: 23 },
-    { customerId: "C005", totalSpend: 7654, visits: 19 },
-  ],
+  totalCustomers: 0,
+  activeCustomers: 0,
+  newCustomers: 0,
+  returningCustomers: 0,
+  averageSessionTime: 0,
+  averageSpend: 0,
+  topSpenders: [],
 };
 
-const customerDemographics = [
-  { ageGroup: "18-25", count: 1542, percentage: 10 },
-  { ageGroup: "26-35", count: 4626, percentage: 30 },
-  { ageGroup: "36-45", count: 4626, percentage: 30 },
-  { ageGroup: "46-55", count: 3084, percentage: 20 },
-  { ageGroup: "56+", count: 1542, percentage: 10 },
-];
-
-const loyaltyTiers = [
-  { tier: "Bronze", count: 9252, percentage: 60, color: "bg-orange-500" },
-  { tier: "Silver", count: 3084, percentage: 20, color: "bg-gray-400" },
-  { tier: "Gold", count: 1542, percentage: 10, color: "bg-yellow-500" },
-  { tier: "Platinum", count: 1542, percentage: 10, color: "bg-purple-500" },
-];
+const customerDemographics: CustomerDemographic[] = [];
+const loyaltyTiers: LoyaltyTier[] = [];
 
 export default function CustomersTab() {
   const {
@@ -81,7 +63,7 @@ export default function CustomersTab() {
   const [activeSubTab, setActiveSubTab] = useState("overview");
 
   useEffect(() => {
-    // Load customer metrics when component mounts
+    // TODO: Implement MongoDB data fetching
     setLoading(true);
     setTimeout(() => {
       updateCustomerMetrics(sampleCustomerMetrics);
@@ -143,7 +125,7 @@ export default function CustomersTab() {
         },
       };
 
-      await exportData(exportDataObj, "pdf");
+      await exportData(exportDataObj);
       toast.success("Customer analytics data exported successfully");
     } catch (error) {
       const errorMessage =
@@ -286,7 +268,8 @@ export default function CustomersTab() {
         onValueChange={setActiveSubTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        {/* Desktop Navigation */}
+        <TabsList className="hidden md:grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
           <TabsTrigger
             value="overview"
             className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
@@ -313,6 +296,20 @@ export default function CustomersTab() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Mobile Navigation */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeSubTab}
+            onChange={(e) => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          >
+            <option value="overview">Overview</option>
+            <option value="demographics">Demographics</option>
+            <option value="loyalty">Loyalty Tiers</option>
+            <option value="behavior">Behavior</option>
+          </select>
+        </div>
+
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Spenders */}
@@ -328,29 +325,35 @@ export default function CustomersTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {metrics.topSpenders.map((customer, index) => (
-                    <div
-                      key={customer.customerId}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-buttonActive text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                          {index + 1}
+                  {metrics.topSpenders.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">
+                      No customer data available - MongoDB implementation pending
+                    </p>
+                  ) : (
+                    metrics.topSpenders.map((customer, index) => (
+                      <div
+                        key={customer.customerId}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-buttonActive text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium">{customer.customerId}</p>
+                            <p className="text-sm text-gray-600">
+                              {customer.visits} visits
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{customer.customerId}</p>
-                          <p className="text-sm text-gray-600">
-                            {customer.visits} visits
+                        <div className="text-right">
+                          <p className="font-semibold text-green-600">
+                            ${customer.totalSpend.toLocaleString()}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">
-                          ${customer.totalSpend.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -408,25 +411,33 @@ export default function CustomersTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {customerDemographics.map((demo) => (
-                    <div
-                      key={demo.ageGroup}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 bg-buttonActive rounded" />
-                        <span className="font-medium">{demo.ageGroup}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">
-                          {demo.count.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {demo.percentage}%
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  {customerDemographics.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">
+                      No demographic data available - MongoDB implementation pending
+                    </p>
+                  ) : (
+                    customerDemographics.map((d: CustomerDemographic) => {
+                      return (
+                        <div
+                          key={d.ageGroup}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-4 h-4 bg-buttonActive rounded" />
+                            <span className="font-medium">{d.ageGroup}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">
+                              {d.count.toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {d.percentage}%
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -482,27 +493,37 @@ export default function CustomersTab() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {loyaltyTiers.map((tier) => (
-                  <div
-                    key={tier.tier}
-                    className="text-center p-4 border rounded-lg"
-                  >
-                    <div
-                      className={`w-16 h-16 ${tier.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
-                    >
-                      <span className="text-white font-bold text-lg">
-                        {tier.tier[0]}
-                      </span>
-                    </div>
-                    <h3 className="font-semibold text-lg">{tier.tier}</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {tier.count.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {tier.percentage}% of customers
+                {loyaltyTiers.length === 0 ? (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-500">
+                      No loyalty tier data available - MongoDB implementation pending
                     </p>
                   </div>
-                ))}
+                ) : (
+                  loyaltyTiers.map((t: LoyaltyTier) => {
+                    return (
+                      <div
+                        key={t.tier}
+                        className="text-center p-4 border rounded-lg"
+                      >
+                        <div
+                          className={`w-16 h-16 ${t.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
+                        >
+                          <span className="text-white font-bold text-lg">
+                            {t.tier[0]}
+                          </span>
+                        </div>
+                        <h3 className="font-semibold text-lg">{t.tier}</h3>
+                        <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mt-1 break-words">
+                          {t.count.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {t.percentage}% of customers
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>

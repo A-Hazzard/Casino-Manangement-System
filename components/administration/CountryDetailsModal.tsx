@@ -1,9 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import type { CountryDetailsModalProps } from "@/lib/types/components";
 
 export default function CountryDetailsModal({

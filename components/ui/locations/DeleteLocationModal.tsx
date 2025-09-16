@@ -13,28 +13,40 @@ import { Button } from "@/components/ui/button";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import axios from "axios";
 import { toast } from "sonner";
-import Image from "next/image";
-import deleteIcon from "@/public/deleteIcon.svg";
+
 import type { DeleteLocationModalProps } from "@/lib/types/components";
+import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function DeleteLocationModal({
-  isOpen,
-  onClose,
-  location,
   onDelete,
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
+  const locationLogger = createActivityLogger("location");
+
 
   const handleClose = () => {
+    // Modal closed
     closeDeleteModal();
   };
 
   const handleDelete = async () => {
-    if (!selectedLocation?._id) return;
+    if (!selectedLocation?.location) return;
 
+   
     try {
-      await axios.delete(`/api/locations?id=${selectedLocation._id}`);
+      const locationData = { ...selectedLocation };
+
+      await axios.delete(`/api/locations?id=${selectedLocation.location}`);
+
+      // Log the deletion activity
+      await locationLogger.logDelete(
+        selectedLocation.location,
+        selectedLocation.locationName || "Unknown Location",
+        locationData,
+        `Deleted location: ${selectedLocation.locationName}`
+      );
+
       toast.success("Location deleted successfully");
       onDelete();
       closeDeleteModal();
@@ -50,9 +62,9 @@ export default function DeleteLocationModal({
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription>
-            This will mark the location &quot;{selectedLocation?.name}&quot; as
-            deleted. The location will be hidden from the system but can be
-            restored if needed.
+            This will mark the location &quot;{selectedLocation?.locationName}
+            &quot; as deleted. The location will be hidden from the system but
+            can be restored if needed.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

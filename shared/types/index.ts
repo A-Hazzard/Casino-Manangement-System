@@ -20,7 +20,6 @@ export type { LoginFormProps } from "./auth";
 // Database types
 export type {
   DateRangeFilter,
-  RegexFilter as DbRegexFilter,
   ArrayFilter,
   ExpressionFilter,
   MongoDBQueryValue,
@@ -30,35 +29,29 @@ export type {
   SasMeters,
   MeterData,
   CollectionMetersHistoryEntry,
-  BillValidatorData,
 } from "./database";
 
 // Entity types
 export type {
+  Licensee,
   Location,
   Address,
   RelationshipInfo,
   GeoCoordinates,
   AggregatedLocation,
-  LocationMetrics,
-  TopLocation,
   Machine,
   MachineDocument,
-  Cabinet,
-  SmibConfig,
   User,
-  ResourcePermissions,
-  Licensee,
-  Country,
-  Firmware,
   MovementRequest,
   MovementRequestStatus,
+  LocationMetrics,
+  TopLocation,
 } from "./entities";
 
 // Analytics types
 export type {
   DashboardData,
-  Meter,
+  Meter as AnalyticsMeter,
   Metrics,
   TopPerformingData,
   ActiveFilters,
@@ -72,5 +65,31 @@ export type {
   LocationExportData,
   PerformanceMetrics,
   AnalyticsQuery,
-  ActivityLog,
+  ActivityLog as AnalyticsActivityLog,
 } from "./analytics";
+
+// Export types
+export type { ExportFormat, ExportData, LegacyExportData } from "./export";
+
+// Report types
+export type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+} from "./reports";
+
+// Date format types
+export type { DateFormatOptions, DateInput } from "./dateFormat";
+
+// Bill validator types
+export type {
+  AcceptedBill,
+  NoteInfo,
+  BillValidatorData,
+  BillMetersData,
+  BillValidatorOptions,
+  BillValidatorTimePeriod,
+  BillValidatorFormData,
+  ProcessedBillData,
+  BillValidatorSummary,
+} from "./billValidator";

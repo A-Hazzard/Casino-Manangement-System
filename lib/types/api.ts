@@ -1,6 +1,6 @@
 import type { Document } from "mongoose";
 import type { CollectionReportMachineEntry } from "./collections";
-import type { 
+import type {
   MongooseId,
   MongoMatchStage,
   WithTimestamps,
@@ -111,23 +111,32 @@ export type CollectionReportMachineSummary = {
   _id: MongooseId;
   serialNumber: string;
   name: string;
+  collectionMeters?: {
+    metersIn: number;
+    metersOut: number;
+  };
+  collectionTime?: string | Date;
 };
 
 export type CollectionReportLocationWithMachines = {
   _id: MongooseId;
   name: string;
   machines: CollectionReportMachineSummary[];
+  previousCollectionTime?: string | Date;
+  profitShare?: number;
 };
 
 // Types for Collection Report Page
 export type MachineMetric = {
   id: string;
   machineId: string;
+  actualMachineId?: string;
   dropCancelled: string;
-  meterGross: number;
+  metersGross: number;
   sasGross?: number | string;
   variation?: number | string;
-  sasTimes?: string;
+  sasStartTime?: string;
+  sasEndTime?: string;
   hasIssue?: boolean;
 };
 

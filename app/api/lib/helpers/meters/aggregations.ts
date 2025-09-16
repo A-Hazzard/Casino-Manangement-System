@@ -81,12 +81,10 @@ export function aggregateMetersWithoutLocationSession(
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Grouping by machine, location, day, and time.
+    // Grouping by day and time for hourly data, or day only for daily data
     {
       $group: {
         _id: {
-          machine: "$machine",
-          location: "$location",
           day: "$day",
           time: "$time",
         },
@@ -97,15 +95,16 @@ export function aggregateMetersWithoutLocationSession(
         movementJackpot: { $sum: "$movement.jackpot" },
         movementGamesPlayed: { $sum: "$movement.gamesPlayed" },
         viewingAccountDenomination: { $first: "$viewingAccountDenomination" },
+        // Keep location info for display purposes
+        location: { $first: "$location" },
         geoCoords: { $first: "$locationDetails.geoCoords" },
       },
     },
     {
       $project: {
-        machine: "$_id.machine",
-        location: "$_id.location",
         day: "$_id.day",
-        time: "$_id.time",
+        time: "$_id.time", // Include actual time from grouping
+        location: "$location",
         movementDrop: 1,
         movementJackpot: 1,
         movementTotalCancelledCredits: 1,
@@ -151,17 +150,19 @@ export function aggregateMetersWithoutLocationSession(
   ];
 }
 
+
 /**
- * Creates an aggregation pipeline for grouping metrics by location, day, and time.
+ * Creates a simplified aggregation pipeline that matches the totals API logic.
+ * This groups by day only (not by location and time) to ensure chart data matches totals.
  *
  * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
  * @returns MongoDB aggregation pipeline array.
  */
-function aggregateByLocationsStages(useAccountDenom: boolean): PipelineStage[] {
+function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
   return [
     {
       $group: {
-        _id: { location: "$location", day: "$day", time: "$time" },
+        _id: { day: "$day" },
         totalDrop: { $sum: "$movementDrop" },
         _totalDrop: { $sum: "$_viewingAccountDenomination.movementDrop" },
         totalCancelledCredits: { $sum: "$movementTotalCancelledCredits" },
@@ -169,15 +170,54 @@ function aggregateByLocationsStages(useAccountDenom: boolean): PipelineStage[] {
           $sum: "$_viewingAccountDenomination.movementTotalCancelledCredits",
         },
         _totalJackpot: { $sum: "$_viewingAccountDenomination.movementJackpot" },
-        geoCoords: { $push: "$geoCoords" },
+        // Keep the first location and geoCoords for display purposes
+        location: { $first: "$location" },
+        geoCoords: { $first: "$geoCoords" },
       },
     },
     {
       $project: {
         _id: 0,
-        location: "$_id.location",
+        location: "$location",
         day: "$_id.day",
-        time: "$_id.time",
+        time: "00:00", // Default time for daily aggregation
+        geoCoords: "$geoCoords",
+        ...getMeterFieldProjections(useAccountDenom),
+      },
+    },
+  ];
+}
+
+/**
+ * Creates an aggregation pipeline that groups by day and time for hourly charts.
+ * This is used for single-day custom ranges to show hourly breakdown.
+ *
+ * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
+ * @returns MongoDB aggregation pipeline array.
+ */
+function aggregateByDayAndTimeStages(useAccountDenom: boolean): PipelineStage[] {
+  return [
+    {
+      $group: {
+        _id: { day: "$day", time: "$time" },
+        totalDrop: { $sum: "$movementDrop" },
+        _totalDrop: { $sum: "$_viewingAccountDenomination.movementDrop" },
+        totalCancelledCredits: { $sum: "$movementTotalCancelledCredits" },
+        _totalCancelledCredits: {
+          $sum: "$_viewingAccountDenomination.movementTotalCancelledCredits",
+        },
+        _totalJackpot: { $sum: "$_viewingAccountDenomination.movementJackpot" },
+        // Keep the first location and geoCoords for display purposes
+        location: { $first: "$location" },
+        geoCoords: { $first: "$geoCoords" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        location: "$location",
+        day: "$_id.day",
+        time: "$_id.time", // Include actual time for hourly aggregation
         geoCoords: "$geoCoords",
         ...getMeterFieldProjections(useAccountDenom),
       },
@@ -201,15 +241,15 @@ export async function getMetricsForLocations(
   db: Db,
   timeframe: CustomDate,
   useAccountDenom = false,
-  licencee?: string
+  licencee?: string,
+  timePeriod?: string
 ) {
-  if (!timeframe.startDate || !timeframe.endDate) {
-    throw new Error("Provide Timeframe for Both Start & End Date ⌛");
+  // Handle "All Time" case where timeframe is undefined
+  const filter: QueryFilter = {};
+  
+  if (timeframe.startDate && timeframe.endDate) {
+    filter.readAt = { $gte: timeframe.startDate, $lte: timeframe.endDate };
   }
-
-  const filter: QueryFilter = {
-    readAt: { $gte: timeframe.startDate, $lte: timeframe.endDate },
-  };
 
   const metersStageAggregationQuery =
     aggregateMetersWithoutLocationSession(filter);
@@ -221,8 +261,22 @@ export async function getMetricsForLocations(
     });
   }
 
-  const locationStageAggregationQuery =
-    aggregateByLocationsStages(useAccountDenom);
+  // Determine if we should use hourly or daily aggregation
+  let shouldUseHourlyAggregation = false;
+  
+  if (timePeriod === "Today" || timePeriod === "Yesterday") {
+    shouldUseHourlyAggregation = true;
+  } else if (timePeriod === "Custom" && timeframe.startDate && timeframe.endDate) {
+    // For custom ranges, check if it spans only one day
+    const diffInMs = timeframe.endDate.getTime() - timeframe.startDate.getTime();
+    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+    shouldUseHourlyAggregation = diffInDays <= 1;
+  }
+
+  // Choose the appropriate aggregation pipeline
+  const locationStageAggregationQuery = shouldUseHourlyAggregation
+    ? aggregateByDayAndTimeStages(useAccountDenom)
+    : aggregateByDayOnlyStages(useAccountDenom);
 
   return db
     .collection("meters")

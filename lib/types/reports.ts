@@ -1,8 +1,128 @@
-// Comprehensive types for the Evolution1 Casino Reports Module
+import type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+} from "@shared/types/reports";
+import type { KpiMetric, ChartDataPoint } from "@shared/types/analytics";
+import type { MachinePerformanceRating } from "@shared/types/machines";
 
-export type ReportStep = "selectType" | "configure" | "view";
+// Re-export shared types for convenience
+export type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+  KpiMetric,
+  ChartDataPoint,
+  MachinePerformanceRating,
+};
 
-// Location types
+// Machine evaluation data type (subset of MachineData with evaluation-specific properties)
+export type MachineEvaluationData = {
+  locationName: string;
+  machineId: string;
+  machineName: string;
+  gameTitle: string;
+  manufacturer: string;
+  locationId: string;
+  serialNumber: string;
+  coinIn: number;
+  drop: number;
+  netWin: number;
+  gross: number;
+  avgBet: number;
+  actualHold: number;
+  theoreticalHold: number;
+  holdDifference: number;
+  performanceRating: string;
+  gamesPlayed: number;
+};
+
+// Manufacturer aggregation data for evaluation charts
+export type ManufacturerAggregationData = {
+  name: string;
+  machines: number;
+  totalGross: number;
+  totalGamesPlayed: number;
+  avgHold: number;
+  holdValues: number[];
+};
+
+// Frontend-specific report types
+export type ReportFilters = {
+  timePeriod: string;
+  selectedLicencee?: string;
+  customDateRange?: {
+    start: Date;
+    end: Date;
+  };
+  page?: number;
+  limit?: number;
+};
+
+export type ReportExportOptions = {
+  format: "pdf" | "csv" | "excel";
+  includeSummary?: boolean;
+  includeMetadata?: boolean;
+};
+
+// Report configuration type
+export type ReportConfig = {
+  title: string;
+  reportType:
+    | "locationPerformance"
+    | "machineRevenue"
+    | "fullFinancials"
+    | "customerActivity";
+  category: "operational" | "financial" | "analytical" | "compliance";
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  timeGranularity: "hourly" | "daily" | "weekly" | "monthly";
+  fields: string[];
+  filters: {
+    locationIds?: string[];
+    manufacturers?: string[];
+    [key: string]: unknown;
+  };
+  chartType: "bar" | "line" | "table" | "pie";
+  exportFormat: "pdf" | "csv" | "excel";
+  includeCharts: boolean;
+  includeSummary: boolean;
+};
+
+// Report data type
+export type ReportData = {
+  config: ReportConfig;
+  summary: {
+    totalRecords: number;
+    dateGenerated: string;
+    keyMetrics: Array<{
+      label: string;
+      value: number;
+    }>;
+  };
+  tableData: Reportable[];
+  chartData: Array<{
+    label: string;
+    value: number;
+  }>;
+  metadata: {
+    generatedBy: string;
+    generatedAt: string;
+    executionTime: number;
+    dataSourceLastUpdated: string;
+    reportVersion: string;
+    totalDataPoints: number;
+  };
+};
+
+// Reportable row type for dynamic field mapping
+export type Reportable = {
+  [key: string]: string | number | boolean | null | undefined;
+};
+
+// Legacy types that are still being used
 export type CasinoLocation = {
   id: string;
   name: string;
@@ -22,7 +142,6 @@ export type CasinoLocation = {
   };
 };
 
-// Gaming machine types
 export type GamingMachine = {
   id: string;
   gameTitle: string;
@@ -49,7 +168,6 @@ export type GamingMachine = {
   gamesWon: number;
 };
 
-// Logistics types
 export type LogisticsEntry = {
   id: string;
   machineId: string;
@@ -65,7 +183,6 @@ export type LogisticsEntry = {
   notes?: string;
 };
 
-// Extended report types based on casino management requirements
 export type ReportType =
   | "locationPerformance"
   | "machineRevenue"
@@ -81,189 +198,43 @@ export type DateRange = {
   end: Date;
 };
 
-export type ReportCategory =
-  | "financial"
-  | "operational"
-  | "compliance"
-  | "analytics"
-  | "audit";
-
-export type ReportFieldCategory =
-  | "Location"
-  | "Machine"
-  | "Financial"
-  | "Time"
-  | "Customer"
-  | "Voucher"
-  | "Compliance";
-
-export type ReportField = {
-  id: string;
-  label: string;
-  category: ReportFieldCategory;
-  required?: boolean;
-  dataType: "number" | "string" | "date" | "percentage" | "currency";
+// Machine Analytics type for API responses
+export type MachineAnalytics = {
+  _id: string;
+  name: string;
+  locationName: string;
+  totalDrop: number;
+  gross: number;
+  isOnline: boolean;
+  hasSas: boolean;
 };
 
-export type ChartType =
-  | "bar"
-  | "line"
-  | "pie"
-  | "table"
-  | "heatmap"
-  | "gauge"
-  | "area";
-
-export type TimeGranularity =
-  | "hourly"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  | "quarterly"
-  | "yearly";
-
-export type ReportConfig = {
-  title: string;
-  reportType: ReportType;
-  category: ReportCategory;
-  dateRange: {
-    start: Date;
-    end: Date;
-  };
-  timeGranularity: TimeGranularity;
-  filters: {
-    locationIds?: string[];
-    machineIds?: string[];
-    manufacturers?: string[];
-    gameTypes?: string[];
-    customerTiers?: string[];
-    minAmount?: number;
-    maxAmount?: number;
-    complianceStatus?: string[];
-  };
-  fields: string[]; // Array of ReportField ids
-  chartType: ChartType;
-  exportFormat: "pdf" | "csv" | "excel" | "json";
-  includeCharts: boolean;
-  includeSummary: boolean;
-  scheduleOptions?: {
-    frequency: "daily" | "weekly" | "monthly";
-    recipients: string[];
-    enabled: boolean;
-  };
-};
-
-export type ReportData = {
-  config: ReportConfig;
-  summary: ReportSummary;
-  tableData: Reportable[];
-  chartData: ChartDataPoint[];
-  metadata: ReportMetadata;
-};
-
-export type ReportSummary = {
-  totalRecords: number;
-  dateGenerated: string;
-  keyMetrics: Array<{
-    label: string;
-    value: string | number;
-    change?: number;
-    trend?: "up" | "down" | "stable";
-    icon?: string;
+// Daily counts report type
+export type DailyCountsReport = {
+  locationId: string;
+  locationName: string;
+  date: string;
+  meterReadings: Array<{
+    machineId: string;
+    machineName: string;
+    openingReading: number;
+    closingReading: number;
+    netRevenue: number;
+    variance: number;
   }>;
-  alerts?: Array<{
-    type: "warning" | "error" | "info";
-    message: string;
-    severity: "low" | "medium" | "high";
-  }>;
-};
-
-export type ReportMetadata = {
-  generatedBy: string;
-  generatedAt: string;
-  executionTime: number;
-  dataSourceLastUpdated: string;
-  reportVersion: string;
-  totalDataPoints: number;
-};
-
-export type ChartDataPoint = {
-  date?: string;
-  label: string;
-  value: number;
-  category?: string;
-  color?: string;
-  metadata?: Record<string, unknown>;
-};
-
-export type Reportable = Record<string, string | number | boolean>;
-
-// Dashboard-specific types
-export type KpiMetric = {
-  title: string;
-  value: number;
-  previousValue?: number;
-  format: "currency" | "percentage" | "number";
-  change?: number;
-  trend?: "up" | "down" | "stable" | "neutral";
-  icon?: string;
-};
-
-export type DashboardWidget = {
-  id: string;
-  title: string;
-  type: "kpi" | "chart" | "table" | "map" | "gauge";
-  size: "small" | "medium" | "large";
-  data: unknown;
-  refreshInterval?: number;
-  lastUpdated: string;
-};
-
-export type DashboardLayout = {
-  widgets: DashboardWidget[];
-  layout: Array<{
-    widgetId: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-};
-
-// Customer activity tracking types
-export type CustomerMetrics = {
-  totalCustomers: number;
-  activeCustomers: number;
-  newCustomers: number;
-  returningCustomers: number;
-  averageSessionTime: number;
-  averageSpend: number;
-  topSpenders: Array<{
-    customerId: string;
-    totalSpend: number;
-    visits: number;
-  }>;
-};
-
-// Voucher tracking types
-export type VoucherMetrics = {
-  totalVouchersIssued: number;
-  totalVouchersRedeemed: number;
-  totalVoucherValue: number;
-  redemptionRate: number;
-  averageVoucherValue: number;
-  expiredVouchers: number;
-  fraudulentVouchers: number;
-  vouchersByLocation: Array<{
-    locationId: string;
-    locationName: string;
+  voucherData: {
     issued: number;
     redeemed: number;
-    value: number;
-  }>;
+    outstanding: number;
+  };
+  physicalCounts: {
+    expectedCash: number;
+    actualCash: number;
+    variance: number;
+  };
 };
 
-// Machine movement tracking types
+// Machine movement record type
 export type MachineMovementRecord = {
   id: string;
   machineId: string;
@@ -277,36 +248,34 @@ export type MachineMovementRecord = {
   status: "pending" | "in-progress" | "completed" | "cancelled";
   notes?: string;
   movedBy: string;
-  approvedBy?: string;
   cost?: number;
-  downtime?: number; // in hours
-  performanceImpact?: {
-    beforeRevenue: number;
-    afterRevenue: number;
-    improvementPercentage: number;
-  };
   createdAt: string;
   updatedAt: string;
 };
 
-// Performance comparison types
-export type PerformanceComparison = {
-  type: "location" | "machine" | "timeperiod";
-  items: Array<{
-    id: string;
-    name: string;
-    metrics: Record<string, number>;
-    rank: number;
-    percentileRank: number;
-    trend: "improving" | "declining" | "stable";
-  }>;
-  benchmarks: {
-    industry: Record<string, number>;
-    internal: Record<string, number>;
-  };
+// Report view types
+export type ReportView = "dashboard" | "locations" | "machines" | "meters";
+
+export type ReportTab = {
+  id: ReportView;
+  label: string;
+  icon: string;
+  description: string;
+  requiredRoles?: string[];
+  requiredPermissions?: string[];
 };
 
-// Compliance and audit types
+// Report field types for report builder
+export type ReportFieldCategory = "Location" | "Machine" | "Financial" | "Time";
+
+export type ReportField = {
+  id: string;
+  label: string;
+  dataType: "string" | "number" | "date" | "currency" | "percentage";
+  category: ReportFieldCategory;
+};
+
+// Compliance metrics type
 export type ComplianceMetrics = {
   totalChecks: number;
   passedChecks: number;
@@ -324,83 +293,22 @@ export type ComplianceMetrics = {
   }>;
 };
 
-// Export formats and options
-export type ExportOptions = {
-  format: "pdf" | "csv" | "excel" | "json" | "xml";
-  includeCharts: boolean;
-  includeSummary: boolean;
-  includeRawData: boolean;
-  compression?: "none" | "zip" | "gzip";
-  password?: string;
-  watermark?: string;
-};
-
-// Report scheduling types
-export type ScheduledReport = {
-  id: string;
-  name: string;
-  config: ReportConfig;
-  schedule: {
-    frequency: "daily" | "weekly" | "monthly" | "quarterly";
-    time: string; // HH:MM format
-    timezone: string;
-    dayOfWeek?: number; // 0-6 for weekly
-    dayOfMonth?: number; // 1-31 for monthly
-    enabled: boolean;
-  };
-  recipients: Array<{
-    email: string;
-    role: string;
-    deliveryMethod: "email" | "portal" | "both";
-  }>;
-  lastRun?: string;
-  nextRun: string;
-  status: "active" | "paused" | "error";
-  errorMessage?: string;
-  createdBy: string;
-  createdAt: string;
-};
-
-// Report template types
-export type ReportTemplate = {
-  id: string;
-  name: string;
-  description: string;
-  category: ReportCategory;
-  config: Partial<ReportConfig>;
-  isPublic: boolean;
-  createdBy: string;
-  createdAt: string;
-  usageCount: number;
-  rating: number;
-  tags: string[];
-};
-
-// Advanced analytics types
-export type PredictiveAnalytics = {
-  forecast: Array<{
-    date: string;
-    predicted: number;
-    confidence: number;
-    upperBound: number;
-    lowerBound: number;
-  }>;
-  trends: Array<{
-    metric: string;
-    direction: "increasing" | "decreasing" | "stable";
-    strength: number; // 0-1
-    significance: number; // 0-1
-  }>;
-  anomalies: Array<{
-    date: string;
-    metric: string;
-    expected: number;
-    actual: number;
-    severity: "low" | "medium" | "high";
+// Customer metrics type
+export type CustomerMetrics = {
+  totalCustomers: number;
+  activeCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  averageSessionTime: number;
+  averageSpend: number;
+  topSpenders: Array<{
+    customerId: string;
+    totalSpend: number;
+    visits: number;
   }>;
 };
 
-// Real-time monitoring types
+// Real-time metrics type
 export type RealTimeMetrics = {
   currentPlayers: number;
   activeTerminals: number;
@@ -411,195 +319,167 @@ export type RealTimeMetrics = {
     name: string;
     revenue: number;
   };
+  lastUpdated: string;
   alerts: Array<{
-    type: "performance" | "technical" | "security" | "compliance";
+    type: string;
     message: string;
     timestamp: string;
-    severity: "low" | "medium" | "high" | "critical";
+    severity: string;
     acknowledged: boolean;
   }>;
-  lastUpdated: string;
 };
 
-// Report view types
-export type ReportView = "dashboard" | "locations" | "machines" | "meters";
-
-export type ReportTab = {
-  id: ReportView;
-  label: string;
-  icon: string;
-  description: string;
-  requiredRoles?: string[];
-  requiredPermissions?: string[];
-};
-
-// Filter types for advanced filtering
-export type AdvancedFilter = {
-  field: string;
-  operator:
-    | "equals"
-    | "not_equals"
-    | "greater_than"
-    | "less_than"
-    | "contains"
-    | "between"
-    | "in"
-    | "not_in";
-  value: unknown;
-  logicalOperator?: "AND" | "OR";
-};
-
-export type FilterGroup = {
-  filters: AdvancedFilter[];
-  logicalOperator: "AND" | "OR";
-};
-
-// Data source types
-export type DataSource = {
-  id: string;
-  name: string;
-  type: "database" | "api" | "file" | "external";
-  connection: {
-    host?: string;
-    database?: string;
-    table?: string;
-    apiEndpoint?: string;
-    filePath?: string;
-  };
-  lastSync: string;
-  status: "connected" | "disconnected" | "error";
-  recordCount: number;
-};
-
-// Report generation status
-export type ReportGenerationStatus = {
-  id: string;
-  status: "queued" | "processing" | "completed" | "failed";
-  progress: number; // 0-100
-  startTime: string;
-  endTime?: string;
-  error?: string;
-  downloadUrl?: string;
-  expiresAt?: string;
-};
-
-// User preferences for reports
-export type UserReportPreferences = {
-  defaultTimeRange: {
-    start: string;
-    end: string;
-  };
-  defaultLocations: string[];
-  favoriteReports: string[];
-  dashboardLayout: DashboardLayout;
-  notifications: {
-    emailReports: boolean;
-    alertThresholds: Record<string, number>;
-    frequency: "immediate" | "daily" | "weekly";
-  };
-  exportPreferences: ExportOptions;
-};
-
-// Export utility types
-export type ExportTableData = (string | number)[][];
-
-export type ExportSummaryItem = {
-  label: string;
-  value: string | number;
-};
-
-export type ExportMetadata = {
-  generatedBy: string;
-  generatedAt: string;
-  dateRange?: string;
-};
-
-export type ExportDataStructure = {
-  title: string;
-  subtitle?: string;
-  headers: string[];
-  data: ExportTableData;
-  summary?: ExportSummaryItem[];
-  metadata?: ExportMetadata;
-};
-
-export type MachineExportData = {
-  id: string;
-  gameTitle: string;
-  manufacturer: string;
-  locationName: string;
-  totalHandle: number;
-  totalWin: number;
-  actualHold: number;
-  gamesPlayed: number;
-  isActive: boolean;
-};
-
-export type LocationExportData = {
-  id: string;
-  name: string;
-  region: string;
-  totalHandle: number;
-  totalWin: number;
-  actualHold: number;
-  gamesPlayed: number;
-  isActive: boolean;
-};
-
-// Machine Analytics type for API responses
-export type MachineAnalytics = {
-  _id: string;
-  name: string;
-  locationName: string;
-  totalDrop: number;
-  gross: number;
-  isOnline: boolean;
-  hasSas: boolean;
-};
-
-// New report data types for FRD requirements
-export type DailyCountsReport = {
-  locationId: string;
-  locationName: string;
-  date: string;
-  meterReadings: {
-    machineId: string;
-    machineName: string;
-    openingReading: number;
-    closingReading: number;
-    netRevenue: number;
-    variance: number;
-  }[];
-  voucherData: {
+// Voucher metrics type
+export type VoucherMetrics = {
+  totalVouchersIssued: number;
+  totalVouchersRedeemed: number;
+  totalVoucherValue: number;
+  redemptionRate: number;
+  averageVoucherValue: number;
+  expiredVouchers: number;
+  fraudulentVouchers: number;
+  vouchersByLocation: Array<{
+    locationId: string;
+    locationName: string;
     issued: number;
     redeemed: number;
-    outstanding: number;
+    value: number;
+  }>;
+};
+
+// Dashboard widget type
+export type DashboardWidget = {
+  id: string;
+  type: "kpi" | "chart" | "table" | "metric";
+  title: string;
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   };
-  physicalCounts: {
-    expectedCash: number;
-    actualCash: number;
-    variance: number;
+  config?: Record<string, unknown>;
+  data?: unknown;
+  isVisible: boolean;
+  refreshInterval?: number;
+};
+
+// User report preferences type
+export type UserReportPreferences = {
+  defaultDateRange: {
+    start: Date;
+    end: Date;
+  };
+  defaultTimePeriod: "Today" | "last7days" | "last30days" | "Custom";
+  defaultLocations: string[];
+  defaultMachines: string[];
+  dashboardLayout: DashboardWidget[];
+  refreshInterval: number | null;
+  autoRefresh: boolean;
+  exportFormat: "pdf" | "csv" | "excel";
+  includeCharts: boolean;
+  includeSummary: boolean;
+  theme: "light" | "dark" | "auto";
+  language: string;
+  timezone: string;
+  notifications: {
+    email: boolean;
+    sms: boolean;
+    inApp: boolean;
   };
 };
 
+// Report generation status type
+export type ReportGenerationStatus = {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  progress: number;
+  message: string;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+  downloadUrl?: string;
+};
+
+// Performance comparison type
+export type PerformanceComparison = {
+  id: string;
+  name: string;
+  description: string;
+  baseline: {
+    timePeriod: string;
+    data: Record<string, number>;
+  };
+  comparison: {
+    timePeriod: string;
+    data: Record<string, number>;
+  };
+  metrics: string[];
+  createdAt: string;
+  createdBy: string;
+};
+
+// Report step type for wizard flow
+export type ReportStep =
+  | "selectType"
+  | "configure"
+  | "generate"
+  | "complete"
+  | "view";
+
+// Active customers report type
 export type ActiveCustomersReport = {
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
   totalRegistered: number;
   activeToday: number;
   activeThisWeek: number;
   activeThisMonth: number;
-  locationBreakdown: {
+  locationBreakdown: Array<{
     locationId: string;
     locationName: string;
     activeCustomers: number;
     signInRecords: number;
-  }[];
-  trends: {
-    date: string;
-    activeCustomers: number;
-  }[];
+  }>;
+  data: Array<{
+    customerId: string;
+    customerName: string;
+    locationName: string;
+    machineId: string;
+    gameTitle: string;
+    totalPlayTime: number;
+    totalWagered: number;
+    totalWon: number;
+    netWin: number;
+    lastActivity: Date;
+    visitCount: number;
+    averageSessionLength: number;
+  }>;
+  summary: {
+    totalActiveCustomers: number;
+    averagePlayTime: number;
+    totalWagered: number;
+    totalWon: number;
+    averageSessionLength: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
+// Location stats report type
 export type LocationStatsReport = {
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
   locationId: string;
   locationName: string;
   machineCount: number;
@@ -609,23 +489,48 @@ export type LocationStatsReport = {
   dailyPayouts: number;
   netRevenue: number;
   uptime: number;
-  performance: "excellent" | "good" | "average" | "poor";
+  performance: string;
+  data: Array<{
+    locationId: string;
+    locationName: string;
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+    totalRevenue: number;
+    totalPayout: number;
+    grossProfit: number;
+    netWin: number;
+    totalGamesPlayed: number;
+    averageHoldPercentage: number;
+    totalJackpot: number;
+    averageSessionLength: number;
+    uniquePlayers: number;
+    totalVisits: number;
+    lastActivity: Date;
+  }>;
+  summary: {
+    totalLocations: number;
+    totalMachines: number;
+    totalRevenue: number;
+    totalPayout: number;
+    totalGrossProfit: number;
+    averageHoldPercentage: number;
+    totalGamesPlayed: number;
+    totalUniquePlayers: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
-export type BarConcessionReport = {
-  locationId: string;
-  locationName: string;
-  date: string;
-  revenue: number;
-  transactions: number;
-  averageTicket: number;
-  trends: {
-    period: string;
-    revenue: number;
-  }[];
-};
-
+// Machine performance report type
 export type MachinePerformanceReport = {
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
   machineId: string;
   machineName: string;
   locationName: string;
@@ -638,56 +543,306 @@ export type MachinePerformanceReport = {
   payoutRatio: number;
   manufacturer: string;
   gameType: string;
+  data: Array<{
+    machineId: string;
+    machineName: string;
+    serialNumber: string;
+    locationName: string;
+    gameTitle: string;
+    manufacturer: string;
+    machineType: string;
+    totalRevenue: number;
+    totalPayout: number;
+    netWin: number;
+    grossProfit: number;
+    totalGamesPlayed: number;
+    averageWagerPerGame: number;
+    actualHoldPercentage: number;
+    theoreticalHoldPercentage: number;
+    totalJackpot: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    isOnline: boolean;
+    isSasEnabled: boolean;
+    lastActivity: Date;
+    uptimePercentage: number;
+    averageSessionLength: number;
+  }>;
+  summary: {
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+    totalRevenue: number;
+    totalPayout: number;
+    totalNetWin: number;
+    totalGrossProfit: number;
+    totalGamesPlayed: number;
+    averageHoldPercentage: number;
+    totalJackpot: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
+// Cash balances report type
 export type CashBalancesReport = {
-  locationId: string;
-  locationName: string;
-  date: string;
-  openingBalance: number;
-  closingBalance: number;
-  cashOnHand: number;
-  collectionEntries: number;
-  reconciliationStatus: "balanced" | "variance" | "pending";
-  variance: number;
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  data: Array<{
+    machineId: string;
+    machineName: string;
+    locationName: string;
+    currentCashBalance: number;
+    previousCashBalance: number;
+    cashIn: number;
+    cashOut: number;
+    netCashFlow: number;
+    dropAmount: number;
+    jackpotAmount: number;
+    cancelledCredits: number;
+    lastCollectionDate: Date;
+    lastCollectionAmount: number;
+    collectionFrequency: string;
+    isOverdue: boolean;
+    overdueAmount: number;
+    notes: string;
+  }>;
+  summary: {
+    totalMachines: number;
+    totalCurrentBalance: number;
+    totalPreviousBalance: number;
+    totalCashIn: number;
+    totalCashOut: number;
+    totalNetCashFlow: number;
+    totalDropAmount: number;
+    totalJackpotAmount: number;
+    totalCancelledCredits: number;
+    overdueCollections: number;
+    totalOverdueAmount: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
-export type DailySnapshotReport = {
-  date: string;
-  locationId: string;
-  locationName: string;
-  startingCash: number;
-  endingCash: number;
-  cashFlow: number;
-  collections: number;
-  payouts: number;
-  netChange: number;
-};
-
+// Financial performance report type
 export type FinancialPerformanceReport = {
-  machineId: string;
-  machineName: string;
-  gameType: string;
-  gameName: string;
-  revenue: number;
-  netPerformance: number;
-  payoutRatio: number;
-  holdPercentage: number;
-  earningsPerGame: number;
-  totalPlays: number;
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  data: Array<{
+    locationId: string;
+    locationName: string;
+    totalRevenue: number;
+    totalPayout: number;
+    grossProfit: number;
+    netWin: number;
+    totalGamesPlayed: number;
+    averageWagerPerGame: number;
+    actualHoldPercentage: number;
+    theoreticalHoldPercentage: number;
+    totalJackpot: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalVisits: number;
+    uniquePlayers: number;
+    averageSessionLength: number;
+    revenuePerMachine: number;
+    profitPerMachine: number;
+    gamesPerMachine: number;
+    lastActivity: Date;
+  }>;
+  summary: {
+    totalLocations: number;
+    totalRevenue: number;
+    totalPayout: number;
+    totalGrossProfit: number;
+    totalNetWin: number;
+    totalGamesPlayed: number;
+    averageHoldPercentage: number;
+    totalJackpot: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalVisits: number;
+    totalUniquePlayers: number;
+    averageRevenuePerLocation: number;
+    averageProfitPerLocation: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
+// Terminal counts report type
 export type TerminalCountsReport = {
+  id: string;
+  title: string;
+  description: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
   manufacturer: string;
   gameType: string;
   totalTerminals: number;
   onlineTerminals: number;
   offlineTerminals: number;
-  locations: {
+  locations: Array<{
     locationId: string;
     locationName: string;
     count: number;
-  }[];
+  }>;
+  data: Array<{
+    locationId: string;
+    locationName: string;
+    totalTerminals: number;
+    onlineTerminals: number;
+    offlineTerminals: number;
+    activeTerminals: number;
+    inactiveTerminals: number;
+    terminalsInUse: number;
+    availableTerminals: number;
+    maintenanceTerminals: number;
+    lastActivity: Date;
+    uptimePercentage: number;
+    averageSessionLength: number;
+    totalSessions: number;
+    uniqueUsers: number;
+  }>;
+  summary: {
+    totalLocations: number;
+    totalTerminals: number;
+    totalOnlineTerminals: number;
+    totalOfflineTerminals: number;
+    totalActiveTerminals: number;
+    totalInactiveTerminals: number;
+    totalTerminalsInUse: number;
+    totalAvailableTerminals: number;
+    totalMaintenanceTerminals: number;
+    averageUptimePercentage: number;
+    totalSessions: number;
+    totalUniqueUsers: number;
+  };
+  generatedAt: Date;
+  generatedBy: string;
 };
 
-// Comparison Reports Types
+// Scheduled Report types
+export type ScheduledReport = {
+  id: string;
+  name: string;
+  config: ReportConfig;
+  schedule: {
+    frequency: "daily" | "weekly" | "monthly";
+    time: string;
+    timezone: string;
+    dayOfWeek?: number; // 0-6 for weekly schedules
+    dayOfMonth?: number; // 1-31 for monthly schedules
+    enabled: boolean;
+  };
+  recipients: Array<{
+    email: string;
+    role: string;
+    deliveryMethod: "email" | "sms" | "webhook";
+  }>;
+  lastRun: string;
+  nextRun: string;
+  status: "active" | "paused" | "error";
+  createdBy: string;
+  createdAt: string;
+};
+
+export type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+};
+
+export type MachineExportData = {
+  machineId: string;
+  machineName: string;
+  gameTitle: string;
+  locationName: string;
+  manufacturer: string;
+  netWin: number;
+  drop: number;
+  totalCancelledCredits: number;
+  gamesPlayed: number;
+  theoreticalHold?: number;
+  isOnline: boolean;
+  isSasEnabled: boolean;
+};
+
+export type LocationExportData = {
+  location: string;
+  locationName: string;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
+  nonSasMachines: number;
+  hasSasMachines: boolean;
+  hasNonSasMachines: boolean;
+  isLocalServer: boolean;
+};
+
+export type TopLocationData = {
+  locationId: string;
+  locationName: string;
+};
+
+// Customer demographics and loyalty tier types for reports
+export type CustomerDemographic = {
+  ageGroup: string;
+  percentage: number;
+  count: number;
+};
+
+export type LoyaltyTier = {
+  tier: string;
+  customers: number;
+  percentage: number;
+  count: number;
+  color: string;
+};
+
+// Compliance category and audit types for reports
+export type ComplianceCategory = {
+  category: string;
+  score: number;
+  checksPassed: number;
+  totalChecks: number;
+  pendingChecks: number;
+  status: string;
+};
+
+export type RecentAudit = {
+  id: string;
+  date: string;
+  type: string;
+  status: string;
+  findings: number;
+  severity: "low" | "medium" | "high";
+  auditor: string;
+};
+
+// Machine and location types for movement modal
+export type MachineForMovement = {
+  id: string;
+  name: string;
+  location: string;
+  status: string;
+};
+
+export type LocationForMovement = {
+  id: string;
+  name: string;
+};
