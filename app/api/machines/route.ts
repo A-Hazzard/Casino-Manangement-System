@@ -55,9 +55,6 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
   return value.toLowerCase();
 }
 
-import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
-import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: NextRequest) {
   try {
@@ -459,8 +456,6 @@ export async function POST(request: NextRequest) {
       gamingBoard: "",
 
       manuf: data.manufacturer || "",
-
-      manuf: "",
       smibBoard: data.smibBoard,
       smibVersion: { firmware: "", version: "" },
       smibConfig: {
@@ -524,8 +519,6 @@ export async function POST(request: NextRequest) {
       collectionMetersHistory: [],
 
       manufacturer: data.manufacturer || "",
-
-      manufacturer: "",
       gameNumber: "",
       protocols: [],
       numberOfEnabledGames: 0,
@@ -689,13 +682,6 @@ export async function PUT(request: NextRequest) {
     });
 
     // If serial number was updated, also update it in Collections
-
-    if (
-      data.serialNumber !== undefined &&
-      data.serialNumber !== "" &&
-      data.serialNumber !== originalMachine.serialNumber
-    ) {
-
     if (data.serialNumber !== undefined && data.serialNumber !== "" && data.serialNumber !== originalMachine.serialNumber) {
       try {
         await Collections.updateMany(
@@ -707,26 +693,12 @@ export async function PUT(request: NextRequest) {
           `Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`
         );
       } catch (collectionsError) {
-        console.error(
-          "Failed to update serial number in Collections:",
-          collectionsError
-        );
-
-        console.warn(`Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`);
-      } catch (collectionsError) {
         console.error("Failed to update serial number in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
       }
     }
 
     // If game name was updated, also update it in Collections
-
-    if (
-      data.game !== undefined &&
-      data.game !== "" &&
-      data.game !== originalMachine.game
-    ) {
-
     if (data.game !== undefined && data.game !== "" && data.game !== originalMachine.game) {
       try {
         await Collections.updateMany(
@@ -737,13 +709,6 @@ export async function PUT(request: NextRequest) {
         console.warn(
           `Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`
         );
-      } catch (collectionsError) {
-        console.error(
-          "Failed to update machine name in Collections:",
-          collectionsError
-        );
-
-        console.warn(`Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`);
       } catch (collectionsError) {
         console.error("Failed to update machine name in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
@@ -766,11 +731,6 @@ export async function PUT(request: NextRequest) {
           "machine",
           { id, name: originalMachine.serialNumber || originalMachine.game },
           changes,
-
-          `Updated machine "${
-            originalMachine.serialNumber || originalMachine.game
-          }"`,
-
           `Updated machine "${originalMachine.serialNumber || originalMachine.game}"`,
           getClientIP(request) || undefined
         );
@@ -885,10 +845,6 @@ export async function DELETE(request: NextRequest) {
           "machine",
           { id, name: machineToDelete.serialNumber || machineToDelete.game },
           deleteChanges,
-
-          `Deleted machine "${
-            machineToDelete.serialNumber || machineToDelete.game
-          }"`,
 
           `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game}"`,
           getClientIP(request) || undefined

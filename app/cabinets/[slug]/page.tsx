@@ -792,23 +792,6 @@ export default function CabinetDetailPage() {
                         </TooltipContent>
                       </Tooltip>
 
-                      <select
-                        className="w-60 border border-border rounded p-2 mr-2"
-                        value={communicationMode}
-                        onChange={(e) => setCommunicationMode(e.target.value)}
-                      >
-                        <option value="sas">sas</option>
-                        <option value="non sas">non sas</option>
-                        <option value="IGT">IGT</option>
-                      </select>
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Button className="bg-buttonActive hover:bg-buttonActive/90 text-container">
-                          UPDATE
-                        </Button>
-                      </motion.div>
                     </div>
                   </motion.div>
 
@@ -874,31 +857,6 @@ export default function CabinetDetailPage() {
                         </TooltipContent>
                       </Tooltip>
 
-                      <select
-                        className="w-full border border-border rounded p-2 mr-2"
-                        value={firmwareVersion}
-                        onChange={(e) => setFirmwareVersion(e.target.value)}
-                      >
-                        <option value="Cloudy v1.0">Cloudy v1.0</option>
-                        <option value="Cloudy v1.0.4">Cloudy v1.0.4</option>
-                        <option value="Cloudy v1.0.4.1">Cloudy v1.0.4.1</option>
-                      </select>
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Button className="ml-auto bg-muted hover:bg-accent text-foreground border border-border">
-                          ⟳
-                        </Button>
-                      </motion.div>
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Button className="ml-2 bg-buttonActive hover:bg-buttonActive/90 text-container">
-                          UPDATE
-                        </Button>
-                      </motion.div>
                     </div>
                   </motion.div>
 
@@ -966,39 +924,6 @@ export default function CabinetDetailPage() {
                       </TooltipContent>
                     </Tooltip>
 
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button
-                        variant="outline"
-                        className="border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent w-full md:w-auto"
-                      >
-                        RESTART
-                      </Button>
-                    </motion.div>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button
-                        variant="outline"
-                        className="border-orangeHighlight text-orangeHighlight hover:bg-accent w-full md:w-auto"
-                      >
-                        UNLOCK MACHINE
-                      </Button>
-                    </motion.div>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button
-                        variant="outline"
-                        className="border-destructive text-destructive hover:bg-accent w-full md:w-auto"
-                      >
-                        LOCK MACHINE
-                      </Button>
-                    </motion.div>
                   </motion.div>
 
                   {/* Apply to all checkbox */}
@@ -1022,8 +947,6 @@ export default function CabinetDetailPage() {
                         <p>Under maintenance</p>
                       </TooltipContent>
                     </Tooltip>
-                    <label htmlFor="applyToAll" className="text-sm text-gray-500">
-
                     <input type="checkbox" id="applyToAll" className="mr-2" />
                     <label htmlFor="applyToAll" className="text-sm">
                       Apply to all SMIBs at this location (

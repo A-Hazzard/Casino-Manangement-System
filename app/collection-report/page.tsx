@@ -10,6 +10,8 @@ import React, {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
+import { toast } from "sonner";
 
 import PageLayout from "@/components/layout/PageLayout";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -63,6 +65,7 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
 import EditCollectionModalV2 from "@/components/collectionReport/EditCollectionModalV2";
 import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 
 import type { CollectorSchedule } from "@/lib/types/components";
 
@@ -182,6 +185,10 @@ function CollectionReportContent() {
   // Edit Collection Modal state
   const [showEditCollectionModal, setShowEditCollectionModal] = useState(false);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
+
+  // Delete Confirmation state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<string | null>(null);
 
   // Filter state for collection reports
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
@@ -664,6 +671,36 @@ function CollectionReportContent() {
     setShowEditCollectionModal(true);
   };
 
+  // Handle delete collection report
+  const handleDeleteCollectionReport = (reportId: string) => {
+    setReportToDelete(reportId);
+    setShowDeleteConfirmation(true);
+  };
+
+  // Confirm delete collection report
+  const confirmDeleteCollectionReport = async () => {
+    if (!reportToDelete) return;
+
+    try {
+      // Delete the collection report and all associated collections
+      const response = await axios.delete(`/api/collection-report/${reportToDelete}`);
+      
+      if (response.data.success) {
+        toast.success("Collection report deleted successfully!");
+        // Refresh the reports list
+        refreshCollectionReports();
+      } else {
+        toast.error("Failed to delete collection report");
+      }
+    } catch (error) {
+      console.error("Error deleting collection report:", error);
+      toast.error("Failed to delete collection report. Please try again.");
+    } finally {
+      setShowDeleteConfirmation(false);
+      setReportToDelete(null);
+    }
+  };
+
   // Handle close edit modal
   const handleCloseEditModal = useCallback(() => {
     setShowEditCollectionModal(false);
@@ -695,11 +732,6 @@ function CollectionReportContent() {
         showToaster={false}
       >
 
-        {/* Title Row - Responsive */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 w-full max-w-full gap-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">
-
         {/* Title Row */}
         <div className="flex items-center justify-between mt-4 w-full max-w-full">
           <div className="flex items-center gap-3">
@@ -711,9 +743,6 @@ function CollectionReportContent() {
               alt="Collection Report Icon"
               width={32}
               height={32}
-
-              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8"
-
               className="w-6 h-6 sm:w-8 sm:h-8"
             />
           </div>
@@ -722,12 +751,6 @@ function CollectionReportContent() {
           {activeTab === "collection" && (
             <button
               onClick={() => setShowNewCollectionModal(true)}
-
-              className="bg-buttonActive text-white px-3 py-2 sm:px-4 sm:py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-xs sm:text-sm font-medium w-full sm:w-auto"
-            >
-              <svg
-                className="w-3 h-3 sm:w-4 sm:h-4"
-
               className="bg-buttonActive text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <svg
@@ -743,10 +766,6 @@ function CollectionReportContent() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-
-              <span className="hidden xs:inline">Create Collection Report</span>
-              <span className="xs:hidden">Create Report</span>
-
               Create Collection Report
             </button>
           )}
@@ -834,6 +853,7 @@ function CollectionReportContent() {
                     onClearFilters={handleClearFilters}
                     isSearching={isSearching}
                     onEdit={handleEditCollectionReport}
+                    onDelete={handleDeleteCollectionReport}
                   />
                   {/* Mobile */}
                   <CollectionMobileUI
@@ -862,6 +882,7 @@ function CollectionReportContent() {
                     onClearFilters={handleClearFilters}
                     isSearching={isSearching}
                     onEdit={handleEditCollectionReport}
+                    onDelete={handleDeleteCollectionReport}
                   />
                 </div>
               )}
@@ -993,6 +1014,21 @@ function CollectionReportContent() {
           />
         </ErrorBoundary>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
+          setShowDeleteConfirmation(false);
+          setReportToDelete(null);
+        }}
+        onConfirm={confirmDeleteCollectionReport}
+        title="Confirm Delete"
+        message="Are you sure you want to delete this collection report? This will also delete all associated collections, remove them from machine history, and revert collection meters to their previous values. This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        isLoading={false}
+      />
     </>
   );
 }

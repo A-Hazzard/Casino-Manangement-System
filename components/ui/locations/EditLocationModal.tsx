@@ -196,7 +196,17 @@ export default function EditLocationModal({
     setCountriesLoading(true);
     try {
       const countriesData = await fetchCountries();
-      setCountries(countriesData);
+      
+      // Remove duplicates based on country name using Map for better performance
+      const uniqueCountriesMap = new Map();
+      countriesData.forEach(country => {
+        if (!uniqueCountriesMap.has(country.name)) {
+          uniqueCountriesMap.set(country.name, country);
+        }
+      });
+      const uniqueCountries = Array.from(uniqueCountriesMap.values());
+      
+      setCountries(uniqueCountries as unknown as Country[]);
     } catch (error) {
       console.error("Failed to fetch countries:", error);
       toast.error("Failed to load countries");
@@ -217,22 +227,13 @@ export default function EditLocationModal({
 
         street: "", // Will be loaded from locationDetails
         city: "", // Will be loaded from locationDetails
-        country: "", // Will be loaded from locationDetails
+        country: "Guyana", // Default since AggregatedLocation doesn't have this
         profitShare: "50", // Will be loaded from locationDetails
         licencee: "", // Will be loaded from locationDetails
         isLocalServer: selectedLocation.isLocalServer || false,
         latitude: "8.909985", // Will be loaded from locationDetails
         longitude: "-58.186204", // Will be loaded from locationDetails
         dayStartTime: "08:00", // Will be loaded from locationDetails
-
-        street: "", // AggregatedLocation doesn't have address details
-        city: "", // AggregatedLocation doesn't have address details
-        country: "Guyana", // Default since AggregatedLocation doesn't have this
-        profitShare: "50", // Default since AggregatedLocation doesn't have this
-        licencee: "", // AggregatedLocation doesn't have this
-        isLocalServer: selectedLocation.isLocalServer || false,
-        latitude: "8.909985", // Default since AggregatedLocation doesn't have coordinates
-        longitude: "-58.186204", // Default since AggregatedLocation doesn't have coordinates
         billValidatorOptions: {
           denom1: false,
           denom2: false,
@@ -258,11 +259,6 @@ export default function EditLocationModal({
     if (isEditModalOpen) {
       loadLicensees();
       loadCountries();
-
-  // Load licensees when modal opens
-  useEffect(() => {
-    if (isEditModalOpen) {
-      loadLicensees();
     }
   }, [isEditModalOpen]);
 
@@ -321,10 +317,6 @@ export default function EditLocationModal({
       const gameDayOffset = locationDetails.gameDayOffset || 8; // Default to 8 AM
       const dayStartTime = `${gameDayOffset.toString().padStart(2, "0")}:00`;
 
-
-  // Update form data when location details are fetched
-  useEffect(() => {
-    if (locationDetails) {
       setFormData((prev) => ({
         ...prev,
         name: locationDetails.name || prev.name,
@@ -339,9 +331,7 @@ export default function EditLocationModal({
           locationDetails.geoCoords?.latitude?.toString() || prev.latitude,
         longitude:
           locationDetails.geoCoords?.longitude?.toString() || prev.longitude,
-
         dayStartTime: dayStartTime,
-
         billValidatorOptions:
           locationDetails.billValidatorOptions || prev.billValidatorOptions,
       }));
@@ -652,38 +642,51 @@ export default function EditLocationModal({
                   />
                 </div>
 
-                {/* Country */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-grayHighlight mb-2">
-                    Country
-                  </label>
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={(e) =>
-                      handleSelectChange("country", e.target.value)
-                    }
-                    className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
-                  >
-                    <option value="">Select Country</option>
-
-                    {countriesLoading ? (
-                      <option value="" disabled>
-                        Loading countries...
-                      </option>
-                    ) : (
-                      countries.map((country) => (
-                        <option key={country._id} value={country._id}>
-                          {country.name}
+                {/* Country and Profit Share - Mobile: Stacked, Desktop: Side by side */}
+                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Country */}
+                  <div>
+                    <label className="block text-sm font-medium text-grayHighlight mb-2">
+                      Country
+                    </label>
+                    <select
+                      name="country"
+                      value={formData.country}
+                      onChange={(e) =>
+                        handleSelectChange("country", e.target.value)
+                      }
+                      className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
+                    >
+                      <option value="">Select Country</option>
+                      {countriesLoading ? (
+                        <option value="" disabled>
+                          Loading countries...
                         </option>
-                      ))
-                    )}
+                      ) : (
+                        countries.map((country) => (
+                          <option key={country._id} value={country._id}>
+                            {country.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
 
-                    <option value="Guyana">Guyana</option>
-                    <option value="Trinidad and Tobago">
-                      Trinidad and Tobago
-                    </option>
-                  </select>
+                  {/* Profit Share */}
+                  <div>
+                    <label className="block text-sm font-medium text-grayHighlight mb-2">
+                      Profit Share (%)
+                    </label>
+                    <div className="relative">
+                      <Input
+                        name="profitShare"
+                        value={formData.profitShare}
+                        onChange={handleInputChange}
+                        className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base pr-12"
+                      />
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">%</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Licensee */}
@@ -715,105 +718,64 @@ export default function EditLocationModal({
                   </select>
                 </div>
 
-                {/* Profit Share and Day Start Time - Mobile: Stacked, Desktop: Side by side */}
-                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <div className="bg-button text-primary-foreground rounded-l-md py-3 px-4 min-w-[100px]">
-                      <span className="text-sm font-medium">Profit Share</span>
-                    </div>
-                    <div className="flex-1 flex items-center bg-container rounded-r-md border border-border border-l-0">
-                      <Input
-                        name="profitShare"
-                        value={formData.profitShare}
-                        onChange={handleInputChange}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0 border-l-none border-none h-12 text-base"
-                      />
-                      <span className="pr-4 text-base">%</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <div className="bg-button text-primary-foreground rounded-l-md py-3 px-4 min-w-[100px]">
-                      <span className="text-sm font-medium">
-                        Day Start Time
-                      </span>
-                    </div>
-
-                    <select
-                      name="dayStartTime"
-                      value={formData.dayStartTime}
-                      onChange={(e) =>
-                        handleSelectChange("dayStartTime", e.target.value)
-                      }
-                      className="flex-1 h-12 rounded-r-md border border-border border-l-0 bg-container text-base px-3 focus:ring-buttonActive focus:border-buttonActive"
-                    >
-                      {timeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Day Start Time */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-grayHighlight mb-2">
+                    Day Start Time
+                  </label>
+                  <select
+                    name="dayStartTime"
+                    value={formData.dayStartTime}
+                    onChange={(e) =>
+                      handleSelectChange("dayStartTime", e.target.value)
+                    }
+                    className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
+                  >
+                    {timeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* No SMIB Location and Map Toggle */}
-                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* No SMIB Location Checkbox */}
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Checkbox
-                      id="noSMIBLocation"
-                      checked={formData.isLocalServer}
-                      onCheckedChange={(checked) =>
-                        handleCheckboxChange("isLocalServer", checked === true)
-                      }
-
-                    <Input
-                      name="dayStartTime"
-                      value="Curr. day, 08:00"
-                      readOnly
-                      className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 bg-container rounded-r-md border border-border border-l-0 h-12 text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* No SMIB Location and Map Toggle */}
-                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Checkbox
-                      id="noSMIBLocation"
+                      id="isLocalServer"
                       checked={formData.isLocalServer}
                       onCheckedChange={(checked) =>
                         handleCheckboxChange("isLocalServer", checked === true)
                       }
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
-                    <Label
-                      htmlFor="noSMIBLocation"
-                      className="text-sm font-medium"
-                    >
+
+                    <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
                       No SMIB Location
                     </Label>
                   </div>
 
+                  {/* Map Toggle */}
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Checkbox
                       id="useMap"
                       checked={useMap}
-
                       onCheckedChange={(checked) => {
                         setUseMap(checked === true);
                         if (checked === true) {
                           getCurrentLocation();
                         }
                       }}
-
-                      onCheckedChange={(checked) => setUseMap(checked === true)}
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
-                    <Label htmlFor="useMap" className="text-sm font-medium">
+                    <Label htmlFor="useMap" className="text-sm font-medium flex-1">
                       Use Map to Select Location
                     </Label>
                   </div>
                 </div>
+
 
                 {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}
                 <div className="mb-4">

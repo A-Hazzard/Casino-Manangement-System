@@ -14,9 +14,6 @@ import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import { Countries } from "@/app/api/lib/models/countries";
 
-import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
-import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -134,12 +131,6 @@ export async function POST(request: Request) {
         );
       }
     }
-    // Sanitize billValidatorOptions: ensure booleans
-    const sanitizedBv = billValidatorOptions
-      ? Object.fromEntries(
-          Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
-        )
-      : undefined;
 
 
     // Create new location with proper MongoDB ObjectId-style hex string
@@ -162,17 +153,6 @@ export async function POST(request: Request) {
         latitude: geoCoords?.latitude || 0,
         longitude: geoCoords?.longitude || 0,
       },
-
-      billValidatorOptions: sanitizedBv || {
-        denom1: false,
-        denom2: false,
-        denom5: false,
-        denom10: false,
-        denom20: false,
-        denom50: false,
-        denom100: false,
-        denom200: false,
-        denom500: false,
 
       billValidatorOptions: billValidatorOptions || {
         denom1: true,

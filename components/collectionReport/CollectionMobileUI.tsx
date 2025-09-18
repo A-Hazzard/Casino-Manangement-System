@@ -27,6 +27,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onClearFilters,
   isSearching,
   onEdit,
+  onDelete,
 }) => {
   return (
     <div className="lg:hidden w-full bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
@@ -74,6 +75,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
                 data={mobileCurrentItems}
                 gridLayout={false}
                 onEdit={onEdit}
+                onDelete={onDelete}
               />
             </div>
 
@@ -83,6 +85,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
                 data={mobileCurrentItems}
                 gridLayout={true}
                 onEdit={onEdit}
+                onDelete={onDelete}
               />
             </div>
 

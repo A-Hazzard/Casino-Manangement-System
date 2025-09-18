@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
-import { CustomSelect } from "@/components/ui/custom-select";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
@@ -72,12 +71,6 @@ export default function LocationPage() {
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
 
-  const { selectedLicencee, setSelectedLicencee, activeMetricsFilter, customDateRange } =
-    useDashBoardStore();
-
-  // State for tracking date filter initialization
-  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
-
   // Detect when date filter is properly initialized
   useEffect(() => {
     if (activeMetricsFilter && !dateFilterInitialized) {
@@ -121,12 +114,6 @@ export default function LocationPage() {
 
   // Calculate machine status from cabinet data
   const machineStats = {
-
-    onlineMachines: allCabinets.filter((cabinet) => cabinet.online === true)
-      .length,
-    offlineMachines: allCabinets.filter((cabinet) => cabinet.online === false)
-      .length,
-
     onlineMachines: allCabinets.filter(cabinet => cabinet.online === true).length,
     offlineMachines: allCabinets.filter(cabinet => cabinet.online === false).length,
   };
@@ -239,8 +226,6 @@ export default function LocationPage() {
             activeMetricsFilter === "Custom" && customDateRange
               ? { from: customDateRange.startDate, to: customDateRange.endDate }
               : undefined // Only pass customDateRange when filter is "Custom"
-
-            activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
           );
           console.warn(
             `✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`
@@ -268,8 +253,6 @@ export default function LocationPage() {
     dateFilterInitialized,
     router,
   ]);
-
-  }, [locationId, selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, router]);
 
   // Effect to re-run filtering and sorting when dependencies change
   useEffect(() => {
@@ -369,8 +352,6 @@ export default function LocationPage() {
           activeMetricsFilter === "Custom" && customDateRange
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined // Only pass customDateRange when filter is "Custom"
-
-          activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined // Only pass customDateRange when filter is "Custom"
         );
         setAllCabinets(cabinetsData);
         setError(null); // Clear any previous errors on successful refresh
@@ -391,8 +372,6 @@ export default function LocationPage() {
     dateFilterInitialized,
     locationId,
   ]);
-
-  }, [selectedLicencee, activeMetricsFilter, customDateRange, dateFilterInitialized, locationId]);
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (newLocationId: string) => {
@@ -655,18 +634,6 @@ export default function LocationPage() {
           {/* Mobile: Location Dropdown */}
           <div className="relative w-full" ref={locationDropdownRef}>
 
-            <CustomSelect
-              value={selectedLocation || locationId || ""}
-              onValueChange={handleLocationChangeInPlace}
-              options={locations.map((loc) => ({
-                value: loc.id,
-                label: loc.name,
-              }))}
-              placeholder={locationName || "Select Location"}
-              disabled={loading || cabinetsLoading || refreshing}
-              className="w-full"
-              triggerClassName={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
-
             <Button
               variant="outline"
               className={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
@@ -674,11 +641,6 @@ export default function LocationPage() {
                   ? "opacity-50 cursor-not-allowed"
                   : ""
               }`}
-
-              searchable={true}
-              emptyMessage="No locations found"
-            />
-
               disabled={loading || cabinetsLoading || refreshing}
               onClick={() =>
                 !(loading || cabinetsLoading || refreshing) &&
@@ -970,10 +932,6 @@ export default function LocationPage() {
           currentLocationName={locationName}
           onCreated={handleRefresh}
         />
-      </PageLayout>
-
-
-        <NewCabinetModal onCreated={handleRefresh} />
       </PageLayout>
       
       {/* Cabinet Action Modals */}

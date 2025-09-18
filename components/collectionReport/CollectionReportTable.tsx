@@ -11,16 +11,18 @@ import {
 import { Button } from "@/components/ui/button";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
-import { Edit3 } from "lucide-react";
+import { Edit3, Trash2 } from "lucide-react";
 
 type ExtendedCollectionReportTableProps = {
   data: CollectionReportRow[];
   onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
 };
 
 export default function CollectionReportTable({
   data,
   onEdit,
+  onDelete,
 }: ExtendedCollectionReportTableProps) {
   const router = useRouter();
   return (
@@ -78,17 +80,30 @@ export default function CollectionReportTable({
                       height={16}
                     />
                   </Button>
-                  {onEdit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
-                      onClick={() => onEdit(row?.locationReportId || '')}
-                      aria-label="Edit Report"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex gap-1">
+                    {onEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
+                        onClick={() => onEdit(row?.locationReportId || '')}
+                        aria-label="Edit Report"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                        onClick={() => onDelete(row?.locationReportId || '')}
+                        aria-label="Delete Report"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </TableCell>
             </TableRow>

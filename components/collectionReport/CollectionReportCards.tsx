@@ -1,18 +1,20 @@
 import React from "react";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
-import { Edit3 } from "lucide-react";
+import { Edit3, Trash2 } from "lucide-react";
 
 type ExtendedCollectionReportCardsProps = {
   data: CollectionReportRow[];
   gridLayout?: boolean; // New prop to control grid vs single column layout
   onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
 };
 
 export default function CollectionReportCards({
   data,
   gridLayout = false,
   onEdit,
+  onDelete,
 }: ExtendedCollectionReportCardsProps) {
   const router = useRouter();
   return (
@@ -108,16 +110,28 @@ export default function CollectionReportCards({
                 >
                   VIEW DETAILS
                 </button>
-                {onEdit && (
-                  <button
-                    className="border border-blue-600 text-blue-600 px-4 py-2 rounded-md text-sm font-bold tracking-wider bg-transparent transition-all duration-200 hover:bg-blue-600 hover:text-white flex items-center gap-1"
-                    onClick={() => onEdit(row?.locationReportId || '')}
-                    aria-label="Edit Report"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    EDIT
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {onEdit && (
+                    <button
+                      className="border border-blue-600 text-blue-600 px-4 py-2 rounded-md text-sm font-bold tracking-wider bg-transparent transition-all duration-200 hover:bg-blue-600 hover:text-white flex items-center gap-1"
+                      onClick={() => onEdit(row?.locationReportId || '')}
+                      aria-label="Edit Report"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      EDIT
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      className="border border-red-600 text-red-600 px-4 py-2 rounded-md text-sm font-bold tracking-wider bg-transparent transition-all duration-200 hover:bg-red-600 hover:text-white flex items-center gap-1"
+                      onClick={() => onDelete(row?.locationReportId || '')}
+                      aria-label="Delete Report"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      DELETE
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

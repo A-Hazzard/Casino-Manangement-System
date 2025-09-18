@@ -436,11 +436,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     { startTime: string; endTime: string } | undefined
   >();
 
-  const [activityLogDateRange, setActivityLogDateRange] = useState<{ from: Date; to: Date } | undefined>();
-  const [activityLogTimePeriod, setActivityLogTimePeriod] = useState<TimePeriod>("7d");
-  const [billValidatorDateRange, setBillValidatorDateRange] = useState<{ from: Date; to: Date } | undefined>();
-  const [billValidatorTimePeriod, setBillValidatorTimePeriod] = useState<TimePeriod>("7d");
-  const [billValidatorTimeRange, setBillValidatorTimeRange] = useState<{ startTime: string; endTime: string } | undefined>();
 
 
   // Convert billMeters data to bills array format
@@ -454,22 +449,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     }> = [];
 
 
-    const denominationMap: Array<{ key: keyof BillMetersData; value: number }> =
-      [
-        { key: "dollar1", value: 1 },
-        { key: "dollar2", value: 2 },
-        { key: "dollar5", value: 5 },
-        { key: "dollar10", value: 10 },
-        { key: "dollar20", value: 20 },
-        { key: "dollar50", value: 50 },
-        { key: "dollar100", value: 100 },
-        { key: "dollar500", value: 500 },
-        { key: "dollar1000", value: 1000 },
-        { key: "dollar2000", value: 2000 },
-        { key: "dollar5000", value: 5000 },
-      ];
-
-    
     const denominationMap: Array<{ key: keyof BillMetersData; value: number }> = [
       { key: 'dollar1', value: 1 },
       { key: 'dollar2', value: 2 },
@@ -490,11 +469,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
         bills.push({
           denomination: value,
           quantity: quantity,
-
-          timestamp: machine?.lastActivity
-            ? new Date(machine.lastActivity).toISOString()
-            : new Date().toISOString(),
-
           timestamp: machine?.lastActivity ? new Date(machine.lastActivity).toISOString() : new Date().toISOString(),
           location: cabinet?.locationName || "Unknown",
           machineId: cabinet?._id || "Unknown",
@@ -521,11 +495,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     "Converted bills data:",
     machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []
   );
-
-  console.warn("Activity Log Filters:", { activityLogDateRange, activityLogTimePeriod });
-  console.warn("Bill Validator Filters:", { billValidatorDateRange, billValidatorTimePeriod, billValidatorTimeRange });
-  console.warn("Machine billMeters data:", machine?.billMeters);
-  console.warn("Converted bills data:", machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []);
 
   useEffect(() => {
     async function loadData() {
@@ -611,17 +580,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 // Add time period parameter for predefined periods
                 params.append("timePeriod", activityLogTimePeriod);
               }
-
-
-              
-              // Add date range parameters if custom date range is selected
-              if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
-                params.append("startDate", activityLogDateRange.from.toISOString());
-                params.append("endDate", activityLogDateRange.to.toISOString());
-              } else if (activityLogTimePeriod && activityLogTimePeriod !== "All Time") {
-                // Add time period parameter for predefined periods
-                params.append("timePeriod", activityLogTimePeriod);
-              }
               
               const eventsRes = await axios.get(
                 `/api/machines/by-id/events?${params.toString()}`
@@ -658,8 +616,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     activityLogTimePeriod,
     activityLogDateRange,
   ]); // Depend on cabinet, activeMetricsTabContent, and filter states
-
-  }, [cabinet, activeMetricsTabContent, activityLogTimePeriod, activityLogDateRange]); // Depend on cabinet, activeMetricsTabContent, and filter states
 
   return (
     <motion.div
@@ -1077,13 +1033,14 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                             console.warn("Collecting bills:", formData);
                             // TODO: Implement bill collection logic
                           }}
+                        />
 
                         {/* Bill Validator Table with Filters */}
                         <BillValidatorTableWithFilters
                           bills={machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []}
-                          onDateRangeChange={setBillValidatorDateRange}
+                          onDateRangeChange={_setBillValidatorDateRange}
                           onTimePeriodChange={setBillValidatorTimePeriod}
-                          onTimeRangeChange={setBillValidatorTimeRange}
+                          onTimeRangeChange={_setBillValidatorTimeRange}
                           dateRange={billValidatorDateRange}
                           timePeriod={billValidatorTimePeriod}
                           timeRange={billValidatorTimeRange}

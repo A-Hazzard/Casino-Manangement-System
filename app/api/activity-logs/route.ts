@@ -21,12 +21,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-
-    // Pagination parameters
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const skip = (page - 1) * limit;
-
     // Filter parameters
     const userId = searchParams.get("userId");
     const username = searchParams.get("username");
@@ -44,25 +38,6 @@ export async function GET(request: NextRequest) {
 
     // Build query filter
     const filter: Record<string, unknown> = {};
-
-    // Filter parameters
-    const userId = searchParams.get("userId");
-    const username = searchParams.get("username");
-    const email = searchParams.get("email");
-    const action = searchParams.get("action");
-    const resource = searchParams.get("resource");
-    const resourceId = searchParams.get("resourceId");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const search = searchParams.get("search");
-
-    // Sort parameters
-    const sortBy = searchParams.get("sortBy") || "timestamp";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
-
-    // Build query filter
-    const filter: Record<string, unknown> = {};
-    
 
     if (userId) {
       filter.userId = userId;
@@ -116,7 +91,6 @@ export async function GET(request: NextRequest) {
     const sort: Record<string, 1 | -1> = {};
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-
     console.warn(
       "Activity logs query filter:",
       JSON.stringify(filter, null, 2)
@@ -127,19 +101,6 @@ export async function GET(request: NextRequest) {
       ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean(),
       ActivityLog.countDocuments(filter),
     ]);
-
-    console.warn("Activity logs query filter:", JSON.stringify(filter, null, 2));
-    
-    // Execute query with pagination
-    const [logs, totalCount] = await Promise.all([
-      ActivityLog.find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      ActivityLog.countDocuments(filter),
-    ]);
-    
 
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / limit);
@@ -165,7 +126,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch activity logs" },
       { status: 500 }
-
     );
   }
 }
@@ -228,72 +188,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { activityLog },
-    });
-  } catch (error) {
-    console.error("Error creating activity log:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create activity log" },
-      { status: 500 }
-
-    );
-  }
-}
-
-/**
- * POST /api/activity-logs
- * Create a new activity log entry
- */
-export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
-
-    const body = await request.json();
-    
-    // Validate required fields
-    const { action, resource, resourceId, userId, username } = body;
-    
-    if (!action || !resource || !resourceId || !userId || !username) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Calculate changes if previousData and newData are provided
-    let changes = body.changes || [];
-    if (body.previousData && body.newData && changes.length === 0) {
-      changes = calculateChanges(body.previousData, body.newData);
-    }
-
-    // Create new activity log
-    const activityLog = new ActivityLog({
-      _id: new Date().getTime().toString(), // Simple ID generation
-      timestamp: new Date(),
-      userId,
-      username,
-      action,
-      resource,
-      resourceId,
-      resourceName: body.resourceName,
-      details: body.details,
-      description: body.description,
-      actor: body.actor || {
-        id: userId,
-        email: username,
-        role: "user"
-      },
-      ipAddress: body.ipAddress,
-      userAgent: body.userAgent,
-      changes: changes,
-      previousData: body.previousData,
-      newData: body.newData,
-    });
-
-    await activityLog.save();
-
-    return NextResponse.json({
-      success: true,
-      data: { activityLog }
     });
   } catch (error) {
     console.error("Error creating activity log:", error);

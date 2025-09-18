@@ -1,7 +1,6 @@
 import axios from "axios";
 
 
-import type { Country } from "@/lib/types/country";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export type Country = {

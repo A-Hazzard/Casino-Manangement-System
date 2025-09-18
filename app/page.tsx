@@ -123,9 +123,8 @@ function DashboardContent() {
   useEffect(() => {
     let isMounted = true;
     
-    // Only fetch if we have a valid filter and it's different from the main metrics filter
-    // This prevents double API calls when both filters are the same
-    if (activePieChartFilter && activePieChartFilter !== activeMetricsFilter) {
+    // Fetch top performing data whenever we have a valid filter
+    if (activePieChartFilter) {
       fetchTopPerformingDataHelper(
         activeTab,
         activePieChartFilter as TimePeriod,
@@ -147,7 +146,6 @@ function DashboardContent() {
   }, [
     activeTab,
     activePieChartFilter,
-    activeMetricsFilter, // Add this dependency to check if filters are different
     setLoadingTopPerforming,
     setTopPerformingData,
   ]);

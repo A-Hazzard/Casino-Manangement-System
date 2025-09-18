@@ -1,112 +1,42 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-
 import { Trash2, Edit3 } from "lucide-react";
-
-import { Search, Trash2, Edit3 } from "lucide-react";
 import axios from "axios";
 import type { CollectionDocument } from "@/lib/types/collections";
 import type {
   CollectionReportLocationWithMachines,
   CollectionReportData,
 } from "@/lib/types/api";
-
 import { updateCollectionReport } from "@/lib/helpers/collectionReport";
-
-import {
-  updateCollectionReport,
-  calculateTotalAmountToCollect,
-  calculateBalanceCorrection,
-} from "@/lib/helpers/collectionReport";
 import { calculateMovement } from "@/lib/utils/movementCalculation";
 import { validateMachineEntry } from "@/lib/helpers/collectionReportModal";
 import { updateCollection } from "@/lib/helpers/collections";
 import { updateMachineCollectionHistory } from "@/lib/helpers/cabinets";
-
-
-import { NewCollectionModalSkeleton } from "@/components/ui/skeletons/NewCollectionModalSkeleton";
 import { useUserStore } from "@/lib/store/userStore";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { SimpleDateTimePicker } from "@/components/ui/simple-date-time-picker";
-
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { LocationSelect } from "@/components/ui/custom-select";
-
-
-// Simple Select Component to avoid Radix UI issues - matches original styling
-const SimpleSelect = ({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled = false,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  placeholder: string;
-  disabled?: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className="w-full bg-white border border-gray-300 text-gray-900 focus:ring-primary focus:border-primary px-3 py-2 rounded-md text-left flex items-center justify-between disabled:opacity-50 hover:border-gray-400"
-      >
-        <span>
-          {options.find((opt) => opt.value === value)?.label || placeholder}
-        </span>
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-          {options.length > 0 ? (
-            options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className="w-full px-3 py-2 text-left hover:bg-gray-100 text-gray-700"
-              >
-                {option.label}
-              </button>
-            ))
-          ) : (
-            <div className="p-2 text-sm text-grayHighlight">
-              No locations found.
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type EditCollectionModalV2Props = {
   show: boolean;
@@ -210,7 +140,6 @@ export default function EditCollectionModalV2({
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
   );
-  const [loadingReport, setLoadingReport] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const [selectedLocationName, setSelectedLocationName] = useState<string>("");
   const [selectedMachineId, setSelectedMachineId] = useState<string>("");
@@ -240,14 +169,11 @@ export default function EditCollectionModalV2({
   const [currentRamClearMetersOut, setCurrentRamClearMetersOut] = useState("");
   const [currentMachineNotes, setCurrentMachineNotes] = useState("");
   const [currentRamClear, setCurrentRamClear] = useState(false);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
-
 
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
-
 
   // Financial state
   const [financials, setFinancials] = useState({
@@ -257,16 +183,14 @@ export default function EditCollectionModalV2({
     varianceReason: "",
     amountToCollect: "",
     collectedAmount: "",
-
     balanceCorrection: "0",
     balanceCorrectionReason: "",
     previousBalance: "0",
-
-    balanceCorrection: "",
-    balanceCorrectionReason: "",
-    previousBalance: "",
     reasonForShortagePayment: "",
   });
+
+  // Base value typed by the user before entering collected amount
+  const [baseBalanceCorrection, setBaseBalanceCorrection] = useState<string>("");
 
   // Derived state
   const selectedLocation = useMemo(
@@ -280,7 +204,6 @@ export default function EditCollectionModalV2({
   );
 
   const machineForDataEntry = useMemo(
-
     () =>
       machinesOfSelectedLocation.find(
         (m) => String(m._id) === selectedMachineId
@@ -352,33 +275,10 @@ export default function EditCollectionModalV2({
     selectedLocation?.profitShare,
   ]);
 
-  // Calculate balance correction: amountCollected - amountToCollect
-  // Set balance correction to collected amount (treating blank as 0)
-  const setBalanceCorrectionToCollectedAmount = useCallback(() => {
-    setFinancials((prev) => {
-      const amountCollected = Number(prev.collectedAmount) || 0;
-
-      return {
-        ...prev,
-        balanceCorrection: amountCollected.toString(),
-      };
-    });
-  }, []);
-
   // Auto-calculate amount to collect when relevant data changes
   useEffect(() => {
     calculateAmountToCollect();
   }, [calculateAmountToCollect]);
-
-  // Set balance correction to collected amount when collected amount changes
-  useEffect(() => {
-    setBalanceCorrectionToCollectedAmount();
-  }, [financials.collectedAmount, setBalanceCorrectionToCollectedAmount]);
-
-
-    () => machinesOfSelectedLocation.find((m) => m._id === selectedMachineId),
-    [machinesOfSelectedLocation, selectedMachineId]
-  );
 
   // Update location name when location changes
   useEffect(() => {
@@ -389,17 +289,9 @@ export default function EditCollectionModalV2({
     }
   }, [selectedLocation]);
 
-
-
-  const totalAmountToCollect = useMemo(() => {
-    if (collectedMachineEntries.length === 0) return 0;
-    return calculateTotalAmountToCollect(collectedMachineEntries);
-  }, [collectedMachineEntries]);
-
   // Load report data
   useEffect(() => {
     if (show && reportId) {
-      setLoadingReport(true);
       fetchCollectionReportById(reportId)
         .then((data) => {
           setReportData(data);
@@ -425,8 +317,7 @@ export default function EditCollectionModalV2({
         .catch((error) => {
           console.error("Error loading report:", error);
           toast.error("Failed to load report data");
-        })
-        .finally(() => setLoadingReport(false));
+        });
     }
   }, [show, reportId]);
 
@@ -456,35 +347,6 @@ export default function EditCollectionModalV2({
     }
   }, [show, reportId, locations]);
 
-
-
-  // Auto-calculate amount to collect
-  useEffect(() => {
-    if (totalAmountToCollect > 0) {
-      setFinancials((prev) => ({
-        ...prev,
-        amountToCollect: totalAmountToCollect.toString(),
-      }));
-    }
-  }, [totalAmountToCollect]);
-
-  // Auto-calculate balance correction
-  useEffect(() => {
-    const amountToCollect = Number(financials.amountToCollect) || 0;
-    const collectedAmount = Number(financials.collectedAmount) || 0;
-
-    if (amountToCollect !== 0 || collectedAmount !== 0) {
-      const balanceCorrection = calculateBalanceCorrection(
-        amountToCollect,
-        collectedAmount
-      );
-      setFinancials((prev) => ({
-        ...prev,
-        balanceCorrection: balanceCorrection.toString(),
-      }));
-    }
-  }, [financials.amountToCollect, financials.collectedAmount]);
-
   // Reset form when modal closes
   useEffect(() => {
     if (!show) {
@@ -508,33 +370,25 @@ export default function EditCollectionModalV2({
         varianceReason: "",
         amountToCollect: "",
         collectedAmount: "",
-
         balanceCorrection: "0",
         balanceCorrectionReason: "",
         previousBalance: "0",
-
-        balanceCorrection: "",
-        balanceCorrectionReason: "",
-        previousBalance: "",
         reasonForShortagePayment: "",
       });
+      setBaseBalanceCorrection("");
     }
   }, [show]);
 
   // Real-time validation for meter inputs
   const validateMeterInputs = useCallback(() => {
     if (!machineForDataEntry || !currentMetersIn || !currentMetersOut) {
-      setValidationWarnings([]);
       return;
     }
 
     // Check if RAM Clear meters are missing (but don't return early)
-
     const ramClearMetersMissing =
       currentRamClear &&
       (!currentRamClearMetersIn || !currentRamClearMetersOut);
-
-    const ramClearMetersMissing = currentRamClear && (!currentRamClearMetersIn || !currentRamClearMetersOut);
 
     const validation = validateMachineEntry(
       selectedMachineId,
@@ -552,13 +406,11 @@ export default function EditCollectionModalV2({
     // Combine validation warnings with RAM Clear meters missing warning
     const allWarnings = [...(validation.warnings || [])];
     if (ramClearMetersMissing) {
-
       allWarnings.push(
         "Please enter last meters before Ram clear (or rollover)"
       );
     }
 
-    setValidationWarnings(allWarnings);
   }, [
     selectedMachineId,
     machineForDataEntry,
@@ -570,31 +422,14 @@ export default function EditCollectionModalV2({
     currentRamClear,
   ]);
 
-      allWarnings.push("Please enter last meters before Ram clear (or rollover)");
-    }
-    
-    setValidationWarnings(allWarnings);
-  }, [selectedMachineId, machineForDataEntry, currentMetersIn, currentMetersOut, currentRamClearMetersIn, currentRamClearMetersOut, userId, currentRamClear]);
-
   // Validate on input changes
   useEffect(() => {
     validateMeterInputs();
   }, [validateMeterInputs]);
 
-
   const confirmAddOrUpdateEntry = useCallback(async () => {
-
-  const handleAddOrUpdateEntry = useCallback(async () => {
     if (isProcessing || !selectedMachineId || !machineForDataEntry || !userId) {
       toast.error("Please select a machine and ensure you're logged in.");
-      return;
-    }
-
-
-
-    // Check if RAM Clear meters are mandatory when RAM Clear is checked
-    if (currentRamClear && (!currentRamClearMetersIn || !currentRamClearMetersOut)) {
-      toast.error("RAM Clear Meters In and Out are required when RAM Clear is checked");
       return;
     }
 
@@ -619,10 +454,7 @@ export default function EditCollectionModalV2({
 
     // Show warnings if any
     if (validation.warnings && validation.warnings.length > 0) {
-
       validation.warnings.forEach((warning) => {
-
-      validation.warnings.forEach(warning => {
         toast.warning(warning);
       });
     }
@@ -633,9 +465,6 @@ export default function EditCollectionModalV2({
       const metersIn = Number(currentMetersIn);
       const metersOut = Number(currentMetersOut);
 
-
-
-      
       // Calculate movement with RAM Clear support
       const previousMeters = {
         metersIn: machineForDataEntry?.collectionMeters?.metersIn || 0,
@@ -666,16 +495,12 @@ export default function EditCollectionModalV2({
         softMetersOut: metersOut,
         notes: currentMachineNotes,
         ramClear: currentRamClear,
-
         ramClearMetersIn: currentRamClearMetersIn
           ? Number(currentRamClearMetersIn)
           : undefined,
         ramClearMetersOut: currentRamClearMetersOut
           ? Number(currentRamClearMetersOut)
           : undefined,
-
-        ramClearMetersIn: currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
-        ramClearMetersOut: currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
         useCustomTime: true,
         selectedDate: currentCollectionTime.toISOString().split("T")[0],
         timeHH: String(currentCollectionTime.getHours()).padStart(2, "0"),
@@ -695,7 +520,6 @@ export default function EditCollectionModalV2({
         toast.success("Machine added!");
       }
 
-
       // Clear the collected machines list and refetch to show latest data
       setCollectedMachineEntries([]);
       setIsLoadingCollections(true);
@@ -712,28 +536,14 @@ export default function EditCollectionModalV2({
 
       setHasChanges(true);
 
-
-      // Refresh collections
-      const updatedCollections = await fetchCollectionsByReportId(reportId);
-      setCollectedMachineEntries(updatedCollections);
-      setHasChanges(true);
-      
       // Refresh machines data to show updated values
       if (onRefresh) {
         onRefresh();
       }
 
-
       // Clear editing state but keep form populated and machine selected
       setEditingEntryId(null);
       // Keep the machine selected and form populated so user can continue working
-
-      // Reset form
-      setCurrentMetersIn("");
-      setCurrentMetersOut("");
-      setCurrentMachineNotes("");
-      setCurrentRamClear(false);
-      setEditingEntryId(null);
     } catch (error) {
       console.error("Failed to add/update machine:", error);
       toast.error("Failed to add/update machine. Please try again.");
@@ -757,7 +567,6 @@ export default function EditCollectionModalV2({
     editingEntryId,
     onRefresh,
   ]);
-
 
   const handleAddOrUpdateEntry = useCallback(() => {
     if (isProcessing || !selectedMachineId || !machineForDataEntry || !userId) {
@@ -802,14 +611,12 @@ export default function EditCollectionModalV2({
     confirmAddOrUpdateEntry();
   }, [confirmAddOrUpdateEntry]);
 
-
   const handleEditEntry = useCallback(
     (entryId: string) => {
       const entry = collectedMachineEntries.find((e) => e._id === entryId);
       if (entry) {
         setSelectedMachineId(entry.machineId);
         setCurrentCollectionTime(new Date(entry.timestamp));
-
         // Use movement values if available (for RAM Clear), otherwise use raw values
         const metersIn = entry.movement?.metersIn ?? entry.metersIn;
         const metersOut = entry.movement?.metersOut ?? entry.metersOut;
@@ -822,11 +629,6 @@ export default function EditCollectionModalV2({
           setCurrentRamClearMetersIn(String(entry.ramClearMetersIn || 0));
           setCurrentRamClearMetersOut(String(entry.ramClearMetersOut || 0));
         }
-
-        setCurrentMetersIn(String(entry.metersIn));
-        setCurrentMetersOut(String(entry.metersOut));
-        setCurrentMachineNotes(entry.notes || "");
-        setCurrentRamClear(entry.ramClear || false);
         setEditingEntryId(entryId);
 
         // Show correct machine identifier in priority order
@@ -844,7 +646,6 @@ export default function EditCollectionModalV2({
   );
 
   const handleDeleteEntry = useCallback(
-
     (entryId: string) => {
       if (isProcessing) return;
 
@@ -907,36 +708,11 @@ export default function EditCollectionModalV2({
     }
   }, [entryToDelete, reportId, onRefresh]);
 
-    async (entryId: string) => {
-      if (isProcessing) return;
-
-      setIsProcessing(true);
-      try {
-        await deleteMachineCollection(entryId);
-        toast.success("Machine deleted!");
-        const updatedCollections = await fetchCollectionsByReportId(reportId);
-        setCollectedMachineEntries(updatedCollections);
-        setHasChanges(true);
-        
-        // Refresh machines data to show updated values
-        if (onRefresh) {
-          onRefresh();
-        }
-      } catch {
-        toast.error("Failed to delete machine");
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [isProcessing, reportId, onRefresh]
-  );
-
   const handleUpdateReport = useCallback(async () => {
     if (isProcessing || !userId || !reportData) {
       toast.error("Missing required data.");
       return;
     }
-
 
     // Check if there are any collections
     if (collectedMachineEntries.length === 0) {
@@ -949,7 +725,6 @@ export default function EditCollectionModalV2({
       );
       return;
     }
-
 
     setIsProcessing(true);
     try {
@@ -978,7 +753,6 @@ export default function EditCollectionModalV2({
     } finally {
       setIsProcessing(false);
     }
-
   }, [
     isProcessing,
     userId,
@@ -988,8 +762,6 @@ export default function EditCollectionModalV2({
     handleClose,
     collectedMachineEntries,
   ]);
-
-  }, [isProcessing, userId, reportData, financials, reportId, handleClose]);
 
   const isUpdateReportEnabled = useMemo(() => {
     return (
@@ -1005,44 +777,28 @@ export default function EditCollectionModalV2({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      {/* Modal Content - EXACT SAME LAYOUT AS ORIGINAL */}
-      <div
-        className="relative max-w-5xl w-full h-[calc(100vh-2rem)] md:h-[90vh] mx-4 bg-white rounded-lg shadow-lg flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <Dialog
+        open={show}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            handleClose();
+          }
+        }}
       >
-        {loadingReport ? (
-
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading collection report...</p>
-            </div>
-          </div>
-
-          <NewCollectionModalSkeleton />
-        ) : (
-          <>
-            <div className="p-4 md:p-6 pb-0 border-b">
-              <h2 className="text-xl md:text-2xl font-bold">
-                Edit Collection Report
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Update machine collection data and financial information for
-                this report.
-              </p>
-            </div>
+      <DialogContent
+        className="max-w-5xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="p-4 md:p-6 pb-0">
+          <DialogTitle className="text-xl md:text-2xl font-bold">
+            Edit Collection Report
+          </DialogTitle>
+        </DialogHeader>
 
             <div className="flex-grow flex flex-col lg:flex-row overflow-hidden">
               {/* Mobile: Full width, Desktop: 1/4 width */}
               <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
-
                 <LocationSelect
                   value={selectedLocationId}
                   onValueChange={setSelectedLocationId}
@@ -1055,29 +811,6 @@ export default function EditCollectionModalV2({
                   className="w-full"
                   emptyMessage="No locations found"
                 />
-
-
-                <SimpleSelect
-                  value={selectedLocationId}
-                  onChange={setSelectedLocationId}
-                  options={locations.map((loc) => ({
-                    value: String(loc._id),
-                    label: loc.name,
-                  }))}
-                  placeholder="Select Location"
-                  disabled={isProcessing}
-                />
-
-                <div className="relative">
-                  <Input
-                    placeholder="Search Locations..."
-                    className="pr-10"
-                    value=""
-                    disabled
-                    onChange={() => {}}
-                  />
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-grayHighlight" />
-                </div>
 
                 <div className="flex-grow space-y-2 min-h-[100px]">
                   {selectedLocationId ? (
@@ -1219,6 +952,15 @@ export default function EditCollectionModalV2({
                           {machineForDataEntry?.collectionMeters?.metersIn ||
                             "N/A"}
                         </p>
+                        {/* Regular Meters In Validation */}
+                        {currentMetersIn && machineForDataEntry?.collectionMeters?.metersIn && 
+                         Number(currentMetersIn) < Number(machineForDataEntry.collectionMeters.metersIn) && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                            <p className="text-red-600 text-xs">
+                              Warning: Meters In ({currentMetersIn}) should be higher than or equal to Previous Meters In ({machineForDataEntry.collectionMeters.metersIn})
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-grayHighlight mb-1">
@@ -1243,6 +985,15 @@ export default function EditCollectionModalV2({
                           {machineForDataEntry?.collectionMeters?.metersOut ||
                             "N/A"}
                         </p>
+                        {/* Regular Meters Out Validation */}
+                        {currentMetersOut && machineForDataEntry?.collectionMeters?.metersOut && 
+                         Number(currentMetersOut) < Number(machineForDataEntry.collectionMeters.metersOut) && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                            <p className="text-red-600 text-xs">
+                              Warning: Meters Out ({currentMetersOut}) should be higher than or equal to Previous Meters Out ({machineForDataEntry.collectionMeters.metersOut})
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1253,11 +1004,8 @@ export default function EditCollectionModalV2({
                           RAM Clear Meters (Before Rollover)
                         </h4>
                         <p className="text-xs text-blue-600 mb-3">
-
                           Please enter the last meter readings before the RAM
                           Clear occurred.
-
-                          Please enter the last meter readings before the RAM Clear occurred.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
@@ -1275,8 +1023,22 @@ export default function EditCollectionModalV2({
                                 }
                               }}
                               disabled={!machineForDataEntry || isProcessing}
-                              className="border-blue-300 focus:border-blue-500"
+                              className={`border-blue-300 focus:border-blue-500 ${
+                                currentRamClearMetersIn && machineForDataEntry?.collectionMeters?.metersIn && 
+                                Number(currentRamClearMetersIn) > Number(machineForDataEntry.collectionMeters.metersIn)
+                                  ? "border-red-500 focus:border-red-500"
+                                  : ""
+                              }`}
                             />
+                            {/* RAM Clear Meters In Validation */}
+                            {currentRamClearMetersIn && machineForDataEntry?.collectionMeters?.metersIn && 
+                             Number(currentRamClearMetersIn) > Number(machineForDataEntry.collectionMeters.metersIn) && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-red-600 text-xs">
+                                  Warning: RAM Clear Meters In ({currentRamClearMetersIn}) should be lower than or equal to Previous Meters In ({machineForDataEntry.collectionMeters.metersIn})
+                                </p>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-blue-700 mb-1">
@@ -1293,52 +1055,27 @@ export default function EditCollectionModalV2({
                                 }
                               }}
                               disabled={!machineForDataEntry || isProcessing}
-                              className="border-blue-300 focus:border-blue-500"
+                              className={`border-blue-300 focus:border-blue-500 ${
+                                currentRamClearMetersOut && machineForDataEntry?.collectionMeters?.metersOut && 
+                                Number(currentRamClearMetersOut) > Number(machineForDataEntry.collectionMeters.metersOut)
+                                  ? "border-red-500 focus:border-red-500"
+                                  : ""
+                              }`}
                             />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* RAM Clear Validation Warnings */}
-                    {validationWarnings.length > 0 && (
-                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-
-                            <svg
-                              className="h-5 w-5 text-yellow-400"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                clipRule="evenodd"
-                              />
-
-                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800">
-                              RAM Clear Validation Warning
-                            </h3>
-                            <div className="mt-2 text-sm text-yellow-700">
-                              {validationWarnings.map((warning, index) => (
-
-                                <p key={index} className="mb-1">
-                                  {warning}
+                            {/* RAM Clear Meters Out Validation */}
+                            {currentRamClearMetersOut && machineForDataEntry?.collectionMeters?.metersOut && 
+                             Number(currentRamClearMetersOut) > Number(machineForDataEntry.collectionMeters.metersOut) && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-red-600 text-xs">
+                                  Warning: RAM Clear Meters Out ({currentRamClearMetersOut}) should be lower than or equal to Previous Meters Out ({machineForDataEntry.collectionMeters.metersOut})
                                 </p>
-
-                                <p key={index} className="mb-1">{warning}</p>
-                              ))}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     )}
+
 
                     <div className="flex items-center space-x-2 mt-2">
                       <input
@@ -1500,52 +1237,99 @@ export default function EditCollectionModalV2({
                             (Optional)
                           </span>
                         </label>
-                        <Input
-                          type="text"
-                          placeholder="0"
-                          value={financials.collectedAmount}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (/^\d*\.?\d*$/.test(val) || val === "") {
-                              setFinancials((prev) => ({
-                                ...prev,
-                                collectedAmount: val,
-                              }));
-                            }
-                          }}
-                          disabled={isProcessing}
-                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Input
+                                  type="text"
+                                  placeholder="0"
+                                  value={financials.collectedAmount}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (/^\d*\.?\d*$/.test(val) || val === "") {
+                                      setFinancials((prev) => ({
+                                        ...prev,
+                                        collectedAmount: val,
+                                      }));
+
+                                      // Calculate previous balance and balance correction using setTimeout to avoid infinite loops
+                                      setTimeout(() => {
+                                        const amountCollected = Number(val) || 0;
+                                        const amountToCollect = Number(financials.amountToCollect) || 0;
+                                        
+                                        // Previous balance = collected amount - amount to collect
+                                        const previousBalance = amountCollected - amountToCollect;
+
+                                        // Final correction = base entered first + collected amount
+                                        const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
+
+                                        setFinancials((prev) => ({
+                                          ...prev,
+                                          previousBalance: previousBalance.toString(),
+                                          balanceCorrection: e.target.value === "" ? (baseBalanceCorrection || "0") : finalCorrection.toString(),
+                                        }));
+                                      }, 0);
+                                    }
+                                  }}
+                                  disabled={isProcessing || (baseBalanceCorrection.trim() === "" && financials.balanceCorrection.trim() === "")}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            {isProcessing || (baseBalanceCorrection.trim() === "" && financials.balanceCorrection.trim() === "") ? (
+                              <TooltipContent>
+                                <p>
+                                  {isProcessing
+                                    ? "Please wait until processing completes."
+                                    : "Enter a Balance Correction first, then the Collected Amount will unlock."}
+                                </p>
+                              </TooltipContent>
+                            ) : null}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-grayHighlight mb-1">
                           Balance Correction:{" "}
                           <span className="text-xs text-gray-400">
-
                             (Auto-sets to collected amount, editable)
-
-                            (Auto-calculated)
                           </span>
                         </label>
-                        <Input
-                          type="text"
-                          placeholder="0"
-                          value={financials.balanceCorrection}
-
-                          onChange={(e) =>
-                            (/^-?\d*\.?\d*$/.test(e.target.value) ||
-                              e.target.value === "") &&
-                            setFinancials({
-                              ...financials,
-                              balanceCorrection: e.target.value,
-                            })
-                          }
-                          className="bg-white border-gray-300 focus:border-primary"
-                          title="This value is automatically calculated but can be manually edited"
-                          disabled={isProcessing}
-
-                          readOnly
-                          className="bg-gray-100 cursor-not-allowed"
-                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Input
+                                  type="text"
+                                  placeholder="0"
+                                  value={financials.balanceCorrection}
+                                  onChange={(e) => {
+                                    const newBalanceCorrection = e.target.value;
+                                    if (/^-?\d*\.?\d*$/.test(newBalanceCorrection) || newBalanceCorrection === "") {
+                                      setFinancials((prev) => ({
+                                        ...prev,
+                                        balanceCorrection: newBalanceCorrection,
+                                      }));
+                                      setBaseBalanceCorrection(newBalanceCorrection);
+                                    }
+                                  }}
+                                  className="bg-white border-gray-300 focus:border-primary"
+                                  title="Balance correction amount (editable)"
+                                  disabled={isProcessing || financials.collectedAmount.trim() !== ""}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            {isProcessing || financials.collectedAmount.trim() !== "" ? (
+                              <TooltipContent>
+                                <p>
+                                  {isProcessing
+                                    ? "Please wait until processing completes."
+                                    : "Clear the Collected Amount to edit the Balance Correction."}
+                                </p>
+                              </TooltipContent>
+                            ) : null}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-grayHighlight mb-1">
@@ -1572,21 +1356,9 @@ export default function EditCollectionModalV2({
                           type="text"
                           placeholder="0"
                           value={financials.previousBalance}
-
                           className="bg-gray-100 border-gray-300 focus:border-primary cursor-not-allowed"
                           disabled={true}
                           title="Previous balance from last collection (read-only)"
-
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (/^\d*\.?\d*$/.test(val) || val === "") {
-                              setFinancials((prev) => ({
-                                ...prev,
-                                previousBalance: val,
-                              }));
-                            }
-                          }}
-                          disabled={isProcessing}
                         />
                       </div>
                       <div>
@@ -1660,7 +1432,6 @@ export default function EditCollectionModalV2({
                         Time: {formatDate(entry.timestamp)}
                       </p>
                       <p className="text-xs text-gray-600">
-
                         Meters In:{" "}
                         {entry.ramClear
                           ? entry.movement?.metersIn || entry.metersIn
@@ -1669,9 +1440,6 @@ export default function EditCollectionModalV2({
                         {entry.ramClear
                           ? entry.movement?.metersOut || entry.metersOut
                           : entry.metersOut}
-
-                        Meters In: {entry.ramClear ? entry.movement?.metersIn || entry.metersIn : entry.metersIn} | Meters Out:{" "}
-                        {entry.ramClear ? entry.movement?.metersOut || entry.metersOut : entry.metersOut}
                       </p>
                       {entry.notes && (
                         <p className="text-xs text-gray-600 italic">
@@ -1709,86 +1477,58 @@ export default function EditCollectionModalV2({
               </div>
             </div>
 
-            <div className="p-4 md:p-6 pt-2 md:pt-4 flex justify-center border-t border-gray-300">
-              <Button
-                onClick={handleUpdateReport}
-                className={`w-auto bg-button hover:bg-buttonActive text-base px-8 py-3 ${
-                  !isUpdateReportEnabled || isProcessing
-                    ? "cursor-not-allowed"
-                    : "cursor-pointer"
-                }`}
-                disabled={!isUpdateReportEnabled || isProcessing}
-              >
-
-                {isProcessing
-                  ? "UPDATING REPORT..."
-                  : collectedMachineEntries.length === 0
-                  ? "ADD MACHINES TO UPDATE REPORT"
-                  : "UPDATE REPORT"}
-              </Button>
-              {collectedMachineEntries.length === 0 && (
-                <p className="text-sm text-red-600 text-center mt-2">
-                  At least one machine must be added to update the collection
-                  report
-                </p>
-              )}
-
-                {isProcessing ? "UPDATING REPORT..." : "UPDATE REPORT"}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
+        <DialogFooter className="p-4 md:p-6 pt-2 md:pt-4 flex justify-center border-t border-gray-300">
+          <Button
+            onClick={handleUpdateReport}
+            className={`w-auto bg-button hover:bg-buttonActive text-base px-8 py-3 ${
+              !isUpdateReportEnabled || isProcessing
+                ? "cursor-not-allowed"
+                : "cursor-pointer"
+            }`}
+            disabled={!isUpdateReportEnabled || isProcessing}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-          <span className="sr-only">Close</span>
-        </button>
-      </div>
+            {isProcessing
+              ? "UPDATING REPORT..."
+              : collectedMachineEntries.length === 0
+              ? "ADD MACHINES TO UPDATE REPORT"
+              : "UPDATE REPORT"}
+          </Button>
+          {collectedMachineEntries.length === 0 && (
+            <p className="text-sm text-red-600 text-center mt-2">
+              At least one machine must be added to update the collection
+              report
+            </p>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
+    {/* Delete Confirmation Dialog */}
+    <ConfirmationDialog
+      isOpen={showDeleteConfirmation}
+      onClose={() => {
+        setShowDeleteConfirmation(false);
+        setEntryToDelete(null);
+      }}
+      onConfirm={confirmDeleteEntry}
+      title="Confirm Delete"
+      message="Are you sure you want to delete this collection entry?"
+      confirmText="Yes, Delete"
+      cancelText="Cancel"
+      isLoading={isProcessing}
+    />
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={showDeleteConfirmation}
-        onClose={() => {
-          setShowDeleteConfirmation(false);
-          setEntryToDelete(null);
-        }}
-        onConfirm={confirmDeleteEntry}
-        title="Confirm Delete"
-        message="Are you sure you want to delete this collection entry?"
-        confirmText="Yes, Delete"
-        cancelText="Cancel"
-        isLoading={isProcessing}
-      />
-
-      {/* Update Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={showUpdateConfirmation}
-        onClose={() => setShowUpdateConfirmation(false)}
-        onConfirm={confirmUpdateEntry}
-        title="Confirm Update"
-        message="Are you sure you want to update this collection entry?"
-        confirmText="Yes, Update"
-        cancelText="Cancel"
-        isLoading={isProcessing}
-      />
-
-    </div>
+    {/* Update Confirmation Dialog */}
+    <ConfirmationDialog
+      isOpen={showUpdateConfirmation}
+      onClose={() => setShowUpdateConfirmation(false)}
+      onConfirm={confirmUpdateEntry}
+      title="Confirm Update"
+      message="Are you sure you want to update this collection entry?"
+      confirmText="Yes, Update"
+      cancelText="Cancel"
+      isLoading={isProcessing}
+    />
+    </>
   );
 }

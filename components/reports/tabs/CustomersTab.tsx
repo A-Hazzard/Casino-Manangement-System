@@ -52,9 +52,6 @@ const sampleCustomerMetrics: CustomerMetrics = {
 const customerDemographics: CustomerDemographic[] = [];
 const loyaltyTiers: LoyaltyTier[] = [];
 
-const customerDemographics: unknown[] = [];
-const loyaltyTiers: unknown[] = [];
-
 export default function CustomersTab() {
   const {
     customerMetrics,
@@ -420,11 +417,7 @@ export default function CustomersTab() {
                       No demographic data available - MongoDB implementation pending
                     </p>
                   ) : (
-
                     customerDemographics.map((d: CustomerDemographic) => {
-
-                    customerDemographics.map((demo: unknown) => {
-                      const d = demo as any; // eslint-disable-line @typescript-eslint/no-explicit-any
                       return (
                         <div
                           key={d.ageGroup}
@@ -508,11 +501,7 @@ export default function CustomersTab() {
                     </p>
                   </div>
                 ) : (
-
                   loyaltyTiers.map((t: LoyaltyTier) => {
-
-                  loyaltyTiers.map((tier: unknown) => {
-                    const t = tier as any; // eslint-disable-line @typescript-eslint/no-explicit-any
                     return (
                       <div
                         key={t.tier}

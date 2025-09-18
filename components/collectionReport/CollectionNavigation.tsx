@@ -19,9 +19,6 @@ export default function CollectionNavigation({
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
 
-      {/* Desktop - lg: and above */}
-      <nav className="hidden lg:flex space-x-8 px-6">
-
       {/* Desktop - md: and above */}
       <nav className="hidden md:flex space-x-8 px-6">
         {tabs.map((tab) => (
@@ -43,10 +40,6 @@ export default function CollectionNavigation({
           </motion.button>
         ))}
       </nav>
-
-
-      {/* Mobile/Tablet - below lg: */}
-      <div className="lg:hidden px-4 py-2">
 
       {/* Mobile - below md: */}
       <div className="md:hidden px-4 py-2">

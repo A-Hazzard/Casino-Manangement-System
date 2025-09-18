@@ -14,6 +14,7 @@
   - 🔧 **Cabinet Details & SMIB Configuration** ([docs](Documentation/frontend/cabinet-details.md))
 - 💰 **Financial Tracking & Collection Reporting** ([docs](Documentation/frontend/collection-report.md))
   - 📋 **Collection Report Details** - Individual report analysis and management
+  - ✏️ **Edit/Delete Reports** - Full lifecycle management with meter reversion
 - 📍 **Location Management** ([docs](Documentation/frontend/locations.md))
   - 🎰 **Location Cabinets** ([docs](Documentation/frontend/location-cabinets.md))
   - 📊 **Location Details & Analytics** ([docs](Documentation/frontend/location-details.md))
@@ -274,7 +275,7 @@ Evolution1 CMS/
   - **Location Cabinets:** Cabinet management by location ([location-cabinets.md](Documentation/frontend/location-cabinets.md))
 - **Cabinets:** Slot machine/cabinet management, firmware, SMIB ([cabinets.md](Documentation/frontend/cabinets.md))
   - **Cabinet Details:** Individual cabinet configuration and monitoring ([cabinet-details.md](Documentation/frontend/cabinet-details.md))
-- **Collection Report:** Collection reporting, monthly summaries, scheduling ([collection-report.md](Documentation/frontend/collection-report.md))
+- **Collection Report:** Collection reporting, monthly summaries, scheduling, delete/edit functionality ([collection-report.md](Documentation/frontend/collection-report.md))
 - **Administration:** User and licensee management ([administration.md](Documentation/frontend/administration.md))
 - **Login:** Secure authentication ([login.md](Documentation/frontend/login.md))
 

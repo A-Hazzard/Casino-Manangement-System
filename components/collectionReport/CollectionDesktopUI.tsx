@@ -27,6 +27,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   onClearFilters,
   isSearching,
   onEdit,
+  onDelete,
 }) => {
   return (
     <div className="hidden lg:block">
@@ -65,7 +66,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
             ref={desktopTableRef}
             className="animate-in fade-in-0 slide-in-from-bottom-2"
           >
-            <CollectionReportTable data={desktopCurrentItems} onEdit={onEdit} />
+            <CollectionReportTable data={desktopCurrentItems} onEdit={onEdit} onDelete={onDelete} />
           </div>
         )}
       </div>

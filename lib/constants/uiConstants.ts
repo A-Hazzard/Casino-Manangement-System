@@ -27,7 +27,6 @@ export const timeFrames: TimeFrames[] = [
   { time: "Yesterday", value: "Yesterday" as TimePeriod },
   { time: "Last 7 days", value: "7d" as TimePeriod },
   { time: "Last 30 days", value: "30d" as TimePeriod },
-  { time: "Custom", value: "Custom" as TimePeriod },
 ];
 
 /**

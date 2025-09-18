@@ -15,7 +15,6 @@ import { toast } from "sonner";
 
 import axios from "axios";
 
-import { useLocationStore } from "@/lib/store/locationStore";
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation } from "@/lib/types/maps";
 import type { NewLocationModalProps } from "@/lib/types/components";
@@ -33,8 +32,6 @@ export default function NewLocationModal({
 }: NewLocationModalProps) {
 
   // Remove the store dependency since we'll call API directly
-
-  const { createLocation } = useLocationStore();
 
   // Form state - all fields blank by default
   const [formData, setFormData] = useState({
@@ -128,13 +125,6 @@ export default function NewLocationModal({
     if (isOpen) {
       loadLicensees();
       loadCountries();
-
-  const [mapLoadError, setMapLoadError] = useState(false);
-
-  // Load licensees on modal open
-  useEffect(() => {
-    if (isOpen) {
-      loadLicensees();
     }
   }, [isOpen]);
 
@@ -195,7 +185,17 @@ export default function NewLocationModal({
     setCountriesLoading(true);
     try {
       const countriesData = await fetchCountries();
-      setCountries(countriesData);
+      
+      // Remove duplicates based on country name using Map for better performance
+      const uniqueCountriesMap = new Map();
+      countriesData.forEach(country => {
+        if (!uniqueCountriesMap.has(country.name)) {
+          uniqueCountriesMap.set(country.name, country);
+        }
+      });
+      const uniqueCountries = Array.from(uniqueCountriesMap.values());
+      
+      setCountries(uniqueCountries as unknown as Country[]);
     } catch (error) {
       console.error("Failed to fetch countries:", error);
       toast.error("Failed to load countries");
@@ -315,17 +315,6 @@ export default function NewLocationModal({
       const response = await axios.post("/api/locations", locationData);
       console.warn("Location created successfully:", response.data);
 
-        address: formData.street, // Just pass the street as address string
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude),
-        licencee: formData.licencee, // Use selected licensee from form
-        billValidatorOptions: formData.billValidatorOptions,
-      };
-
-      // Add location
-      const createdLocation = await createLocation(locationData);
-      console.warn("Location created successfully:", createdLocation);
-
       // Show success message
       toast.success("Location added successfully");
 
@@ -396,8 +385,6 @@ export default function NewLocationModal({
               name="city"
               value={formData.city}
               onChange={handleInputChange}
-
-              placeholder="Enter city name"
 
               placeholder="City"
               className="w-full h-12 bg-container border-border text-base"
@@ -510,11 +497,6 @@ export default function NewLocationModal({
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
 
-              <Label
-                htmlFor="isLocalServer"
-                className="text-sm font-medium flex-1"
-              >
-
               <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
                 No SMIB Location
               </Label>
@@ -532,8 +514,6 @@ export default function NewLocationModal({
                     getCurrentLocation();
                   }
                 }}
-
-                onCheckedChange={(checked) => setUseMap(checked === true)}
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
               <Label htmlFor="useMap" className="text-sm font-medium flex-1">
@@ -630,11 +610,6 @@ export default function NewLocationModal({
                 { key: "denom5000", label: "$5,000" },
                 { key: "denom10000", label: "$10,000" },
               ].map(({ key, label }) => (
-
-                <div
-                  key={key}
-                  className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
-                >
 
                 <div key={key} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
                   <Checkbox

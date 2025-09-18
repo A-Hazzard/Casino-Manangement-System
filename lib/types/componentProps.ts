@@ -228,6 +228,7 @@ export type CollectionDesktopUIProps = {
   onClearFilters: () => void;
   isSearching: boolean;
   onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
 };
 
 export type CollectionMobileUIProps = {
@@ -254,6 +255,7 @@ export type CollectionMobileUIProps = {
   onClearFilters: () => void;
   isSearching: boolean;
   onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
 };
 
 export type MonthlyDesktopUIProps = {

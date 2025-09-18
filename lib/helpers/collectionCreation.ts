@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Meters } from "@/app/api/lib/models/meters";
 import { Machine } from "@/app/api/lib/models/machines";
@@ -180,9 +181,19 @@ export async function updateMachineCollectionMeters(
   metersIn: number,
   metersOut: number,
   collectionTime: Date = new Date(),
-  updateCollectionTime: boolean = false
+  updateCollectionTime: boolean = false,
+  locationReportId?: string
 ): Promise<void> {
   await connectDB();
+
+  // Get current machine data to access previous meters for history
+  const currentMachine = await Machine.findById(machineId).lean();
+  if (!currentMachine) {
+    throw new Error(`Machine with ID ${machineId} not found`);
+  }
+
+  const currentMachineData = currentMachine as Record<string, unknown>;
+  const currentCollectionMeters = currentMachineData.collectionMeters as { metersIn: number; metersOut: number } | undefined;
 
   // Prepare update object
   const updateData: Record<string, unknown> = {
@@ -196,10 +207,31 @@ export async function updateMachineCollectionMeters(
     updateData.collectionTime = collectionTime;
   }
 
-  // Update machine with new collection meters
-  await Machine.findByIdAndUpdate(machineId, {
-    $set: updateData,
-  });
+  // Prepare history entry if locationReportId is provided
+  if (locationReportId) {
+    const historyEntry = {
+      _id: new mongoose.Types.ObjectId(), // Use mongoose ObjectId for proper type
+      metersIn: metersIn,
+      metersOut: metersOut,
+      prevMetersIn: currentCollectionMeters?.metersIn || 0,
+      prevMetersOut: currentCollectionMeters?.metersOut || 0,
+      timestamp: collectionTime,
+      locationReportId: locationReportId,
+    };
+
+    // Update machine with new collection meters and add to history
+    await Machine.findByIdAndUpdate(machineId, {
+      $set: updateData,
+      $push: {
+        collectionMetersHistory: historyEntry,
+      },
+    });
+  } else {
+    // Update machine with new collection meters only (no history entry)
+    await Machine.findByIdAndUpdate(machineId, {
+      $set: updateData,
+    });
+  }
 
   // Machine collection meters updated successfully
 }
@@ -312,7 +344,8 @@ export async function createCollectionWithCalculations(
     movement.metersIn,
     movement.metersOut,
     finalSasEndTime,
-    false // Never update collectionTime at machine level
+    false, // Never update collectionTime at machine level
+    payload.locationReportId as string // Pass locationReportId for history tracking
   );
 
   return {

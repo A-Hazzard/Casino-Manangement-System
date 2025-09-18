@@ -163,8 +163,6 @@ export default function CabinetsFilters({
           Movement Request
         </Button>
 
-        <Button variant="outline" onClick={onUploadSmibData} disabled={loading}>
-
         <Button
           variant="outline"
           onClick={onUploadSmibData}

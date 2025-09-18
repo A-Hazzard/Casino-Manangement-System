@@ -13,8 +13,6 @@ import type { SmibLocation } from "@/lib/types/cabinets";
 
 const MOCK_LOCATIONS: SmibLocation[] = [];
 
-const MOCK_LOCATIONS: unknown[] = [];
-
 export default function SMIBManagement() {
   const [search, setSearch] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -29,9 +27,6 @@ export default function SMIBManagement() {
     setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
   };
 
-
-  const currentSelectedLocationName =
-    "No locations available - MongoDB implementation pending";
 
   const currentSelectedLocationName = "No locations available - MongoDB implementation pending";
 
@@ -70,22 +65,6 @@ export default function SMIBManagement() {
           triggerClassName="h-11 rounded-md border-none px-3 bg-white text-gray-700"
           emptyMessage="No locations available - MongoDB implementation pending"
         />
-
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full lg:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
-        >
-          {MOCK_LOCATIONS.length === 0 ? (
-            <option value="" disabled>
-              No locations available - MongoDB implementation pending
-            </option>
-          ) : (
-            MOCK_LOCATIONS.map((loc: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))
-          )}
-        </select>
       </div>
 
       {/* Buttons and SMIB Selection Row */}

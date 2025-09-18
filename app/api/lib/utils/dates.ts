@@ -38,7 +38,7 @@ export const getDatesForTimePeriod = (
 
     case "7d":
     case "last7days":
-      // Define 7-day range in UTC
+      // Define 7-day range in UTC (including today, so go back 6 days)
       startDate = new Date();
       startDate.setUTCDate(startDate.getUTCDate() - 6);
       startDate.setUTCHours(0, 0, 0, 0);
@@ -49,7 +49,7 @@ export const getDatesForTimePeriod = (
 
     case "30d":
     case "last30days":
-      // Define 30-day range in UTC
+      // Define 30-day range in UTC (including today, so go back 29 days)
       startDate = new Date();
       startDate.setUTCDate(startDate.getUTCDate() - 29);
       startDate.setUTCHours(0, 0, 0, 0);

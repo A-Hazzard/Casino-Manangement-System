@@ -494,6 +494,106 @@ CollectionReport {
 - Dependency checking prevents orphaned records
 - Rollback capability for data recovery
 
+### Collection Report Lifecycle and Meter Management
+
+#### **Collection Report Creation Process**
+
+When a collection report is created, the system follows this sequence:
+
+1. **Machine Selection**: User selects machines and enters current meter readings
+2. **Report Creation**: System creates the collection report with entered meter values
+3. **Machine Update**: System updates each machine's `collectionMeters.metersIn` and `collectionMeters.metersOut` to the new values
+4. **History Tracking**: System adds the report ID to each machine's `collectionMetersHistory` array
+
+#### **Previous Meter Values Display**
+
+The "Prev In" and "Prev Out" values shown in the New Collection Modal represent the machine's current `collectionMeters.metersIn` and `collectionMeters.metersOut` values from the database. These values should reflect the last successful collection for that machine.
+
+#### **Collection Report Deletion and Meter Reversion**
+
+When a collection report is deleted:
+
+1. **Report Removal**: The collection report is deleted from the database
+2. **Associated Collections**: All collections within the report are deleted
+3. **Machine Meter Reversion**: **Each machine individually** has its `collectionMeters.metersIn` and `collectionMeters.metersOut` reverted to their respective previous values (before the deleted report)
+4. **History Cleanup**: The report ID is removed from each machine's `collectionMetersHistory` array
+
+#### **Multi-Machine Collection Report Deletion**
+
+For collection reports with multiple machines, the system handles reversion **per machine**:
+
+**Data Storage Strategy:**
+- Each machine collection stores its own `prevIn` and `prevOut` values when created
+- These values represent what the machine's meters were **before** this specific collection
+- Each collection document maintains its own snapshot of previous state
+
+**Deletion Process:**
+```typescript
+// For each machine in the collection report:
+for (const collection of associatedCollections) {
+  // Revert THIS specific machine to ITS previous values
+  const previousMetersIn = collection.prevIn || 0;   // Machine A: 88, Machine B: 150, etc.
+  const previousMetersOut = collection.prevOut || 0; // Machine A: 77, Machine B: 120, etc.
+  
+  await Machine.findByIdAndUpdate(collection.machineId, {
+    $set: {
+      "collectionMeters.metersIn": previousMetersIn,
+      "collectionMeters.metersOut": previousMetersOut,
+    }
+  });
+}
+```
+
+**Example Multi-Machine Scenario:**
+- **Machine A**: Previous (88, 77) → Collection (22, 22) → **Reverts to (88, 77)**
+- **Machine B**: Previous (150, 120) → Collection (45, 35) → **Reverts to (150, 120)**
+- **Machine C**: Previous (200, 180) → Collection (60, 55) → **Reverts to (200, 180)**
+
+Each machine is reverted to **its own specific previous values**, not a global previous state.
+
+#### **Expected Behavior Scenarios**
+
+**Scenario 1: Create Report → Delete It → Create New Report**
+- **Initial State**: Machine meters = (88, 77)
+- **After Creation**: Machine meters = (22, 22) 
+- **After Deletion**: Machine meters = (88, 77) - reverted back
+- **New Report**: Prev In = 88, Prev Out = 77 ✅
+
+**Scenario 2: Create Report → Create Another Report (Without Deletion)**
+- **Initial State**: Machine meters = (88, 77)
+- **After First Creation**: Machine meters = (22, 22)
+- **Second Report**: Prev In = 22, Prev Out = 22 ✅
+
+#### **Meter Display Refresh - RESOLVED**
+
+**Previous Problem**: When creating a new collection report, the New Collection Modal was not refreshing the machine data to show updated meter values, causing "Prev In" and "Prev Out" to display stale values.
+
+**Root Cause**: The modal was only using machine data from the locations prop and not fetching fresh data when opening.
+
+**Solution Implemented**: Added a useEffect that fetches fresh machine data from the API whenever the modal opens with a selected location, ensuring "Prev In" and "Prev Out" values are always current.
+
+#### **Edit Collection Reports**
+
+Collection reports can be edited to modify:
+- Machine meter readings
+- Financial information (amounts, taxes, advances)
+- Collection timestamps
+- Machine entries (add/remove machines)
+
+When editing a collection report:
+- Machine meters are updated to reflect the new values
+- Financial calculations are recalculated
+- Collection history is updated
+- All changes are logged in the activity log
+
+#### **Data Integrity and Validation**
+
+The system ensures data integrity through:
+- **Meter Validation**: Prevents invalid meter readings (e.g., meters going backwards without RAM Clear)
+- **Financial Validation**: Ensures balance calculations are accurate
+- **History Tracking**: Maintains complete audit trail of all changes
+- **Cascading Updates**: Updates all related entities when reports are modified or deleted
+
 ### Collection Detail Operations
 **Machine Metrics Tab:**
 - **View**: Display individual machine collection data

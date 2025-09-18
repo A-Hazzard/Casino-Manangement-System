@@ -9,7 +9,6 @@ import {
   calculateChanges,
 } from "@/app/api/lib/helpers/activityLogger";
 
-import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
 import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
@@ -177,13 +176,6 @@ export async function PUT(
     }
 
     // If serial number was updated, also update it in Collections
-
-    if (
-      data.assetNumber !== undefined &&
-      data.assetNumber !== "" &&
-      data.assetNumber !== originalCabinet.serialNumber
-    ) {
-
     if (data.assetNumber !== undefined && data.assetNumber !== "" && data.assetNumber !== originalCabinet.serialNumber) {
       try {
         await Collections.updateMany(
@@ -195,26 +187,12 @@ export async function PUT(
           `Updated serial number in Collections for machine ${cabinetId} from "${originalCabinet.serialNumber}" to "${data.assetNumber}"`
         );
       } catch (collectionsError) {
-        console.error(
-          "Failed to update serial number in Collections:",
-          collectionsError
-        );
-
-        console.warn(`Updated serial number in Collections for machine ${cabinetId} from "${originalCabinet.serialNumber}" to "${data.assetNumber}"`);
-      } catch (collectionsError) {
         console.error("Failed to update serial number in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
       }
     }
 
     // If game name was updated, also update it in Collections
-
-    if (
-      data.installedGame !== undefined &&
-      data.installedGame !== "" &&
-      data.installedGame !== originalCabinet.game
-    ) {
-
     if (data.installedGame !== undefined && data.installedGame !== "" && data.installedGame !== originalCabinet.game) {
       try {
         await Collections.updateMany(
@@ -226,13 +204,6 @@ export async function PUT(
           `Updated machine name in Collections for machine ${cabinetId} from "${originalCabinet.game}" to "${data.installedGame}"`
         );
       } catch (collectionsError) {
-        console.error(
-          "Failed to update machine name in Collections:",
-          collectionsError
-        );
-
-        console.warn(`Updated machine name in Collections for machine ${cabinetId} from "${originalCabinet.game}" to "${data.installedGame}"`);
-      } catch (collectionsError) {
         console.error("Failed to update machine name in Collections:", collectionsError);
         // Don't fail the entire operation if Collections update fails
       }
@@ -242,11 +213,6 @@ export async function PUT(
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-
-        const changes = calculateChanges(
-          originalCabinet.toObject(),
-          updateFields
-        );
 
         const changes = calculateChanges(originalCabinet.toObject(), updateFields);
 
@@ -258,16 +224,6 @@ export async function PUT(
           },
           "UPDATE",
           "machine",
-
-          {
-            id: cabinetId,
-            name: originalCabinet.serialNumber || originalCabinet.game,
-          },
-          changes,
-          `Updated cabinet "${
-            originalCabinet.serialNumber || originalCabinet.game
-          }" in location "${location.name}"`,
-
           { id: cabinetId, name: originalCabinet.serialNumber || originalCabinet.game },
           changes,
           `Updated cabinet "${originalCabinet.serialNumber || originalCabinet.game}" in location "${location.name}"`,
@@ -366,11 +322,6 @@ export async function PATCH(
     if (currentUser && currentUser.emailAddress) {
       try {
 
-        const changes = calculateChanges(
-          originalCabinet.toObject(),
-          updateFields
-        );
-
         const changes = calculateChanges(originalCabinet.toObject(), updateFields);
 
         await logActivity(
@@ -381,17 +332,10 @@ export async function PATCH(
           },
           "UPDATE",
           "machine",
-
           {
             id: cabinetId,
             name: originalCabinet.serialNumber || originalCabinet.game,
           },
-          changes,
-          `Updated collection settings for cabinet "${
-            originalCabinet.serialNumber || originalCabinet.game
-          }" in location "${location.name}"`,
-
-          { id: cabinetId, name: originalCabinet.serialNumber || originalCabinet.game },
           changes,
           `Updated collection settings for cabinet "${originalCabinet.serialNumber || originalCabinet.game}" in location "${location.name}"`,
           getClientIP(request) || undefined
@@ -466,7 +410,6 @@ export async function DELETE(
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
-
           {
             field: "serialNumber",
             oldValue: cabinetToDelete.serialNumber,
@@ -488,12 +431,6 @@ export async function DELETE(
             oldValue: cabinetToDelete.gamingLocation,
             newValue: null,
           },
-
-          { field: "serialNumber", oldValue: cabinetToDelete.serialNumber, newValue: null },
-          { field: "game", oldValue: cabinetToDelete.game, newValue: null },
-          { field: "cabinetType", oldValue: cabinetToDelete.cabinetType, newValue: null },
-          { field: "assetStatus", oldValue: cabinetToDelete.assetStatus, newValue: null },
-          { field: "gamingLocation", oldValue: cabinetToDelete.gamingLocation, newValue: null },
         ];
 
         await logActivity(
@@ -504,17 +441,10 @@ export async function DELETE(
           },
           "DELETE",
           "machine",
-
           {
             id: cabinetId,
             name: cabinetToDelete.serialNumber || cabinetToDelete.game,
           },
-          deleteChanges,
-          `Deleted cabinet "${
-            cabinetToDelete.serialNumber || cabinetToDelete.game
-          }" from location "${location.name}"`,
-
-          { id: cabinetId, name: cabinetToDelete.serialNumber || cabinetToDelete.game },
           deleteChanges,
           `Deleted cabinet "${cabinetToDelete.serialNumber || cabinetToDelete.game}" from location "${location.name}"`,
           getClientIP(request) || undefined

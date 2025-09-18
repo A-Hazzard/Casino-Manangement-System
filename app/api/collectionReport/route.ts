@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
+import { Machine } from "@/app/api/lib/models/machines";
 import {
   getMonthlyCollectionReportSummary,
   getMonthlyCollectionReportByLocation,
@@ -12,7 +14,6 @@ import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import type { TimePeriod } from "@/app/api/lib/types";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { Machine } from "@/app/api/lib/models/machines";
 import { calculateCollectionReportTotals } from "@/app/api/lib/helpers/collectionReportCalculations";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 
@@ -180,28 +181,48 @@ export async function POST(req: NextRequest) {
     if (body.machines && Array.isArray(body.machines)) {
       for (const m of body.machines) {
         if (m.machineId) {
-          // Update machine collection meters (without collectionTime)
-          await Machine.findByIdAndUpdate(
-            m.machineId,
-            {
-              $set: {
-                "collectionMeters.metersIn": Number(m.metersIn) || 0,
-                "collectionMeters.metersOut": Number(m.metersOut) || 0,
-                updatedAt: new Date(),
+          // Get current machine data to access previous meters
+          const currentMachine = await Machine.findById(m.machineId).lean();
+          if (currentMachine) {
+            const currentMachineData = currentMachine as Record<string, unknown>;
+            const currentCollectionMeters = currentMachineData.collectionMeters as { metersIn: number; metersOut: number } | undefined;
+            
+            // Prepare history entry
+            const historyEntry = {
+              _id: new mongoose.Types.ObjectId(), // Use mongoose ObjectId for proper type
+              metersIn: Number(m.metersIn) || 0,
+              metersOut: Number(m.metersOut) || 0,
+              prevMetersIn: currentCollectionMeters?.metersIn || 0,
+              prevMetersOut: currentCollectionMeters?.metersOut || 0,
+              timestamp: new Date(),
+              locationReportId: body.locationReportId,
+            };
+
+            // Update machine collection meters and add to history
+            await Machine.findByIdAndUpdate(
+              m.machineId,
+              {
+                $set: {
+                  "collectionMeters.metersIn": Number(m.metersIn) || 0,
+                  "collectionMeters.metersOut": Number(m.metersOut) || 0,
+                  updatedAt: new Date(),
+                },
+                $push: {
+                  collectionMetersHistory: historyEntry,
+                },
               },
-            },
-            { new: true }
-          ).catch((err) => {
-            console.error(
-              `Failed to update collectionMeters for machine ${m.machineId}:`,
-              err
-            );
-          });
+              { new: true }
+            ).catch((err) => {
+              console.error(
+                `Failed to update collectionMeters and history for machine ${m.machineId}:`,
+                err
+              );
+            });
+          }
 
           // Update gaming location's previousCollectionTime
-          const machine = await Machine.findById(m.machineId).lean();
-          if (machine) {
-            const machineData = machine as Record<string, unknown>;
+          if (currentMachine) {
+            const machineData = currentMachine as Record<string, unknown>;
             const gamingLocationId = machineData.gamingLocation as string;
             
             if (gamingLocationId) {
