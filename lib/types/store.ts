@@ -2,6 +2,7 @@ import {
   ActiveFilters,
   ActiveTab,
   dashboardData,
+  DashboardTotals,
   dateRange,
   locations,
   TopPerformingData,
@@ -35,8 +36,8 @@ export type DashBoardStore = {
   activeFilters: ActiveFilters;
   setActiveFilters: (_state: ActiveFilters) => void;
 
-  totals: dashboardData | null;
-  setTotals: (_state: dashboardData | null) => void;
+  totals: DashboardTotals | null;
+  setTotals: (_state: DashboardTotals | null) => void;
 
   chartData: dashboardData[];
   setChartData: (_state: dashboardData[]) => void;
@@ -53,11 +54,11 @@ export type DashBoardStore = {
   pendingCustomDateRange?: dateRange;
   setPendingCustomDateRange: (_state?: dateRange) => void;
 
-  topPerformingData: TopPerformingData[];
-  setTopPerformingData: (_state: TopPerformingData[]) => void;
+  topPerformingData: TopPerformingData;
+  setTopPerformingData: (_state: TopPerformingData) => void;
 
-  gamingLocations: locations[];
-  setGamingLocations: (_state: locations[]) => void;
+  gamingLocations: locations;
+  setGamingLocations: (_state: locations) => void;
 
   selectedLicencee: string;
   setSelectedLicencee: (_state: string) => void;

@@ -1,12 +1,12 @@
 import type {
   QueryFilter,
-  ApiParamsType,
+  ParamsType,
   CustomDate,
   TimePeriod,
 } from "@shared/types";
 
 export type { QueryFilter };
-export type { ApiParamsType as ParamsType };
+export type { ParamsType };
 export type { CustomDate };
 export type { TimePeriod };
 

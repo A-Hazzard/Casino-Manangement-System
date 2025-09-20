@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { formatCurrency } from "@/lib/helpers/reports";
+import { formatCurrency } from "@/lib/utils/currency";
 
 type PerformanceChartProps = {
   data: ChartDataPoint[];

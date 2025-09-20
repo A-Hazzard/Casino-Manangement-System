@@ -92,3 +92,21 @@ export async function sendResetPasswordEmail(
     return { success: false, message: "Failed to send email." };
   }
 }
+
+/**
+ * Logs out a user by clearing their authentication token.
+ * This function is used on the client side to handle logout.
+ *
+ * @returns void
+ */
+export function logoutUser(): void {
+  // Clear any stored tokens or session data
+  if (typeof window !== 'undefined') {
+    // Clear localStorage/sessionStorage if needed
+    localStorage.removeItem('token');
+    sessionStorage.clear();
+    
+    // Redirect to login page
+    window.location.href = '/login';
+  }
+}

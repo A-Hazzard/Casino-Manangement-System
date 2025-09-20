@@ -32,8 +32,8 @@ export function useMachinesAnalytics() {
       setError();
       try {
         const response = await axios.get("/api/analytics/machines");
-        if (response.data.success) {
-          setMachines(response.data.data);
+        if (response.data?.success) {
+          setMachines(response.data?.data || []);
           setLastUpdated("machines");
         } else {
           setError();

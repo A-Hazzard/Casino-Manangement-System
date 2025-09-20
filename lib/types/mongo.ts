@@ -47,13 +47,13 @@ export type NestedOrQuery = {
 };
 
 // Specific query type for cabinet queries with required fields
-export type CabinetsQuery = MongoQuery<{
+export type CabinetsQuery = {
   gamingLocation?: string | ObjectId | RegexFilter;
   "Custom.gamingLocation"?: string | ObjectId | RegexFilter;
   deletedAt?: ArrayFilter;
   $or?: Array<StringIdQuery | NestedOrQuery>;
   "rel.licencee"?: string;
-}>;
+};
 
 
 

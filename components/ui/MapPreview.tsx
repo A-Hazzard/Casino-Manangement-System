@@ -7,7 +7,7 @@ import axios from "axios";
 import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import "leaflet/dist/leaflet.css";
 import { MapPreviewProps } from "@/lib/types/componentProps";
-import { locations } from "@/lib/types";
+import { Location } from "@/lib/types";
 import MapSkeleton from "@/components/ui/MapSkeleton";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,7 @@ const getValidLongitude = (geo: {
 };
 
 // Helper function to get location stats from locationAggregation data
-const getLocationStats = (location: locations, locationAggregates: Record<string, unknown>[]) => {
+const getLocationStats = (location: Location, locationAggregates: Record<string, unknown>[]) => {
   // Try to find matching data in locationAggregates
   const stats = Array.isArray(locationAggregates)
     ? locationAggregates.find((d) => d.location === location._id)
@@ -89,7 +89,7 @@ const LocationPopupContent = ({
   isFinancialDataLoading,
   onViewDetails,
 }: {
-  location: locations;
+  location: Location;
   locationAggregates: Record<string, unknown>[];
   isFinancialDataLoading: boolean;
   onViewDetails: (locationId: string) => void;
@@ -211,7 +211,7 @@ export default function MapPreview(props: MapPreviewProps) {
     props.aggLoading ?? true
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<locations[]>([]);
+  const [searchResults, setSearchResults] = useState<Location[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
@@ -391,7 +391,7 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Zoom to location
-  const zoomToLocation = (location: locations) => {
+  const zoomToLocation = (location: Location) => {
     if (!mapRef.current) return;
 
     // Check if location has valid coordinates
@@ -452,7 +452,7 @@ export default function MapPreview(props: MapPreviewProps) {
     geo: { longitude?: number; longtitude?: number },
     label: string,
     key: string | number,
-    locationObj: locations
+    locationObj: Location
   ) => {
     const lon = getValidLongitude(geo);
     if (!lon) return null;
@@ -521,8 +521,8 @@ export default function MapPreview(props: MapPreviewProps) {
             const locationName =
               location.name || location.locationName || "Unknown Location";
             return renderMarker(
-              location.geoCoords.latitude,
-              location.geoCoords,
+              location.geoCoords!.latitude!,
+              location.geoCoords!,
               locationName,
               location._id,
               location
@@ -661,8 +661,8 @@ export default function MapPreview(props: MapPreviewProps) {
                       location.locationName ||
                       "Unknown Location";
                     return renderMarker(
-                      location.geoCoords.latitude,
-                      location.geoCoords,
+                      location.geoCoords!.latitude!,
+                      location.geoCoords!,
                       locationName,
                       `modal-${location._id}`,
                       location

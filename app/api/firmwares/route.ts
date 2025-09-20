@@ -4,8 +4,8 @@ import { Firmware } from "@/app/api/lib/models/firmware";
 import { GridFSBucket } from "mongodb";
 import { Readable } from "stream";
 import { generateMongoId } from "@/lib/utils/id";
-import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { logActivity } from "@/lib/helpers/activityLogger";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
 /**

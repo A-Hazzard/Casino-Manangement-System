@@ -13,7 +13,7 @@ import {
   logActivity,
   calculateChanges,
 } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
 // Validation helpers mirroring frontend rules
@@ -60,11 +60,37 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const id = request.nextUrl.searchParams.get("id");
+    const locationId = request.nextUrl.searchParams.get("locationId");
     const timePeriod = request.nextUrl.searchParams.get("timePeriod");
 
+    // Support both single machine fetch (id) and location-based fetch (locationId)
+    if (!id && !locationId) {
+      return NextResponse.json(
+        { success: false, error: "Either Cabinet ID or Location ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // If locationId is provided, fetch all machines for that location
+    if (locationId && !id) {
+      const machines = await Machine.find({
+        gamingLocation: locationId,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      }).sort({ serialNumber: 1 });
+
+      return NextResponse.json({
+        success: true,
+        data: machines.map(machine => convertResponseToTrinidadTime(machine.toObject())),
+      });
+    }
+
+    // Original single machine fetch logic
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Cabinet ID is required" },
+        { success: false, error: "Cabinet ID is required for single machine fetch" },
         { status: 400 }
       );
     }
@@ -330,7 +356,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: convertResponseToTrinidadTime(machine),
+      data: convertResponseToTrinidadTime(machine.toObject()),
     });
   } catch (error) {
     console.error("Error fetching machine:", error);

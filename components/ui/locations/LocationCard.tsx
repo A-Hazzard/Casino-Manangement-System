@@ -20,7 +20,7 @@ export default function LocationCard({
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleCardClick = () => {
-    onLocationClick(location.location);
+    onLocationClick(location._id);
   };
 
   return (
@@ -44,7 +44,7 @@ export default function LocationCard({
         />
       )}
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-base font-semibold">{location.locationName}</h3>
+        <h3 className="text-base font-semibold">{(location as Record<string, unknown>).locationName as string}</h3>
         <div className="flex gap-2 action-buttons">
           <button
             onClick={(e) => {

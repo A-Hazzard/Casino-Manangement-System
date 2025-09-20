@@ -32,8 +32,8 @@ export function useLocationsAnalytics() {
       setError();
       try {
         const response = await axios.get("/api/analytics/locations");
-        if (response.data.success) {
-          setLocations(response.data.data);
+        if (response.data?.success) {
+          setLocations(response.data?.data || []);
           setLastUpdated("locations");
         } else {
           setError();

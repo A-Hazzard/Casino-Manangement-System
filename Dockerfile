@@ -7,11 +7,11 @@ WORKDIR /app/evolution1
 # Install pnpm 10
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 
-# Copy package and lock files for dependency caching
-COPY ./pnpm-lock.yaml ./package.json ./
+# Copy package file for dependency caching
+COPY ./package.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies (without frozen lockfile since it may not exist)
+RUN pnpm install
 
 # Copy everything else
 COPY . .

@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
       );
 
       machinesData = machinesData.filter((machine) =>
-        licenseeLocationIds.includes(machine.gamingLocation)
+        licenseeLocationIds.includes((machine as unknown as { gamingLocation: string }).gamingLocation)
       );
     }
 
@@ -340,9 +340,9 @@ export async function GET(req: NextRequest) {
     // Apply search filter if provided - search by machineId, location, serialNumber, and custom.name
     if (search) {
       const searchLower = search.toLowerCase();
-      transformedData = transformedData.filter((item) => {
+      transformedData = transformedData.filter((item: Record<string, unknown>) => {
         // Get the original machine data for additional search fields
-        const machineData = machinesData.find(m => 
+        const machineData = machinesData.find((m: Record<string, unknown>) => 
           (m._id as string).toString() === (item as Record<string, unknown>).machineDocumentId
         );
         

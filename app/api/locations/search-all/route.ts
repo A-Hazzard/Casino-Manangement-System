@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 
+type LocationAggregationResult = {
+  _id: string;
+  name: string;
+  address?: string;
+  country?: string;
+  rel?: Record<string, unknown>;
+  profitShare?: number;
+  geoCoords?: Record<string, unknown>;
+  totalMachines: number;
+  onlineMachines: number;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  isLocalServer: boolean;
+  hasSmib: boolean;
+  noSMIBLocation: boolean;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -157,10 +175,10 @@ export async function GET(request: NextRequest) {
           },
         },
       ])
-      .toArray();
+      .toArray() as LocationAggregationResult[];
 
     // Transform the data to match the expected format
-    const response = locations.map((loc) => ({
+    const response = locations.map((loc: LocationAggregationResult) => ({
       location: loc._id.toString(),
       locationName: loc.name || "Unknown Location",
       country: loc.country,

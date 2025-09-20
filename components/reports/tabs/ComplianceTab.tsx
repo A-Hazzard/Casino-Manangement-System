@@ -486,7 +486,7 @@ export default function ComplianceTab() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {metrics.upcomingDeadlines.map((deadline, index) => (
+                {metrics.upcomingDeadlines.map((deadline: { requirement: string; deadline: string; status: string }, index: number) => (
                   <div
                     key={index}
                     className={`p-4 border-l-4 rounded-lg ${

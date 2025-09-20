@@ -89,7 +89,7 @@ export const ConfirmationDialog = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60]">
+    <div className="fixed inset-0 z-[9999]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -149,6 +149,10 @@ export const ConfirmationDialog = ({
               <p className="text-lg font-semibold">
                 {message}
               </p>
+            </div>
+            {/* Hidden description for accessibility */}
+            <div className="sr-only">
+              {message}
             </div>
           </div>
 

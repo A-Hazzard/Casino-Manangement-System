@@ -1,7 +1,7 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { NextRequest, NextResponse } from "next/server";
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
-import { TimePeriod } from "@/app/api/lib/types";
+import { getDatesForTimePeriod } from "@/lib/utils/dates";
+import { TimePeriod } from "@/shared/types";
 import { Document } from "mongodb";
 
 /**

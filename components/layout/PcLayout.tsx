@@ -3,6 +3,7 @@
 import MapPreview from "@/components/ui/MapPreview";
 import { timeFrames } from "@/lib/constants/uiConstants";
 import { PcLayoutProps } from "@/lib/types/componentProps";
+import type { TopPerformingItem } from "@/lib/types";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -329,7 +330,7 @@ export default function PcLayout(props: PcLayoutProps) {
                 {/* Chart and Legend */}
                 <div className="flex items-center justify-between">
                   <ul className="space-y-2 flex-1">
-                    {props.topPerformingData.map((item, index) => (
+                    {props.topPerformingData.map((item: TopPerformingItem, index: number) => (
                       <li
                         key={index}
                         className="flex items-center space-x-2 text-sm"
@@ -339,9 +340,7 @@ export default function PcLayout(props: PcLayoutProps) {
                           style={{ backgroundColor: item.color }}
                         ></div>
                         <span className="text-gray-700">
-                          {props.activeTab === "Cabinets"
-                            ? item.machine
-                            : item.location}
+                          {item.name}
                         </span>
                       </li>
                     ))}
@@ -351,18 +350,14 @@ export default function PcLayout(props: PcLayoutProps) {
                       <Pie
                         data={props.topPerformingData}
                         dataKey="totalDrop"
-                        nameKey={
-                          props.activeTab === "Cabinets"
-                            ? "machine"
-                            : "location"
-                        }
+                        nameKey="name"
                         cx="50%"
                         cy="50%"
                         outerRadius={70}
                         labelLine={false}
                         label={props.renderCustomizedLabel}
                       >
-                        {props.topPerformingData.map((entry, index) => (
+                        {props.topPerformingData.map((entry: TopPerformingItem, index: number) => (
                           <Cell key={index} fill={entry.color} />
                         ))}
                       </Pie>

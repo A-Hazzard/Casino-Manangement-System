@@ -4,7 +4,6 @@ import PageLayout from "@/components/layout/PageLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import PcLayout from "@/components/layout/PcLayout";
 
-import { dashboardData } from "@/lib/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,6 +19,7 @@ import {
 } from "@/lib/helpers/dashboard";
 import { calculatePieChartLabelData } from "@/lib/utils/chart";
 import { CustomizedLabelProps } from "@/lib/types/componentProps";
+import { DashboardTotals, TopPerformingData } from '@/lib/types';
 
 
 
@@ -63,7 +63,7 @@ function DashboardContent() {
   
   
   // To compare new totals with previous ones.
-  const prevTotals = useRef<dashboardData | null>(null);
+  const prevTotals = useRef<DashboardTotals | null>(null);
   
   // Floating refresh button state
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
@@ -128,7 +128,7 @@ function DashboardContent() {
       fetchTopPerformingDataHelper(
         activeTab,
         activePieChartFilter as TimePeriod,
-        setTopPerformingData,
+        (data: TopPerformingData[]) => setTopPerformingData(data as unknown as TopPerformingData),
         setLoadingTopPerforming
       ).catch((error) => {
         if (isMounted) {
@@ -193,7 +193,7 @@ function DashboardContent() {
       setChartData,
       setActiveFilters,
       setShowDatePicker,
-      setTopPerformingData
+      (data: TopPerformingData[]) => setTopPerformingData(data as unknown as TopPerformingData)
     );
   }, [
     activeMetricsFilter,
@@ -263,7 +263,7 @@ function DashboardContent() {
               setTotals={setTotals}
               setChartData={setChartData}
               setPieChartSortIsOpen={setPieChartSortIsOpen}
-              setTopPerformingData={setTopPerformingData}
+              setTopPerformingData={(data: TopPerformingData[]) => setTopPerformingData(data as unknown as TopPerformingData)}
               setActiveMetricsFilter={setActiveMetricsFilter}
               setActivePieChartFilter={setActivePieChartFilter}
               renderCustomizedLabel={renderCustomizedLabel}
@@ -295,7 +295,7 @@ function DashboardContent() {
               setTotals={setTotals}
               setChartData={setChartData}
               setPieChartSortIsOpen={setPieChartSortIsOpen}
-              setTopPerformingData={setTopPerformingData}
+              setTopPerformingData={(data: TopPerformingData[]) => setTopPerformingData(data as unknown as TopPerformingData)}
               setActiveMetricsFilter={setActiveMetricsFilter}
               setActivePieChartFilter={setActivePieChartFilter}
               renderCustomizedLabel={renderCustomizedLabel}

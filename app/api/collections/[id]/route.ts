@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../lib/middleware/db";
 import { Collections } from "@/app/api/lib/models/collections";
+import { Machine } from "@/app/api/lib/models/machines";
+import mongoose from "mongoose";
 
 export async function PATCH(
   request: NextRequest,
@@ -48,6 +50,88 @@ export async function PATCH(
         { success: false, error: "Collection not found" },
         { status: 404 }
       );
+    }
+
+    // Update machine collectionMetersHistory if meters were updated
+    if (updatedCollection.machineId && (updateData.metersIn !== undefined || updateData.metersOut !== undefined)) {
+      try {
+        // Get the current machine to access previous meters
+        const currentMachine = await Machine.findById(updatedCollection.machineId).lean();
+        if (currentMachine) {
+          const currentMachineData = currentMachine as Record<string, unknown>;
+          const currentCollectionMeters = currentMachineData.collectionMeters as { metersIn: number; metersOut: number } | undefined;
+          
+          // Check if there's already a history entry with the same locationReportId
+          const existingHistoryEntry = (currentMachine as { collectionMetersHistory?: Array<{ locationReportId: string }> }).collectionMetersHistory?.find(
+            (entry: { locationReportId: string }) => entry.locationReportId === updatedCollection.locationReportId
+          );
+
+          if (existingHistoryEntry) {
+            // Update existing history entry
+            await Machine.findByIdAndUpdate(
+              updatedCollection.machineId,
+              {
+                $set: {
+                  "collectionMeters.metersIn": updatedCollection.metersIn || 0,
+                  "collectionMeters.metersOut": updatedCollection.metersOut || 0,
+                  updatedAt: new Date(),
+                  "collectionMetersHistory.$[elem].metersIn": updatedCollection.metersIn || 0,
+                  "collectionMetersHistory.$[elem].metersOut": updatedCollection.metersOut || 0,
+                  "collectionMetersHistory.$[elem].timestamp": new Date(),
+                },
+              },
+              {
+                arrayFilters: [{ "elem.locationReportId": updatedCollection.locationReportId }],
+                new: true
+              }
+            );
+
+            console.warn("Updated existing collectionMetersHistory entry:", {
+              machineId: updatedCollection.machineId,
+              locationReportId: updatedCollection.locationReportId,
+              newMetersIn: updatedCollection.metersIn,
+              newMetersOut: updatedCollection.metersOut,
+            });
+          } else {
+            // Create new history entry if none exists
+            const historyEntry = {
+              _id: new mongoose.Types.ObjectId(),
+              metersIn: updatedCollection.metersIn || 0,
+              metersOut: updatedCollection.metersOut || 0,
+              prevMetersIn: currentCollectionMeters?.metersIn || 0,
+              prevMetersOut: currentCollectionMeters?.metersOut || 0,
+              timestamp: new Date(),
+              locationReportId: updatedCollection.locationReportId || "",
+            };
+
+            // Update machine collection meters and add to history
+            await Machine.findByIdAndUpdate(
+              updatedCollection.machineId,
+              {
+                $set: {
+                  "collectionMeters.metersIn": updatedCollection.metersIn || 0,
+                  "collectionMeters.metersOut": updatedCollection.metersOut || 0,
+                  updatedAt: new Date(),
+                },
+                $push: {
+                  collectionMetersHistory: historyEntry,
+                },
+              },
+              { new: true }
+            );
+
+            console.warn("Added new collectionMetersHistory entry:", {
+              machineId: updatedCollection.machineId,
+              locationReportId: updatedCollection.locationReportId,
+              newMetersIn: updatedCollection.metersIn,
+              newMetersOut: updatedCollection.metersOut,
+            });
+          }
+        }
+      } catch (machineUpdateError) {
+        console.error("Failed to update machine collection meters:", machineUpdateError);
+        // Don't fail the collection update if machine update fails
+      }
     }
 
     console.warn("Collection updated successfully:", {

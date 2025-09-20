@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {getUserIdFromServer} from "@/lib/utils/user";
+import {getUserIdFromServer} from "../../lib/helpers/users";
 
 export async function GET() {
     const userId = await getUserIdFromServer();

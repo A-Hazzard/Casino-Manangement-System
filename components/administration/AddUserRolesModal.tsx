@@ -228,7 +228,7 @@ export default function AddUserRolesModal({
       />
       <div
         ref={modalRef}
-        className="bg-container shadow-lg flex flex-col gap-3 animate-in w-full max-w-lg mx-auto md:relative md:rounded-2xl md:p-6 md:my-0 md:top-0 md:left-0 md:bottom-auto md:right-auto md:max-h-none md:overflow-visible absolute bottom-0 left-0 right-0 rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto md:static"
+        className="bg-container shadow-lg flex flex-col gap-3 animate-in w-full max-w-lg mx-auto md:relative md:rounded-2xl md:p-6 md:my-0 md:top-0 md:left-0 md:bottom-auto md:right-auto md:max-h-none md:overflow-visible absolute bottom-0 left-0 right-0 rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -273,7 +273,7 @@ export default function AddUserRolesModal({
 
           {/* Password Field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700">
               Password
             </label>
             <div className="relative">
@@ -332,7 +332,7 @@ export default function AddUserRolesModal({
 
           {/* Confirm Password Field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700">
               Confirm Password
             </label>
             <div className="relative">

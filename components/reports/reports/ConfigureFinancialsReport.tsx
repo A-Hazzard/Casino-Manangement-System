@@ -126,7 +126,7 @@ export default function ConfigureFinancialsReport() {
               <Label>Locations</Label>
               <MultiSelect
                 options={locations.map((l) => ({
-                  value: l.id,
+                  value: l._id,
                   label: l.name,
                 }))}
                 selected={reportConfig.filters?.locationIds || []}

@@ -10,10 +10,7 @@ import {
 } from "@/lib/helpers/administration";
 import {
   fetchLicensees,
-  createLicensee,
-  updateLicensee,
-  deleteLicensee,
-} from "@/lib/helpers/licensees";
+} from "@/lib/helpers/clientLicensees";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
@@ -252,13 +249,21 @@ export const licenseeManagement = {
     }
 
     try {
-      const result = await createLicensee({
-        name: licenseeForm.name,
-        description: licenseeForm.description,
-        country: licenseeForm.country,
-        startDate: licenseeForm.startDate,
-        expiryDate: licenseeForm.expiryDate,
+      const response = await fetch("/api/licensees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: licenseeForm.name,
+          description: licenseeForm.description,
+          country: licenseeForm.country,
+          startDate: licenseeForm.startDate,
+          expiryDate: licenseeForm.expiryDate,
+        }),
       });
+      
+      const result = await response.json();
 
       // Show success modal with license key
       if (result.licensee && result.licensee.licenseKey) {
@@ -304,7 +309,17 @@ export const licenseeManagement = {
         isPaid: selectedLicensee.isPaid, // Preserve current payment status
       };
 
-      await updateLicensee(updateData);
+      const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update licensee");
+      }
       setIsEditLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setLicenseeForm({});
@@ -332,7 +347,13 @@ export const licenseeManagement = {
     refreshLicensees: () => Promise<void>
   ) => {
     try {
-      await deleteLicensee(selectedLicensee._id);
+      const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete licensee");
+      }
       setIsDeleteLicenseeModalOpen(false);
       setSelectedLicensee(null);
       await refreshLicensees();

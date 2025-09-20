@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { dashboardData, ActiveFilters } from "@/lib/types";
+import { DashboardTotals, ActiveFilters, TopPerformingData } from "@/lib/types";
 import { TimePeriod } from "@/app/api/lib/types";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
@@ -32,7 +32,7 @@ export function useDashboardData() {
     setTopPerformingData,
   } = useDashBoardStore();
 
-  const prevTotals = useRef<dashboardData | null>(null);
+  const prevTotals = useRef<DashboardTotals | null>(null);
 
   const getTimeFrame = useCallback(() => {
     if (activeFilters.Today) return "Today";
@@ -66,10 +66,12 @@ export function useDashboardData() {
         if (initialLoading) {
           const locationsData = await getAllGamingLocations();
           const validLocations = locationsData.filter(
-            (loc) =>
-              loc.geoCoords &&
-              loc.geoCoords.latitude !== 0 &&
-              loc.geoCoords.longitude !== 0
+            (loc) => {
+              const locationWithGeoCoords = loc as typeof loc & { geoCoords?: { latitude?: number; longitude?: number; longtitude?: number } };
+              return locationWithGeoCoords.geoCoords &&
+                locationWithGeoCoords.geoCoords.latitude !== 0 &&
+                locationWithGeoCoords.geoCoords.longitude !== 0;
+            }
           );
           setGamingLocations(validLocations);
         }
@@ -122,7 +124,7 @@ export function useDashboardData() {
           activeTab,
           activePieChartFilter
         );
-        setTopPerformingData(data);
+        setTopPerformingData(data as unknown as TopPerformingData);
       } catch (error) {
         console.error("Error fetching top-performing data:", error);
       } finally {

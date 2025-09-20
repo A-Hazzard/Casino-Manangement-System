@@ -18,6 +18,15 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   try {
     await connectDB();
+    
+    // Ensure getAllUsers function is available
+    if (!getAllUsers) {
+      console.error("getAllUsers function is not available");
+      return new Response(
+        JSON.stringify({ success: false, message: "Service not available" }),
+        { status: 500 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
 
@@ -51,7 +60,12 @@ export async function GET(request: NextRequest): Promise<Response> {
       context,
       `Successfully fetched ${result.length} users`
     );
-    return new Response(JSON.stringify({ users: result }), { status: 200 });
+    return new Response(JSON.stringify({ success: true, users: result }), { 
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

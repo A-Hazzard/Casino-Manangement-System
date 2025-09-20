@@ -13,6 +13,15 @@ import { generateMongoId } from "@/lib/utils/id";
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+    
+    // Ensure ActivityLog model is available
+    if (!ActivityLog) {
+      console.error("ActivityLog model is not available");
+      return NextResponse.json(
+        { success: false, error: "ActivityLog model not available" },
+        { status: 500 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     

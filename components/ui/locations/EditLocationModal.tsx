@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 import type { EditLocationModalProps } from "@/lib/types/components";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
-import { fetchLicensees } from "@/lib/helpers/licensees";
+import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 
 import { fetchCountries } from "@/lib/helpers/countries";
@@ -78,7 +78,7 @@ export default function EditLocationModal({
 
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
-  const locationLogger = createActivityLogger("location");
+  const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -454,17 +454,16 @@ export default function EditLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
       };
 
-      const previousData = { ...selectedLocation };
-
       await axios.put("/api/locations", locationData);
 
       // Log the update activity
-      await locationLogger.logUpdate(
-        locationIdentifier,
-        formData.name,
-        previousData,
-        locationData,
-        `Updated location: ${formData.name}`
+      await locationLogger(
+        "update",
+        "location",
+        { id: locationIdentifier, name: formData.name },
+        undefined,
+        `Updated location: ${formData.name}`,
+        undefined
       );
 
       toast.success("Location updated successfully");

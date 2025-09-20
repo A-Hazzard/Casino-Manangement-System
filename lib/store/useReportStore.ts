@@ -38,7 +38,12 @@ type ReportStore = {
 };
 
 const initialState = {
-  currentStep: "selectType" as ReportStep,
+  currentStep: {
+    id: "selectType",
+    name: "Select Report Type",
+    status: "pending" as const,
+    progress: 0,
+  } as ReportStep,
   reportType: null,
   reportConfig: {},
   reportData: null,
@@ -58,7 +63,12 @@ export const useReportStore = create<ReportStore>((set) => ({
   setReportType: (type) =>
     set({
       reportType: type,
-      currentStep: "configure",
+      currentStep: {
+        id: "configure",
+        name: "Configure Report",
+        status: "pending" as const,
+        progress: 25,
+      },
       reportConfig: {},
       reportData: null,
     }),

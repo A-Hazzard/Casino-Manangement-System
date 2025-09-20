@@ -1,9 +1,19 @@
 import { KpiMetric } from "@/lib/types/reports";
-import {
-  formatCurrency,
-  formatPercentage,
-  formatLargeNumber,
-} from "@/lib/helpers/reports";
+import { formatCurrency } from "@/lib/utils/currency";
+
+// Helper functions for formatting
+const formatPercentage = (value: number): string => {
+  return `${value.toFixed(1)}%`;
+};
+
+const formatLargeNumber = (value: number): string => {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  } else if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toString();
+};
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 

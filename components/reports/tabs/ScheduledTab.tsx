@@ -686,7 +686,7 @@ export default function ScheduledTab() {
                       <div className="text-sm space-y-1">
                         {report.recipients
                           .slice(0, 2)
-                          .map((recipient, index) => (
+                          .map((recipient, index: number) => (
                             <p key={index}>{recipient.email}</p>
                           ))}
                         {report.recipients.length > 2 && (

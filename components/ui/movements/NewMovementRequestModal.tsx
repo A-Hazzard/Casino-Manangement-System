@@ -256,20 +256,19 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
       if (onSubmit) {
         // Convert MovementRequest to MachineMovementRecord format
         const machineMovementRecord: MachineMovementRecord = {
-          id: createdRequest._id,
+          _id: createdRequest._id,
           machineId: selectedCabinets[0]?._id || "",
           machineName: selectedCabinets[0]?.installedGame || selectedCabinets[0]?.game || "Unknown Machine",
           fromLocationId: fromLocation,
           fromLocationName: fromLocationName,
           toLocationId: toLocation,
           toLocationName: toLocationName,
-          moveDate: new Date().toISOString(),
+          moveDate: new Date(),
           reason: notes,
           status: "pending",
-          notes: notes,
           movedBy: createdBy,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         };
         onSubmit(machineMovementRecord);
       }

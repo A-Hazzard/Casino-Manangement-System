@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { fetchLicensees } from "@/lib/helpers/licensees";
+import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 
 export function LicenceeSelector() {
   const {

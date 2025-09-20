@@ -156,12 +156,12 @@ export const handleAnalyticsExport = async (
         `${item.target}%`,
         `${item.benchmark}%`,
         item.current >= item.target ? "On Target" : "Below Target",
-      ]),
+      ] as (string | number | undefined)[]),
       summary: [
-        { label: "Metrics Analyzed", value: performanceData.length },
+        { label: "Metrics Analyzed", value: performanceData.length.toString() },
         {
           label: "On Target",
-          value: performanceData.filter((m) => m.current >= m.target).length,
+          value: performanceData.filter((m) => m.current >= m.target).length.toString(),
         },
         {
           label: "Average Performance",
@@ -173,7 +173,7 @@ export const handleAnalyticsExport = async (
             return percentage.toFixed(hasSignificantDecimals ? 1 : 0);
           })()}%`,
         },
-        { label: "Anomalies Detected", value: anomalyData.length },
+        { label: "Anomalies Detected", value: anomalyData.length.toString() },
       ],
       metadata: {
         generatedBy: "Evolution1 CMS - Analytics Engine",

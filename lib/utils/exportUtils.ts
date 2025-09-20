@@ -2,11 +2,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import type {
-  ExportDataStructure,
-  MachineExportData,
-  LocationExportData,
-} from "@shared/types";
+// Remove the problematic import since ExportDataStructure doesn't exist
 import { toast } from "sonner";
 
 // jsPDF autotable typings are declared in lib/types/jspdf-autotable.d.ts
@@ -19,6 +15,121 @@ import type {
 
 // Re-export shared types for convenience
 export type { ExportFormat, ExportData, LegacyExportData };
+
+// Local types for export utilities
+export type MachineExportData = {
+  serialNumber?: string;
+  origSerialNumber?: string;
+  machineId?: string;
+  game: string;
+  location: string;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  jackpot: number;
+  gamesPlayed: number;
+  lastActivity: Date;
+};
+
+export type LocationExportData = {
+  locationName: string;
+  totalMachines: number;
+  onlineMachines: number;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  performance: string;
+};
+
+// Extended LegacyExportData type with missing properties
+export type ExtendedLegacyExportData = LegacyExportData & {
+  title: string;
+  subtitle?: string;
+  metadata?: {
+    generatedBy: string;
+    generatedAt: string;
+    dateRange?: string;
+    tab?: string;
+    selectedLocations?: string | number;
+  };
+  summary?: Array<{ label: string; value: string }>;
+  headers: string[];
+  data: (string | number | undefined)[][];
+};
+
+// Specific types for export data arrays
+export type OverviewItem = {
+  locationName?: string;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+  day?: string;
+};
+
+export type SasEvaluationItem = {
+  locationName?: string;
+  totalMachines?: number;
+  onlineMachines?: number;
+  performance?: string;
+  moneyIn?: number;
+};
+
+export type RevenueAnalysisItem = {
+  locationName?: string;
+  machineId?: string;
+  game?: string;
+  manufacturer?: string;
+  handle?: number;
+  winLoss?: number;
+  jackpot?: number;
+  gamesPlayed?: number;
+  avgWagerPerGame?: number;
+  actualHold?: number;
+};
+
+export type MachineItem = {
+  machineId?: string;
+  machineName?: string;
+  gameTitle?: string;
+  locationName?: string;
+  manufacturer?: string;
+  machineType?: string;
+  netWin?: number;
+  drop?: number;
+  totalCancelledCredits?: number;
+  jackpot?: number;
+  gamesPlayed?: number;
+  actualHold?: number;
+  isOnline?: boolean;
+  isSasEnabled?: boolean;
+};
+
+// Extended ExportData type with proper types
+export type ExtendedExportData = {
+  overview: OverviewItem[];
+  sasEvaluation: SasEvaluationItem[];
+  revenueAnalysis: RevenueAnalysisItem[];
+  machines: MachineItem[];
+  metadata: {
+    generatedAt: Date;
+    timePeriod: string;
+    selectedLocations: string[];
+    selectedLicencee?: string;
+  };
+};
+
+export type ExportDataStructure = {
+  headers: string[];
+  data: (string | number | undefined)[][];
+  metadata: {
+    title: string;
+    generatedAt: Date;
+    filters: {
+      dateRange: string;
+      generatedBy: string;
+    };
+  };
+};
 
 import axios from "axios";
 
@@ -41,7 +152,7 @@ const getEOSLogoBase64 = async (): Promise<string> => {
 };
 
 export class ExportUtils {
-  static async exportToPDF(data: LegacyExportData): Promise<void> {
+  static async exportToPDF(data: ExtendedLegacyExportData): Promise<void> {
     const doc = new jsPDF();
 
     // Add logo
@@ -85,7 +196,7 @@ export class ExportUtils {
       doc.text("Summary", 15, yPosition);
       yPosition += 10;
 
-      const summaryData = data.summary.map((item) => [item.label, item.value]);
+      const summaryData = data.summary.map((item: { label: string; value: string }) => [item.label, item.value]);
 
       doc.autoTable({
         startY: yPosition,
@@ -145,7 +256,7 @@ export class ExportUtils {
     doc.save(fileName);
   }
 
-  static exportToCSV(data: LegacyExportData): void {
+  static exportToCSV(data: ExtendedLegacyExportData): void {
     let csvContent = "";
 
     // Add title and metadata
@@ -168,7 +279,7 @@ export class ExportUtils {
     if (data.summary && data.summary.length > 0) {
       csvContent += '"Summary"\n';
       csvContent += '"Metric","Value"\n';
-      data.summary.forEach((item) => {
+      data.summary.forEach((item: { label: string; value: string }) => {
         csvContent += `"${item.label}","${item.value}"\n`;
       });
       csvContent += "\n";
@@ -179,8 +290,8 @@ export class ExportUtils {
       csvContent += '"Detailed Data"\n';
       csvContent +=
         data.headers.map((header) => `"${header}"`).join(",") + "\n";
-      data.data.forEach((row) => {
-        csvContent += row.map((cell) => `"${cell}"`).join(",") + "\n";
+      data.data.forEach((row: (string | number | undefined)[]) => {
+        csvContent += row.map((cell: string | number | undefined) => `"${cell ?? ""}"`).join(",") + "\n";
       });
     }
 
@@ -200,7 +311,7 @@ export class ExportUtils {
     document.body.removeChild(link);
   }
 
-  static exportToExcel(data: LegacyExportData): void {
+  static exportToExcel(data: ExtendedLegacyExportData): void {
     const workbook = XLSX.utils.book_new();
 
     // Create worksheet data
@@ -226,7 +337,7 @@ export class ExportUtils {
     if (data.summary && data.summary.length > 0) {
       wsData.push(["Summary"]);
       wsData.push(["Metric", "Value"]);
-      data.summary.forEach((item) => {
+      data.summary.forEach((item: { label: string; value: string }) => {
         wsData.push([item.label, item.value]);
       });
       wsData.push([]);
@@ -236,8 +347,8 @@ export class ExportUtils {
     if (data.data.length > 0) {
       wsData.push(["Detailed Data"]);
       wsData.push(data.headers);
-      data.data.forEach((row) => {
-        wsData.push(row);
+      data.data.forEach((row: (string | number | undefined)[]) => {
+        wsData.push(row.map(cell => cell ?? ""));
       });
     }
 
@@ -297,7 +408,7 @@ export class ExportUtils {
   }
 
   static async exportData(
-    data: LegacyExportData,
+    data: ExtendedLegacyExportData,
     format: ExportFormat
   ): Promise<void> {
     try {
@@ -489,12 +600,12 @@ const fetchMachinesData = async (
 };
 
 // Convert data to Excel format
-const convertToExcelFormat = (data: ExportData) => {
+const convertToExcelFormat = (data: ExtendedExportData) => {
   const workbook = {
     sheets: [
       {
         name: "Overview",
-        data: data.overview.map((item) => ({
+        data: data.overview.map((item: OverviewItem) => ({
           Location: item.locationName || "Unknown",
           "Total Revenue": item.moneyIn || 0,
           "Total Payout": item.moneyOut || 0,
@@ -504,7 +615,7 @@ const convertToExcelFormat = (data: ExportData) => {
       },
       {
         name: "SAS Evaluation",
-        data: data.sasEvaluation.map((item) => ({
+        data: data.sasEvaluation.map((item: SasEvaluationItem) => ({
           Location: item.locationName || "Unknown",
           "Total Machines": item.totalMachines || 0,
           "Online Machines": item.onlineMachines || 0,
@@ -514,7 +625,7 @@ const convertToExcelFormat = (data: ExportData) => {
       },
       {
         name: "Revenue Analysis",
-        data: data.revenueAnalysis.map((item) => ({
+        data: data.revenueAnalysis.map((item: RevenueAnalysisItem) => ({
           Location: item.locationName || "Unknown",
           "Machine ID": item.machineId || "Unknown",
           Game: item.game || "Unknown",
@@ -529,7 +640,7 @@ const convertToExcelFormat = (data: ExportData) => {
       },
       {
         name: "Machines",
-        data: data.machines.map((item) => ({
+        data: data.machines.map((item: MachineItem) => ({
           "Machine ID": item.machineId || "Unknown",
           "Machine Name": item.machineName || "Unknown",
           "Game Title": item.gameTitle || "Unknown",
@@ -630,7 +741,7 @@ export const exportAllReports = async (
       ]);
 
     // Prepare export data
-    const exportData: ExportData = {
+    const exportData: ExtendedExportData = {
       overview: overviewData,
       sasEvaluation: sasData,
       revenueAnalysis: revenueData,
@@ -664,7 +775,7 @@ export const exportAllReports = async (
 
 // Legacy export function for individual reports (maintains backward compatibility)
 export const exportData = async (
-  data: LegacyExportData
+  data: ExtendedLegacyExportData
 ) => {
   try {
     toast.loading("Preparing export...");
@@ -683,8 +794,10 @@ export const exportData = async (
     csvContent += data.headers.join(",") + "\n";
 
     // Data rows
-    data.data.forEach((row) => {
-      const values = row.map((value) => {
+    data.data.forEach((row: (string | number | undefined)[]) => {
+      const values = row.map((value: string | number | undefined) => {
+        // Handle undefined values
+        if (value === undefined) return "";
         // Escape commas and quotes
         if (
           typeof value === "string" &&
@@ -700,7 +813,7 @@ export const exportData = async (
     // Summary
     if (data.summary && data.summary.length > 0) {
       csvContent += "\nSummary:\n";
-      data.summary.forEach((item) => {
+      data.summary.forEach((item: { label: string; value: string }) => {
         csvContent += `${item.label}: ${item.value}\n`;
       });
     }

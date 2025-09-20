@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Member } from "@/app/api/lib/models/members";
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { PipelineStage } from "mongoose";
 

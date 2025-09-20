@@ -7,57 +7,60 @@ import {
   containerVariants,
   itemVariants,
 } from "@/lib/constants/animationVariants";
-// import { BillValidatorTableV2 } from "./BillValidatorTableV2"; // Removed - using BillValidatorTableWithFilters instead
+// import { BillValidatorTableV2 } from "./BillValidatorTableV2"; // Removed - using UnifiedBillValidator instead
 
-// import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using BillValidatorSection instead
-import { BillValidatorSection } from "@/components/collectionReport/BillValidatorSection";
+// import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using UnifiedBillValidator instead
+// import { BillValidatorSection } from "@/components/collectionReport/BillValidatorSection"; // Removed - using UnifiedBillValidator instead
+import { UnifiedBillValidator } from "./UnifiedBillValidator";
 
-// Type for bill meters data from machine
-type MachineBillMetersData = {
-  dollar1?: number;
-  dollar2?: number;
-  dollar5?: number;
-  dollar10?: number;
-  dollar20?: number;
-  dollar50?: number;
-  dollar100?: number;
-  dollar200?: number;
-  dollar500?: number;
-  dollar1000?: number;
-  dollar2000?: number;
-  dollar5000?: number;
-  dollarTotal?: number;
-  dollarTotalUnknown?: number;
-};
+// Type for bill meters data from machine - unused but kept for reference
+// type MachineBillMetersData = {
+//   dollar1?: number;
+//   dollar2?: number;
+//   dollar5?: number;
+//   dollar10?: number;
+//   dollar20?: number;
+//   dollar50?: number;
+//   dollar100?: number;
+//   dollar200?: number;
+//   dollar500?: number;
+//   dollar1000?: number;
+//   dollar2000?: number;
+//   dollar5000?: number;
+//   dollarTotal?: number;
+//   dollarTotalUnknown?: number;
+// };
 
-import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters";
+// import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using UnifiedBillValidator instead
 import ActivityLogSkeleton from "./ActivityLogSkeleton";
 import { ActivityLogTable } from "./ActivityLogTable";
 import { CollectionHistoryTable } from "./CollectionHistoryTable";
 import CollectionHistorySkeleton from "./CollectionHistorySkeleton";
 import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import type { MachineEvent } from "./ActivityLogTable";
-import type { TimePeriod } from "@/app/api/lib/types";
-
-import type { MachineDocument } from "@/shared/types";
+import type { MachineDocument } from "@/shared/types/entities";
 import type { Cabinet } from "@/lib/types/cabinets";
 
-// Bill Meters data type
-type BillMetersData = {
-  dollar1?: number;
-  dollar2?: number;
-  dollar5?: number;
-  dollar10?: number;
-  dollar20?: number;
-  dollar50?: number;
-  dollar100?: number;
-  dollar500?: number;
-  dollar1000?: number;
-  dollar2000?: number;
-  dollar5000?: number;
-  dollarTotal?: number;
-  dollarTotalUnknown?: number;
-};
+import type { TimePeriod as ApiTimePeriod } from "@/app/api/lib/types";
+
+type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
+
+// Bill Meters data type - unused but kept for reference
+// type BillMetersData = {
+//   dollar1?: number;
+//   dollar2?: number;
+//   dollar5?: number;
+//   dollar10?: number;
+//   dollar20?: number;
+//   dollar50?: number;
+//   dollar100?: number;
+//   dollar500?: number;
+//   dollar1000?: number;
+//   dollar2000?: number;
+//   dollar5000?: number;
+//   dollarTotal?: number;
+//   dollarTotalUnknown?: number;
+// };
 
 // Bill Meters data type - moved to shared types
 // type BillMetersData = {
@@ -133,23 +136,7 @@ const LiveMetricsSkeleton = () => (
   </div>
 );
 
-const BillValidatorSkeleton = () => (
-  <div className="w-full max-w-xl mx-auto">
-    <div className="mb-4 text-center">
-      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-    </div>
-    <div className="bg-container p-6 rounded-lg shadow">
-      <div className="space-y-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex justify-between items-center">
-            <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
+// BillValidatorSkeleton removed - now handled by UnifiedBillValidator component
 
 const ConfigurationsSkeleton = () => (
   <div className="flex flex-col items-center sm:flex-row sm:justify-start sm:items-stretch flex-wrap gap-4 w-full">
@@ -426,7 +413,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     { from: Date; to: Date } | undefined
   >();
   const [activityLogTimePeriod, setActivityLogTimePeriod] =
-    useState<TimePeriod>("7d");
+    useState<ApiTimePeriod>("7d");
   const [billValidatorDateRange, _setBillValidatorDateRange] = useState<
     { from: Date; to: Date } | undefined
   >();
@@ -438,49 +425,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
 
 
-  // Convert billMeters data to bills array format
-  const convertBillMetersToBills = (billMeters: BillMetersData) => {
-    const bills: Array<{
-      denomination: number;
-      quantity: number;
-      timestamp: string;
-      location: string;
-      machineId: string;
-    }> = [];
-
-
-    const denominationMap: Array<{ key: keyof BillMetersData; value: number }> = [
-      { key: 'dollar1', value: 1 },
-      { key: 'dollar2', value: 2 },
-      { key: 'dollar5', value: 5 },
-      { key: 'dollar10', value: 10 },
-      { key: 'dollar20', value: 20 },
-      { key: 'dollar50', value: 50 },
-      { key: 'dollar100', value: 100 },
-      { key: 'dollar500', value: 500 },
-      { key: 'dollar1000', value: 1000 },
-      { key: 'dollar2000', value: 2000 },
-      { key: 'dollar5000', value: 5000 },
-    ];
-
-    denominationMap.forEach(({ key, value }) => {
-      const quantity = billMeters[key] || 0;
-      if (quantity > 0) {
-        bills.push({
-          denomination: value,
-          quantity: quantity,
-          timestamp: machine?.lastActivity ? new Date(machine.lastActivity).toISOString() : new Date().toISOString(),
-          location: cabinet?.locationName || "Unknown",
-          machineId: cabinet?._id || "Unknown",
-        });
-      }
-    });
-
-    return bills;
-  };
+  // Note: convertBillMetersToBills function removed - now using UnifiedBillValidator with acceptedBills API
 
   // Debug logging for filter states
-
   console.warn("Activity Log Filters:", {
     activityLogDateRange,
     activityLogTimePeriod,
@@ -490,11 +437,11 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     billValidatorTimePeriod,
     billValidatorTimeRange,
   });
-  console.warn("Machine billMeters data:", machine?.billMeters);
-  console.warn(
-    "Converted bills data:",
-    machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []
-  );
+  
+  // Debug: Log when billValidatorTimePeriod changes
+  useEffect(() => {
+    console.warn("[DEBUG] billValidatorTimePeriod changed to:", billValidatorTimePeriod);
+  }, [billValidatorTimePeriod]);
 
   useEffect(() => {
     async function loadData() {
@@ -983,72 +930,25 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === "Bill Validator" ? (
-                  loading ? (
-                    <BillValidatorSkeleton />
-                  ) : (
-                    <motion.div
-                      key="bill-validator"
-                      className="w-full"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      <div className="w-full max-w-4xl mx-auto">
-
-                        {/* Unified Bill Validator with V1/V2 tabs and acceptedBills */}
-                        <BillValidatorSection
-                          machineId={cabinet._id}
-                          billValidator={machine?.billValidator}
-                          billMeters={
-                            machine?.billMeters as
-                              | MachineBillMetersData
-                              | undefined
-                          }
-                          timePeriod={
-                            billValidatorTimePeriod === "Today"
-                              ? "today"
-                              : billValidatorTimePeriod === "Yesterday"
-                              ? "yesterday"
-                              : billValidatorTimePeriod === "7d"
-                              ? "7d"
-                              : billValidatorTimePeriod === "30d"
-                              ? "30d"
-                              : "today"
-                          }
-                          onTimePeriodChange={(period) => {
-                            const convertedPeriod =
-                              period === "today"
-                                ? "Today"
-                                : period === "yesterday"
-                                ? "Yesterday"
-                                : period === "7d"
-                                ? "7d"
-                                : period === "30d"
-                                ? "30d"
-                                : "Today";
-                            setBillValidatorTimePeriod(convertedPeriod);
-                          }}
-                          onCollect={(formData) => {
-                            console.warn("Collecting bills:", formData);
-                            // TODO: Implement bill collection logic
-                          }}
-                        />
-
-                        {/* Bill Validator Table with Filters */}
-                        <BillValidatorTableWithFilters
-                          bills={machine?.billMeters ? convertBillMetersToBills(machine.billMeters) : []}
-                          onDateRangeChange={_setBillValidatorDateRange}
-                          onTimePeriodChange={setBillValidatorTimePeriod}
-                          onTimeRangeChange={_setBillValidatorTimeRange}
-                          dateRange={billValidatorDateRange}
-                          timePeriod={billValidatorTimePeriod}
-                          timeRange={billValidatorTimeRange}
-                          loading={loading}
-                        />
-                      </div>
-                    </motion.div>
-                  )
+                  <motion.div
+                    key="bill-validator"
+                    className="w-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <UnifiedBillValidator
+                      machineId={cabinet._id}
+                      timePeriod={billValidatorTimePeriod}
+                      onTimePeriodChange={(timePeriod: TimePeriod) => {
+                        console.warn("[DEBUG] onTimePeriodChange called with:", timePeriod);
+                        console.warn("[DEBUG] Current billValidatorTimePeriod:", billValidatorTimePeriod);
+                        setBillValidatorTimePeriod(timePeriod);
+                        console.warn("[DEBUG] setBillValidatorTimePeriod called");
+                      }}
+                    />
+                  </motion.div>
                 ) : activeMetricsTabContent === "Activity Log" ? (
                   <motion.div
                     key="activity-log"
@@ -1062,7 +962,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     <div className="mb-6">
                       <ActivityLogDateFilter
                         onDateRangeChange={setActivityLogDateRange}
-                        onTimePeriodChange={setActivityLogTimePeriod}
+                        onTimePeriodChange={(timePeriod: ApiTimePeriod) => setActivityLogTimePeriod(timePeriod)}
                         disabled={activityLogLoading}
                       />
                     </div>

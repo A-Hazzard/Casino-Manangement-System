@@ -1,36 +1,259 @@
-import axios from "axios";
-import type { Licensee } from "@/lib/types/licensee";
+import { NextRequest } from "next/server";
+import { Licencee } from "../../app/api/lib/models/licencee";
+import { generateUniqueLicenseKey } from "../utils/licenseKey";
+import { generateMongoId } from "@/lib/utils/id";
 
-export const fetchLicensees = async (
-  licensee?: string
-): Promise<Licensee[]> => {
-  const params: Record<string, string> = {};
-  if (licensee && licensee !== "all") {
-    params.licensee = licensee;
+/**
+ * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
+ */
+export function formatLicenseesForResponse(
+  licensees: Record<string, unknown>[]
+) {
+  return licensees.map((licensee) => {
+    let isPaid = licensee.isPaid;
+    if (typeof isPaid === "undefined") {
+      if (licensee.expiryDate) {
+        isPaid = new Date(licensee.expiryDate as string | Date) > new Date();
+      } else {
+        isPaid = false;
+      }
+    }
+    return {
+      ...licensee,
+      isPaid,
+      countryName: licensee.country,
+      lastEdited: licensee.updatedAt,
+    };
+  });
+}
+
+/**
+ * Retrieves all licensees from database
+ */
+export async function getAllLicensees() {
+  return await Licencee.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    },
+    {
+      _id: 1,
+      name: 1,
+      description: 1,
+      country: 1,
+      startDate: 1,
+      expiryDate: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      geoCoords: 1,
+      isPaid: 1,
+      prevStartDate: 1,
+      prevExpiryDate: 1,
+    }
+  )
+    .sort({ name: 1 })
+    .lean();
+}
+
+/**
+ * Creates a new licensee with activity logging
+ */
+export async function createLicensee(
+  data: {
+    name: string;
+    description?: string;
+    country: string;
+    startDate?: string;
+    expiryDate?: string;
+  },
+  _request: NextRequest
+) {
+  const { name, description, country, startDate, expiryDate } = data;
+  const newId = await generateMongoId();
+  const licenseKey = await generateUniqueLicenseKey();
+
+  const finalStartDate = startDate ? new Date(startDate) : new Date();
+  let finalExpiryDate = null;
+  if (expiryDate) {
+    finalExpiryDate = new Date(expiryDate);
+  } else {
+    finalExpiryDate = new Date(finalStartDate);
+    finalExpiryDate.setDate(finalExpiryDate.getDate() + 30);
   }
 
-  const response = await axios.get("/api/licensees", { params });
-  return response.data.licensees;
-};
+  const licensee = await Licencee.create({
+    _id: newId,
+    name,
+    description: description || "",
+    country,
+    startDate: finalStartDate,
+    expiryDate: finalExpiryDate,
+    licenseKey,
+    lastEdited: new Date(),
+  });
 
-export const createLicensee = async (
-  licensee: Omit<
-    Licensee,
-    "_id" | "createdAt" | "updatedAt" | "lastEdited" | "countryName"
-  >
-) => {
-  const response = await axios.post("/api/licensees", licensee);
-  return response.data;
-};
+  // Activity logging removed - server-side context not available in client helpers
 
-export const updateLicensee = async (
-  licensee: Partial<Licensee> & { _id: string }
-) => {
-  const response = await axios.put("/api/licensees", licensee);
-  return response.data.licensee;
-};
+  return licensee;
+}
 
-export const deleteLicensee = async (id: string) => {
-  const response = await axios.delete("/api/licensees", { data: { _id: id } });
-  return response.data.success;
-};
+/**
+ * Updates an existing licensee with activity logging
+ */
+export async function updateLicensee(
+  data: {
+    _id: string;
+    name?: string;
+    description?: string;
+    country?: string;
+    startDate?: string;
+    expiryDate?: string;
+    isPaid?: boolean;
+    prevStartDate?: string;
+    prevExpiryDate?: string;
+  },
+  _request: NextRequest
+) {
+  const {
+    _id,
+    name,
+    description,
+    country,
+    startDate,
+    expiryDate,
+    isPaid,
+    prevStartDate,
+    prevExpiryDate,
+  } = data;
+
+  const originalLicensee = (await Licencee.findOne({ _id }).lean()) as {
+    _id: string;
+    name: string;
+    description?: string;
+    country: string;
+    startDate?: Date;
+    expiryDate?: Date;
+    prevStartDate?: Date;
+    prevExpiryDate?: Date;
+    isPaid?: boolean;
+    licenseKey?: string;
+  } | null;
+
+  if (!originalLicensee) {
+    throw new Error("Licensee not found");
+  }
+
+  const updateData: Record<string, unknown> = { lastEdited: new Date() };
+
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (country !== undefined) updateData.country = country;
+  if (startDate !== undefined) {
+    if (
+      originalLicensee.startDate &&
+      startDate !== originalLicensee.startDate.toISOString()
+    ) {
+      updateData.prevStartDate = originalLicensee.startDate;
+    }
+    updateData.startDate = startDate ? new Date(startDate) : null;
+  }
+  if (expiryDate !== undefined) {
+    if (
+      originalLicensee.expiryDate &&
+      expiryDate !== originalLicensee.expiryDate.toISOString()
+    ) {
+      updateData.prevExpiryDate = originalLicensee.expiryDate;
+    }
+    updateData.expiryDate = expiryDate ? new Date(expiryDate) : null;
+  }
+  if (prevStartDate !== undefined) {
+    updateData.prevStartDate = prevStartDate ? new Date(prevStartDate) : null;
+  }
+  if (prevExpiryDate !== undefined) {
+    updateData.prevExpiryDate = prevExpiryDate
+      ? new Date(prevExpiryDate)
+      : null;
+  }
+  if (isPaid !== undefined) {
+    updateData.isPaid = isPaid;
+  }
+
+  const updated = await Licencee.findOneAndUpdate({ _id }, updateData, {
+    new: true,
+  });
+
+  if (!updated) {
+    throw new Error("Licensee not found");
+  }
+
+  const updatedLicensee = updated.toObject();
+  if (typeof updatedLicensee.isPaid === "undefined") {
+    if (updatedLicensee.expiryDate) {
+      updatedLicensee.isPaid =
+        new Date(updatedLicensee.expiryDate) > new Date();
+    } else {
+      updatedLicensee.isPaid = false;
+    }
+  }
+
+  // Activity logging removed - server-side context not available in client helpers
+
+  return updatedLicensee;
+}
+
+/**
+ * Soft deletes a licensee with activity logging
+ */
+export async function deleteLicensee(_id: string, _request: NextRequest) {
+  const licenseeToDelete = await Licencee.findById(_id);
+
+  if (!licenseeToDelete) {
+    throw new Error("Licensee not found");
+  }
+
+  const deleted = await Licencee.findByIdAndUpdate(
+    _id,
+    { deletedAt: new Date() },
+    { new: true }
+  );
+
+  if (!deleted) {
+    throw new Error("Licensee not found");
+  }
+
+  // Activity logging removed - server-side context not available in client helpers
+
+  return deleted;
+}
+
+/**
+ * Fetches all licensees for frontend consumption
+ */
+export async function fetchLicensees() {
+  try {
+    const licensees = await Licencee.find({
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    }).sort({ name: 1 });
+
+    return licensees.map((licencee) => ({
+      _id: licencee._id,
+      name: licencee.name,
+      description: licencee.description,
+      country: licencee.country,
+      startDate: licencee.startDate,
+      expiryDate: licencee.expiryDate,
+      isPaid: licencee.isPaid,
+      geoCoords: licencee.geoCoords,
+      createdAt: licencee.createdAt,
+      updatedAt: licencee.updatedAt,
+    }));
+  } catch (error) {
+    console.error("Error fetching licensees:", error);
+    return [];
+  }
+}

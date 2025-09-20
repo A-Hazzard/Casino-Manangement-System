@@ -33,13 +33,13 @@ export function useDashboardAnalytics() {
           params,
         });
 
-        if (response.data.success) {
+        if (response.data?.success) {
           const {
             kpiMetrics,
             performanceTrends,
             locations,
             topPerformingMachines,
-          } = response.data.data;
+          } = response.data?.data || {};
           setKpiMetrics(kpiMetrics);
           setPerformanceTrends(performanceTrends);
           setLocations(locations);

@@ -43,10 +43,10 @@ const LocationTable: React.FC<LocationTableProps> = ({
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
               <TableHead
                 className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("locationName")}
+                onClick={() => onSort("name")}
               >
                 <span>LOCATION NAME</span>
-                {sortOption === "locationName" && (
+                {sortOption === "name" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>
@@ -76,17 +76,6 @@ const LocationTable: React.FC<LocationTableProps> = ({
               </TableHead>
               <TableHead
                 className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("jackpot")}
-              >
-                <span>JACKPOT</span>
-                {sortOption === "jackpot" && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
-                    {sortOrder === "desc" ? "▼" : "▲"}
-                  </span>
-                )}
-              </TableHead>
-              <TableHead
-                className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("gross")}
               >
                 <span>GROSS</span>
@@ -100,31 +89,30 @@ const LocationTable: React.FC<LocationTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {locations.map((loc) => (
-              <TableRow
-                key={loc.locationName}
-                className="cursor-pointer hover:bg-muted"
-                onClick={(e) => {
-                  if (!(e.target as HTMLElement).closest("td:last-child")) {
-                    handleRowClick(loc.location);
-                  }
-                }}
-              >
-                <TableCell className="text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
-                      {loc.locationName || "Unknown Location"}
-                    </span>
-                  </div>
-                </TableCell>
+            {locations.map((loc) => {
+              const location = loc as Record<string, unknown>;
+              return (
+                <TableRow
+                  key={location.locationName as string}
+                  className="cursor-pointer hover:bg-muted"
+                  onClick={(e) => {
+                    if (!(e.target as HTMLElement).closest("td:last-child")) {
+                      handleRowClick(location.location as string);
+                    }
+                  }}
+                >
+                  <TableCell className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">
+                        {(location.locationName as string) || "Unknown Location"}
+                      </span>
+                    </div>
+                  </TableCell>
                 <TableCell className="text-center">
                   {formatCurrency(loc.moneyIn || 0)}
                 </TableCell>
                 <TableCell className="text-center">
                   {formatCurrency(loc.moneyOut || 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {formatCurrency(loc.jackpot || 0)}
                 </TableCell>
                 <TableCell className="text-center">
                   <span className="text-green-600 font-semibold">
@@ -169,8 +157,9 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     </Button>
                   </div>
                 </TableCell>
-              </TableRow>
-            ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

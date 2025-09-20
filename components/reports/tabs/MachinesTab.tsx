@@ -56,7 +56,7 @@ import type {
 } from "@/shared/types/machines";
 import type {
   MachineEvaluationData,
-} from "@/lib/types/reports";
+} from "@/lib/types";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
 
@@ -587,6 +587,7 @@ export default function MachinesTab() {
         coinIn: machine.coinIn || 0,
         gamesPlayed: machine.gamesPlayed || 0,
         avgBet: machine.avgBet || 0,
+        cancelledCredits: machine.totalCancelledCredits || 0,
       };
     });
   }, [allMachines]);
@@ -651,7 +652,7 @@ export default function MachinesTab() {
       const machines = groupByManufacturer[manufacturer];
       const floorPositions = (machines.length / activeMachinesNumber) * 100;
       
-      const totals = machines.reduce((acc, machine) => ({
+      const totals = machines.reduce((acc: { coinIn: number; netWin: number; drop: number; gross: number; cancelledCredits: number }, machine: MachineEvaluationData) => ({
         coinIn: acc.coinIn + (machine.coinIn || 0),
         netWin: acc.netWin + (machine.netWin || 0),
         drop: acc.drop + (machine.drop || 0),
@@ -702,7 +703,7 @@ export default function MachinesTab() {
       const machines = groupByGameName[gameName];
       const floorPositions = (machines.length / activeMachinesNumber) * 100;
       
-      const totals = machines.reduce((acc, machine) => ({
+      const totals = machines.reduce((acc: { coinIn: number; netWin: number; drop: number; gross: number; cancelledCredits: number }, machine: MachineEvaluationData) => ({
         coinIn: acc.coinIn + (machine.coinIn || 0),
         netWin: acc.netWin + (machine.netWin || 0),
         drop: acc.drop + (machine.drop || 0),

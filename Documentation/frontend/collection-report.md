@@ -2,7 +2,7 @@
 # Collection Report System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** September 19th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -11,12 +11,28 @@
 - **create report** - Report creation process
 - **edit collection** - Editing existing reports
 - **financial calculations** - All formulas and calculations
+- **financial fields** - Detailed explanation of taxes, advance, variance, etc.
 - **machine entries** - Adding machines to reports
 - **meter calculations** - Meter reading calculations
 - **previous balance** - How previous balance works
 - **profit sharing** - Location profit calculations
 - **RAM clear** - RAM clear meter handling
 - **variance** - Variance calculation and display
+
+## Financial Fields Documentation
+
+For detailed explanations of all financial fields used in collection reports, see:
+**[Collection Report Financial Fields](./collection-report-financial-fields.md)**
+
+This document explains:
+- **Taxes**: Government taxes and regulatory fees
+- **Advance**: Money paid to locations when in negative balance
+- **Variance**: Optional field for collection discrepancies (deprecated software meters)
+- **Previous Balance**: Outstanding balance from previous collections
+- **Amount to Collect**: Total amount to be collected from location
+- **Collected Amount**: Actual cash collected by collector
+- **Balance Correction**: Manual adjustments to balance
+- **Partner Profit**: Location's share of revenue
 
 ## Overview
 
@@ -493,6 +509,122 @@ CollectionReport {
 - Soft delete preserves audit trail
 - Dependency checking prevents orphaned records
 - Rollback capability for data recovery
+
+## Collection Report CRUD Features (September 19th, 2025)
+
+### Create Collection Reports - Enhanced Features
+
+**New Collection Modal (`NewCollectionModal.tsx`):**
+- **Location Selection**: Dropdown to select gaming location
+- **Machine Selection**: List of machines at selected location with current meter readings
+- **Batch Collection**: Add multiple machines to single collection report
+- **Real-time Validation**: Immediate feedback on meter readings and financial inputs
+- **RAM Clear Support**: Handle machine memory resets with special meter inputs
+- **Financial Calculations**: Auto-calculate amount to collect, balance corrections, and partner profit
+- **Fresh Data Fetching**: Always fetches latest machine data when modal opens
+
+**Key Features:**
+- **Machine Entry Management**: Add/remove machines from collection batch
+- **Meter Reading Validation**: Prevents invalid meter readings (backwards without RAM Clear)
+- **Financial Input Validation**: Ensures all required financial fields are completed
+- **Auto-calculation**: Real-time calculation of amounts and balances
+- **Cache-busting**: Ensures fresh data is always displayed
+
+### Edit Collection Reports - New Implementation
+
+**Edit Collection Modal (`EditCollectionModalV2.tsx`):**
+- **Pencil Icon**: Click pencil icon on any collection entry to edit
+- **Edit Mode**: Form fields populate with existing data
+- **Cancel/Update Buttons**: Clear edit controls with confirmation
+- **Real-time Updates**: Changes reflect immediately in the interface
+- **Machine Meter Updates**: Edit meter readings for individual machines
+- **Financial Data Updates**: Modify collected amounts, variance, taxes, advance
+- **History Tracking**: Updates machine collection history appropriately
+
+**Edit Process Flow:**
+1. **Click Pencil Icon**: User clicks edit button on collection entry
+2. **Form Population**: System loads existing data into form fields
+3. **Make Changes**: User modifies meter readings or financial data
+4. **Update Confirmation**: System shows confirmation dialog
+5. **Database Update**: Changes saved to database with proper history tracking
+6. **UI Refresh**: Interface updates to show new values
+
+**Edit Features:**
+- **Individual Machine Editing**: Edit specific machines within a collection
+- **Financial Field Updates**: Modify all financial calculations
+- **Meter Reading Updates**: Change current meter readings
+- **Notes and Comments**: Update collection notes and reasons
+- **Timestamp Updates**: Modify collection time if needed
+
+### Delete Collection Reports - Comprehensive Cleanup
+
+**Delete Process (`delete-by-report` API):**
+- **Complete Cleanup**: Deletes ALL collections and history entries for the report
+- **Machine Meter Reversion**: Reverts each machine's meters to previous values
+- **History Cleanup**: Removes ALL `collectionMetersHistory` entries for the report
+- **Database Integrity**: Ensures no orphaned records remain
+- **Verification**: Confirms complete deletion with logging
+
+**Delete Features:**
+- **Bulk Deletion**: Removes all collections associated with the report
+- **Machine Reversion**: Each machine's meters revert to their individual previous values
+- **History Management**: Cleans up all collection history entries
+- **Audit Trail**: Maintains complete deletion log
+- **Safety Checks**: Prevents accidental deletion with confirmation dialogs
+
+**Delete Safety Measures:**
+- **Confirmation Dialogs**: Multiple confirmation steps prevent accidental deletion
+- **Data Verification**: Checks that all data is properly cleaned up
+- **Machine Reversion**: Ensures machines return to correct previous state
+- **History Cleanup**: Removes all traces of the deleted report
+- **Rollback Prevention**: Ensures deleted data cannot be accidentally recovered
+
+### Enhanced User Interface Features
+
+**Visual Indicators:**
+- **Pencil Icons**: Clear edit buttons on all collection entries
+- **Status Indicators**: Visual feedback for edit mode, processing states
+- **Confirmation Dialogs**: Clear confirmation for all destructive actions
+- **Loading States**: Skeleton loaders during data fetching
+- **Toast Notifications**: User feedback for all operations
+
+**Responsive Design:**
+- **Desktop Interface**: Full-featured table view with all controls
+- **Mobile Interface**: Optimized card view for mobile devices
+- **Touch-friendly**: Large buttons and touch targets for mobile
+- **Accessibility**: Proper ARIA labels and keyboard navigation
+
+### Data Integrity and Validation
+
+**Input Validation:**
+- **Meter Reading Validation**: Prevents invalid meter progressions
+- **Financial Validation**: Ensures all monetary values are valid
+- **Required Field Validation**: All mandatory fields must be completed
+- **Range Validation**: Ensures values are within reasonable ranges
+- **Format Validation**: Proper number and date formats required
+
+**Data Consistency:**
+- **Real-time Calculations**: All financial calculations update immediately
+- **Cross-field Validation**: Related fields validate against each other
+- **History Tracking**: All changes tracked in machine history
+- **Audit Trail**: Complete record of all modifications
+- **Data Freshness**: Always displays current data from database
+
+### Performance Optimizations
+
+**Efficient Data Handling:**
+- **Cache-busting**: Ensures fresh data on every modal open
+- **Selective Updates**: Only updates changed fields
+- **Batch Operations**: Handles multiple machines efficiently
+- **Optimized Queries**: Efficient database queries for large datasets
+- **Memory Management**: Proper cleanup of component state
+
+**User Experience:**
+- **Instant Feedback**: Immediate validation and calculation updates
+- **Smooth Animations**: GSAP-powered transitions and loading states
+- **Error Handling**: Graceful error handling with user-friendly messages
+- **Loading States**: Clear indication of processing status
+- **Success Feedback**: Confirmation of successful operations
 
 ### Collection Report Lifecycle and Meter Management
 

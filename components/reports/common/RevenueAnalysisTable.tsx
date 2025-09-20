@@ -35,7 +35,7 @@ export default function RevenueAnalysisTable({
   onLocationClick,
 }: RevenueAnalysisTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof AggregatedLocation>("gross");
+  const [sortField, setSortField] = useState<keyof AggregatedLocation>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Filter locations based on search term
@@ -43,8 +43,8 @@ export default function RevenueAnalysisTable({
     if (!searchTerm?.trim()) return locations;
     const q = (searchTerm || "").toLowerCase();
     return locations.filter((location) => {
-      const name = location.locationName || "";
-      const id = (location as Record<string, unknown>)?.location as string || "";
+      const name = location.name || "";
+      const id = location._id || "";
       return (
         (typeof name === "string" && name.toLowerCase().includes(q)) ||
         (typeof id === "string" && id.toLowerCase().includes(q))
@@ -182,10 +182,10 @@ export default function RevenueAnalysisTable({
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h3 className="text-sm font-medium text-gray-900 truncate">
-              {location.locationName}
+              {location.name}
             </h3>
             <p className="text-xs text-gray-500 truncate">
-              {location.location}
+              {location._id}
             </p>
           </div>
           <Badge variant="secondary" className="text-xs font-mono">
@@ -286,7 +286,7 @@ export default function RevenueAnalysisTable({
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-semibold">
-                    <SortButton field="locationName">Location Name</SortButton>
+                    <SortButton field="name">Location Name</SortButton>
                   </TableHead>
                   <TableHead className="font-semibold text-center">
                     <SortButton field="totalMachines">
@@ -319,14 +319,14 @@ export default function RevenueAnalysisTable({
                 ) : (
                   paginatedLocations.map((location) => (
                     <TableRow
-                      key={location.locationName}
+                      key={location.name}
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => onLocationClick?.(location)}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-gray-400" />
-                          {location.locationName}
+                          {location.name}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -361,7 +361,7 @@ export default function RevenueAnalysisTable({
             </div>
           ) : (
             paginatedLocations.map((location) => (
-              <LocationCard key={location.locationName} location={location} />
+              <LocationCard key={location.name} location={location} />
             ))
           )}
         </div>

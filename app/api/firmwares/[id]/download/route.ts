@@ -3,7 +3,7 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { Firmware } from "@/app/api/lib/models/firmware";
 import { GridFSBucket } from "mongodb";
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../../../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
 /**

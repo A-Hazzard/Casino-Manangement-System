@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { Licencee } from "../models/licencee";
 import { logActivity, calculateChanges } from "./activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "./users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import { generateUniqueLicenseKey } from "../utils/licenseKey";
 import { generateMongoId } from "@/lib/utils/id";

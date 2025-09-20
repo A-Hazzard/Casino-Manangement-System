@@ -84,7 +84,7 @@ export default function CustomersTab() {
           "Avg Spend per Visit",
           "Status",
         ],
-        data: metrics.topSpenders.map((customer) => [
+        data: metrics.topSpenders.map((customer: CustomerMetrics["topSpenders"][number]) => [
           customer.customerId,
           `$${customer.totalSpend.toLocaleString()}`,
           customer.visits.toString(),
@@ -331,7 +331,7 @@ export default function CustomersTab() {
                       No customer data available - MongoDB implementation pending
                     </p>
                   ) : (
-                    metrics.topSpenders.map((customer, index) => (
+                    metrics.topSpenders.map((customer: CustomerMetrics["topSpenders"][number], index: number) => (
                       <div
                         key={customer.customerId}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"

@@ -1,11 +1,46 @@
-import {
-  GamingMachine,
-  CasinoLocation,
-  ReportConfig,
-  ReportData,
-  Reportable,
-} from "@/lib/types/reports";
+import { ReportConfig } from "@/lib/types/reports";
 import { isWithinInterval } from "date-fns";
+
+type Reportable = Record<string, unknown>;
+
+type GamingMachine = {
+  _id: string;
+  locationId: string;
+  manufacturer: string;
+  gameTitle: string;
+  lastActivity: string;
+  coinIn: number;
+  coinOut: number;
+  drop: number;
+  totalCancelledCredits: number;
+  jackpot: number;
+  gamesPlayed: number;
+};
+
+type CasinoLocation = {
+  _id: string;
+  name: string;
+  region: string;
+};
+
+type ReportData = {
+  config: ReportConfig;
+  summary: {
+    totalRecords: number;
+    dateGenerated: string;
+    keyMetrics: Array<{ label: string; value: number }>;
+  };
+  tableData: Reportable[];
+  chartData: Array<{ label: string; value: number }>;
+  metadata: {
+    generatedBy: string;
+    generatedAt: string;
+    executionTime: number;
+    dataSourceLastUpdated: string;
+    reportVersion: string;
+    totalDataPoints: number;
+  };
+};
 // TODO: Replace with actual MongoDB data fetching
 // const mockData = await fetchAnalyticsDataFromMongoDB();
 

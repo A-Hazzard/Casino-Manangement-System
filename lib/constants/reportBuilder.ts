@@ -1,8 +1,8 @@
 import {
   ReportField,
   ReportFieldCategory,
-  ReportType,
-} from "@/lib/types/reports";
+} from "@/lib/types";
+import { ReportType } from "@/lib/types/reports";
 
 export const REPORT_FIELDS: Record<string, ReportField> = {
   // Location Fields
@@ -142,6 +142,57 @@ export const REPORT_TYPE_CONFIG: Record<
       "totalHandle",
       "gamesPlayed",
       "averageWager",
+    ],
+    availableFilters: ["locations"],
+  },
+  dailyCounts: {
+    title: "Daily Counts Report",
+    defaultFields: [
+      "date",
+      "locationName",
+      "totalHandle",
+      "totalWin",
+      "gamesPlayed",
+    ],
+    availableFilters: ["locations"],
+  },
+  activeCustomers: {
+    title: "Active Customers Report",
+    defaultFields: [
+      "date",
+      "locationName",
+      "gamesPlayed",
+      "averageWager",
+    ],
+    availableFilters: ["locations"],
+  },
+  locationStats: {
+    title: "Location Stats Report",
+    defaultFields: [
+      "locationName",
+      "totalHandle",
+      "totalWin",
+      "actualHold",
+    ],
+    availableFilters: ["locations"],
+  },
+  machinePerformance: {
+    title: "Machine Performance Report",
+    defaultFields: [
+      "machineGameTitle",
+      "machineManufacturer",
+      "totalHandle",
+      "totalWin",
+      "actualHold",
+    ],
+    availableFilters: ["locations", "manufacturers"],
+  },
+  terminalCounts: {
+    title: "Terminal Counts Report",
+    defaultFields: [
+      "date",
+      "locationName",
+      "gamesPlayed",
     ],
     availableFilters: ["locations"],
   },

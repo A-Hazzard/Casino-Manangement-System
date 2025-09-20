@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
-import { TimePeriod } from "@/app/api/lib/types";
+import { getDatesForTimePeriod } from "@/lib/utils/dates";
+import { TimePeriod } from "@/shared/types";
 import type { PipelineStage } from "mongoose";
 import type { StackedData } from "@/shared/types/analytics";
+
+type HourlyDataItem = {
+  hour: number;
+  machine: string;
+  location: string;
+  handle: number;
+  winLoss: number;
+  jackpot: number;
+  plays: number;
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -134,11 +147,11 @@ export async function GET(req: NextRequest) {
       } as PipelineStage
     );
 
-    const hourlyData = await db.collection("meters").aggregate(pipeline).toArray();
+    const hourlyData = await db.collection("meters").aggregate(pipeline).toArray() as HourlyDataItem[];
 
     // Group data by location and hour
-    const locationHourlyData: Record<string, typeof hourlyData> = {};
-    hourlyData.forEach(item => {
+    const locationHourlyData: Record<string, HourlyDataItem[]> = {};
+    hourlyData.forEach((item: HourlyDataItem) => {
       const locationKey = item.location;
       if (!locationHourlyData[locationKey]) {
         locationHourlyData[locationKey] = [];

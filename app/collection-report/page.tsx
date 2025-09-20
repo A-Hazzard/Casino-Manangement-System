@@ -733,7 +733,7 @@ function CollectionReportContent() {
       >
 
         {/* Title Row */}
-        <div className="flex items-center justify-between mt-4 w-full max-w-full">
+        <div className="flex items-center justify-between mt-4 w-full max-w-full" suppressHydrationWarning>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
               Collection Report
@@ -744,6 +744,7 @@ function CollectionReportContent() {
               width={32}
               height={32}
               className="w-6 h-6 sm:w-8 sm:h-8"
+              suppressHydrationWarning
             />
           </div>
 
@@ -759,11 +760,13 @@ function CollectionReportContent() {
                 stroke="currentColor"
                 strokeWidth="2"
                 viewBox="0 0 24 24"
+                suppressHydrationWarning
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M12 4v16m8-8H4"
+                  suppressHydrationWarning
                 />
               </svg>
               Create Collection Report

@@ -3,6 +3,19 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
 
+type HourlyDataItem = {
+  location: string;
+  hour: number;
+  revenue: number;
+  drop: number;
+  cancelledCredits: number;
+};
+
+type DailyRevenueItem = {
+  _id: { day: string };
+  dailyRevenue: number;
+};
+
 function getPreviousPeriod(startDate: Date, endDate: Date, days: number) {
   const prevEnd = new Date(startDate.getTime() - 1);
   const prevStart = new Date(
@@ -122,10 +135,10 @@ export async function GET(req: NextRequest) {
     const prevResult = await db
       .collection("meters")
       .aggregate(prevPipeline)
-      .toArray();
+      .toArray() as DailyRevenueItem[];
     const prevDays = prevResult.length;
     const prevTotal = prevResult.reduce(
-      (sum, d) => sum + (d.dailyRevenue || 0),
+      (sum: number, d: DailyRevenueItem) => sum + (d.dailyRevenue || 0),
       0
     );
     const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;
@@ -194,7 +207,7 @@ export async function GET(req: NextRequest) {
     const hourlyData = await db
       .collection("meters")
       .aggregate(pipeline)
-      .toArray();
+      .toArray() as HourlyDataItem[];
     
     // Process data for multiple locations
     if (locationIds) {
@@ -222,7 +235,7 @@ export async function GET(req: NextRequest) {
         
         // Create hourly trends array for this location
         const hourlyTrends = Array.from({ length: 24 }, (_, hour) => {
-          const hourData = locationHourlyData.find(item => item.hour === hour);
+          const hourData = locationHourlyData.find((item: HourlyDataItem) => item.hour === hour);
           const revenue = hourData ? hourData.revenue : 0;
           return {
             hour: `${hour.toString().padStart(2, "0")}:00`,
@@ -253,7 +266,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Single location - return data in original format
       const hourlyTrends = Array.from({ length: 24 }, (_, hour) => {
-        const hourData = hourlyData.find(item => item.hour === hour);
+        const hourData = hourlyData.find((item: HourlyDataItem) => item.hour === hour);
         const revenue = hourData ? hourData.revenue : 0;
         return {
           hour: `${hour.toString().padStart(2, "0")}:00`,

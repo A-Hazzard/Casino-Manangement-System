@@ -10,7 +10,7 @@ export default function ReportsTab() {
   const { currentStep, reportType } = useReportStore();
 
   const renderStep = () => {
-    switch (currentStep) {
+    switch (currentStep.id) {
       case "selectType":
         return <SelectReportType />;
       case "configure":

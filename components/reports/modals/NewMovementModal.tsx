@@ -32,7 +32,17 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { NewMovementModalProps } from "@/lib/types/components";
-import type { MachineMovementRecord, MachineForMovement, LocationForMovement } from "@/lib/types/reports";
+import type { MachineMovementRecord } from "@/lib/types/reports";
+import type { LocationSelectItem } from "@/lib/types/location";
+
+// Define types for movement modal
+type MachineForMovement = {
+  id: string;
+  name: string;
+  location: string;
+};
+
+type LocationForMovement = LocationSelectItem;
 
 // TODO: Replace with MongoDB data fetching
 
@@ -73,7 +83,7 @@ export default function NewMovementModal({
     (m: MachineForMovement) => m.id === formData.machineId
   );
   const selectedToLocation = locations.find(
-    (l: LocationForMovement) => l.id === formData.toLocationId
+    (l: LocationForMovement) => l._id === formData.toLocationId
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,23 +111,19 @@ export default function NewMovementModal({
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const newMovement: MachineMovementRecord = {
-        id: `MOV${Date.now()}`,
+        _id: `MOV${Date.now()}`,
         machineId: formData.machineId,
         machineName: selectedMachine?.name || "",
-        fromLocationId: null, // Mock data - would come from actual machine data
-        fromLocationName: selectedMachine?.location || null,
+        fromLocationId: undefined, // Mock data - would come from actual machine data
+        fromLocationName: selectedMachine?.location || undefined,
         toLocationId: formData.toLocationId,
         toLocationName: selectedToLocation?.name || "",
-        moveDate: format(formData.moveDate, "yyyy-MM-dd"),
+        moveDate: formData.moveDate!,
         reason: formData.reason,
         status: "pending",
-        notes: formData.notes,
         movedBy: "current-user", // This should come from auth context
-        cost: formData.estimatedCost
-          ? parseFloat(formData.estimatedCost)
-          : undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       // Call the callback to update parent component
@@ -229,7 +235,7 @@ export default function NewMovementModal({
                   ) : (
                     locations.map((l: LocationForMovement) => {
                       return (
-                        <SelectItem key={l.id} value={l.id}>
+                        <SelectItem key={l._id} value={l._id}>
                           {l.name}
                         </SelectItem>
                       );

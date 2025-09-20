@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { migrateFirmwareSchema, checkMigrationNeeded } from "@/app/api/lib/utils/firmwareMigration";
+import { migrateFirmwareSchema, checkMigrationNeeded } from "@/lib/utils/firmwareMigration";
 
 /**
  * POST /api/firmwares/migrate

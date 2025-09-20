@@ -19,7 +19,7 @@ const createStore = () => {
     closeLocationModal: () => set({ isLocationModalOpen: false }),
     createLocation: async (location) => {
       try {
-        const locationLogger = createActivityLogger("location");
+        const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
         const response = await axios.post("/api/locations", {
           name: location.name,
@@ -37,15 +37,11 @@ const createStore = () => {
         });
 
         // Log the location creation activity
-        await locationLogger.logCreate(
-          response.data?.data?._id || location.name,
-          location.name,
-          {
-            name: location.name,
-            address: location.address,
-            latitude: location.latitude,
-            longitude: location.longitude,
-          },
+        await locationLogger(
+          "location_created",
+          "location",
+          { id: response.data?.data?._id || location.name, name: location.name },
+          [],
           `Created new location: ${location.name} at ${location.address}`
         );
 

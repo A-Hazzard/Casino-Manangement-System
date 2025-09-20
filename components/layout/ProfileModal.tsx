@@ -41,7 +41,7 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const userLogger = createActivityLogger("user");
+  const userLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -163,16 +163,15 @@ export default function ProfileModal({
     }
 
     try {
-      const previousData = { ...userData };
 
       await axios.put(`/api/users/${userData._id}`, payload);
 
       // Log the profile update activity
-      await userLogger.logUpdate(
-        userData._id,
-        userData.username,
-        previousData,
-        payload,
+      await userLogger(
+        "update",
+        "user",
+        { id: userData._id, name: userData.username },
+        [],
         `Updated profile for user: ${userData.username}`
       );
 

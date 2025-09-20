@@ -103,15 +103,16 @@ export async function createMember(
   memberData: Partial<Member>
 ): Promise<Member> {
   try {
-    const memberLogger = createActivityLogger("member");
+    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
     
     const response = await axios.post("/api/members", memberData);
     
     // Log the member creation activity
-    await memberLogger.logCreate(
-      response.data._id || memberData.username || "unknown",
-      `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`,
-      memberData,
+    await memberLogger(
+      "create",
+      "member",
+      { id: response.data._id || memberData.username || "unknown", name: `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}` },
+      [],
       `Created new member: ${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`
     );
     
@@ -130,16 +131,16 @@ export async function updateMember(
   memberData: Partial<Member>
 ): Promise<Member> {
   try {
-    const memberLogger = createActivityLogger("member");
+    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
     
     const response = await axios.put(`/api/members/${memberId}`, memberData);
     
     // Log the member update activity
-    await memberLogger.logUpdate(
-      memberId,
-      `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`,
-      memberData,
-      memberData,
+    await memberLogger(
+      "update",
+      "member",
+      { id: memberId, name: `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}` },
+      [],
       `Updated member: ${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`
     );
     
@@ -155,15 +156,16 @@ export async function updateMember(
  */
 export async function deleteMember(memberId: string): Promise<void> {
   try {
-    const memberLogger = createActivityLogger("member");
+    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
     
     await axios.delete(`/api/members/${memberId}`);
     
     // Log the member deletion activity
-    await memberLogger.logDelete(
-      memberId,
-      "Member",
-      { id: memberId },
+    await memberLogger(
+      "delete",
+      "member",
+      { id: memberId, name: "Member" },
+      [],
       `Deleted member with ID: ${memberId}`
     );
   } catch (error) {

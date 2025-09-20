@@ -1,4 +1,4 @@
-import { dashboardData, Metrics } from "@/lib/types";
+import { dashboardData } from "@/lib/types";
 import { TimePeriod } from "@shared/types";
 import axios from "axios";
 import { formatISODate } from "@/shared/utils/dateFormat";
@@ -52,7 +52,20 @@ export async function getMetrics(
       url += `&licencee=${licencee}`;
     }
 
-    const { data } = await axios.get<Metrics[]>(url);
+    const { data } = await axios.get<Array<{
+      day: string;
+      time?: string;
+      drop: number;
+      totalCancelledCredits: number;
+      gross: number;
+      location?: string;
+      machine?: string;
+      geoCoords?: {
+        latitude?: number;
+        longitude?: number;
+        longtitude?: number;
+      };
+    }>>(url);
     if (!Array.isArray(data) || data.length === 0) return [];
 
     // Determine if we should group by hour

@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 
+type HourlyDataItem = {
+  _id: number;
+  avgRevenue: number;
+  totalRevenue: number;
+  avgDrop: number;
+  totalDrop: number;
+  avgCancelledCredits: number;
+  totalCancelledCredits: number;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -99,11 +109,11 @@ export async function GET(request: NextRequest) {
     const hourlyData = await db
       .collection("collectionReports")
       .aggregate(pipeline)
-      .toArray();
+      .toArray() as HourlyDataItem[];
 
     // Create a 24-hour array with zeroes for missing hours
     const hourlyRevenue = Array.from({ length: 24 }, (_, hour) => {
-      const hourData = hourlyData.find((d) => d._id === hour);
+      const hourData = hourlyData.find((d: HourlyDataItem) => d._id === hour);
       return {
         hour,
         revenue: hourData ? hourData.avgRevenue : 0,

@@ -35,7 +35,7 @@ import {
 // import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { exportData } from "@/lib/utils/exportUtils";
+import { exportData, type ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from "@/lib/helpers/reportsPage";
 
@@ -64,6 +64,7 @@ import axios from "axios";
 // Types for location data
 import { LocationMetrics, TopLocation } from "@/shared/types";
 import { MachineData } from "@/shared/types/machines";
+import { LocationExportData, TopLocationData } from "@/lib/types";
 
 // Skeleton loader components - now imported from ReportsSkeletons
 
@@ -722,7 +723,7 @@ export default function LocationsTab() {
       const filteredData =
         currentSelectedLocations.length > 0
           ? allLocationsForDropdown.filter((loc) =>
-              currentSelectedLocations.includes(loc.location as string)
+              currentSelectedLocations.includes(loc._id as string)
             )
           : allLocationsForDropdown;
 
@@ -821,8 +822,8 @@ export default function LocationsTab() {
         : selectedRevenueLocations;
     await handleExportSASEvaluationHelper(
       currentSelectedLocations,
-      paginatedLocations,
-      topLocations,
+      paginatedLocations as unknown as LocationExportData[],
+      topLocations as TopLocationData[],
       selectedDateRange,
       activeMetricsFilter,
       exportData,
@@ -841,7 +842,7 @@ export default function LocationsTab() {
           ? paginatedLocations.filter((loc) => {
               // Find the corresponding topLocation to get the correct locationId
               const topLocation = topLocations.find(
-                (tl) => tl.locationName === loc.locationName
+                (tl) => tl.locationName === loc.name
               );
               return topLocation
                 ? currentSelectedLocations.includes(topLocation.locationId)
@@ -849,7 +850,7 @@ export default function LocationsTab() {
             })
           : paginatedLocations;
 
-      const exportDataObj = {
+      const exportDataObj: ExtendedLegacyExportData = {
         title: "Revenue Analysis Report",
         subtitle:
           "Location revenue metrics with machine numbers, drop, cancelled credits, and gross revenue",
@@ -861,7 +862,7 @@ export default function LocationsTab() {
           "Gross Revenue",
         ],
         data: filteredData.map((loc) => [
-          loc.locationName,
+          loc.name,
           loc.totalMachines?.toString() || "0",
           (loc.moneyIn || 0).toLocaleString(),
           (loc.moneyOut || 0).toLocaleString(),
@@ -872,25 +873,25 @@ export default function LocationsTab() {
           {
             label: "Total Machines",
             value: filteredData
-              .reduce((sum, loc) => sum + (loc.totalMachines || 0), 0)
+              .reduce((sum, loc) => sum + (loc.totalMachines as number || 0), 0)
               .toString(),
           },
           {
             label: "Total Drop",
             value: `$${filteredData
-              .reduce((sum, loc) => sum + (loc.moneyIn || 0), 0)
+              .reduce((sum, loc) => sum + (loc.moneyIn as number || 0), 0)
               .toLocaleString()}`,
           },
           {
             label: "Total Cancelled Credits",
             value: `$${filteredData
-              .reduce((sum, loc) => sum + (loc.moneyOut || 0), 0)
+              .reduce((sum, loc) => sum + (loc.moneyOut as number || 0), 0)
               .toLocaleString()}`,
           },
           {
             label: "Total Gross Revenue",
             value: `$${filteredData
-              .reduce((sum, loc) => sum + (loc.gross || 0), 0)
+              .reduce((sum, loc) => sum + (loc.gross as number || 0), 0)
               .toLocaleString()}`,
           },
         ],
@@ -1214,7 +1215,7 @@ export default function LocationsTab() {
                         <LocationMultiSelect
                           locations={(() => {
                             const sasLocations = allLocationsForDropdown.filter(
-                              (loc) => loc.sasMachines > 0
+                              (loc) => loc.sasMachines as number > 0
                             );
                             console.warn(
                               `🔍 SAS Evaluation - allLocationsForDropdown: ${allLocationsForDropdown.length}, sasLocations: ${sasLocations.length}`
@@ -1222,13 +1223,13 @@ export default function LocationsTab() {
                             console.warn(
                               "🔍 SAS Evaluation - sasLocations:",
                               sasLocations.map((loc) => ({
-                                location: loc.location,
-                                locationName: loc.locationName,
+                                location: loc.location as string,
+                                locationName: loc.locationName as string,
                                 sasMachines: loc.sasMachines,
                               }))
                             );
                             return sasLocations.map((loc) => ({
-                              id: loc.location,
+                              id: loc.location as string,
                               name: loc.locationName,
                               sasEnabled: loc.sasMachines > 0,
                             }));

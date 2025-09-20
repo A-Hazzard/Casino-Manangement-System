@@ -18,8 +18,9 @@ import { useUserStore } from "@/lib/store/userStore";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import ProfileModal from "@/components/layout/ProfileModal";
-import { logoutUser } from "@/lib/helpers/auth";
+import { logoutUser } from "@/lib/helpers/clientAuth";
 import { fetchUserId } from "@/lib/helpers/user";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 const DEFAULT_AVATAR = "/defaultAvatar.svg";
 
@@ -172,9 +173,9 @@ export default function AppSidebar() {
   }, [menuOpen, collapsed]);
 
   return (
-    <>
-    <SidebarContainer>
-      <div className="relative flex h-full w-full flex-col">
+    <ClientOnly fallback={<div className="w-64 h-screen bg-gray-100 animate-pulse" />}>
+      <SidebarContainer>
+        <div className="relative flex h-full w-full flex-col">
         <div className="px-3 py-5 border-b border-border/50 flex items-center gap-3">
           {/* Mobile: close sidebar; Desktop: collapse/expand */}
           <button
@@ -282,6 +283,7 @@ export default function AppSidebar() {
                 height={32}
                 className="h-8 w-8 object-cover rounded-full"
                 onError={() => setAvatarUrl(DEFAULT_AVATAR)}
+                suppressHydrationWarning
               />
             </div>
             {/* Hide user info when collapsed on desktop only */}
@@ -315,6 +317,7 @@ export default function AppSidebar() {
                     height={32}
                     className="h-8 w-8 object-cover rounded-full"
                     onError={() => setAvatarUrl(DEFAULT_AVATAR)}
+                    suppressHydrationWarning
                   />
                 </div>
                 <div className="min-w-0">
@@ -390,6 +393,7 @@ export default function AppSidebar() {
               height={32}
               className="h-8 w-8 object-cover rounded-full"
               onError={() => setAvatarUrl(DEFAULT_AVATAR)}
+              suppressHydrationWarning
             />
           </div>
           <div className="min-w-0">
@@ -423,6 +427,6 @@ export default function AppSidebar() {
         <div className="absolute right-full top-4 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-gray-200"></div>
       </div>
     )}
-  </>
+    </ClientOnly>
   );
 }

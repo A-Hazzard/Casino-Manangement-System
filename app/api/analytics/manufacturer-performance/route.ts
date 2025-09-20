@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
-import { TimePeriod } from "@/app/api/lib/types";
+import { getDatesForTimePeriod } from "@/lib/utils/dates";
+import { TimePeriod } from "@/shared/types";
 import type { PipelineStage } from "mongoose";
+
+type ManufacturerDataItem = {
+  _id: string;
+  totalMachines: number;
+  totalHandle: number;
+  totalWin: number;
+  totalDrop: number;
+  totalCancelledCredits: number;
+  totalGross: number;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -124,10 +134,17 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const manufacturerData = await db.collection("meters").aggregate(pipeline).toArray();
+    const manufacturerData = await db.collection("meters").aggregate(pipeline).toArray() as ManufacturerDataItem[];
 
     // Calculate totals for percentage calculations
-    const totals = manufacturerData.reduce((acc, item) => {
+    const totals = manufacturerData.reduce((acc: {
+      totalMachines: number;
+      totalHandle: number;
+      totalWin: number;
+      totalDrop: number;
+      totalCancelledCredits: number;
+      totalGross: number;
+    }, item: ManufacturerDataItem) => {
       acc.totalMachines += item.totalMachines;
       acc.totalHandle += item.totalHandle;
       acc.totalWin += item.totalWin;
@@ -145,7 +162,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate percentages
-    const result = manufacturerData.map(item => ({
+    const result = manufacturerData.map((item: ManufacturerDataItem) => ({
       manufacturer: item._id || "Unknown",
       floorPositions: totals.totalMachines > 0 ? Math.round((item.totalMachines / totals.totalMachines) * 100) : 0,
       totalHandle: totals.totalHandle > 0 ? Math.round((item.totalHandle / totals.totalHandle) * 100) : 0,

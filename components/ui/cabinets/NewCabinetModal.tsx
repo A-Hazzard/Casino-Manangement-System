@@ -45,7 +45,7 @@ export const NewCabinetModal = ({
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
   // Create activity logger for cabinet operations
-  const cabinetLogger = createActivityLogger("machine");
+  const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
@@ -203,10 +203,11 @@ export const NewCabinetModal = ({
       const success = await createCabinet(formData);
       if (success) {
         // Log the cabinet creation activity
-        await cabinetLogger.logCreate(
-          formData.serialNumber || "Unknown",
-          `${formData.game} - ${formData.serialNumber}`,
-          formData,
+        await cabinetLogger(
+          "create",
+          "cabinet",
+          { id: formData.serialNumber || "Unknown", name: `${formData.game} - ${formData.serialNumber}` },
+          [],
           `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`
         );
 

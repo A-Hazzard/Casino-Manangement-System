@@ -18,7 +18,7 @@ import axios from "axios";
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation } from "@/lib/types/maps";
 import type { NewLocationModalProps } from "@/lib/types/components";
-import { fetchLicensees } from "@/lib/helpers/licensees";
+import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 
 import { fetchCountries } from "@/lib/helpers/countries";

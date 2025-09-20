@@ -341,8 +341,8 @@ export default function LocationMap({
         const searchAllResponse = await axios.get(
           `/api/locations/search-all?${searchAllParams.toString()}`
         );
-        const locationsData = searchAllResponse.data;
-        setGamingLocations(locationsData);
+          const locationsData = searchAllResponse.data;
+          setGamingLocations(locationsData || []);
       } catch (err) {
         console.error("Error fetching location data:", err);
         setLocationAggregates([]);

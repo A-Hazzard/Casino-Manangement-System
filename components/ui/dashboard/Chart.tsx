@@ -12,7 +12,7 @@ import { formatTime, formatDisplayDate } from "@/shared/utils/dateFormat";
 import { ChartProps } from "@/lib/types/componentProps";
 import { DashboardChartSkeleton } from "@/components/ui/skeletons/DashboardSkeletons";
 
-import type { DashboardData } from "@/shared/types/analytics";
+import type { dashboardData } from "@/lib/types";
 
 
 export default function Chart({
@@ -108,7 +108,7 @@ export default function Chart({
   let finalChartData = sortedChartData;
   if (isHourlyChart) {
     // Group by hour and sum the values
-    const hourlyData: Record<string, DashboardData> = {};
+    const hourlyData: Record<string, dashboardData> = {};
     
     sortedChartData.forEach((item) => {
       if (!item.time) return;
@@ -119,6 +119,7 @@ export default function Chart({
       
       if (!hourlyData[key]) {
         hourlyData[key] = {
+          xValue: `${item.day}_${hour}`,
           day: item.day,
           time: hour,
           moneyIn: 0,

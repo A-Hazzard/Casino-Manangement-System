@@ -19,7 +19,12 @@ export function useGenerateReport() {
       const response = await axios.post("/api/analytics/reports", config);
       const data: ReportData = response.data;
       setReportData(data);
-      setStep("view");
+      setStep({
+        id: "view",
+        name: "View Report",
+        status: "completed" as const,
+        progress: 100,
+      });
     } catch (e: unknown) {
       const errorMessage =
         e instanceof Error ? e.message : "An unknown error occurred";

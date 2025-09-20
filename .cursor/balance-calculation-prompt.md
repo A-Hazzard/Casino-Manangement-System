@@ -9,11 +9,11 @@ This prompt explains the correct balance calculation logic for the NewCollection
 ## Calculation Logic
 
 ### 1. Amount to Collect (Auto-calculated, Read-only)
-- **Formula**: `gross - variance - advance - partnerProfit` (NO previousBalance to avoid circular dependency)
+- **Formula**: `gross - variance - advance - partnerProfit + locationPreviousBalance`
 - **Behavior**: Automatically calculated based on machine entries and financial inputs
 - **UI**: Read-only input field, cannot be edited by user
 - **CRITICAL**: This value NEVER changes when user enters collected amount or balance correction
-- **CRITICAL**: Amount to collect should NOT include previousBalance in its calculation to prevent circular dependency
+- **CRITICAL**: Uses location's previous balance from database, not calculated previous balance
 
 ### 2. Previous Balance (Auto-calculated, Editable)
 - **Formula**: `collectedAmount - amountToCollect`

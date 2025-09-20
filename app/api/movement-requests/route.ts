@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MovementRequest } from "@/app/api/lib/models/movementrequests";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
 export async function GET(req: NextRequest) {

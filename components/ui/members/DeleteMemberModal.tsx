@@ -33,7 +33,7 @@ export default function DeleteMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const memberLogger = createActivityLogger("member");
+  const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -88,18 +88,13 @@ export default function DeleteMemberModal({
       const response = await axios.delete(`/api/members/${selectedMember._id}`);
 
       if (response.status === 200) {
-        const memberData = { ...selectedMember };
-
         // Log the deletion activity
-        await memberLogger.logDelete(
-          selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
-          }`,
-          memberData,
-          `Deleted member: ${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
-          }`
+        await memberLogger(
+          "delete",
+          "member",
+          { id: selectedMember._id, name: `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}` },
+          [],
+          `Deleted member: ${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`
         );
 
         toast.success("Member deleted successfully");

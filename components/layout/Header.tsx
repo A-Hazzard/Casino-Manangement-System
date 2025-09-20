@@ -7,10 +7,11 @@ import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { logoutUser } from "@/lib/helpers/auth";
+import { logoutUser } from "@/lib/helpers/clientAuth";
 import LicenceeSelect from "@/components/ui/LicenceeSelect";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { fetchMetricsData } from "@/lib/helpers/dashboard";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 export default function Header({
   selectedLicencee,
@@ -91,8 +92,9 @@ export default function Header({
     !pathname.includes("/details");
 
   return (
-    <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
-      <header className="flex flex-col p-0 w-full">
+    <ClientOnly fallback={<div className="h-16 bg-gray-100 animate-pulse" />}>
+      <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
+        <header className="flex flex-col p-0 w-full">
         {/* Menu Button and Main Title Row */}
         <div className="flex items-center justify-start">
           {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
@@ -103,7 +105,7 @@ export default function Header({
             )}
             aria-label="Toggle sidebar"
           >
-            <PanelLeft className="h-6 w-6" />
+            <PanelLeft className="h-6 w-6" suppressHydrationWarning />
           </SidebarTrigger>
           <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
             Evolution CMS
@@ -300,7 +302,7 @@ export default function Header({
                   className="mt-auto mb-10 mx-auto p-4 flex items-center space-x-2 text-grayHighlight hover:text-buttonActive"
                   aria-label="Logout"
                 >
-                  <ExitIcon className="w-6 h-6" />
+                  <ExitIcon className="w-6 h-6" suppressHydrationWarning />
                   <span className="font-medium">Logout</span>
                 </motion.button>
               </motion.div>
@@ -324,5 +326,6 @@ export default function Header({
         )}
       </header>
     </div>
+    </ClientOnly>
   );
 }

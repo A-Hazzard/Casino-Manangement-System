@@ -1,207 +1,161 @@
-// Shared analytics types used across frontend and backend
-import type { TimePeriod } from "./common";
+// API-specific analytics types for Evolution1 CMS
 
-// Dashboard data types
-export type DashboardData = {
-  xValue?: string;
-  day: string;
-  time?: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  location?: string;
-  locationName?: string;
-  machine?: string;
-  geoCoords?: {
-    latitude: number;
-    longitude: number;
-    name?: string;
-  }[];
-};
-
-// Metrics types
-export type Meter = {
-  _id: string;
-  machine: string;
-  location: string;
-  movement: {
-    coinIn: number;
-    coinOut: number;
-    drop: number;
-    totalCancelledCredits: number;
-    gamesPlayed: number;
-    jackpot: number;
-  };
-  coinIn: number;
-  coinOut: number;
-  drop: number;
-  totalCancelledCredits: number;
-  gamesPlayed: number;
-  jackpot: number;
-  createdAt: Date;
-  updatedAt: Date;
-  readAt: Date;
-};
-
-export type Metrics = {
-  day: string;
-  time?: string;
-  drop: number;
-  totalCancelledCredits: number;
-  gross: number;
-  location?: string;
-  locationName?: string;
-  machine?: string;
-  geoCoords?: DashboardData["geoCoords"];
-};
-
-// Top performing data
-export type TopPerformingData = {
-  location?: string;
-  machine?: string;
-  totalDrop: number;
+// Define missing types locally
+export type AggregatedMetrics = {
+  totalHandle: number;
+  totalWin: number;
+  actualHold: number;
+  totalMachines: number;
+  onlineMachines: number;
   totalGamesPlayed: number;
-  totalJackpot: number;
-  color?: string;
+  averageWager: number;
 };
 
-// Analytics filtersChartData
-export type ActiveFilters = {
-  Today: boolean;
-  Yesterday: boolean;
-  last7days: boolean;
-  last30days: boolean;
-  Custom: boolean;
+export type LocationMetricsResponse = {
+  locationId: string;
+  locationName: string;
+  metrics: AggregatedMetrics;
+  performance: "excellent" | "good" | "average" | "poor";
 };
 
-export type TimeFrames = {
-  time: string;
-  value: TimePeriod;
+export type MachineMetricsResponse = {
+  machineId: string;
+  machineName: string;
+  locationName: string;
+  metrics: AggregatedMetrics;
+  status: "online" | "offline" | "maintenance";
 };
 
-// Chart data types
-export type ChartDataPoint = {
-  label: string;
-  value: number;
-  color?: string;
-  percentage?: number;
+export type ApiResponse<T = unknown> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 };
 
-export type KpiMetric = {
-  label: string;
-  value: number | string;
-  change?: number;
-  trend?: "up" | "down" | "stable";
-  format?: "currency" | "number" | "percentage" | "text";
-  previousValue?: number;
-  title?: string; // For backward compatibility
-};
-
-// Report data types
-export type ReportData = {
-  id: string;
-  title: string;
-  description?: string;
-  data: unknown[];
-  metadata?: {
-    generatedAt: Date;
-    timeRange?: string;
-    filters?: Record<string, unknown>;
+export type MetricsFilters = {
+  dateRange?: {
+    start: Date;
+    end: Date;
   };
+  locationIds?: string[];
+  machineIds?: string[];
+  timePeriod?: string;
 };
 
-export type ReportField = {
-  key: string;
-  label: string;
-  type: "string" | "number" | "date" | "currency" | "percentage";
-  sortable?: boolean;
-  filterable?: boolean;
-  format?: string;
+export type DashboardMetricsResponse = {
+  totalMetrics: AggregatedMetrics;
+  locationMetrics: LocationMetricsResponse[];
+  topPerformingMachines: Array<{
+    machineId: string;
+    machineName: string;
+    locationName: string;
+    metric: number;
+    metricType: string;
+  }>;
+  performanceTrends: Array<{
+    date: string;
+    totalHandle: number;
+    totalWin: number;
+    actualHold: number;
+  }>;
 };
 
-// Export data types
-export type ExportDataStructure = {
-  headers: string[];
-  data: unknown[][];
-  metadata?: {
-    title: string;
-    generatedAt: Date;
-    filters?: Record<string, unknown>;
+// Define other missing types
+export type LogisticsRequest = {
+  machineId: string;
+  fromLocationId: string;
+  toLocationId: string;
+  reason: string;
+  scheduledDate: Date;
+};
+
+export type LogisticsResponse = {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+};
+
+export type ReportGenerationRequest = {
+  reportType: string;
+  dateRange: {
+    start: Date;
+    end: Date;
   };
+  filters?: Record<string, unknown>;
 };
 
-export type MachineExportData = {
-  serialNumber: string;
-  location: string;
-  game: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  jackpot: number;
-  gamesPlayed: number;
-  lastActivity: Date;
+export type ReportGenerationResponse = {
+  success: boolean;
+  data?: unknown;
+  error?: string;
 };
 
-export type LocationExportData = {
+export type MachineContributionResponse = {
+  locationId: string;
   locationName: string;
   totalMachines: number;
-  onlineMachines: number;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  performance: "good" | "average" | "poor";
+  contributionAnalysis: {
+    topPerformers: {
+      percentage: number;
+      machineCount: number;
+      handleContribution: number;
+      winContribution: number;
+      gamesPlayedContribution: number;
+    };
+    averagePerformers: {
+      percentage: number;
+      machineCount: number;
+      handleContribution: number;
+      winContribution: number;
+      gamesPlayedContribution: number;
+    };
+    underPerformers: {
+      percentage: number;
+      machineCount: number;
+      handleContribution: number;
+      winContribution: number;
+      gamesPlayedContribution: number;
+    };
+  };
 };
 
-// Performance metrics
-export type PerformanceMetrics = {
-  totalRevenue: number;
-  totalMachines: number;
-  onlineMachines: number;
-  averageGrossPerMachine: number;
-  topPerformingLocation?: string;
-  topPerformingMachine?: string;
-  revenueGrowth?: number;
-  machineUtilization: number;
+// Define time series and comparison types
+export type TimeSeriesData = {
+  date: string;
+  value: number;
+  label?: string;
 };
 
-// Analytics query types
-export type AnalyticsQuery = {
-  timePeriod: TimePeriod;
-  licensee?: string;
-  location?: string;
-  machine?: string;
-  startDate?: Date;
-  endDate?: Date;
-  groupBy?: "day" | "week" | "month" | "location" | "machine";
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  limit?: number;
+export type ComparisonRequest = {
+  baselinePeriod: {
+    start: Date;
+    end: Date;
+  };
+  comparisonPeriod: {
+    start: Date;
+    end: Date;
+  };
+  metrics: string[];
 };
 
-// Activity log types
-export type ActivityLog = {
-  _id: string;
-  userId: string;
-  action: string;
-  resource: string;
-  resourceId?: string;
-  details?: Record<string, unknown>;
-  timestamp: Date;
-  ipAddress?: string;
-  userAgent?: string;
+export type ComparisonResponse = {
   success: boolean;
-  errorMessage?: string;
+  data?: {
+    baseline: Record<string, number>;
+    comparison: Record<string, number>;
+    changes: Record<string, number>;
+  };
+  error?: string;
 };
 
-// Machine hourly analytics types
-export type MachineMetrics = {
-  handle: number;
-  winLoss: number;
-  jackpot: number;
-  plays: number;
-};
-
+// Stacked data type for hourly machine analytics
 export type StackedData = {
   hour: string;
-  [machineId: string]: MachineMetrics | string;
+  [locationKey: string]: {
+    handle: number;
+    winLoss: number;
+    jackpot: number;
+    plays: number;
+  } | string;
 };

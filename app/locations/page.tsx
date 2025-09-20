@@ -659,7 +659,7 @@ export default function LocationsPage() {
                     {!isLoading ? (
                       currentItems.map((location) => (
                         <LocationCard
-                          key={location.location}
+                          key={location._id}
                           location={location}
                           onLocationClick={handleLocationClick}
                           onEdit={() => openEditModal(location)}

@@ -1,42 +1,45 @@
+// Reports types for shared use
 export type ReportsLocationData = {
-  location: string;
-  locationName: string;
+  _id: string;
+  name: string;
+  totalMachines: number;
+  onlineMachines: number;
   moneyIn: number;
   moneyOut: number;
   gross: number;
-  totalMachines: number;
-  onlineMachines: number;
-  sasMachines: number;
-  nonSasMachines: number;
-  hasSasMachines: boolean;
-  hasNonSasMachines: boolean;
-  isLocalServer: boolean;
-  machines: Array<{
-    id: string;
-    serialNumber: string;
-    game: string;
-    isSasMachine: boolean;
-    lastActivity?: Date;
-  }>;
-  meters: Array<{
-    id: string;
-    machineId: string;
-    drop: number;
-    cancelledCredits: number;
-    createdAt: Date;
-  }>;
+  performance: string;
 };
 
 export type PaginationInfo = {
   page: number;
   limit: number;
-  totalCount: number;
+  total: number;
   totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+  hasNext: boolean;
+  hasPrev: boolean;
 };
 
 export type ReportsLocationsResponse = {
   data: ReportsLocationData[];
   pagination: PaginationInfo;
+  success: boolean;
+  message?: string;
+};
+
+// Backend-specific report types
+export type ReportQuery = {
+  timePeriod: string;
+  licencee?: string;
+  locationIds?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+};
+
+export type ReportGenerationRequest = {
+  reportType: string;
+  filters: ReportQuery;
+  format: "pdf" | "csv" | "excel";
+  userId: string;
 }; 

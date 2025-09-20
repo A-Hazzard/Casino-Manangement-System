@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { CollectionReportData } from "@/lib/types/index";
+import type { CollectionReportData } from "@/lib/types/api";
 import type { CollectionDocument } from "@/lib/types/collections";
 
 /**

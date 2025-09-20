@@ -48,12 +48,12 @@ export type LocationTableItem = {
 };
 
 export type LocationSortOption =
-  | "locationName"
+  | "name"
   | "moneyIn"
   | "moneyOut"
-  | "jackpot"
   | "gross"
-  | "totalMachines";
+  | "totalMachines"
+  | "onlineMachines";
 
 export type LocationFilter =
   | "NoSMIBLocation"

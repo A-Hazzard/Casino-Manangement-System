@@ -10,8 +10,8 @@ import type {
 import type {
   CreateCollectionReportPayload,
   CollectionReportLocationWithMachines,
+  CollectionReportData,
 } from "@/lib/types/api";
-import type { CollectionReportData } from "@/lib/types";
 import type { CollectionDocument } from "@/lib/types/collections";
 
 /**
@@ -563,8 +563,12 @@ export async function fetchCollectionReportById(
     const { data } = await axios.get(`/api/collection-report/${reportId}`);
     return data as CollectionReportData;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      console.warn(`Collection report with ID "${reportId}" not found`);
+      return null;
+    }
     console.error("Failed to fetch collection report by ID:", error);
-    return null;
+    throw error; // Re-throw non-404 errors so the component can handle them
   }
 }
 

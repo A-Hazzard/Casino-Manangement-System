@@ -98,9 +98,16 @@ export function validateMachineEntry(
   prevIn?: number,
   prevOut?: number,
   ramClearMetersIn?: number,
-  ramClearMetersOut?: number
+  ramClearMetersOut?: number,
+  isEditMode?: boolean // Add parameter to indicate edit mode
 ): { isValid: boolean; error?: string; warnings?: string[] } {
-  if (!selectedMachineId || !machineForDataEntry) {
+  // In edit mode, we only need selectedMachineId, not machineForDataEntry
+  if (!selectedMachineId) {
+    return { isValid: false, error: "Please select a machine first." };
+  }
+  
+  // In normal mode (not edit), we need both selectedMachineId and machineForDataEntry
+  if (!isEditMode && !machineForDataEntry) {
     return { isValid: false, error: "Please select a machine first." };
   }
 

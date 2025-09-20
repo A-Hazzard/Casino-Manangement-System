@@ -1,4 +1,4 @@
-import type { ReportTab } from "@/lib/types/reports";
+import type { ReportTab } from "@/lib/types";
 
 /**
  * Configuration for reports tabs

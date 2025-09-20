@@ -2,6 +2,7 @@
 
 import MapPreview from "@/components/ui/MapPreview";
 import { MobileLayoutProps } from "@/lib/types/componentProps";
+import type { TopPerformingItem } from "@/lib/types";
 import { formatNumber } from "@/lib/utils/metrics";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
@@ -267,7 +268,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
               </div>
               <div className="flex items-center justify-between">
                 <ul className="space-y-2">
-                  {props.topPerformingData.map((item, index) => (
+                  {props.topPerformingData.map((item: TopPerformingItem, index: number) => (
                     <li
                       key={index}
                       className="flex items-center space-x-2 text-sm"
@@ -277,9 +278,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         style={{ backgroundColor: item.color }}
                       ></div>
                       <span>
-                        {props.activeTab === "Cabinets"
-                          ? item.machine
-                          : item.location}
+                        {item.name}
                       </span>
                     </li>
                   ))}
@@ -289,18 +288,16 @@ export default function MobileLayout(props: MobileLayoutProps) {
                     <Pie
                       data={props.topPerformingData}
                       dataKey="totalDrop"
-                      nameKey={
-                        props.activeTab === "Cabinets" ? "machine" : "location"
-                      }
+                      nameKey="name"
                       cx="50%"
                       cy="50%"
                       outerRadius={70}
                       labelLine={false}
                       label={props.renderCustomizedLabel}
                     >
-                      {props.topPerformingData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
+                        {props.topPerformingData.map((entry: TopPerformingItem, index: number) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>

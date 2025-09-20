@@ -25,47 +25,105 @@ The Cabinet Details page provides comprehensive management of individual slot ma
 
 ### How Bill Validator Works
 
-The bill validator system accepts various denominations and tracks them separately for financial accuracy and audit purposes.
+The bill validator system now uses the `acceptedBills` collection instead of the `billValidator` field on the `machines` collection. It automatically detects and processes two different data structures (V1 and V2) to provide a unified interface.
 
-### Bill Validator Model Fields
+### Bill Validator API Endpoint
 
+**Endpoint**: `GET /api/bill-validator/[machineId]`
+
+**Query Parameters**:
+- `timePeriod` - Filter by time period (Today, Yesterday, 7d, 30d, All Time, Custom)
+- `startDate` - Start date for custom range (ISO format)
+- `endDate` - End date for custom range (ISO format)
+
+**Response Structure**:
 ```typescript
-BillValidator {
-  balance: number;                // Current validator balance (total cash in validator)
-  notes: Array;                   // Legacy array structure (deprecated in V2)
-}
-
-BillMeters {
-  dollar1: number;                // Count of $1 bills accepted
-  dollar2: number;                // Count of $2 bills accepted  
-  dollar5: number;                // Count of $5 bills accepted
-  dollar10: number;               // Count of $10 bills accepted
-  dollar20: number;               // Count of $20 bills accepted
-  dollar50: number;               // Count of $50 bills accepted
-  dollar100: number;              // Count of $100 bills accepted
-  dollar500: number;              // Count of $500 bills accepted
-  dollar1000: number;             // Count of $1000 bills accepted
-  dollar2000: number;             // Count of $2000 bills accepted
-  dollar5000: number;             // Count of $5000 bills accepted
-  dollarTotal: number;            // Sum of all accepted denominations
-  dollarTotalUnknown: number;     // Count of unrecognized bills
+{
+  success: true,
+  data: {
+    version: "v1" | "v2" | "none",
+    denominations: Array<{
+      denomination: number,
+      label: string,
+      quantity: number,
+      subtotal: number
+    }>,
+    totalAmount: number,
+    totalQuantity: number,
+    unknownBills: number,
+    currentBalance: number
+  }
 }
 ```
+
+### Data Structure Detection
+
+**V1 Data Structure** (Legacy):
+- Uses `movement` object with denomination fields
+- Filtered by `readAt` timestamp
+- Example: `movement.dollar1`, `movement.dollar5`, `movement.dollarTotal`
+
+**V2 Data Structure** (Current):
+- Uses `value` field with individual bill records
+- Filtered by `createdAt` timestamp
+- Example: `{ value: 5, machine: "machineId", member: "ANONYMOUS" }`
+
+### Accepted Bills Collection Schema
+
+```typescript
+AcceptedBill {
+  _id: string;                    // Unique bill record identifier
+  value: number;                  // V2: Bill denomination value
+  machine: string;                // V2: Machine ID reference
+  member: string;                 // V2: Member (typically "ANONYMOUS")
+  location: string;               // V1: Location ID reference
+  readAt: Date;                   // V1: Bill read timestamp
+  movement: {                     // V1: Movement object with denominations
+    dollar1: number,
+    dollar2: number,
+    dollar5: number,
+    dollar10: number,
+    dollar20: number,
+    dollar50: number,
+    dollar100: number,
+    dollar500: number,
+    dollar1000: number,
+    dollar2000: number,
+    dollar5000: number,
+    dollarTotal: number,
+    dollarTotalUnknown: number
+  },
+  createdAt: Date,                // V2: Bill creation timestamp
+  updatedAt: Date                 // Record update timestamp
+}
+```
+
+### Bill Processing Logic
+
+**V1 Processing**:
+1. Query bills with `movement` object and filter by `readAt`
+2. Aggregate `movement` values across all bills
+3. Calculate total quantity and amount from movement object
+4. Identify unknown bills from `dollarTotalUnknown`
+
+**V2 Processing**:
+1. Query bills with `value` field and filter by `createdAt`
+2. Group bills by `value` (denomination)
+3. Count quantities for each denomination
+4. Calculate subtotals (denomination × quantity)
 
 ### Bill Tracking Process
 
 1. **Bill Insertion**: Player inserts bill into machine
 2. **Validation**: Bill validator checks authenticity and denomination
-3. **Acceptance/Rejection**: Bill either accepted or rejected
-4. **Tracking Update**: Accepted bills increment corresponding denomination counter
-5. **Balance Update**: Total balance updated with bill value
-6. **Credit Issuance**: Player receives credits based on denomination
+3. **Database Record**: Bill acceptance recorded in `acceptedBills` collection
+4. **Data Processing**: API processes V1/V2 data structures automatically
+5. **UI Display**: Unified interface shows denomination breakdown
+6. **Balance Update**: Current balance retrieved from machine object
 
-### Bill Validator Data Sources
+### Current Balance Source
 
-**Primary Source**: `machine.billMeters` - Individual denomination counts
-**Secondary Source**: `machine.billValidator.balance` - Total validator balance
-**Event Tracking**: Bill acceptance/rejection events in activity log
+The current balance is retrieved from `machine.billValidator.balance` and displayed separately from the historical bill data, as it represents the current state rather than historical transactions.
 
 ### Denomination Analysis Features
 
@@ -73,6 +131,8 @@ BillMeters {
 - **Popular Denominations**: Identify which bills players prefer
 - **Revenue Distribution**: See how money flows through different denominations
 - **Validator Performance**: Monitor bill validator accuracy and reliability
+- **Time-based Analysis**: Filter by date ranges to analyze trends
+- **Data Structure Compatibility**: Automatic detection and processing of V1/V2 formats
 
 ## Collection System
 
@@ -524,6 +584,12 @@ Machine (Many) ←→ (1) Location
 - `PATCH /api/machines/[id]` - Update machine configuration
 - `GET /api/machines/by-id/events` - Get machine event logs
 
+### Bill Validator
+- `GET /api/bill-validator/[machineId]` - Get bill validator data with V1/V2 auto-detection
+  - **Query Parameters**: `timePeriod`, `startDate`, `endDate`
+  - **Response**: Unified bill validator data with denomination breakdown
+  - **Data Source**: `acceptedBills` collection with automatic V1/V2 processing
+
 ### Collection Management
 - `GET /api/collections` - List machine collections
 - `POST /api/collections` - Create new collection record
@@ -948,16 +1014,27 @@ Actual = Amount Collected
 - **Update Frequency**: Live updates via WebSocket or polling
 
 ### **Bill Validator Tab**
-- **Purpose**: Track bill acceptance and denomination breakdown using billMeters data
-- **Data Source**: `machine.billMeters` (primary) and `machine.billValidator.balance`
+- **Purpose**: Unified bill validator interface that automatically detects and processes V1/V2 data structures from the `acceptedBills` collection
+- **Data Source**: `acceptedBills` collection via `/api/bill-validator/[machineId]`
 - **Functionality**:
-  - Shows current bill validator balance from `billValidator.balance`
-  - Displays accepted denominations and quantities from `billMeters` structure
-  - Calculates subtotals for each denomination (dollar1, dollar2, dollar5, etc.)
-  - Tracks unknown bills via `dollarTotalUnknown`
-  - Shows total bill count and amount
-- **Data Structure**: Uses `billMeters` schema with individual denomination fields
-- **Update Frequency**: Real-time during bill acceptance events
+  - **Automatic Data Detection**: Detects V1 (movement object) vs V2 (value field) data structures
+  - **Current Balance**: Displays machine's current bill validator balance
+  - **Denomination Tracking**: Shows accepted bills by denomination with quantity and subtotal
+  - **Unknown Bills**: Tracks unrecognized bills
+  - **Time Filtering**: Filter by Today, Yesterday, 7d, 30d, All Time, or Custom range
+  - **Responsive Design**: Desktop table view and mobile card view
+  - **Loading States**: Skeleton loaders for table and cards during data fetching
+  - **No Data Handling**: Shows filters and appropriate messaging when no data found
+- **Data Structure**: 
+  - **V1**: Uses `movement` object with denomination fields (dollar1, dollar5, etc.)
+  - **V2**: Uses `value` field with individual bill records
+- **Update Frequency**: Real-time when filter changes or manual refresh
+- **UI Features**:
+  - Filter buttons always visible for easy date range changes
+  - Centered current balance card (only when data available)
+  - Removed redundant total bills card (total shown in table)
+  - Proper skeleton loaders for loading states
+  - Mobile-responsive card design for denominations
 
 ### **Activity Log Tab**
 - **Purpose**: Complete audit trail of machine events and commands

@@ -1,23 +1,26 @@
-import { cookies } from "next/headers";
-import { JWTPayload, jwtVerify } from "jose";
+// Client-side user utilities
+// Note: Server-side user functions are in app/api/lib/helpers/users.ts
 
-export async function getUserFromServer(): Promise<JWTPayload | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(process.env.JWT_SECRET || "")
-    );
-    return payload as JWTPayload;
-  } catch (error) {
-    console.error("JWT verification failed:", error);
-    return null;
+export function clearUserSession(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+    sessionStorage.clear();
   }
 }
 
-export async function getUserIdFromServer(): Promise<string | null> {
-  const user: JWTPayload | null = await getUserFromServer();
-  return user ? (user._id as string) : null;
+export function getUserFromClient(): Record<string, unknown> | null {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        // Decode JWT payload (without verification for client-side)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload;
+      } catch (error) {
+        console.error('Failed to decode token:', error);
+        return null;
+      }
+    }
+  }
+  return null;
 }

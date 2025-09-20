@@ -22,7 +22,7 @@ export default function DeleteLocationModal({
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
-  const locationLogger = createActivityLogger("location");
+  const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
 
   const handleClose = () => {
@@ -31,20 +31,20 @@ export default function DeleteLocationModal({
   };
 
   const handleDelete = async () => {
-    if (!selectedLocation?.location) return;
+    const location = selectedLocation as Record<string, unknown>;
+    if (!location?.location) return;
 
    
     try {
-      const locationData = { ...selectedLocation };
-
-      await axios.delete(`/api/locations?id=${selectedLocation.location}`);
+      await axios.delete(`/api/locations?id=${location.location}`);
 
       // Log the deletion activity
-      await locationLogger.logDelete(
-        selectedLocation.location,
-        selectedLocation.locationName || "Unknown Location",
-        locationData,
-        `Deleted location: ${selectedLocation.locationName}`
+      await locationLogger(
+        "delete",
+        "location",
+        { id: location.location as string, name: (location.locationName as string) || "Unknown Location" },
+        [],
+        `Deleted location: ${location.locationName as string}`
       );
 
       toast.success("Location deleted successfully");
@@ -62,7 +62,7 @@ export default function DeleteLocationModal({
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription>
-            This will mark the location &quot;{selectedLocation?.locationName}
+            This will mark the location &quot;{(selectedLocation as Record<string, unknown>)?.locationName as string}
             &quot; as deleted. The location will be hidden from the system but
             can be restored if needed.
           </DialogDescription>

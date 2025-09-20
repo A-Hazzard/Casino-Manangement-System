@@ -66,8 +66,9 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
-import type { CollectionReportData } from "@/lib/types/index";
+import type { CollectionReportData } from "@/lib/types/api";
 import type { CollectionDocument } from "@/lib/types/collections";
+import type { MachineMetric } from "@/lib/types/api";
 
 export default function CollectionReportPage() {
   const params = useParams();
@@ -103,15 +104,19 @@ export default function CollectionReportPage() {
     setError(null);
     fetchCollectionReportById(reportId)
       .then((data) => {
-        if (!validateCollectionReportData(data)) {
+        if (data === null) {
           setError("Report not found. Please use a valid report ID.");
+          setReportData(null);
+        } else if (!validateCollectionReportData(data)) {
+          setError("Invalid report data received from server.");
           setReportData(null);
         } else {
           setReportData(data);
         }
       })
-      .catch(() => {
-        setError("Failed to fetch report data.");
+      .catch((error) => {
+        console.error("Error fetching collection report:", error);
+        setError("Failed to fetch report data. Please try again.");
         setReportData(null);
       })
       .finally(() => setLoading(false));
@@ -179,8 +184,11 @@ export default function CollectionReportPage() {
 
       // Then refresh the data
       const data = await fetchCollectionReportById(reportId);
-      if (!validateCollectionReportData(data)) {
+      if (data === null) {
         setError("Report not found. Please use a valid report ID.");
+        setReportData(null);
+      } else if (!validateCollectionReportData(data)) {
+        setError("Invalid report data received from server.");
         setReportData(null);
       } else {
         setReportData(data);
@@ -311,7 +319,7 @@ export default function CollectionReportPage() {
           <h2 className="text-xl font-bold text-center my-4">
             Machine Metrics
           </h2>
-          {paginatedMetricsData.map((metric) => (
+          {paginatedMetricsData.map((metric: MachineMetric) => (
             <div
               key={metric.id}
               className="bg-white rounded-lg shadow-md overflow-hidden"
@@ -405,7 +413,7 @@ export default function CollectionReportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedMetricsData.map((metric) => (
+              {paginatedMetricsData.map((metric: MachineMetric) => (
                 <TableRow key={metric.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
                     <span

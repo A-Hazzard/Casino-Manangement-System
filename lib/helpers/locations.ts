@@ -68,14 +68,14 @@ export async function fetchLocationAndCabinets(
  */
 export default async function getAllGamingLocations(
   licencee?: string
-): Promise<locations[]> {
+): Promise<locations> {
   try {
     const params: Record<string, string> = {};
     if (licencee && licencee !== "all") {
       params.licencee = licencee;
     }
 
-    const response = await axios.get<{ locations: locations[] }>(
+    const response = await axios.get<{ locations: locations }>(
       "/api/locations",
       {
         params,
@@ -167,10 +167,13 @@ export async function fetchAllGamingLocations(licensee?: string) {
   try {
     const locationsList = await getAllGamingLocations(licensee);
     if (locationsList && Array.isArray(locationsList)) {
-      const formattedLocations = locationsList.map((loc) => ({
-        id: loc._id?.toString() || loc._id || "",
-        name: loc.name || loc.locationName || "Unknown Location",
-      }));
+      const formattedLocations = locationsList.map((loc) => {
+        const locationWithProps = loc as unknown as Record<string, unknown>;
+        return {
+          id: (locationWithProps._id as string)?.toString() || (locationWithProps._id as string) || "",
+          name: (locationWithProps.name as string) || (locationWithProps.locationName as string) || "Unknown Location",
+        };
+      });
       // Sort alphabetically by name as additional safeguard
       return formattedLocations.sort((a, b) => a.name.localeCompare(b.name));
     }

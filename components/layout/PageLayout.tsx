@@ -52,8 +52,8 @@ export default function PageLayout({
 
   return (
     <>
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300">
-        <main className={mainClassName}>
+      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300" suppressHydrationWarning>
+        <main className={mainClassName} suppressHydrationWarning>
           {showHeader && (
             <Header
               selectedLicencee={headerSelectedLicencee}

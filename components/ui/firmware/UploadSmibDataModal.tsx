@@ -24,7 +24,7 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Create activity logger for firmware operations
-  const firmwareLogger = createActivityLogger("machine");
+  const firmwareLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -50,14 +50,11 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       );
 
       // Log the SMIB data upload activity
-      await firmwareLogger.logCreate(
-        response.data?.id || "unknown",
-        `SMIB Data Upload: ${selectedFile.name}`,
-        {
-          fileName: selectedFile.name,
-          fileSize: selectedFile.size,
-          comments: comments,
-        },
+      await firmwareLogger(
+        "create",
+        "firmware",
+        { id: response.data?.id || "unknown", name: `SMIB Data Upload: ${selectedFile.name}` },
+        [],
         `Uploaded SMIB data file: ${selectedFile.name} (${(
           selectedFile.size / 1024
         ).toFixed(2)} KB)`

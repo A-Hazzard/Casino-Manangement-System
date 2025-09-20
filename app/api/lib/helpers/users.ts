@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
+import { JWTPayload, jwtVerify } from "jose";
 import UserModel from "../models/user";
 import { hashPassword } from "../utils/validation";
 import type { ResourcePermissions } from "@/lib/types/administration";
 import { logActivity } from "./activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type {
   CurrentUser,
@@ -11,6 +12,33 @@ import type {
   UserDocumentWithPassword,
   OriginalUserType,
 } from "../types/users";
+
+/**
+ * Server-side function to get user from JWT token in cookies
+ */
+export async function getUserFromServer(): Promise<JWTPayload | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(process.env.JWT_SECRET || "")
+    );
+    return payload as JWTPayload;
+  } catch (error) {
+    console.error("JWT verification failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Server-side function to get user ID from JWT token
+ */
+export async function getUserIdFromServer(): Promise<string | null> {
+  const user: JWTPayload | null = await getUserFromServer();
+  return user ? (user._id as string) : null;
+}
 
 /**
  * Finds a user by email address (case-insensitive).

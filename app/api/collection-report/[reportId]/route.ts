@@ -5,7 +5,7 @@ import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import { Collections } from "@/app/api/lib/models/collections";
 import { Machine } from "@/app/api/lib/models/machines";
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 

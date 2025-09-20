@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { getAccountingDetails } from "@/app/api/lib/helpers/accountingDetails";
+import { getAccountingDetails } from "@/lib/helpers/accountingDetails";
 import type { BillValidatorTimePeriod } from "@/shared/types/billValidator";
 
 export async function GET(req: NextRequest) {

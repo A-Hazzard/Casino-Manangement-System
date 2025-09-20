@@ -41,7 +41,12 @@ export default function ViewReport() {
         <p className="text-gray-500 mb-4">
           It seems something went wrong or no data was generated.
         </p>
-        <Button onClick={() => setStep("configure")}>
+        <Button onClick={() => setStep({
+          id: "configure",
+          name: "Configure Report",
+          status: "pending",
+          progress: 0,
+        })}>
           Back to Configuration
         </Button>
       </div>
@@ -82,7 +87,12 @@ export default function ViewReport() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => setStep("configure")}>
+          <Button variant="outline" onClick={() => setStep({
+            id: "configure",
+            name: "Configure Report",
+            status: "pending",
+            progress: 0,
+          })}>
             Back to Configuration
           </Button>
           <Button variant="outline" onClick={resetReportConfig}>

@@ -80,7 +80,7 @@ export class ReportExportUtils {
     // Location breakdown
     csvRows.push(["Location Breakdown"]);
     csvRows.push(["Location ID", "Location Name", "Active Customers", "Sign-in Records"]);
-    data.locationBreakdown.forEach(location => {
+    data.locationBreakdown.forEach((location) => {
       csvRows.push([
         location.locationId,
         `"${location.locationName}"`,
@@ -206,7 +206,7 @@ export class ReportExportUtils {
 
     // Data rows
     data.forEach(terminal => {
-      terminal.locations.forEach(location => {
+      terminal.locations.forEach((location) => {
         csvRows.push([
           terminal.manufacturer,
           terminal.gameType,

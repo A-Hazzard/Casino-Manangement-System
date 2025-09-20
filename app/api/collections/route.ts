@@ -7,8 +7,8 @@ import { createCollectionWithCalculations } from "@/lib/helpers/collectionCreati
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+} from "@/lib/helpers/activityLogger";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type {
   CollectionDocument,
@@ -41,6 +41,13 @@ export async function GET(req: NextRequest) {
     const collections = (await Collections.find(
       filter
     ).lean()) as CollectionDocument[];
+    
+    console.warn("🔍 Collections API GET result:", {
+      filter,
+      collectionsCount: collections.length,
+      collections: collections.map(c => ({ _id: c._id, machineId: c.machineId, locationReportId: c.locationReportId }))
+    });
+    
     return NextResponse.json(collections);
   } catch {
     return NextResponse.json(

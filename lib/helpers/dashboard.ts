@@ -1,5 +1,6 @@
 import {
   dashboardData,
+  DashboardTotals,
   locations,
   ActiveFilters,
   TopPerformingData,
@@ -23,7 +24,7 @@ import axios from "axios";
  * Fetches and sets gaming locations data
  */
 export const loadGamingLocations = async (
-  setGamingLocations: (locations: locations[]) => void,
+  setGamingLocations: (locations: locations) => void,
   selectedLicencee?: string
 ) => {
   try {
@@ -53,7 +54,7 @@ export const fetchDashboardTotals = async (
   activeMetricsFilter: TimePeriod,
   customDateRange: { startDate: Date; endDate: Date },
   selectedLicencee: string | undefined,
-  setTotals: (totals: dashboardData | null) => void
+  setTotals: (totals: DashboardTotals | null) => void
 ) => {
   try {
     let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter}`;
@@ -69,10 +70,8 @@ export const fetchDashboardTotals = async (
     const response = await axios.get(url);
     const totals = response.data;
 
-    // Convert to dashboardData format
+    // Convert to DashboardTotals format
     setTotals({
-      day: "",
-      time: "",
       moneyIn: totals.moneyIn || 0,
       moneyOut: totals.moneyOut || 0,
       gross: totals.gross || 0,
@@ -90,7 +89,7 @@ export const fetchMetricsData = async (
   activeMetricsFilter: TimePeriod,
   customDateRange: { startDate: Date; endDate: Date },
   selectedLicencee: string | undefined,
-  setTotals: (totals: dashboardData | null) => void,
+  setTotals: (totals: DashboardTotals | null) => void,
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void
@@ -167,7 +166,7 @@ export const handleDashboardRefresh = async (
   setRefreshing: (refreshing: boolean) => void,
   setLoadingChartData: (loading: boolean) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
-  setTotals: (totals: dashboardData | null) => void,
+  setTotals: (totals: DashboardTotals | null) => void,
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,

@@ -139,7 +139,7 @@ export default function EditLicenseeModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold mb-1">
               Start Date
               <div className="relative group">
                 <Info className="w-4 h-4 text-gray-400 cursor-help" />
@@ -162,7 +162,7 @@ export default function EditLicenseeModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold mb-1">
               Expiry Date
               <div className="relative group">
                 <Info className="w-4 h-4 text-gray-400 cursor-help" />

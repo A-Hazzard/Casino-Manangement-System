@@ -195,6 +195,54 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 }
 ```
 
+### GET `/api/bill-validator/[machineId]`
+**Purpose**: Fetch bill validator data with automatic V1/V2 data structure detection
+
+**Query Parameters:**
+- `timePeriod` - Filter by time period (Today, Yesterday, 7d, 30d, All Time, Custom)
+- `startDate` - Start date for custom range (ISO format)
+- `endDate` - End date for custom range (ISO format)
+
+**Response Fields:**
+```json
+{
+  "success": true,
+  "data": {
+    "version": "v2",
+    "denominations": [
+      {
+        "denomination": 1,
+        "label": "$1",
+        "quantity": 150,
+        "subtotal": 150
+      },
+      {
+        "denomination": 5,
+        "label": "$5", 
+        "quantity": 80,
+        "subtotal": 400
+      },
+      {
+        "denomination": 20,
+        "label": "$20",
+        "quantity": 25,
+        "subtotal": 500
+      }
+    ],
+    "totalAmount": 1050,
+    "totalQuantity": 255,
+    "unknownBills": 0,
+    "currentBalance": 1200
+  }
+}
+```
+
+**Data Processing:**
+- **V1 Detection**: Bills with `movement` object, filtered by `readAt`
+- **V2 Detection**: Bills with `value` field, filtered by `createdAt`
+- **Automatic Processing**: API detects data structure and processes accordingly
+- **Current Balance**: Retrieved from `machine.billValidator.balance`
+
 ## Data Models
 
 ### Machine Schema
@@ -353,6 +401,38 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   gameName: String,                // Game name
   date: Date,                      // Event timestamp
   sequence: Array                  // Optional sequence data
+}
+```
+
+#### **Accepted Bill Schema** (`app/api/lib/models/acceptedBills.ts`)
+```typescript
+{
+  _id: String,                     // Unique bill record identifier
+  // V2 fields (current structure)
+  value: Number,                   // V2: Bill denomination value
+  machine: String,                 // V2: Machine ID reference
+  member: String,                  // V2: Member (typically "ANONYMOUS")
+  
+  // V1 fields (legacy structure)
+  location: String,                // V1: Location ID reference
+  readAt: Date,                    // V1: Bill read timestamp
+  movement: {                      // V1: Movement object with denominations
+    dollar1: Number,
+    dollar2: Number,
+    dollar5: Number,
+    dollar10: Number,
+    dollar20: Number,
+    dollar50: Number,
+    dollar100: Number,
+    dollar500: Number,
+    dollar1000: Number,
+    dollar2000: Number,
+    dollar5000: Number,
+    dollarTotal: Number,
+    dollarTotalUnknown: Number
+  },
+  createdAt: Date,                 // V2: Bill creation timestamp
+  updatedAt: Date                  // Record update timestamp
 }
 ```
 
@@ -569,6 +649,17 @@ const response = await fetch('/api/locations/loc123/cabinets/cabinet123', {
 ```typescript
 const response = await fetch('/api/machines/by-id/events?id=cabinet123&timePeriod=Today');
 const events = await response.json();
+```
+
+#### **Fetch Bill Validator Data**
+```typescript
+// Get bill validator data for last 7 days
+const response = await fetch('/api/bill-validator/machine123?timePeriod=7d');
+const billData = await response.json();
+
+// Get bill validator data for custom date range
+const response = await fetch('/api/bill-validator/machine123?timePeriod=Custom&startDate=2025-01-01&endDate=2025-01-31');
+const customBillData = await response.json();
 ```
 
 

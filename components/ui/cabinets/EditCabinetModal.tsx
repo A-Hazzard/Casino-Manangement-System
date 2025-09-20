@@ -53,7 +53,7 @@ export const EditCabinetModal = ({
     useState<string>("");
 
   // Create activity logger for cabinet operations
-  const cabinetLogger = createActivityLogger("machine");
+  const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
@@ -338,30 +338,16 @@ export const EditCabinetModal = ({
         return;
       }
 
-      const previousData = { ...selectedCabinet };
-
       // Pass the entire formData object with id included
       const success = await updateCabinet(formData, activeMetricsFilter);
       if (success) {
         // Log the cabinet update activity
-        await cabinetLogger.logUpdate(
-          selectedCabinet._id,
-          `${
-            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
-          } - ${
-            selectedCabinet.assetNumber ||
-            getSerialNumberIdentifier(selectedCabinet) ||
-            "Unknown"
-          }`,
-          previousData,
-          formData,
-          `Updated cabinet: ${
-            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
-          } (${
-            selectedCabinet.assetNumber ||
-            getSerialNumberIdentifier(selectedCabinet) ||
-            "Unknown"
-          })`
+        await cabinetLogger(
+          "update",
+          "cabinet",
+          { id: selectedCabinet._id, name: `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}` },
+          [],
+          `Updated cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"})`
         );
 
         // Call the callback to refresh data

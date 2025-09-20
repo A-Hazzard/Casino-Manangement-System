@@ -6,7 +6,7 @@ import type {
   MachineEvent as MachineEventType,
 } from "@/lib/types/api";
 import type { Machine as _MachineType } from "@/lib/types/machines";
-import { CollectionReportData } from "@/lib/types";
+import { CollectionReportData } from "@/lib/types/api";
 import { CollectionReport } from "../models/collectionReport";
 
 /**

@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       ])
       .toArray();
 
-    const metricsMap = new Map(metrics.map((m) => [m._id, m]));
+    const metricsMap = new Map<string, Metric>(metrics.map((m: Metric) => [m._id, m]));
 
     const locations = await db
       .collection("gaminglocations")
@@ -156,8 +156,8 @@ export async function GET(request: NextRequest) {
       ])
       .toArray();
 
-    const response = locations.map((loc) => {
-      const metric = metricsMap.get(loc._id);
+    const response = locations.map((loc: LocationResponse) => {
+      const metric: Metric | undefined = metricsMap.get(loc._id);
       return {
         _id: loc._id,
         locationName: loc.name,

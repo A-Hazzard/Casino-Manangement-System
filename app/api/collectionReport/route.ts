@@ -9,7 +9,7 @@ import { getAllCollectionReportsWithMachineCounts } from "@/app/api/lib/helpers/
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "@/lib/utils/user";
+import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import type { TimePeriod } from "@/app/api/lib/types";

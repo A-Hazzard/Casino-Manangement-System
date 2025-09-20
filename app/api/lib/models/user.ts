@@ -37,7 +37,7 @@ const UserSchema = new Schema(
   { timestamps: true }
 );
 
-const UserModel = mongoose.models.users || model("users", UserSchema);
+const UserModel = mongoose.models?.users || model("users", UserSchema);
 
 /**
  * Mongoose model for users, including authentication, profile, and roles.

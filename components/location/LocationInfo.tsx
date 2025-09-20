@@ -2,10 +2,10 @@ import React from "react";
 import { motion } from "framer-motion";
 import { LocationData } from "@/lib/types/location";
 import { formatCurrency } from "@/lib/utils/formatting";
-import type { Location } from "@/lib/types/location";
+import type { LocationData as LocationDataType } from "@/lib/types/location";
 
 type ExtendedLocationInfoProps = {
-  location: Location | null;
+  location: LocationDataType | null;
   // loading: boolean; // Removed as unused
 };
 

@@ -1,8 +1,9 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { NextRequest, NextResponse } from "next/server";
 import { getTopPerformingMetrics } from "@/app/api/lib/helpers/top-performing";
-import { ActiveTab } from "@/lib/types";
 import { TimePeriod } from "@/app/api/lib/types";
+
+type ActiveTab = "locations" | "Cabinets";
 
 /**
  * Gets TOP 5 Performing Locations or Cabinets based on moneyIn (drop).

@@ -35,7 +35,7 @@ export default function EditMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const memberLogger = createActivityLogger("member");
+  const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -136,20 +136,13 @@ export default function EditMemberModal({
       });
 
       if (response.status === 200) {
-        const previousData = { ...selectedMember };
-        const newData = { ...formData };
-
         // Log the update activity
-        await memberLogger.logUpdate(
-          selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
-          }`,
-          previousData,
-          newData,
-          `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
-          }`
+        await memberLogger(
+          "update",
+          "member",
+          { id: selectedMember._id, name: `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}` },
+          [],
+          `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`
         );
 
         toast.success("Member updated successfully");

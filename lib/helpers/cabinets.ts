@@ -139,7 +139,7 @@ export const createCabinet = async (
   data: NewCabinetFormData | CabinetFormData
 ) => {
   try {
-    const cabinetLogger = createActivityLogger("machine");
+    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
     let apiData;
     let endpoint = "/api/machines";
@@ -179,10 +179,11 @@ export const createCabinet = async (
           ? apiData.installedGame
           : "Unknown";
 
-      await cabinetLogger.logCreate(
-        cabinetId,
-        `${gameName} - ${cabinetName}`,
-        apiData,
+      await cabinetLogger(
+        "create",
+        "cabinet",
+        { id: cabinetId, name: `${gameName} - ${cabinetName}` },
+        [],
         `Created new cabinet: ${gameName} (${cabinetName})`
       );
 
@@ -208,7 +209,7 @@ export const updateCabinet = async (
   timePeriod?: string
 ) => {
   try {
-    const cabinetLogger = createActivityLogger("machine");
+    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${data.id}`;
@@ -237,11 +238,11 @@ export const updateCabinet = async (
 
     if (response.data && response.data.success) {
       // Log the cabinet update activity
-      await cabinetLogger.logUpdate(
-        data.id,
-        `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}`,
-        data,
-        data,
+      await cabinetLogger(
+        "update",
+        "cabinet",
+        { id: data.id, name: `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}` },
+        [],
         `Updated cabinet: ${data.installedGame || "Unknown"} (${
           data.assetNumber || "Unknown"
         })`
@@ -266,7 +267,7 @@ export const updateCabinet = async (
  */
 export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
   try {
-    const cabinetLogger = createActivityLogger("machine");
+    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${cabinetId}`;
@@ -294,10 +295,11 @@ export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
 
     if (response.data && response.data.success) {
       // Log the cabinet deletion activity
-      await cabinetLogger.logDelete(
-        cabinetId,
-        "Cabinet",
-        { id: cabinetId },
+      await cabinetLogger(
+        "delete",
+        "cabinet",
+        { id: cabinetId, name: "Cabinet" },
+        [],
         `Deleted cabinet with ID: ${cabinetId}`
       );
 

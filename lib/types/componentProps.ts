@@ -3,6 +3,7 @@ import {
   ActiveFilters,
   ActiveTab,
   dashboardData,
+  DashboardTotals,
   dateRange,
   locations,
   TimeFrames,
@@ -19,14 +20,14 @@ import type { CollectorSchedule } from "@/lib/types/components";
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
-  topPerformingData: TopPerformingData[];
+  topPerformingData: TopPerformingData;
   activeMetricsFilter: TimePeriod | "";
   activePieChartFilter: TimePeriod | "";
   activeFilters: ActiveFilters;
   pieChartSortIsOpen: boolean;
-  totals: dashboardData | null;
+  totals: DashboardTotals | null;
   chartData: dashboardData[];
-  gamingLocations: locations[];
+  gamingLocations: locations;
   /** Optional pre-fetched aggregation data to avoid duplicate API calls */
   locationAggregates?: Record<string, unknown>[];
   /** Optional loading flag when aggregation is being fetched externally */
@@ -41,7 +42,7 @@ export type DashboardLayoutProps = {
   setActivePieChartFilter: (_state: TimePeriod | "") => void;
   setActiveFilters: (_state: ActiveFilters) => void;
   setActiveMetricsFilter: (_state: TimePeriod) => void;
-  setTotals: (_state: dashboardData | null) => void;
+  setTotals: (_state: DashboardTotals | null) => void;
   setChartData: (_state: dashboardData[]) => void;
   setPieChartSortIsOpen: (_state: boolean) => void;
   setTopPerformingData: (_state: TopPerformingData[]) => void;
@@ -61,7 +62,7 @@ export type ChartProps = {
 };
 
 export type MapPreviewProps = {
-  gamingLocations: locations[];
+  gamingLocations: locations;
   /** Optional pre-fetched aggregation data to avoid duplicate API calls */
   locationAggregates?: Record<string, unknown>[];
   /** Optional loading flag when aggregation is being fetched externally */

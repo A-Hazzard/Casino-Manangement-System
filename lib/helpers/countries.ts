@@ -33,15 +33,16 @@ export async function fetchCountries(): Promise<Country[]> {
 export const createCountry = async (
   country: Omit<Country, "_id" | "createdAt" | "updatedAt">
 ) => {
-  const countryLogger = createActivityLogger("licensee");
+  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
   
   const response = await axios.post("/api/countries", country);
   
   // Log the country creation activity
-  await countryLogger.logCreate(
-    response.data.country._id,
-    response.data.country.name,
-    country,
+  await countryLogger(
+    "create",
+    "country",
+    { id: response.data.country._id, name: response.data.country.name },
+    [],
     `Created new country: ${country.name}`
   );
   
@@ -49,16 +50,16 @@ export const createCountry = async (
 };
 
 export const updateCountry = async (country: Country) => {
-  const countryLogger = createActivityLogger("licensee");
+  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
   
   const response = await axios.put(`/api/countries/${country._id}`, country);
   
   // Log the country update activity
-  await countryLogger.logUpdate(
-    country._id,
-    country.name,
-    country,
-    country,
+  await countryLogger(
+    "update",
+    "country",
+    { id: country._id, name: country.name },
+    [],
     `Updated country: ${country.name}`
   );
   
@@ -66,15 +67,16 @@ export const updateCountry = async (country: Country) => {
 };
 
 export const deleteCountry = async (id: string) => {
-  const countryLogger = createActivityLogger("licensee");
+  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
   
   const response = await axios.delete(`/api/countries/${id}`);
   
   // Log the country deletion activity
-  await countryLogger.logDelete(
-    id,
-    "Unknown Country",
-    { id },
+  await countryLogger(
+    "delete",
+    "country",
+    { id, name: "Unknown Country" },
+    [],
     `Deleted country with ID: ${id}`
   );
   

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser } from "@/app/api/lib/helpers/auth";
-import { validatePassword } from "@/app/api/lib/utils/validation";
+import { authenticateUser } from "@/lib/helpers/auth";
+import { validatePassword } from "@/lib/utils/validation";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import type { LoginRequestBody, AuthResult } from "@/app/api/lib/types";
+import type { LoginRequestBody, AuthResult } from "@/shared/types";
 
 export const runtime = "nodejs";
 

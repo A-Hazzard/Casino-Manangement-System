@@ -1,179 +1,248 @@
-import axios from "axios";
-import { useUserStore } from "@/lib/store/userStore";
-
-export type ActivityAction = "create" | "update" | "delete" | "view";
-export type ActivityResource =
-  | "user"
-  | "licensee"
-  | "member"
-  | "location"
-  | "machine"
-  | "session"
-  | "movement-request";
-
-export type ActivityLogData = {
-  action: "create" | "update" | "delete" | "login" | "logout";
-  resource: ActivityResource;
-  resourceId: string;
-  resourceName?: string;
-  details?: string;
-  previousData?: Record<string, unknown>;
-  newData?: Record<string, unknown>;
-  ipAddress?: string;
-  userAgent?: string;
-  userId?: string;
-  username?: string;
-
-  userRole?: string;
-};
+import mongoose from "mongoose";
+import { ActivityLog } from "@/app/api/lib/models/activityLog";
+import type {
+  ActivityLog as ActivityLogType,
+  ActivityLogActor,
+  ActivityLogEntity,
+  ActivityLogChange,
+  ActivityLogQueryParams,
+} from "../types/activityLog";
 
 /**
- * Logs user activity for audit purposes
- * This function sends activity data to the activity log API
+ * Logs an activity to the database.
+ *
+ * @param actor - The user performing the action
+ * @param actionType - The type of action (CREATE, UPDATE, DELETE, etc.)
+ * @param entityType - The type of entity being acted upon (User, Licensee, etc.)
+ * @param entity - The entity being acted upon
+ * @param changes - Optional array of changes made
+ * @param description - Optional description of the action
+ * @param ipAddress - Optional IP address of the actor
+ * @returns Promise resolving to the created activity log
  */
 export async function logActivity(
-  activityData: ActivityLogData
-): Promise<void> {
-  try {
-    // Get user information from store
-    const user = useUserStore.getState().user;
+  actor: ActivityLogActor,
+  actionType: string,
+  entityType: string,
+  entity: ActivityLogEntity,
+  changes?: ActivityLogChange[],
+  description?: string,
+  ipAddress?: string
+): Promise<ActivityLogType> {
+  // Generate description if not provided
+  const finalDescription =
+    description ||
+    generateDescription(
+      actionType,
+      entityType,
+      entity.name,
+      actor.email,
+      changes
+    );
 
+  const normalizedAction = actionType.toLowerCase();
+  const normalizedResource = entityType.toLowerCase();
 
+  const activityLog = await ActivityLog.create({
+    // Required _id field
+    _id: new mongoose.Types.ObjectId().toString(),
+    // New required fields
+    userId: actor.id,
+    username: actor.email,
+    action: normalizedAction,
+    resource: normalizedResource,
+    resourceId: entity.id,
+    resourceName: entity.name,
+    // Details
+    details: finalDescription,
+    previousData: undefined,
+    newData: undefined,
+    ipAddress,
+    userAgent: undefined,
+    timestamp: new Date(),
+    // Legacy fields for backward compatibility
+    actor,
+    actionType: actionType.toUpperCase(),
+    entityType,
+    entity,
+    changes: changes || [],
+    description: finalDescription,
+  });
 
-    
-    // Get client information
-    const clientInfo = {
-      ipAddress: await getClientIP(),
-      userAgent: navigator.userAgent,
-    };
-
-    const logEntry = {
-      ...activityData,
-      ...clientInfo,
-      userId: activityData.userId || user?._id || "unknown",
-      username: activityData.username || user?.emailAddress || "unknown",
-
-      userRole: activityData.userRole || user?.roles?.[0] || "user",
-
-      timestamp: new Date().toISOString(),
-    };
-
-    await axios.post("/api/activity-logs", logEntry);
-  } catch (error) {
-    console.error("Failed to log activity:", error);
-    // Don't throw error to avoid breaking the main operation
-  }
+  return activityLog.toObject();
 }
 
 /**
- * Get client IP address (best effort)
- * The server-side API will capture the real IP from request headers
+ * Retrieves activity logs based on query parameters.
+ *
+ * @param params - Query parameters for filtering
+ * @returns Promise resolving to activity logs and total count
  */
-async function getClientIP(): Promise<string> {
-  try {
-    // The client-side can't reliably get the real IP address
-    // The server-side API will capture the real IP from request headers
-    // This is just a placeholder - the actual IP will be captured server-side
-    return "client-side"; // Server will replace this with real IP
-  } catch {
-    return "unknown";
+export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
+  data: ActivityLogType[];
+  total: number;
+}> {
+  const {
+    entityType,
+    actionType,
+    actorId,
+    startDate,
+    endDate,
+    limit = "20",
+    skip = "0",
+  } = params;
+
+  // Build query
+  const query: Record<string, unknown> = {};
+
+  if (entityType) {
+    query.entityType = entityType;
   }
+
+  if (actionType) {
+    query.actionType = actionType.toUpperCase();
+  }
+
+  if (actorId) {
+    query["actor.id"] = actorId;
+  }
+
+  if (startDate || endDate) {
+    const timestampQuery: Record<string, Date> = {};
+    if (startDate) {
+      timestampQuery.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      timestampQuery.$lte = new Date(endDate);
+    }
+    query.timestamp = timestampQuery;
+  }
+
+  // Execute queries
+  const [data, total] = await Promise.all([
+    ActivityLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip))
+      .lean(),
+    ActivityLog.countDocuments(query),
+  ]);
+
+  return {
+    data: data as unknown as ActivityLogType[],
+    total,
+  };
 }
 
-
 /**
- * Generate a detailed description with "from" and "to" values
+ * Calculates changes between two objects.
+ *
+ * @param oldObj - The original object
+ * @param newObj - The updated object
+ * @returns Array of changes
  */
-function generateDetailedDescription(
-  action: string,
-  resource: string,
-  resourceName: string,
-  changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
-): string {
-  if (action === "create") {
-    return `Created new ${resource}: ${resourceName}`;
-  }
+export function calculateChanges(
+  oldObj: Record<string, unknown>,
+  newObj: Record<string, unknown>
+): ActivityLogChange[] {
+  const changes: ActivityLogChange[] = [];
 
-  if (action === "delete") {
-    return `Deleted ${resource}: ${resourceName}`;
-  }
-
-  if (action === "update" && changes && changes.length > 0) {
-    if (changes.length === 1) {
-      const change = changes[0];
-
-      return `Updated ${resource} "${resourceName}": changed ${
-        change.field
-      } from "${String(change.oldValue || "empty")}" to "${String(
-        change.newValue || "empty"
-      )}"`;
-    } else {
-      const changeDescriptions = changes.map(
-        (change) =>
-          `${change.field}: "${String(change.oldValue || "empty")}" → "${String(
-            change.newValue || "empty"
-          )}"`
-      );
-      return `Updated ${resource} "${resourceName}": ${changeDescriptions.join(
-        ", "
-      )}`;
+  // Check for changed or new fields
+  for (const [key, newValue] of Object.entries(newObj)) {
+    const oldValue = oldObj[key];
+    if (oldValue !== newValue) {
+      changes.push({
+        field: key,
+        oldValue,
+        newValue,
+      });
     }
   }
 
-  return `Updated ${resource}: ${resourceName}`;
+  // Check for deleted fields
+  for (const [key, oldValue] of Object.entries(oldObj)) {
+    if (!(key in newObj)) {
+      changes.push({
+        field: key,
+        oldValue,
+        newValue: undefined,
+      });
+    }
+  }
+
+  return changes;
 }
 
 /**
- * Helper function to create activity log entries for CRUD operations
+ * Generates a human-readable description for an activity log.
+ *
+ * @param actionType - The type of action
+ * @param entityType - The type of entity
+ * @param entityName - The name of the entity
+ * @param actorEmail - The email of the actor
+ * @param changes - Optional changes made
+ * @returns Human-readable description
  */
-export const createActivityLogger = (resource: ActivityResource) => {
-  return {
-    logCreate: (
-      resourceId: string,
-      resourceName: string,
-      newData: Record<string, unknown>,
-      details?: string
-    ) =>
-      logActivity({
-        action: "create",
-        resource,
-        resourceId,
-        resourceName,
-        newData,
-        details: details || generateDetailedDescription("create", resource, resourceName),
-      }),
+export function generateDescription(
+  actionType: string,
+  entityType: string,
+  entityName: string,
+  actorEmail: string,
+  changes?: ActivityLogChange[]
+): string {
+  const action = actionType.toLowerCase();
+  const entity = entityType.toLowerCase();
 
-    logUpdate: (
-      resourceId: string,
-      resourceName: string,
-      previousData: Record<string, unknown>,
-      newData: Record<string, unknown>,
-      details?: string
-    ) => {
-      return logActivity({
-        action: "update",
-        resource,
-        resourceId,
-        resourceName,
-        previousData,
-        newData,
-        details: details || generateDetailedDescription("update", resource, resourceName),
-      });
-    },
+  // Custom: If payment status was changed, call it out specifically
+  if (changes && changes.length > 0) {
+    const paymentChange = changes.find((c) => c.field === "isPaid");
+    if (paymentChange) {
+      const oldStatus = paymentChange.oldValue ? "Paid" : "Unpaid";
+      const newStatus = paymentChange.newValue ? "Paid" : "Unpaid";
+      const paymentDescription = `${actorEmail} updated the payment status for ${entity} "${entityName}" from "${oldStatus}" to "${newStatus}"`;
+      return paymentDescription;
+    }
+    // Otherwise, default to the first field changed
+    const change = changes[0];
+    const defaultDescription = `${actorEmail} changed the ${change.field} of ${entity} "${entityName}" from "${change.oldValue}" to "${change.newValue}"`;
+    return defaultDescription;
+  }
 
-    logDelete: (
-      resourceId: string,
-      resourceName: string,
-      previousData: Record<string, unknown>,
-      details?: string
-    ) =>
-      logActivity({
-        action: "delete",
-        resource,
-        resourceId,
-        resourceName,
-        previousData,
-        details: details || generateDetailedDescription("delete", resource, resourceName),
-      }),
+  let fallbackDescription: string;
+  switch (action) {
+    case "create":
+      fallbackDescription = `${actorEmail} created a new ${entity} "${entityName}"`;
+      break;
+    case "delete":
+      fallbackDescription = `${actorEmail} deleted the ${entity} "${entityName}"`;
+      break;
+    case "update":
+    case "edit":
+      fallbackDescription = `${actorEmail} updated the ${entity} "${entityName}"`;
+      break;
+    default:
+      fallbackDescription = `${actorEmail} performed ${action} action on ${entity} "${entityName}"`;
+  }
+
+  return fallbackDescription;
+}
+
+/**
+ * Creates an activity logger function for a specific actor.
+ * This is a higher-order function that returns a logger bound to a specific user.
+ *
+ * @param actor - The user performing the actions
+ * @returns A function that can be used to log activities
+ */
+export function createActivityLogger(actor: ActivityLogActor) {
+  return async function logActivityForActor(
+    actionType: string,
+    entityType: string,
+    entity: ActivityLogEntity,
+    changes?: ActivityLogChange[],
+    description?: string,
+    ipAddress?: string
+  ): Promise<ActivityLogType> {
+    return logActivity(actor, actionType, entityType, entity, changes, description, ipAddress);
   };
-};
+}

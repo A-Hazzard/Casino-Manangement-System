@@ -39,7 +39,7 @@ import { exportData } from "@/lib/utils/exportUtils";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Types
-// import type { VoucherMetrics } from "@/lib/types/reports";
+import type { VoucherMetrics } from "@/lib/types/reports";
 
 
 export default function VouchersTab() {
@@ -539,7 +539,7 @@ export default function VouchersTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {metrics.vouchersByLocation.map((location) => {
+                    {metrics.vouchersByLocation.map((location: VoucherMetrics["vouchersByLocation"][number]) => {
                       const redemptionRate =
                         (location.redeemed / location.issued) * 100;
                       return (

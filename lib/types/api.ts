@@ -10,7 +10,7 @@ import type {
   TimePeriod,
   PipelineStage,
   QueryFilter,
-  ApiParamsType,
+  ParamsType,
   CustomDate,
 } from "@shared/types";
 
@@ -25,7 +25,7 @@ export type {
   TimePeriod,
   PipelineStage,
   QueryFilter,
-  ApiParamsType,
+  ParamsType,
   CustomDate,
 };
 
@@ -110,7 +110,10 @@ export type CreateCollectionReportPayload = {
 export type CollectionReportMachineSummary = {
   _id: MongooseId;
   serialNumber: string;
+  origSerialNumber?: string;
+  machineId?: string;
   name: string;
+  custom?: { name?: string };
   collectionMeters?: {
     metersIn: number;
     metersOut: number;
@@ -124,6 +127,7 @@ export type CollectionReportLocationWithMachines = {
   machines: CollectionReportMachineSummary[];
   previousCollectionTime?: string | Date;
   profitShare?: number;
+  collectionBalance?: number;
 };
 
 // Types for Collection Report Page

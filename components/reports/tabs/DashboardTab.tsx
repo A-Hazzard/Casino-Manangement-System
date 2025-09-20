@@ -9,7 +9,7 @@ import {
   createTimeFilterButtons,
   loadDashboardData 
 } from "@/lib/helpers/reportsPage";
-
+import { Alert } from "@/lib/types/reports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -319,7 +319,7 @@ export default function DashboardTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {realTimeMetrics.alerts.map((alert, index) => (
+              {realTimeMetrics.alerts.map((alert: Alert, index: number) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg"

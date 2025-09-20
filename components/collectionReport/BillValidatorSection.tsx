@@ -84,6 +84,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
   );
 
   // Process bill meters data (V2 - from machine.billMeters)
+  // Note: This component should use the UnifiedBillValidator API for location-specific denomination filtering
   const processedBillMeters = useMemo(() => {
     if (!billMeters)
       return {

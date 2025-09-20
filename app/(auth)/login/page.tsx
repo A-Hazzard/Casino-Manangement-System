@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { loginUser } from "@/lib/helpers/auth";
+import { loginUser } from "@/lib/helpers/clientAuth";
 import { validatePassword } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import LiquidGradient from "@/components/ui/LiquidGradient";
@@ -18,8 +18,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ identifier?: string; password?: string }>(
     {}
   );
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"error" | "success" | "">("");
+  const [message] = useState("");
+  const [messageType] = useState<"error" | "success" | "info" | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
@@ -28,8 +28,7 @@ export default function LoginPage() {
     setIsMounted(true);
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setErrors({});
     let valid = true;
     if (!identifier) {
@@ -98,9 +97,6 @@ export default function LoginPage() {
                   loading={loading}
                   redirecting={redirecting}
                   handleLogin={handleLogin}
-                  setErrors={setErrors}
-                  setMessage={setMessage}
-                  setMessageType={setMessageType}
                 />
               </div>
             </div>

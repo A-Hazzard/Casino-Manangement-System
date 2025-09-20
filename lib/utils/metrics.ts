@@ -80,11 +80,14 @@ export async function switchFilter(
     if (data.length > 0) {
       setChartData(data);
       setTotals({
-        day: "",
-        time: "",
+        xValue: "total",
+        day: "total",
+        time: "total",
         moneyIn: data.reduce((acc, cur) => acc + cur.moneyIn, 0),
         moneyOut: data.reduce((acc, cur) => acc + cur.moneyOut, 0),
         gross: data.reduce((acc, cur) => acc + cur.gross, 0),
+        location: undefined,
+        geoCoords: undefined,
       });
     } else {
       console.warn("🚨 No metrics data returned");

@@ -1,7 +1,47 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { dashboardData } from "@/lib/types";
-import type { MeterData } from "@shared/types";
 import { Meters as MeterModel } from "../models/meters";
+
+type dashboardData = {
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+};
+
+type MeterData = {
+  _id: string;
+  machine: string;
+  location: string;
+  locationSession: string;
+  viewingAccountDenomination?: {
+    drop: number;
+    totalCancelledCredits: number;
+  };
+  movement?: {
+    coinIn: number;
+    coinOut: number;
+    totalCancelledCredits: number;
+    totalHandPaidCancelledCredits: number;
+    totalWonCredits: number;
+    drop: number;
+    jackpot: number;
+    currentCredits: number;
+    gamesPlayed: number;
+    gamesWon: number;
+  };
+  coinIn: number;
+  coinOut: number;
+  totalCancelledCredits: number;
+  totalHandPaidCancelledCredits: number;
+  totalWonCredits: number;
+  drop: number;
+  jackpot: number;
+  currentCredits: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  readAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 /**
  * Fetches all meter records from the database as plain JavaScript objects.

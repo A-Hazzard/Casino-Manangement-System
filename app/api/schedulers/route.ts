@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
 
     // Date range filter
     if (startDate || endDate) {
-      query.startTime = {};
+      query.startTime = {} as Record<string, Date>;
       if (startDate) {
-        query.startTime.$gte = new Date(startDate);
+        (query.startTime as Record<string, Date>).$gte = new Date(startDate);
       }
       if (endDate) {
-        query.startTime.$lte = new Date(endDate);
+        (query.startTime as Record<string, Date>).$lte = new Date(endDate);
       }
     }
 

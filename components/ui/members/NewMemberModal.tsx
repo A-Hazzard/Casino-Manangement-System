@@ -7,14 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { X, UserPlus } from "lucide-react";
 import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 type NewMemberModalProps = {
@@ -31,7 +24,7 @@ export default function NewMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const memberLogger = createActivityLogger("member");
+  const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -122,10 +115,11 @@ export default function NewMemberModal({
         const createdMember = response.data;
 
         // Log the creation activity
-        await memberLogger.logCreate(
-          createdMember._id || formData.username,
-          `${formData.firstName} ${formData.lastName}`,
-          formData,
+        await memberLogger(
+          "create",
+          "member",
+          { id: createdMember._id || formData.username, name: `${formData.firstName} ${formData.lastName}` },
+          [],
           `Created new member: ${formData.firstName} ${formData.lastName} with username: ${formData.username}`
         );
 
@@ -171,136 +165,220 @@ export default function NewMemberModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto"
+          className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto"
         >
-          <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Member</DialogTitle>
-                <DialogDescription>
-                  Add a new member to the system.
-                </DialogDescription>
-              </DialogHeader>
+          {/* Header */}
+          <div className="bg-button text-white p-6 rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-white bg-opacity-20 rounded-full">
+                  <UserPlus className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Create New Member</h2>
+                  <p className="text-white text-opacity-90 text-sm">
+                    Add a new member to the system
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="text-white hover:bg-white hover:bg-opacity-20"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
 
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+          {/* Form Content */}
+          <div className="p-6">
+            <div className="space-y-6">
+              {/* Basic Information Section */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-button rounded-full"></div>
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
+                    <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                      First Name *
+                    </Label>
                     <Input
                       id="firstName"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
-                      placeholder="First Name"
+                      placeholder="Enter first name"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                      Last Name *
+                    </Label>
                     <Input
                       id="lastName"
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      placeholder="Last Name"
+                      placeholder="Enter last name"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                       required
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username *</Label>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                    Username *
+                  </Label>
                   <Input
                     id="username"
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    placeholder="Username"
+                    placeholder="Enter username"
+                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                     required
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="Email"
-                  />
+              {/* Contact Information Section */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-button rounded-full"></div>
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                      Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="Enter email address"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber" className="text-sm font-medium text-gray-700">
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={handleInputChange}
+                      placeholder="Enter phone number"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                    />
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    placeholder="Phone Number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="occupation">Occupation</Label>
-                  <Input
-                    id="occupation"
-                    name="occupation"
-                    value={formData.occupation}
-                    onChange={handleInputChange}
-                    placeholder="Occupation"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="address" className="text-sm font-medium text-gray-700">
+                    Address
+                  </Label>
                   <Input
                     id="address"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    placeholder="Address"
+                    placeholder="Enter address"
+                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                   />
                 </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="occupation" className="text-sm font-medium text-gray-700">
+                    Occupation
+                  </Label>
+                  <Input
+                    id="occupation"
+                    name="occupation"
+                    value={formData.occupation}
+                    onChange={handleInputChange}
+                    placeholder="Enter occupation"
+                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                  />
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
+              {/* Account Information Section */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-button rounded-full"></div>
+                  Account Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="points">Points</Label>
+                    <Label htmlFor="points" className="text-sm font-medium text-gray-700">
+                      Points
+                    </Label>
                     <Input
                       id="points"
                       name="points"
                       type="number"
                       value={formData.points}
                       onChange={handleInputChange}
-                      placeholder="Points"
+                      placeholder="0"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="uaccount">Account Balance</Label>
+                    <Label htmlFor="uaccount" className="text-sm font-medium text-gray-700">
+                      Account Balance
+                    </Label>
                     <Input
                       id="uaccount"
                       name="uaccount"
                       type="number"
                       value={formData.uaccount}
                       onChange={handleInputChange}
-                      placeholder="Account Balance"
+                      placeholder="0.00"
+                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
                     />
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Creating..." : "Create Member"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* Footer */}
+          <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t">
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={handleClose}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="bg-button hover:bg-buttonActive text-white"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Create Member
+                  </div>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </>

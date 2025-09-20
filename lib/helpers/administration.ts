@@ -17,7 +17,7 @@ export const fetchUsers = async (licensee?: string): Promise<User[]> => {
   }
 
   const response = await axios.get("/api/users", { params });
-  return response.data.users;
+  return response.data?.users || [];
 };
 
 export const updateUser = async (

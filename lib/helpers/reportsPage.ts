@@ -8,9 +8,9 @@ import type {
   LocationExportData, 
   TopLocationData,
   DateRange 
-} from "@/lib/types/reports";
+} from "@/lib/types";
 import type { MachineData } from "@/shared/types/machines";
-import type { LegacyExportData } from "@/shared/types/export";
+import type { ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
 import type React from "react";
 
 type MachineSortConfig = {
@@ -118,7 +118,7 @@ export async function handleExportSASEvaluation(
   topLocations: TopLocationData[],
   selectedDateRange: DateRange | null,
   activeMetricsFilter: string,
-  exportData: (data: LegacyExportData) => Promise<void>,
+  exportData: (data: ExtendedLegacyExportData) => Promise<void>,
   toast: { success: (message: string) => void; error: (message: string) => void }
 ) {
   try {
@@ -135,7 +135,7 @@ export async function handleExportSASEvaluation(
           })
         : paginatedLocations;
 
-    const exportDataObj = {
+    const exportDataObj: ExtendedLegacyExportData = {
       title: "SAS Evaluation Report",
       subtitle: "SAS machine evaluation and performance metrics",
       headers: [
@@ -319,7 +319,7 @@ export async function handleExportMeters(
   offlineMachines: MachineExportData[],
   activeMetricsFilter: string,
   customDateRange: { startDate: Date; endDate: Date } | null,
-  exportData: (data: LegacyExportData) => Promise<void>,
+  exportData: (data: ExtendedLegacyExportData) => Promise<void>,
   toast: { error: (message: string) => void; success: (message: string) => void }
 ) {
   try {
@@ -348,7 +348,7 @@ export async function handleExportMeters(
       machinesToExport = overviewMachines;
     }
 
-    const metersData = {
+    const metersData: ExtendedLegacyExportData = {
       title: "Machines Export Report",
               subtitle: `Machine performance data - ${
           activeMetricsFilter === "Custom" &&
@@ -429,7 +429,6 @@ export async function handleExportMeters(
         generatedAt: new Date().toISOString(),
         dateRange: activeMetricsFilter,
         tab: "Machines",
-        activeTab,
       },
     };
 

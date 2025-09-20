@@ -41,10 +41,7 @@ import EditLicenseeModal from "@/components/administration/EditLicenseeModal";
 import DeleteLicenseeModal from "@/components/administration/DeleteLicenseeModal";
 import {
   fetchLicensees,
-  createLicensee,
-  updateLicensee,
-  deleteLicensee,
-} from "@/lib/helpers/licensees";
+} from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 import LicenseeSearchBar from "@/components/administration/LicenseeSearchBar";
 import ActivityLogsTable from "@/components/administration/ActivityLogsTable";
@@ -72,8 +69,8 @@ function AdministrationPageContent() {
   }, []);
 
   // Create activity loggers
-  const userLogger = createActivityLogger("user");
-  const licenseeLogger = createActivityLogger("licensee");
+  const userLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  const licenseeLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -175,9 +172,10 @@ function AdministrationPageContent() {
       setIsLoading(true);
       try {
         const usersData = await fetchUsers(selectedLicencee);
-        setAllUsers(usersData);
+        setAllUsers(usersData || []);
       } catch (error) {
         console.error("Failed to fetch users:", error);
+        setAllUsers([]);
       }
       setIsLoading(false);
     };
@@ -188,7 +186,7 @@ function AdministrationPageContent() {
     const loadLicensees = async () => {
       setIsLicenseesLoading(true);
       try {
-        const licenseesData = await fetchLicensees(selectedLicencee);
+        const licenseesData = await fetchLicensees();
         setAllLicensees(licenseesData);
       } catch (error) {
         console.error("Failed to fetch licensees:", error);
@@ -243,18 +241,17 @@ function AdministrationPageContent() {
   ) => {
     if (!selectedUser) return;
 
-    const previousData = { ...selectedUser };
     const newData = { ...updated, _id: selectedUser._id };
 
     try {
       await updateUser(newData);
 
       // Log the update activity
-      await userLogger.logUpdate(
-        selectedUser._id,
-        selectedUser.username,
-        previousData,
-        newData,
+      await userLogger(
+        "update",
+        "user",
+        { id: selectedUser._id, name: selectedUser.username },
+        [], // changes array can be empty or calculated if needed
         `Updated user profile and permissions for ${selectedUser.username}`
       );
 
@@ -330,10 +327,11 @@ function AdministrationPageContent() {
       const createdUser = await createUser(payload);
 
       // Log the creation activity
-      await userLogger.logCreate(
-        createdUser._id || username,
-        username,
-        payload,
+      await userLogger(
+        "create",
+        "user",
+        { id: createdUser._id || username, name: username },
+        [],
         `Created new user: ${username} with roles: ${roles.join(", ")}`
       );
 
@@ -389,14 +387,27 @@ function AdministrationPageContent() {
     }
 
     try {
-      const result = await createLicensee(licenseeData);
+      const response = await fetch("/api/licensees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(licenseeData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create licensee");
+      }
 
       // Log the creation activity
       if (result.licensee) {
-        await licenseeLogger.logCreate(
-          result.licensee._id,
-          result.licensee.name,
-          licenseeData,
+        await licenseeLogger(
+          "create",
+          "licensee",
+          { id: result.licensee._id, name: result.licensee.name },
+          [],
           `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`
         );
       }
@@ -452,8 +463,6 @@ function AdministrationPageContent() {
     try {
       if (!selectedLicensee) return;
 
-      const previousData = { ...selectedLicensee };
-
       // Include the current isPaid value to preserve payment status
       const updateData = {
         ...licenseeForm,
@@ -461,14 +470,26 @@ function AdministrationPageContent() {
         isPaid: selectedLicensee.isPaid, // Preserve current payment status
       };
 
-      await updateLicensee(updateData);
+      const response = await fetch("/api/licensees", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update licensee");
+      }
 
       // Log the update activity
-      await licenseeLogger.logUpdate(
-        selectedLicensee._id,
-        selectedLicensee.name,
-        previousData,
-        updateData,
+      await licenseeLogger(
+        "update",
+        "licensee",
+        { id: selectedLicensee._id, name: selectedLicensee.name },
+        [],
         `Updated licensee: ${selectedLicensee.name} - Modified details and settings`
       );
 
@@ -501,13 +522,26 @@ function AdministrationPageContent() {
     const licenseeData = { ...selectedLicensee };
 
     try {
-      await deleteLicensee(selectedLicensee._id);
+      const response = await fetch("/api/licensees", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ _id: selectedLicensee._id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to delete licensee");
+      }
 
       // Log the deletion activity
-      await licenseeLogger.logDelete(
-        selectedLicensee._id,
-        selectedLicensee.name,
-        licenseeData,
+      await licenseeLogger(
+        "delete",
+        "licensee",
+        { id: selectedLicensee._id, name: selectedLicensee.name },
+        [],
         `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`
       );
 
@@ -561,8 +595,6 @@ function AdministrationPageContent() {
   const handleConfirmPaymentStatusChange = async () => {
     if (!selectedLicenseeForPaymentChange) return;
 
-    const previousData = { ...selectedLicenseeForPaymentChange };
-
     try {
       // Determine current payment status
       const currentIsPaid =
@@ -596,11 +628,11 @@ function AdministrationPageContent() {
       await axios.put("/api/licensees", updateData);
 
       // Log the payment status change activity
-      await licenseeLogger.logUpdate(
-        selectedLicenseeForPaymentChange._id,
-        selectedLicenseeForPaymentChange.name,
-        previousData,
-        updateData,
+      await licenseeLogger(
+        "update",
+        "licensee",
+        { id: selectedLicenseeForPaymentChange._id, name: selectedLicenseeForPaymentChange.name },
+        [],
         `Changed payment status for ${
           selectedLicenseeForPaymentChange.name
         } from ${currentIsPaid ? "Paid" : "Unpaid"} to ${
@@ -843,10 +875,11 @@ function AdministrationPageContent() {
               });
 
               // Log the deletion activity
-              await userLogger.logDelete(
-                selectedUserToDelete._id,
-                selectedUserToDelete.username,
-                userData,
+              await userLogger(
+                "delete",
+                "user",
+                { id: selectedUserToDelete._id, name: selectedUserToDelete.username },
+                [],
                 `Deleted user: ${selectedUserToDelete.username} with roles: ${
                   userData.roles?.join(", ") || "N/A"
                 }`

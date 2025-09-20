@@ -1,5 +1,6 @@
 import {
   dashboardData,
+  DashboardTotals,
   locations,
   ActiveFilters,
   TopPerformingData,
@@ -39,14 +40,16 @@ export const renderCustomizedLabel = (props: CustomizedLabelProps) => {
  * Fetches and sets gaming locations data
  */
 export const loadGamingLocations = async (
-  setGamingLocations: (locations: locations[]) => void
+  setGamingLocations: (locations: locations) => void
 ) => {
   const locationsData = await getAllGamingLocations();
   const validLocations = locationsData.filter(
-    (loc) =>
-      loc.geoCoords &&
-      loc.geoCoords.latitude !== 0 &&
-      loc.geoCoords.longitude !== 0
+    (loc) => {
+      const locationWithGeoCoords = loc as typeof loc & { geoCoords?: { latitude?: number; longitude?: number; longtitude?: number } };
+      return locationWithGeoCoords.geoCoords &&
+        locationWithGeoCoords.geoCoords.latitude !== 0 &&
+        locationWithGeoCoords.geoCoords.longitude !== 0;
+    }
   );
   setGamingLocations(validLocations);
 };
@@ -90,7 +93,7 @@ export const handleDashboardRefresh = async (
   setRefreshing: (refreshing: boolean) => void,
   setLoadingChartData: (loading: boolean) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
-  setTotals: (totals: dashboardData | null) => void,
+  setTotals: (totals: DashboardTotals | null) => void,
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,

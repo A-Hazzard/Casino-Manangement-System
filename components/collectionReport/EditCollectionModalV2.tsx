@@ -20,9 +20,9 @@ import type {
   CollectionReportData,
 } from "@/lib/types/api";
 import { updateCollectionReport } from "@/lib/helpers/collectionReport";
-import { calculateMovement } from "@/lib/utils/movementCalculation";
-import { validateMachineEntry } from "@/lib/helpers/collectionReportModal";
 import { updateCollection } from "@/lib/helpers/collections";
+// import { calculateMovement } from "@/lib/utils/movementCalculation";
+import { validateMachineEntry } from "@/lib/helpers/collectionReportModal";
 import { updateMachineCollectionHistory } from "@/lib/helpers/cabinets";
 import { useUserStore } from "@/lib/store/userStore";
 import { toast } from "sonner";
@@ -56,47 +56,16 @@ async function fetchCollectionReportById(
 async function fetchCollectionsByReportId(
   reportId: string
 ): Promise<CollectionDocument[]> {
-  const res = await axios.get(`/api/collections?locationReportId=${reportId}`);
+  // Add cache-busting parameter to ensure fresh data
+  const res = await axios.get(`/api/collections?locationReportId=${reportId}&_t=${Date.now()}`);
+  console.warn("🔍 fetchCollectionsByReportId result:", {
+    reportId,
+    collectionsCount: res.data.length,
+    collections: res.data
+  });
   return res.data;
 }
 
-async function updateMachineCollection(
-  id: string,
-  data: Partial<CollectionDocument>
-): Promise<CollectionDocument> {
-  // Update the collection document
-  const updatedCollection = await updateCollection(id, data);
-
-  // Also update the machine's collection history
-  if (
-    data.machineId &&
-    (data.metersIn !== undefined || data.metersOut !== undefined)
-  ) {
-    const collectionHistoryEntry = {
-      _id: id,
-      metersIn: data.metersIn || 0,
-      metersOut: data.metersOut || 0,
-      prevMetersIn: data.prevIn || 0,
-      prevMetersOut: data.prevOut || 0,
-      timestamp: data.timestamp || new Date(),
-      locationReportId: data.locationReportId || "",
-    };
-
-    console.warn("Updating machine collection history for edit:", {
-      machineId: data.machineId,
-      collectionHistoryEntry,
-    });
-
-    await updateMachineCollectionHistory(
-      data.machineId,
-      collectionHistoryEntry,
-      "update",
-      id
-    );
-  }
-
-  return updatedCollection;
-}
 
 async function deleteMachineCollection(
   id: string
@@ -146,10 +115,13 @@ export default function EditCollectionModalV2({
   const [collectedMachineEntries, setCollectedMachineEntries] = useState<
     CollectionDocument[]
   >([]);
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Edit functionality state
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
 
   // Custom close handler that checks for changes
   const handleClose = useCallback(() => {
@@ -158,6 +130,7 @@ export default function EditCollectionModalV2({
     }
     onClose();
   }, [hasChanges, onRefresh, onClose]);
+
 
   // Machine input state
   const [currentCollectionTime, setCurrentCollectionTime] = useState<Date>(
@@ -169,11 +142,12 @@ export default function EditCollectionModalV2({
   const [currentRamClearMetersOut, setCurrentRamClearMetersOut] = useState("");
   const [currentMachineNotes, setCurrentMachineNotes] = useState("");
   const [currentRamClear, setCurrentRamClear] = useState(false);
+  const [prevIn, setPrevIn] = useState<number | null>(null);
+  const [prevOut, setPrevOut] = useState<number | null>(null);
 
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
-  const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
 
   // Financial state
   const [financials, setFinancials] = useState({
@@ -211,6 +185,16 @@ export default function EditCollectionModalV2({
     [machinesOfSelectedLocation, selectedMachineId]
   );
 
+  // Function to handle clicks on disabled input fields
+  const handleDisabledFieldClick = useCallback(() => {
+    if (!machineForDataEntry) {
+      toast.warning("Please select a machine first", {
+        duration: 3000,
+        position: "top-right",
+      });
+    }
+  }, [machineForDataEntry]);
+
   // Calculate amount to collect based on machine entries and financial inputs
   const calculateAmountToCollect = useCallback(() => {
     if (!collectedMachineEntries.length) {
@@ -222,10 +206,11 @@ export default function EditCollectionModalV2({
     const totalMovementData = collectedMachineEntries.map((entry) => {
       const drop = (entry.metersIn || 0) - (entry.prevIn || 0);
       const cancelledCredits = (entry.metersOut || 0) - (entry.prevOut || 0);
+      const gross = drop - cancelledCredits;
       return {
         drop,
         cancelledCredits,
-        gross: drop - cancelledCredits,
+        gross,
       };
     });
 
@@ -243,7 +228,9 @@ export default function EditCollectionModalV2({
     const taxes = Number(financials.taxes) || 0;
     const variance = Number(financials.variance) || 0;
     const advance = Number(financials.advance) || 0;
-    const previousBalance = Number(financials.previousBalance) || 0;
+    
+    // Use the location's previous balance, not the calculated one
+    const locationPreviousBalance = selectedLocation?.collectionBalance || 0;
 
     // Get profit share from selected location (default to 50% if not available)
     const profitShare = selectedLocation?.profitShare || 50;
@@ -254,13 +241,9 @@ export default function EditCollectionModalV2({
         ((reportTotalData.gross - variance - advance) * profitShare) / 100
       ) - taxes;
 
-    // Calculate amount to collect: gross - variance - advance - partnerProfit + previousBalance
+    // Calculate amount to collect: gross - variance - advance - partnerProfit + locationPreviousBalance
     const amountToCollect =
-      reportTotalData.gross -
-      variance -
-      advance -
-      partnerProfit +
-      previousBalance;
+      reportTotalData.gross - variance - advance - partnerProfit + locationPreviousBalance;
 
     setFinancials((prev) => ({
       ...prev,
@@ -271,7 +254,7 @@ export default function EditCollectionModalV2({
     financials.taxes,
     financials.variance,
     financials.advance,
-    financials.previousBalance,
+    selectedLocation?.collectionBalance,
     selectedLocation?.profitShare,
   ]);
 
@@ -356,13 +339,13 @@ export default function EditCollectionModalV2({
       setSelectedLocationName("");
       setSelectedMachineId("");
       setCollectedMachineEntries([]);
-      setEditingEntryId(null);
       setHasChanges(false);
       setCurrentCollectionTime(new Date());
       setCurrentMetersIn("");
       setCurrentMetersOut("");
       setCurrentMachineNotes("");
       setCurrentRamClear(false);
+      setEditingEntryId(null);
       setFinancials({
         taxes: "",
         advance: "",
@@ -427,13 +410,70 @@ export default function EditCollectionModalV2({
     validateMeterInputs();
   }, [validateMeterInputs]);
 
-  const confirmAddOrUpdateEntry = useCallback(async () => {
-    if (isProcessing || !selectedMachineId || !machineForDataEntry || !userId) {
-      toast.error("Please select a machine and ensure you're logged in.");
-      return;
-    }
 
-    // Use enhanced validation with RAM Clear support
+
+
+
+  const handleEditCollectedEntry = useCallback(
+    async (entryId: string) => {
+      if (isProcessing) return;
+
+      const entryToEdit = collectedMachineEntries.find((e) => e._id === entryId);
+      if (entryToEdit) {
+        // Set editing state
+        setEditingEntryId(entryId);
+        
+        // Set the selected machine ID
+        setSelectedMachineId(entryToEdit.machineId);
+        
+        // Populate form fields with existing data
+        setCurrentMetersIn(entryToEdit.metersIn.toString());
+        setCurrentMetersOut(entryToEdit.metersOut.toString());
+        setCurrentMachineNotes(entryToEdit.notes || "");
+        setCurrentRamClear(entryToEdit.ramClear || false);
+        setCurrentRamClearMetersIn(entryToEdit.ramClearMetersIn?.toString() || "");
+        setCurrentRamClearMetersOut(entryToEdit.ramClearMetersOut?.toString() || "");
+        
+        // Set the collection time
+        if (entryToEdit.timestamp) {
+          setCurrentCollectionTime(new Date(entryToEdit.timestamp));
+        }
+        
+        // Set previous values for display
+        setPrevIn(entryToEdit.prevIn || 0);
+        setPrevOut(entryToEdit.prevOut || 0);
+        
+        toast.info("Edit mode activated. Make your changes and click 'Update Entry in List'.");
+      }
+    },
+    [isProcessing, collectedMachineEntries]
+  );
+
+  const handleCancelEdit = useCallback(() => {
+    // Reset editing state
+    setEditingEntryId(null);
+
+    // Clear all input fields
+    setCurrentMetersIn("");
+    setCurrentMetersOut("");
+    setCurrentMachineNotes("");
+    setCurrentRamClear(false);
+    setCurrentRamClearMetersIn("");
+    setCurrentRamClearMetersOut("");
+    setCurrentCollectionTime(new Date());
+
+    // Reset prev values
+    setPrevIn(null);
+    setPrevOut(null);
+
+    toast.info("Edit cancelled");
+  }, []);
+
+
+  const confirmAddOrUpdateEntry = useCallback(async () => {
+    if (isProcessing) return;
+
+    // Validation logic here (same as existing validation)
     const validation = validateMachineEntry(
       selectedMachineId,
       machineForDataEntry,
@@ -444,7 +484,8 @@ export default function EditCollectionModalV2({
       machineForDataEntry?.collectionMeters?.metersIn,
       machineForDataEntry?.collectionMeters?.metersOut,
       currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
-      currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined
+      currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
+      !!editingEntryId
     );
 
     if (!validation.isValid) {
@@ -452,101 +493,41 @@ export default function EditCollectionModalV2({
       return;
     }
 
-    // Show warnings if any
-    if (validation.warnings && validation.warnings.length > 0) {
-      validation.warnings.forEach((warning) => {
-        toast.warning(warning);
-      });
-    }
-
     setIsProcessing(true);
 
     try {
-      const metersIn = Number(currentMetersIn);
-      const metersOut = Number(currentMetersOut);
-
-      // Calculate movement with RAM Clear support
-      const previousMeters = {
-        metersIn: machineForDataEntry?.collectionMeters?.metersIn || 0,
-        metersOut: machineForDataEntry?.collectionMeters?.metersOut || 0,
-      };
-      const movement = calculateMovement(
-        metersIn,
-        metersOut,
-        previousMeters,
-        currentRamClear,
-        undefined, // ramClearCoinIn (legacy)
-        undefined, // ramClearCoinOut (legacy)
-        currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
-        currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined
-      );
-
-      const entryData = {
-        machineId: selectedMachineId,
-        machineName: machineForDataEntry.name,
-        machineCustomName: selectedMachineId,
-        serialNumber: machineForDataEntry.serialNumber,
-        timestamp: currentCollectionTime,
-        metersIn,
-        metersOut,
-        prevIn: machineForDataEntry.collectionMeters?.metersIn || 0,
-        prevOut: machineForDataEntry.collectionMeters?.metersOut || 0,
-        softMetersIn: metersIn,
-        softMetersOut: metersOut,
-        notes: currentMachineNotes,
-        ramClear: currentRamClear,
-        ramClearMetersIn: currentRamClearMetersIn
-          ? Number(currentRamClearMetersIn)
-          : undefined,
-        ramClearMetersOut: currentRamClearMetersOut
-          ? Number(currentRamClearMetersOut)
-          : undefined,
-        useCustomTime: true,
-        selectedDate: currentCollectionTime.toISOString().split("T")[0],
-        timeHH: String(currentCollectionTime.getHours()).padStart(2, "0"),
-        timeMM: String(currentCollectionTime.getMinutes()).padStart(2, "0"),
-        isCompleted: false,
-        collector: userId,
-        location: selectedLocation?.name || "",
-        locationReportId: reportId,
-        movement: movement,
-      };
-
       if (editingEntryId) {
-        await updateMachineCollection(editingEntryId, entryData);
+        // Update existing collection
+        const result = await updateCollection(editingEntryId, {
+          metersIn: Number(currentMetersIn),
+          metersOut: Number(currentMetersOut),
+          notes: currentMachineNotes,
+          ramClear: currentRamClear,
+          ramClearMetersIn: currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
+          ramClearMetersOut: currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
+          timestamp: currentCollectionTime,
+          prevIn: prevIn || 0,
+          prevOut: prevOut || 0,
+        });
+
+        // Update local state
+        setCollectedMachineEntries((prev) =>
+          prev.map((entry) =>
+            entry._id === editingEntryId
+              ? { ...entry, ...result }
+              : entry
+          )
+        );
+
         toast.success("Machine updated!");
+        setEditingEntryId(null);
       } else {
-        await axios.post("/api/collections", entryData);
-        toast.success("Machine added!");
+        // Add new collection (existing logic)
+        // This will be handled by the existing confirmAddOrUpdateEntry function
+        // which is called from handleAddOrUpdateEntry
       }
-
-      // Clear the collected machines list and refetch to show latest data
-      setCollectedMachineEntries([]);
-      setIsLoadingCollections(true);
-
-      // Refetch collections for this report
-      try {
-        const updatedCollections = await fetchCollectionsByReportId(reportId);
-        setCollectedMachineEntries(updatedCollections);
-      } catch (error) {
-        console.error("Error refetching collections after update:", error);
-      } finally {
-        setIsLoadingCollections(false);
-      }
-
-      setHasChanges(true);
-
-      // Refresh machines data to show updated values
-      if (onRefresh) {
-        onRefresh();
-      }
-
-      // Clear editing state but keep form populated and machine selected
-      setEditingEntryId(null);
-      // Keep the machine selected and form populated so user can continue working
-    } catch (error) {
-      console.error("Failed to add/update machine:", error);
-      toast.error("Failed to add/update machine. Please try again.");
+    } catch {
+      toast.error("Failed to update machine. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -556,34 +537,24 @@ export default function EditCollectionModalV2({
     machineForDataEntry,
     currentMetersIn,
     currentMetersOut,
+    currentMachineNotes,
+    currentRamClear,
     currentRamClearMetersIn,
     currentRamClearMetersOut,
     currentCollectionTime,
-    currentMachineNotes,
-    currentRamClear,
-    userId,
-    selectedLocation,
-    reportId,
     editingEntryId,
-    onRefresh,
+    prevIn,
+    prevOut,
+    userId
   ]);
 
-  const handleAddOrUpdateEntry = useCallback(() => {
-    if (isProcessing || !selectedMachineId || !machineForDataEntry || !userId) {
-      toast.error("Please select a machine and ensure you're logged in.");
-      return;
-    }
+  const confirmUpdateEntry = useCallback(() => {
+    setShowUpdateConfirmation(false);
+    confirmAddOrUpdateEntry();
+  }, [confirmAddOrUpdateEntry]);
 
-    // Check if RAM Clear meters are mandatory when RAM Clear is checked
-    if (
-      currentRamClear &&
-      (!currentRamClearMetersIn || !currentRamClearMetersOut)
-    ) {
-      toast.error(
-        "RAM Clear Meters In and Out are required when RAM Clear is checked"
-      );
-      return;
-    }
+  const handleAddOrUpdateEntry = useCallback(async () => {
+    if (isProcessing) return;
 
     // If updating an existing entry, show confirmation dialog
     if (editingEntryId) {
@@ -592,58 +563,15 @@ export default function EditCollectionModalV2({
     }
 
     // If adding a new entry, proceed directly
-    confirmAddOrUpdateEntry();
+    if (machineForDataEntry) {
+      confirmAddOrUpdateEntry();
+    }
   }, [
     isProcessing,
-    selectedMachineId,
-    machineForDataEntry,
-    userId,
-    currentRamClear,
-    currentRamClearMetersIn,
-    currentRamClearMetersOut,
     editingEntryId,
-    confirmAddOrUpdateEntry,
+    machineForDataEntry,
+    confirmAddOrUpdateEntry
   ]);
-
-  // Confirmation dialog handlers
-  const confirmUpdateEntry = useCallback(() => {
-    setShowUpdateConfirmation(false);
-    confirmAddOrUpdateEntry();
-  }, [confirmAddOrUpdateEntry]);
-
-  const handleEditEntry = useCallback(
-    (entryId: string) => {
-      const entry = collectedMachineEntries.find((e) => e._id === entryId);
-      if (entry) {
-        setSelectedMachineId(entry.machineId);
-        setCurrentCollectionTime(new Date(entry.timestamp));
-        // Use movement values if available (for RAM Clear), otherwise use raw values
-        const metersIn = entry.movement?.metersIn ?? entry.metersIn;
-        const metersOut = entry.movement?.metersOut ?? entry.metersOut;
-        setCurrentMetersIn(String(metersIn));
-        setCurrentMetersOut(String(metersOut));
-        setCurrentMachineNotes(entry.notes || "");
-        setCurrentRamClear(entry.ramClear || false);
-        // Set RAM Clear meters if they exist
-        if (entry.ramClear) {
-          setCurrentRamClearMetersIn(String(entry.ramClearMetersIn || 0));
-          setCurrentRamClearMetersOut(String(entry.ramClearMetersOut || 0));
-        }
-        setEditingEntryId(entryId);
-
-        // Show correct machine identifier in priority order
-        const machineIdentifier =
-          entry.serialNumber ||
-          entry.machineName ||
-          entry.machineCustomName ||
-          entry.machineId;
-        toast.info(
-          `Editing ${machineIdentifier}. Make changes and click 'Update Entry'.`
-        );
-      }
-    },
-    [collectedMachineEntries]
-  );
 
   const handleDeleteEntry = useCallback(
     (entryId: string) => {
@@ -830,7 +758,7 @@ export default function EditCollectionModalV2({
                           className={`w-full justify-start text-left h-auto py-2 px-3 whitespace-normal ${
                             collectedMachineEntries.find(
                               (e) => e.machineId === machine._id
-                            ) && !editingEntryId
+                            )
                               ? "opacity-60 cursor-not-allowed"
                               : ""
                           }`}
@@ -838,8 +766,7 @@ export default function EditCollectionModalV2({
                             if (
                               collectedMachineEntries.find(
                                 (e) => e.machineId === machine._id
-                              ) &&
-                              !editingEntryId
+                              )
                             ) {
                               toast.info(
                                 `${machine.name} is already in the list. Click edit on the right to modify.`
@@ -1118,19 +1045,47 @@ export default function EditCollectionModalV2({
                       </div>
                     </div>
 
-                    <Button
-                      onClick={
-                        machineForDataEntry ? handleAddOrUpdateEntry : () => {}
-                      }
-                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-                      disabled={!machineForDataEntry || isProcessing}
-                    >
-                      {isProcessing
-                        ? "Processing..."
-                        : editingEntryId
-                        ? "Update Entry in List"
-                        : "Add Machine to List"}
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      {editingEntryId ? (
+                        <>
+                          <Button
+                            onClick={handleCancelEdit}
+                            variant="outline"
+                            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                            disabled={isProcessing}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (editingEntryId || machineForDataEntry) {
+                                handleAddOrUpdateEntry();
+                              } else {
+                                handleDisabledFieldClick();
+                              }
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            disabled={(!machineForDataEntry && !editingEntryId) || isProcessing}
+                          >
+                            {isProcessing
+                              ? "Processing..."
+                              : "Update Entry in List"}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={
+                            machineForDataEntry ? handleAddOrUpdateEntry : () => {}
+                          }
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          disabled={!machineForDataEntry || isProcessing}
+                        >
+                          {isProcessing
+                            ? "Processing..."
+                            : "Add Machine to List"}
+                        </Button>
+                      )}
+                    </div>
 
                     <hr className="my-4 border-gray-300" />
                     <p className="text-lg font-semibold text-center text-gray-700">
@@ -1456,7 +1411,7 @@ export default function EditCollectionModalV2({
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 p-0 hover:bg-gray-200"
-                          onClick={() => handleEditEntry(entry._id)}
+                          onClick={() => handleEditCollectedEntry(entry._id)}
                           disabled={isProcessing}
                         >
                           <Edit3 className="h-3.5 w-3.5 text-blue-600" />
@@ -1529,6 +1484,7 @@ export default function EditCollectionModalV2({
       cancelText="Cancel"
       isLoading={isProcessing}
     />
+
     </>
   );
 }

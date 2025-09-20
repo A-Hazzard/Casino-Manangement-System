@@ -1,14 +1,16 @@
+import { UserDocument } from "@/app/api/lib/types/auth";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
-import type { CollectionReportData } from "@/lib/types";
 
 /**
  * Validates if a string is a valid email address.
  *
- * @param email - The email address to validate.
+ * @param emailAddress - The email address to validate.
  * @returns True if valid, false otherwise.
  */
-export function validateEmail(email: string): boolean {
-  return /\S+@\S+\.\S+/.test(email);
+export function validateEmail(
+  emailAddress: UserDocument["emailAddress"]
+): boolean {
+  return /\S+@\S+\.\S+/.test(emailAddress);
 }
 
 /**
@@ -17,12 +19,12 @@ export function validateEmail(email: string): boolean {
  * @param password - The password to validate.
  * @returns True if valid, false otherwise.
  */
-export function validatePassword(password: string): boolean {
+export function validatePassword(password: UserDocument["password"]): boolean {
   return password.length >= 6;
 }
 
 /**
- * Validates a CreateCollectionReportPayload object.
+ * Validates a CreateCollectionReportPayload object (backend).
  * @param payload - The payload to validate.
  * @returns { isValid: boolean, errors: string[] }
  */
@@ -50,13 +52,11 @@ export function validateCollectionReportPayload(
     isNaN(payload.amountToCollect)
   )
     errors.push("Amount to collect is required and must be a number.");
-  // amountCollected is optional - only validate if provided
   if (
-    payload.amountCollected !== undefined &&
-    payload.amountCollected !== null &&
-    (typeof payload.amountCollected !== "number" || isNaN(payload.amountCollected))
+    typeof payload.amountCollected !== "number" ||
+    isNaN(payload.amountCollected)
   )
-    errors.push("Collected amount must be a valid number when provided.");
+    errors.push("Collected amount is required and must be a number.");
   if (typeof payload.taxes !== "number" || isNaN(payload.taxes))
     errors.push("Taxes is required and must be a number.");
   if (typeof payload.advance !== "number" || isNaN(payload.advance))
@@ -66,27 +66,36 @@ export function validateCollectionReportPayload(
     isNaN(payload.balanceCorrection)
   )
     errors.push("Balance correction is required and must be a number.");
-  // Text/textarea fields are now optional
-  // if (!payload.balanceCorrectionReas)
-  //   errors.push("Balance correction reason is required.");
-  // if (!payload.varianceReason) errors.push("Variance reason is required.");
-  // if (!payload.reasonShortagePayment)
-  //   errors.push("Reason for shortage payment is required.");
+  if (payload.balanceCorrectionReas && payload.balanceCorrectionReas.trim() === "")
+    errors.push("Balance correction reason cannot be empty if provided.");
+  if (payload.varianceReason && payload.varianceReason.trim() === "")
+    errors.push("Variance reason cannot be empty if provided.");
+  if (payload.reasonShortagePayment && payload.reasonShortagePayment.trim() === "")
+    errors.push("Reason for shortage payment cannot be empty if provided.");
   return { isValid: errors.length === 0, errors };
 }
 
 /**
- * Validates a CollectionReportData object.
- * @param data - The CollectionReportData object to validate.
- * @returns True if valid, false otherwise.
+ * Validates collection report data to ensure it's valid and complete.
+ * @param data - The collection report data to validate.
+ * @returns True if the data is valid, false otherwise.
  */
-export function validateCollectionReportData(
-  data: CollectionReportData | null
-): boolean {
-  if (!data) return false;
-  if (!data.reportId || !data.locationName || !data.collectionDate)
+export function validateCollectionReportData(data: unknown): boolean {
+  if (!data || typeof data !== "object") {
     return false;
-  if (!Array.isArray(data.machineMetrics) || !data.locationMetrics)
-    return false;
-  return true;
+  }
+  
+  const report = data as Record<string, unknown>;
+  
+  // Check for essential fields that indicate a valid collection report
+  // Note: API returns transformed data with different field names than database
+  return !!(
+    report.reportId &&
+    report.locationName &&
+    report.collectionDate &&
+    Array.isArray(report.machineMetrics) &&
+    report.locationMetrics &&
+    typeof report.locationMetrics === "object"
+  );
 }
+

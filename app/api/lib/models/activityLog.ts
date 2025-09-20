@@ -67,4 +67,4 @@ ActivityLogSchema.index({ "actor.id": 1, timestamp: -1 });
 ActivityLogSchema.index({ actionType: 1, timestamp: -1 });
 
 export const ActivityLog =
-  models.ActivityLog || model("ActivityLog", ActivityLogSchema, "activityLogs");
+  models?.ActivityLog || model("ActivityLog", ActivityLogSchema, "activityLogs");

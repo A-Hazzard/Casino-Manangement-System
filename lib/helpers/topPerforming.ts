@@ -1,6 +1,8 @@
 import axios from "axios";
-import { ActiveTab, TopPerformingData } from "@/lib/types";
+import { TopPerformingData } from "@/lib/types";
 import { colorPalette } from "@/lib/constants/uiConstants";
+
+type ActiveTab = "locations" | "Cabinets";
 
 /**
  * Fetches top-performing locations or Cabinets and assigns colors dynamically.

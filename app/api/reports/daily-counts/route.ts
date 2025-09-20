@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { getUserFromServer } from "@/lib/utils/user";
-import type { DailyCountsReport } from "@/lib/types/reports";
+import { getUserFromServer } from "../../lib/helpers/users";
+type DailyCountsReport = {
+  id: string;
+  date: string;
+  locationId: string;
+  locationName: string;
+  totalCounts: number;
+  voucherCounts: number;
+};
 
 /**
  * GET /api/reports/daily-counts

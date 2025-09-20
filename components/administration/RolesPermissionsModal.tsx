@@ -171,7 +171,7 @@ export default function RolesPermissionsModal({
       />
       <div
         ref={modalRef}
-        className="bg-container shadow-lg flex flex-col gap-6 animate-in w-full max-w-lg mx-auto md:relative md:rounded-2xl md:p-10 md:my-0 md:top-0 md:left-0 md:bottom-auto md:right-auto md:max-h-none md:overflow-visible absolute bottom-0 left-0 right-0 rounded-t-2xl p-6 max-h-[90vh] overflow-y-auto md:static"
+        className="bg-container shadow-lg flex flex-col gap-6 animate-in w-full max-w-lg mx-auto md:relative md:rounded-2xl md:p-10 md:my-0 md:top-0 md:left-0 md:bottom-auto md:right-auto md:max-h-none md:overflow-visible absolute bottom-0 left-0 right-0 rounded-t-2xl p-6 max-h-[90vh] overflow-y-auto"
         style={{ opacity: 1 }}
       >
         {/* Close button */}
@@ -187,7 +187,7 @@ export default function RolesPermissionsModal({
         </h2>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-base font-medium">Password</label>
+            <label className="block text-base font-medium">Password</label>
             <Input
               type="password"
               value={password}
@@ -197,7 +197,7 @@ export default function RolesPermissionsModal({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-base font-medium">Confirm Password</label>
+            <label className="block text-base font-medium">Confirm Password</label>
             <Input
               type="password"
               value={confirmPassword}
