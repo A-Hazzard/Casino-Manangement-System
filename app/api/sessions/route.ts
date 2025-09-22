@@ -73,7 +73,9 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination with the same filtering logic
     const countPipeline = [
+      // Stage 1: Match sessions based on search and date filters
       { $match: query },
+      // Stage 2: Lookup machine details for each session
       {
         $lookup: {
           from: "machines",
@@ -82,12 +84,14 @@ export async function GET(request: NextRequest) {
           as: "machine",
         },
       },
+      // Stage 3: Unwind machine array (preserve sessions with no machine)
       {
         $unwind: {
           path: "$machine",
           preserveNullAndEmptyArrays: true,
         },
       },
+      // Stage 4: Lookup location details for each machine
       {
         $lookup: {
           from: "gaminglocations",
@@ -96,12 +100,14 @@ export async function GET(request: NextRequest) {
           as: "location",
         },
       },
+      // Stage 5: Unwind location array (preserve machines with no location)
       {
         $unwind: {
           path: "$location",
           preserveNullAndEmptyArrays: true,
         },
       },
+      // Stage 6: Lookup licencee details for each location
       {
         $lookup: {
           from: "licencees",
@@ -110,13 +116,14 @@ export async function GET(request: NextRequest) {
           as: "licencee",
         },
       },
+      // Stage 7: Unwind licencee array (preserve locations with no licencee)
       {
         $unwind: {
           path: "$licencee",
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Filter by licencee if specified
+      // Stage 8: Filter by licencee if specified
       ...(licencee && licencee !== "All Licensees"
         ? [
             {
@@ -126,6 +133,7 @@ export async function GET(request: NextRequest) {
             },
           ]
         : []),
+      // Stage 9: Count total sessions
       {
         $count: "total",
       },
@@ -138,7 +146,9 @@ export async function GET(request: NextRequest) {
 
     // Fetch sessions with pagination and populate machine names
     const sessions = await MachineSession.aggregate([
+      // Stage 1: Match sessions based on search and date filters
       { $match: query },
+      // Stage 2: Lookup machine details for each session
       {
         $lookup: {
           from: "machines",
@@ -147,12 +157,14 @@ export async function GET(request: NextRequest) {
           as: "machine",
         },
       },
+      // Stage 3: Unwind machine array (preserve sessions with no machine)
       {
         $unwind: {
           path: "$machine",
           preserveNullAndEmptyArrays: true,
         },
       },
+      // Stage 4: Lookup location details for each machine
       {
         $lookup: {
           from: "gaminglocations",
@@ -161,12 +173,14 @@ export async function GET(request: NextRequest) {
           as: "location",
         },
       },
+      // Stage 5: Unwind location array (preserve machines with no location)
       {
         $unwind: {
           path: "$location",
           preserveNullAndEmptyArrays: true,
         },
       },
+      // Stage 6: Lookup licencee details for each location
       {
         $lookup: {
           from: "licencees",
@@ -175,13 +189,14 @@ export async function GET(request: NextRequest) {
           as: "licencee",
         },
       },
+      // Stage 7: Unwind licencee array (preserve locations with no licencee)
       {
         $unwind: {
           path: "$licencee",
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Filter by licencee if specified
+      // Stage 8: Filter by licencee if specified
       ...(licencee && licencee !== "All Licensees"
         ? [
             {
@@ -191,6 +206,7 @@ export async function GET(request: NextRequest) {
             },
           ]
         : []),
+      // Stage 9: Add computed machine name field
       {
         $addFields: {
           machineName: {
@@ -202,15 +218,19 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      // Stage 10: Sort sessions by specified field and order
       {
         $sort: { [sortBy]: sortOrder === "desc" ? -1 : 1 },
       },
+      // Stage 11: Apply pagination (skip records)
       {
         $skip: (page - 1) * limit,
       },
+      // Stage 12: Apply pagination (limit records)
       {
         $limit: limit,
       },
+      // Stage 13: Project final fields and calculate duration
       {
         $project: {
           _id: 1,

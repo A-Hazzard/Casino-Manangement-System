@@ -1,7 +1,7 @@
 # Collection Report Test Cases
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** August 29th, 2025  
+**Last Updated:** September 20th, 2025  
 **Version:** 2.1.0
 
 ## Overview
@@ -77,4 +77,4 @@ Test cases for Collection Report functionality - collection reporting, monthly r
 
 ---
 
-**Last Updated:** August 29th, 2025
+**Last Updated:** September 20th, 2025

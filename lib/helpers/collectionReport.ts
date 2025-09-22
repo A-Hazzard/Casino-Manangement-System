@@ -721,6 +721,23 @@ export async function calculateSasMetrics(
   sasEndTime: string;
 }> {
   try {
+    // Validate dates before using them
+    if (isNaN(sasStartTime.getTime()) || isNaN(sasEndTime.getTime())) {
+      console.warn("❌ Invalid dates provided to calculateSasMetrics:", {
+        sasStartTime: sasStartTime,
+        sasEndTime: sasEndTime,
+        startTimeValid: !isNaN(sasStartTime.getTime()),
+        endTimeValid: !isNaN(sasEndTime.getTime())
+      });
+      throw new Error("Invalid date values provided to calculateSasMetrics");
+    }
+
+    console.warn("🔄 calculateSasMetrics called with:", {
+      machineIdentifier,
+      sasStartTime: sasStartTime.toISOString(),
+      sasEndTime: sasEndTime.toISOString()
+    });
+
     // Query meters collection for the machine and time period
     const response = await axios.get("/api/metrics/meters", {
       params: {

@@ -9,7 +9,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { CabinetFormData } from "@/lib/types/cabinets";
 import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
@@ -52,8 +51,39 @@ export const EditCabinetModal = ({
   const [collectionMultiplierError, setCollectionMultiplierError] =
     useState<string>("");
 
-  // Create activity logger for cabinet operations
-  const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
@@ -342,11 +372,11 @@ export const EditCabinetModal = ({
       const success = await updateCabinet(formData, activeMetricsFilter);
       if (success) {
         // Log the cabinet update activity
-        await cabinetLogger(
+        await logActivity(
           "update",
           "cabinet",
-          { id: selectedCabinet._id, name: `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}` },
-          [],
+          selectedCabinet._id,
+          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}`,
           `Updated cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"})`
         );
 

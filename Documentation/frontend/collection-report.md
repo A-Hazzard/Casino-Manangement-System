@@ -2,7 +2,7 @@
 # Collection Report System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 19th, 2025
+**Last Updated:** September 20th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -532,7 +532,7 @@ CollectionReport {
 
 ### Edit Collection Reports - New Implementation
 
-**Edit Collection Modal (`EditCollectionModalV2.tsx`):**
+**Edit Collection Modal (`EditCollectionModal.tsx`):**
 - **Pencil Icon**: Click pencil icon on any collection entry to edit
 - **Edit Mode**: Form fields populate with existing data
 - **Cancel/Update Buttons**: Clear edit controls with confirmation
@@ -1026,17 +1026,26 @@ Collector Efficiency = (Total Collected / Total Expected) * 100
 
 ### Amount to Collect Formula
 
-The **Amount to Collect** is calculated using a simple formula that determines how much money should be collected from each machine based on the meter readings.
+The **Amount to Collect** is calculated using a comprehensive formula that considers profit sharing, taxes, variance, advance payments, and previous balance.
 
 #### **Formula:**
 ```
-Amount to Collect = (metersIn - prevIn) / 2
+Amount to Collect = gross - variance - advance - partnerProfit + locationPreviousBalance
 ```
 
+Where:
+- **gross** = Σ(drop - cancelledCredits) across all machines
+- **drop** = Σ(metersIn - prevIn) across all machines  
+- **cancelledCredits** = Σ(metersOut - prevOut) across all machines
+- **partnerProfit** = Math.floor((gross - variance - advance) * profitShare / 100) - taxes
+- **locationPreviousBalance** = Outstanding balance from previous collections
+
 #### **What This Means:**
-- **metersIn**: Current meter reading when collecting
-- **prevIn**: Previous meter reading from last collection
-- **Division by 2**: Represents the 50/50 profit sharing between the casino and location
+- **gross**: Total revenue from all machines (money in minus money out)
+- **variance**: Optional adjustment for collection discrepancies
+- **advance**: Money paid to location when in negative balance
+- **partnerProfit**: Location's share of revenue (calculated with profit share percentage)
+- **locationPreviousBalance**: Previous outstanding balance from database
 
 #### **Step-by-Step Example:**
 

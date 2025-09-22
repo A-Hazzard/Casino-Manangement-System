@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
-import fs from "fs";
-import path from "path";
 
 // Map incoming timePeriod values tostored keys
 const timeframeKeyMap: Record<string, string> = {
@@ -63,17 +61,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Prepare a debug log entry.
-    const debugEntry = metricsForLocations;
-
-    // Write debug log to file (append to file so we can see history).
-    const logDir = path.join(process.cwd(), "logs");
-
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-    const debugFile = path.join(logDir, "casinoMetricsByUser_debug.json");
-    fs.appendFileSync(debugFile, JSON.stringify(debugEntry, null, 2) + "\n");
-
-    // console.log("Debug log written successfully");
     return NextResponse.json(metricsForLocations, { status: 200 });
   } catch (err) {
     console.error("Error fetching aggregated metrics:", err);

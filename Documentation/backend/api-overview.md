@@ -2,7 +2,7 @@
 # API Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** September 20th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -101,18 +101,19 @@ The Evolution One Casino Management System provides comprehensive REST APIs for 
 ## Reports
 
 ### Dashboard Metrics
-- `GET /api/metrics/dashboard` - Dashboard financial metrics
-- `GET /api/metrics/locations` - Location performance metrics
-- `GET /api/metrics/machines` - Machine performance metrics
+- `GET /api/dashboard/totals` - Dashboard financial metrics (money in/out/gross)
+- `GET /api/metrics/hourly-trends` - Hourly performance trends
+- `GET /api/metrics/top-machines` - Top performing machines
+- `GET /api/metrics/top-performers` - Top performing entities
 
 ### Meter Reports
-- `GET /api/meters/report` - Meter reading reports
-- `GET /api/meters/analytics` - Meter analytics and trends
+- `GET /api/metrics/meters` - Meter reading reports and analytics
 
 ### Financial Reports
-- `GET /api/reports/financial` - Financial performance reports
-- `GET /api/reports/collection` - Collection reports
-- `GET /api/reports/operational` - Operational reports
+- `GET /api/reports/daily-counts` - Daily count reports
+- `GET /api/reports/locations` - Location-based reports
+- `GET /api/reports/machines` - Machine performance reports
+- `GET /api/reports/meters` - Meter reading reports
 
 ## Members
 
@@ -124,7 +125,6 @@ The Evolution One Casino Management System provides comprehensive REST APIs for 
 - `DELETE /api/members/[id]` - Delete member
 
 ### Member Activities
-- `GET /api/members/[id]/activities` - Member activity history
 - `GET /api/members/[id]/sessions` - Member session history
 
 ## Sessions
@@ -135,15 +135,13 @@ The Evolution One Casino Management System provides comprehensive REST APIs for 
 - `PUT /api/sessions/[id]` - Update session
 - `DELETE /api/sessions/[id]` - End session
 
-### Session Analytics
-- `GET /api/sessions/analytics` - Session analytics
-- `GET /api/sessions/active` - Currently active sessions
+### Session Events
+- `GET /api/sessions/[sessionId]/[machineId]/events` - Session event details
 
 ## Administration
 
-### System Configuration
-- `GET /api/admin/config` - Get system configuration
-- `PUT /api/admin/config` - Update system configuration
+### System Administration
+- `GET /api/admin/create-indexes` - Create database indexes
 
 ### User Management
 - `GET /api/admin/users` - List all users
@@ -575,4 +573,4 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ---
 
-**Last Updated:** August 29th, 2025
+**Last Updated:** September 20th, 2025

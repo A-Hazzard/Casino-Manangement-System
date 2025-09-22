@@ -80,10 +80,10 @@ export async function GET(request: NextRequest) {
     // Use aggregation pipeline to get members with location names and win/loss data
     const pipeline: Record<string, unknown>[] = [];
 
-    // Match stage
+    // Stage 1: Filter members by search criteria, date range, and location
     pipeline.push({ $match: query });
 
-    // Lookup gaming location to get location name
+    // Stage 2: Join members with gaming locations to get location names
     pipeline.push({
       $lookup: {
         from: "gaminglocations",
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Lookup machine sessions to calculate win/loss
+    // Stage 3: Join members with their machine sessions to calculate financial metrics
     pipeline.push({
       $lookup: {
         from: "machinesessions",
@@ -103,11 +103,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Add computed fields
+    // Stage 4: Calculate financial metrics from all member sessions
     pipeline.push({
       $addFields: {
         locationName: { $arrayElemAt: ["$locationInfo.name", 0] },
-        // Calculate financial metrics from sessions using correct fields from financial guide
+        // Calculate total money in from all sessions (sum of drop values)
         totalMoneyIn: {
           $reduce: {
             input: "$sessions",
@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        // Calculate total money out from all sessions (sum of cancelled credits)
         totalMoneyOut: {
           $reduce: {
             input: "$sessions",
@@ -142,6 +143,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        // Calculate total handle from all sessions (sum of coin in values)
         totalHandle: {
           $reduce: {
             input: "$sessions",
@@ -159,7 +161,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Add win/loss calculation (Gross Revenue = Money In - Money Out)
+    // Stage 5: Calculate win/loss and gross revenue (Money In - Money Out)
     pipeline.push({
       $addFields: {
         winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
@@ -167,7 +169,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Filter by win/loss if specified
+    // Stage 6: Filter by win/loss criteria if specified
     if (winLossFilter && winLossFilter !== "all") {
       if (winLossFilter === "positive") {
         pipeline.push({
@@ -190,7 +192,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Project only needed fields
+    // Stage 7: Project only the fields needed for the response
     pipeline.push({
       $project: {
         _id: 1,
@@ -214,10 +216,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Sort
+    // Stage 8: Sort results by specified criteria
     pipeline.push({ $sort: sort });
 
-    // Get total count
+    // Stage 9: Get total count for pagination (reuse pipeline without pagination)
     const countPipeline = [
       ...pipeline,
       { $count: "total" } as Record<string, unknown>,
@@ -227,7 +229,7 @@ export async function GET(request: NextRequest) {
     );
     const totalMembers = countResult[0]?.total || 0;
 
-    // Add pagination
+    // Stage 10: Apply pagination (skip and limit)
     pipeline.push({ $skip: (page - 1) * limit });
     pipeline.push({ $limit: limit });
 

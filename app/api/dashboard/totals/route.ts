@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     // Build the aggregation pipeline using the same logic as your working MongoDB shell queries
     const pipeline: Document[] = [
-      // Match meters within the date range
+      // Stage 1: Filter meter records by date range (if provided)
       {
         $match: {
           ...(startDate && endDate
@@ -69,7 +69,8 @@ export async function GET(req: NextRequest) {
             : {}),
         },
       },
-      // Group and sum all movement values
+      
+      // Stage 2: Aggregate all financial metrics across all machines and locations
       {
         $group: {
           _id: null,
@@ -77,7 +78,8 @@ export async function GET(req: NextRequest) {
           totalCancelled: { $sum: "$movement.totalCancelledCredits" }
         }
       },
-      // Project with proper field names and gross calculation
+      
+      // Stage 3: Transform and calculate final dashboard totals
       {
         $project: {
           _id: 0,

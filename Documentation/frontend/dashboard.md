@@ -1,7 +1,7 @@
 # Dashboard Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** August 29th, 2025  
+**Last Updated:** September 20th, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -219,7 +219,7 @@ The dashboard is like a **real-time command center** for your casino operations.
 
 **📊 Financial Metrics (Money In/Out/Gross)**
 - **Collection**: Queries the `meters` collection for the selected time period
-- **Fields Used**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`
+- **Fields Used**: `movement.drop`, `movement.totalCancelledCredits`
 - **Simple Explanation**: Shows how much money players put into machines vs. how much they won, giving you the net profit
 
 **🖥️ Machine Status (Online/Offline)**

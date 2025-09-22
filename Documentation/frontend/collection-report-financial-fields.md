@@ -1,7 +1,7 @@
 # Collection Report Financial Fields
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** September 20th, 2025
 
 ## Overview
 

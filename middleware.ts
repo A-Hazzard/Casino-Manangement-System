@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
         expires: new Date(0),
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax", // Consistent with login cookie settings
         path: "/",
       });
       return response;

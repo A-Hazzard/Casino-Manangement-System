@@ -11,7 +11,7 @@ import axios from "axios";
 import { toast } from "sonner";
 
 import type { EditLocationModalProps } from "@/lib/types/components";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging will be handled via API calls
 import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 
@@ -78,7 +78,39 @@ export default function EditLocationModal({
 
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
-  const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -457,13 +489,12 @@ export default function EditLocationModal({
       await axios.put("/api/locations", locationData);
 
       // Log the update activity
-      await locationLogger(
+      await logActivity(
         "update",
         "location",
-        { id: locationIdentifier, name: formData.name },
-        undefined,
-        `Updated location: ${formData.name}`,
-        undefined
+        locationIdentifier,
+        formData.name,
+        `Updated location: ${formData.name}`
       );
 
       toast.success("Location updated successfully");

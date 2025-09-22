@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Member } from "@/lib/types/members";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 type EditMemberModalProps = {
   isOpen: boolean;
@@ -35,7 +34,39 @@ export default function EditMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -137,11 +168,11 @@ export default function EditMemberModal({
 
       if (response.status === 200) {
         // Log the update activity
-        await memberLogger(
+        await logActivity(
           "update",
           "member",
-          { id: selectedMember._id, name: `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}` },
-          [],
+          selectedMember._id,
+          `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`,
           `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`
         );
 

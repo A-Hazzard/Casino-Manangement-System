@@ -43,7 +43,39 @@ import MobileCollectionModal from "./mobile/MobileCollectionModal";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging will be handled via API calls
+const logActivity = async (
+  action: string,
+  resource: string,
+  resourceId: string,
+  resourceName: string,
+  details: string
+) => {
+  try {
+    const response = await fetch('/api/activity-logs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action,
+        resource,
+        resourceId,
+        resourceName,
+        details,
+        userId: 'current-user', // This should be replaced with actual user ID
+        username: 'current-user', // This should be replaced with actual username
+        userRole: 'user', // This should be replaced with actual user role
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to log activity:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+};
 import {
   Tooltip,
   TooltipContent,
@@ -95,7 +127,7 @@ export default function NewCollectionModal({
   const hasResetRef = useRef(false);
   const user = useUserStore((state) => state.user);
   const userId = user?._id;
-  const collectionLogger = useMemo(() => createActivityLogger({ id: "system", email: "system", role: "system" }), []);
+  // Activity logging is now handled via API calls
   const [hasChanges, setHasChanges] = useState(false);
 
   // Custom close handler that checks for changes
@@ -279,11 +311,9 @@ export default function NewCollectionModal({
     // Get profit share from selected location (default to 50% if not available)
     const profitShare = selectedLocation?.profitShare || 50;
 
-    // Calculate partner profit: Math.floor((gross - variance - advance) * profitShare / 100) - taxes
+    // Calculate partner profit: (gross - variance - advance) * profitShare / 100 - taxes
     const partnerProfit =
-      Math.floor(
-        ((reportTotalData.gross - variance - advance) * profitShare) / 100
-      ) - taxes;
+      ((reportTotalData.gross - variance - advance) * profitShare) / 100 - taxes;
 
     // Calculate amount to collect: gross - variance - advance - partnerProfit + locationPreviousBalance
     const amountToCollect =
@@ -331,6 +361,15 @@ export default function NewCollectionModal({
         serialNumber: m.serialNumber
       }))
     });
+    
+    if (!found && selectedMachineId && machinesOfSelectedLocation.length > 0) {
+      console.error("❌ Machine not found! This might be the issue:", {
+        selectedMachineId,
+        availableIds: machinesOfSelectedLocation.map(m => String(m._id)),
+        availableSerialNumbers: machinesOfSelectedLocation.map(m => m.serialNumber)
+      });
+    }
+    
     return found;
   }, [machinesOfSelectedLocation, selectedMachineId]);
 
@@ -596,6 +635,19 @@ export default function NewCollectionModal({
     locations.length,
   ]);
 
+  // Always fetch fresh data when modal opens to ensure latest values
+  useEffect(() => {
+    if (show) {
+      console.warn("🔄 Modal opened - ensuring fresh data is available");
+      
+      // Trigger a refresh of the parent component's data if onRefresh is available
+      if (onRefresh) {
+        console.warn("🔄 Triggering parent data refresh to ensure fresh locations and machines data");
+        onRefresh();
+      }
+    }
+  }, [show, onRefresh]);
+
   useEffect(() => {
     if (selectedLocation) {
       setSelectedLocationName(selectedLocation.name);
@@ -614,67 +666,40 @@ export default function NewCollectionModal({
       "selectedLocationId:",
       selectedLocationId
     );
-    console.warn(
-      "Available locations:",
-      locations.map((l) => ({
-        id: l._id,
-        name: l.name,
-        machinesCount: l.machines?.length || 0,
-      }))
-    );
-    console.warn(
-      "Current machinesOfSelectedLocation:",
-      machinesOfSelectedLocation.map((m, i) => ({
-        index: i,
-        _id: m._id,
-        name: m.name,
-        serialNumber: m.serialNumber,
-        hasId: !!m._id
-      }))
-    );
 
     if (locationIdToUse) {
-      const location = locations.find(
-        (loc) => String(loc._id) === locationIdToUse
-      );
-      console.warn("Found location:", location);
-      if (location) {
-        console.warn(
-          "Setting machines for location:",
-          location.machines?.length || 0,
-          "machines"
-        );
-        console.warn("Location machines data:", location.machines?.length || 0, "machines");
-        setMachinesOfSelectedLocation(location.machines || []);
-      } else {
-        console.warn(
-          "Location not found in locations array, but we have a locked location ID:",
-          locationIdToUse
-        );
-        // Fallback: fetch fresh machine data from API
-        const fetchMachinesForLocation = async () => {
-          try {
-            console.warn("🔄 Fetching fresh machines for location from API:", locationIdToUse);
-            // Add cache-busting parameter to ensure fresh machine data
-            const response = await axios.get(`/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`);
-            if (response.data?.success && response.data?.data) {
-              console.warn("🔄 Fresh machines fetched from API:", response.data.data.length, "machines");
-              setMachinesOfSelectedLocation(response.data.data);
-            }
-          } catch (error) {
-            console.error("Error fetching machines for location:", error);
+      // Always fetch fresh machine data from API to ensure latest meter values
+      const fetchMachinesForLocation = async () => {
+        try {
+          console.warn("🔄 ALWAYS fetching fresh machines for location from API:", locationIdToUse);
+          // Add cache-busting parameter to ensure fresh machine data
+          const response = await axios.get(`/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`);
+          if (response.data?.success && response.data?.data) {
+            console.warn("🔄 Fresh machines fetched from API:", response.data.data.length, "machines");
+            console.warn("🔄 Machine meter data:", response.data.data.map((m: CollectionReportMachineSummary) => ({
+              name: m.name,
+              serialNumber: m.serialNumber,
+              collectionMeters: m.collectionMeters
+            })));
+            setMachinesOfSelectedLocation(response.data.data);
+          } else {
+            console.warn("🔄 No machines found in API response");
             setMachinesOfSelectedLocation([]);
           }
-        };
-        fetchMachinesForLocation();
-      }
+        } catch (error) {
+          console.error("Error fetching machines for location:", error);
+          setMachinesOfSelectedLocation([]);
+        }
+      };
+      
+      fetchMachinesForLocation();
       setSelectedMachineId(undefined);
     } else {
       console.warn("No location ID to use");
       setMachinesOfSelectedLocation([]);
       setSelectedMachineId(undefined);
     }
-  }, [selectedLocationId, lockedLocationId, locations, machinesOfSelectedLocation]);
+  }, [selectedLocationId, lockedLocationId]);
 
   // Fetch fresh machine data when modal opens to ensure we have the latest meter values
   // This is now handled by the main location loading useEffect to avoid duplicate API calls
@@ -725,8 +750,16 @@ export default function NewCollectionModal({
           metersOut: machineForDataEntry.collectionMeters?.metersOut
         });
         if (machineForDataEntry.collectionMeters) {
-          setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-          setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
+          const metersIn = machineForDataEntry.collectionMeters.metersIn || 0;
+          const metersOut = machineForDataEntry.collectionMeters.metersOut || 0;
+          console.warn("🔍 Setting prevIn/prevOut from collectionMeters:", {
+            metersIn,
+            metersOut,
+            originalMetersIn: machineForDataEntry.collectionMeters.metersIn,
+            originalMetersOut: machineForDataEntry.collectionMeters.metersOut
+          });
+          setPrevIn(metersIn);
+          setPrevOut(metersOut);
         } else {
           console.warn("🔍 No collectionMeters found, setting prevIn/prevOut to 0");
           setPrevIn(0);
@@ -751,12 +784,40 @@ export default function NewCollectionModal({
         setPreviousCollectionTime(undefined);
       }
     } else {
-      // Only clear prevIn/prevOut if we're not in the middle of loading machines
-      // This prevents clearing values when selectedMachineId is undefined during initial load
-      if (selectedMachineId !== undefined || machinesOfSelectedLocation.length === 0) {
-        console.warn("🔄 Clearing prevIn/prevOut because selectedMachineId is undefined or no machines loaded");
+      // Only clear prevIn/prevOut when no machine is selected and machines are available
+      // This prevents clearing values when a machine is selected and has valid collectionMeters
+      console.warn("🔍 useEffect triggered with:", {
+        selectedMachineId,
+        machinesCount: machinesOfSelectedLocation.length,
+        machineForDataEntry: machineForDataEntry ? {
+          _id: machineForDataEntry._id,
+          collectionMeters: machineForDataEntry.collectionMeters
+        } : null,
+        shouldClear: selectedMachineId === undefined && machinesOfSelectedLocation.length > 0
+      });
+      
+      // Only clear if no machine is selected AND machines are available
+      // Don't clear if a machine is selected, even if machineForDataEntry is not found yet
+      if (selectedMachineId === undefined && machinesOfSelectedLocation.length > 0) {
+        console.warn("🔄 Clearing prevIn/prevOut because no machine is selected but machines are available");
         setPrevIn(null);
         setPrevOut(null);
+      } else if (selectedMachineId && machineForDataEntry) {
+        console.warn("🔍 Machine is selected and found, should NOT clear prevIn/prevOut");
+      } else if (selectedMachineId && !machineForDataEntry) {
+        console.warn("⚠️ Machine is selected but not found in machinesOfSelectedLocation - this might be the issue!");
+        // Try to find the machine manually and set prevIn/prevOut
+        const manualFound = machinesOfSelectedLocation.find(
+          (m) => String(m._id) === selectedMachineId
+        );
+        if (manualFound && manualFound.collectionMeters) {
+          console.warn("🔧 Manually setting prevIn/prevOut from found machine:", {
+            metersIn: manualFound.collectionMeters.metersIn,
+            metersOut: manualFound.collectionMeters.metersOut
+          });
+          setPrevIn(manualFound.collectionMeters.metersIn || 0);
+          setPrevOut(manualFound.collectionMeters.metersOut || 0);
+        }
       }
       setPreviousCollectionTime(undefined);
     }
@@ -767,7 +828,7 @@ export default function NewCollectionModal({
     lockedLocationId,
     selectedLocationId,
     collectedMachineEntries,
-    machinesOfSelectedLocation.length,
+    machinesOfSelectedLocation,
   ]);
 
   const resetMachineSpecificInputFields = useCallback(() => {
@@ -912,10 +973,22 @@ export default function NewCollectionModal({
     setIsProcessing(true);
 
     try {
-      // Calculate SAS start time
-      const sasStartTime = machineForDataEntry?.collectionTime
-        ? new Date(machineForDataEntry.collectionTime)
-        : new Date(Date.now() - 24 * 60 * 60 * 1000); // Default to 24 hours ago
+      // Calculate SAS start time with proper validation
+      let sasStartTime: Date;
+      if (machineForDataEntry?.collectionTime) {
+        const parsedTime = new Date(machineForDataEntry.collectionTime);
+        sasStartTime = isNaN(parsedTime.getTime()) 
+          ? new Date(Date.now() - 24 * 60 * 60 * 1000) // Fallback to 24 hours ago
+          : parsedTime;
+      } else {
+        sasStartTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // Default to 24 hours ago
+      }
+
+      console.warn("🔄 SAS time calculation:", {
+        collectionTime: machineForDataEntry?.collectionTime,
+        sasStartTime: sasStartTime.toISOString(),
+        isValid: !isNaN(sasStartTime.getTime())
+      });
 
       let sasMetrics;
       try {
@@ -923,10 +996,23 @@ export default function NewCollectionModal({
           machineForDataEntry?.serialNumber ||
           machineForDataEntry?.name ||
           selectedMachineId;
+        // Ensure currentCollectionTime is valid
+        const validEndTime = currentCollectionTime && !isNaN(currentCollectionTime.getTime()) 
+          ? currentCollectionTime 
+          : new Date();
+
+        console.warn("🔄 SAS metrics calculation:", {
+          machineIdentifier,
+          sasStartTime: sasStartTime.toISOString(),
+          sasEndTime: validEndTime.toISOString(),
+          startTimeValid: !isNaN(sasStartTime.getTime()),
+          endTimeValid: !isNaN(validEndTime.getTime())
+        });
+
         sasMetrics = await calculateSasMetrics(
           machineIdentifier || "",
           sasStartTime,
-          currentCollectionTime || new Date()
+          validEndTime
         );
       } catch (sasError) {
         console.warn("SAS metrics calculation failed:", sasError);
@@ -1008,12 +1094,12 @@ export default function NewCollectionModal({
       toast.success("Machine added to collection list!");
 
       // Log the activity
-      if (collectionLogger && selectedLocationName) {
-        await collectionLogger(
+      if (selectedLocationName) {
+        await logActivity(
           "create",
           "collection",
-          { id: createdCollection._id, name: `${machineForDataEntry?.name || selectedMachineId} at ${selectedLocationName}` },
-          [],
+          createdCollection._id,
+          `${machineForDataEntry?.name || selectedMachineId} at ${selectedLocationName}`,
           `Added machine ${machineForDataEntry?.name || selectedMachineId} to collection list`
         );
       }
@@ -1042,7 +1128,6 @@ export default function NewCollectionModal({
     selectedLocationName,
     userId,
     resetMachineSpecificInputFields,
-    collectionLogger,
     getCollectorName,
   ]);
 
@@ -1263,11 +1348,11 @@ export default function NewCollectionModal({
 
       // Log the deletion activity
       if (entryData) {
-        await collectionLogger(
+        await logActivity(
           "delete",
           "collection",
-          { id: entryToDelete, name: `${entryData.machineCustomName} at ${selectedLocationName}` },
-          [],
+          entryToDelete,
+          `${entryData.machineCustomName} at ${selectedLocationName}`,
           `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
         );
       }
@@ -1275,9 +1360,13 @@ export default function NewCollectionModal({
       // Update the machine's collection history (remove the entry)
       if (entryData) {
         try {
-          console.warn("Deleting from machine collection history:", {
+          console.warn("🔄 Deleting from machine collection history:", {
             machineId: entryData.machineId,
             entryId: entryToDelete,
+            prevIn: entryData.prevIn,
+            prevOut: entryData.prevOut,
+            metersIn: entryData.metersIn,
+            metersOut: entryData.metersOut
           });
 
           await updateMachineCollectionHistory(
@@ -1294,10 +1383,10 @@ export default function NewCollectionModal({
             // Don't pass entryId, let the API delete by locationReportId
           );
 
-          console.warn("Machine collection history entry deleted successfully");
+          console.warn("✅ Machine collection history entry deleted successfully");
         } catch (historyError) {
           console.error(
-            "Failed to delete from machine collection history:",
+            "❌ Failed to delete from machine collection history:",
             historyError
           );
           // Check if it's a 404 error (machine not found)
@@ -1337,6 +1426,12 @@ export default function NewCollectionModal({
 
       setHasChanges(true);
 
+      // Refresh parent data to get updated machine meter values
+      if (onRefresh) {
+        console.warn("🔄 Triggering parent refresh to get updated machine data after deletion");
+        onRefresh();
+      }
+
       // Keep the machine selected and form populated so user can continue working
 
       // Close confirmation dialog
@@ -1352,7 +1447,7 @@ export default function NewCollectionModal({
     userId,
     collectedMachineEntries,
     selectedLocationName,
-    collectionLogger,
+    onRefresh,
   ]);
 
   const handleCreateMultipleReportsInternal = useCallback(async () => {
@@ -2028,7 +2123,7 @@ export default function NewCollectionModal({
                           placeholder="0"
                           value={financials.taxes}
                           onChange={(e) =>
-                            (/^\d*\.?\d*$/.test(e.target.value) ||
+                            (/^-?\d*\.?\d*$/.test(e.target.value) ||
                               e.target.value === "") &&
                             setFinancials({
                               ...financials,
@@ -2047,7 +2142,7 @@ export default function NewCollectionModal({
                           placeholder="0"
                           value={financials.advance}
                           onChange={(e) =>
-                            (/^\d*\.?\d*$/.test(e.target.value) ||
+                            (/^-?\d*\.?\d*$/.test(e.target.value) ||
                               e.target.value === "") &&
                             setFinancials({
                               ...financials,
@@ -2066,7 +2161,7 @@ export default function NewCollectionModal({
                           placeholder="0"
                           value={financials.variance}
                           onChange={(e) =>
-                            (/^\d*\.?\d*$/.test(e.target.value) ||
+                            (/^-?\d*\.?\d*$/.test(e.target.value) ||
                               e.target.value === "") &&
                             setFinancials({
                               ...financials,
@@ -2123,7 +2218,7 @@ export default function NewCollectionModal({
                           value={financials.collectedAmount}
                           onChange={(e) => {
                             if (
-                              /^\d*\.?\d*$/.test(e.target.value) ||
+                              /^-?\d*\.?\d*$/.test(e.target.value) ||
                               e.target.value === ""
                             ) {
                               setFinancials({

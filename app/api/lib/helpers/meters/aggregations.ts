@@ -60,13 +60,18 @@ export function aggregateMetersWithoutLocationSession(
   filter: QueryFilter
 ): PipelineStage[] {
   return [
+    // Stage 1: Filter meter records based on provided criteria (date range, location, etc.)
     { $match: filter },
+    
+    // Stage 2: Add computed date/time fields for grouping and sorting
     {
       $addFields: {
         day: { $dateToString: { date: "$readAt", format: "%Y-%m-%d" } },
         time: { $dateToString: { date: "$readAt", format: "%H:%M" } },
       },
     },
+    
+    // Stage 3: Join with gaming locations to get location details and licensee info
     {
       $lookup: {
         from: "gaminglocations",
@@ -75,13 +80,16 @@ export function aggregateMetersWithoutLocationSession(
         as: "locationDetails",
       },
     },
+    
+    // Stage 4: Flatten the location details array (each meter now has location info)
     {
       $unwind: {
         path: "$locationDetails",
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Grouping by day and time for hourly data, or day only for daily data
+    
+    // Stage 5: Group by day and time to aggregate meter movements
     {
       $group: {
         _id: {
@@ -100,6 +108,7 @@ export function aggregateMetersWithoutLocationSession(
         geoCoords: { $first: "$locationDetails.geoCoords" },
       },
     },
+    // Stage 6: Project and transform fields for final output
     {
       $project: {
         day: "$_id.day",
@@ -111,6 +120,7 @@ export function aggregateMetersWithoutLocationSession(
         movementGamesPlayed: 1,
         geoCoords: 1,
         viewingAccountDenomination: 1,
+        // Calculate account denomination conversions for display
         _viewingAccountDenomination: {
           movementDrop: {
             $ceil: {
@@ -144,6 +154,8 @@ export function aggregateMetersWithoutLocationSession(
         },
       },
     },
+    
+    // Stage 7: Sort results by day and time for chronological order
     {
       $sort: { day: 1, time: 1 },
     },
@@ -160,6 +172,7 @@ export function aggregateMetersWithoutLocationSession(
  */
 function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
   return [
+    // Stage 1: Group by day only (not by time) for daily aggregation
     {
       $group: {
         _id: { day: "$day" },
@@ -175,6 +188,8 @@ function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
         geoCoords: { $first: "$geoCoords" },
       },
     },
+    
+    // Stage 2: Project final fields with proper meter calculations
     {
       $project: {
         _id: 0,
@@ -197,6 +212,7 @@ function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
  */
 function aggregateByDayAndTimeStages(useAccountDenom: boolean): PipelineStage[] {
   return [
+    // Stage 1: Group by both day and time for hourly aggregation
     {
       $group: {
         _id: { day: "$day", time: "$time" },
@@ -212,6 +228,8 @@ function aggregateByDayAndTimeStages(useAccountDenom: boolean): PipelineStage[] 
         geoCoords: { $first: "$geoCoords" },
       },
     },
+    
+    // Stage 2: Project final fields with hourly time data
     {
       $project: {
         _id: 0,

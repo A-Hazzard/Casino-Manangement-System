@@ -2,7 +2,7 @@
 # Analytics API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** September 20th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -27,7 +27,7 @@ The Analytics API provides comprehensive analytics and reporting capabilities fo
 
 1. **Database Operations**:
    - Queries `machines` collection for machine counts and status
-   - Aggregates data from `meters` collection for financial calculations
+   - Aggregates data from `machines.sasMeters` for financial calculations
    - Filters by licensee and date ranges
    - Calculates real-time statistics
 
@@ -46,16 +46,16 @@ DashboardMetrics {
 3. **Financial Calculation Formulas**:
 ```javascript
 // Total Drop Calculation
-totalDrop = Σ(movement.drop) across all machines and time period
+totalDrop = Σ(sasMeters.drop) across all machines
 
 // Total Cancelled Credits Calculation  
-totalCancelledCredits = Σ(movement.totalCancelledCredits) across all machines and time period
+totalCancelledCredits = Σ(sasMeters.totalCancelledCredits) across all machines
 
 // Total Gross Revenue Calculation
 totalGross = totalDrop - totalCancelledCredits
 
 // Machine Status Calculations
-onlineMachines = COUNT(machines WHERE lastActivity >= currentTime - 3 minutes)
+onlineMachines = COUNT(machines WHERE assetStatus = "active")
 totalMachines = COUNT(machines WHERE deletedAt IS NULL)
 sasMachines = COUNT(machines WHERE isSasMachine = true AND deletedAt IS NULL)
 ```

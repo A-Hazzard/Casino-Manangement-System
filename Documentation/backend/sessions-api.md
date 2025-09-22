@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 
-**Last Updated:** August 29th, 2025
+**Last Updated:** September 20th, 2025
 
 ## Quick Search Guide
 
@@ -207,7 +207,7 @@ overallWinRate = SUM(gamesWon) / SUM(gamesPlayed) * 100
 // MongoDB search query
 {
 
-**Last Updated:** August 29th, 2025  
+**Last Updated:** September 20th, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents

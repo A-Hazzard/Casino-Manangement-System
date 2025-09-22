@@ -63,7 +63,7 @@ import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
 import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
-import EditCollectionModalV2 from "@/components/collectionReport/EditCollectionModalV2";
+import EditCollectionModal from "@/components/collectionReport/EditCollectionModal";
 import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 
@@ -1008,7 +1008,7 @@ function CollectionReportContent() {
       {/* Edit Collection Modal V2 */}
       {editingReportId && (
         <ErrorBoundary>
-          <EditCollectionModalV2
+          <EditCollectionModal
             show={showEditCollectionModal}
             onClose={handleCloseEditModal}
             reportId={editingReportId}

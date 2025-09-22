@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
     const metrics = await db
       .collection("meters")
       .aggregate<Metric>([
+        // Stage 1: Filter meter records by date range and licencee
         { $match: matchStage },
+        // Stage 2: Group by location to calculate financial metrics
         {
           $group: {
             _id: "$location",
@@ -72,6 +74,7 @@ export async function GET(request: NextRequest) {
             moneyOut: { $sum: "$movement.totalCancelledCredits" },
           },
         },
+        // Stage 3: Calculate gross revenue (money in minus money out)
         { $addFields: { gross: { $subtract: ["$moneyIn", "$moneyOut"] } } },
       ])
       .toArray();
@@ -81,12 +84,15 @@ export async function GET(request: NextRequest) {
     const locations = await db
       .collection("gaminglocations")
       .aggregate<LocationResponse>([
+        // Stage 1: Filter locations by deletion status, search term, and licencee
         { $match: locationMatch },
+        // Stage 2: Lookup machine statistics for each location
         {
           $lookup: {
             from: "machines",
             let: { id: "$_id" },
             pipeline: [
+              // Stage 2a: Match machines for this location (excluding deleted ones)
               {
                 $match: {
                   $expr: { $eq: ["$gamingLocation", "$$id"] },
@@ -96,6 +102,7 @@ export async function GET(request: NextRequest) {
       ],
                 },
               },
+              // Stage 2b: Group machines to calculate counts and online status
               {
                 $group: {
                   _id: null,
@@ -120,6 +127,7 @@ export async function GET(request: NextRequest) {
             as: "machineStats",
           },
         },
+        // Stage 3: Add computed fields for machine statistics and location flags
         {
           $addFields: {
             totalMachines: {
@@ -138,6 +146,7 @@ export async function GET(request: NextRequest) {
             hasSmib: { $ifNull: ["$hasSmib", false] },
           },
         },
+        // Stage 4: Project final fields for location response
         {
           $project: {
             _id: 1,

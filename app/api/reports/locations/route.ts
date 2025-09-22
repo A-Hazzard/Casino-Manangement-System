@@ -103,11 +103,11 @@ export async function GET(req: NextRequest) {
 
     // Use MongoDB aggregation pipeline matching the working shell queries
     const aggregationPipeline = [
-      // Stage 1: Start with locations
+      // Stage 1: Filter locations by deletion status and licencee
       {
         $match: locationMatchStage,
       },
-      // Stage 2: Lookup machines for each location
+      // Stage 2: Lookup all machines for each location
       {
         $lookup: {
           from: "machines",
@@ -116,14 +116,14 @@ export async function GET(req: NextRequest) {
           as: "machines"
         }
       },
-      // Stage 3: Unwind machines (preserve locations with no machines)
+      // Stage 3: Unwind machines array (preserve locations with no machines)
       { 
         $unwind: { 
           path: "$machines", 
           preserveNullAndEmptyArrays: true 
         } 
       },
-      // Stage 4: Lookup meters for each machine (filtered by date if specified)
+      // Stage 4: Lookup meters for each machine (filtered by date range if specified)
       {
         $lookup: {
           from: "meters",
@@ -140,14 +140,14 @@ export async function GET(req: NextRequest) {
           as: "meters"
         }
       },
-      // Stage 5: Unwind meters (preserve machines with no meters)
+      // Stage 5: Unwind meters array (preserve machines with no meters)
       { 
         $unwind: { 
           path: "$meters", 
           preserveNullAndEmptyArrays: true 
         } 
       },
-      // Stage 6: Group by location and calculate sums (matching working shell queries)
+      // Stage 6: Group by location and calculate financial metrics
       {
         $group: {
           _id: "$_id",
@@ -158,13 +158,13 @@ export async function GET(req: NextRequest) {
           moneyOut: { $sum: { $ifNull: ["$meters.movement.totalCancelledCredits", 0] } }
         }
       },
-      // Stage 7: Add gross calculation
+      // Stage 7: Calculate gross revenue (money in minus money out)
       {
         $addFields: {
           gross: { $subtract: ["$moneyIn", "$moneyOut"] }
         }
       },
-      // Stage 8: Calculate additional metrics
+      // Stage 8: Calculate machine counts and status metrics
       {
         $addFields: {
           location: { $toString: "$_id" },
@@ -273,7 +273,7 @@ export async function GET(req: NextRequest) {
       {
         $sort: { gross: -1 },
       },
-      // Stage 11: Apply pagination
+      // Stage 11: Apply pagination with metadata
       {
         $facet: {
           metadata: [{ $count: "totalCount" }],

@@ -41,5 +41,5 @@ export type LoginFormProps = {
   messageType?: "success" | "error" | "info";
   loading: boolean;
   redirecting: boolean;
-  handleLogin: () => void;
+  handleLogin: (e: React.FormEvent) => void;
 };

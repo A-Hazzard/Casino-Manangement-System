@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Aggregate hourly data for the location
     const pipeline = [
+      // Stage 1: Filter collection reports by location, date range, and exclude deleted records
       {
         $match: {
           location: locationId,
@@ -79,6 +80,8 @@ export async function GET(request: NextRequest) {
           ],
         },
       },
+      
+      // Stage 2: Group by hour and date to aggregate daily revenue metrics
       {
         $group: {
           _id: {
@@ -90,6 +93,8 @@ export async function GET(request: NextRequest) {
           cancelledCredits: { $sum: "$moneyOut" },
         },
       },
+      
+      // Stage 3: Group by hour to calculate average and total metrics across all days
       {
         $group: {
           _id: "$_id.hour",
@@ -101,6 +106,8 @@ export async function GET(request: NextRequest) {
           totalCancelledCredits: { $sum: "$cancelledCredits" },
         },
       },
+      
+      // Stage 4: Sort by hour for chronological order (0-23)
       {
         $sort: { _id: 1 },
       },

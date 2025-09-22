@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
 import type { UploadSmibDataModalProps } from "@/lib/types/components";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
@@ -23,8 +22,39 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   const [comments, setComments] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Create activity logger for firmware operations
-  const firmwareLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -50,11 +80,11 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       );
 
       // Log the SMIB data upload activity
-      await firmwareLogger(
+      await logActivity(
         "create",
         "firmware",
-        { id: response.data?.id || "unknown", name: `SMIB Data Upload: ${selectedFile.name}` },
-        [],
+        response.data?.id || "unknown",
+        `SMIB Data Upload: ${selectedFile.name}`,
         `Uploaded SMIB data file: ${selectedFile.name} (${(
           selectedFile.size / 1024
         ).toFixed(2)} KB)`

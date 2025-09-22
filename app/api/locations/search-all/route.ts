@@ -52,12 +52,15 @@ export async function GET(request: NextRequest) {
     const locations = await db
       .collection("gaminglocations")
       .aggregate([
+        // Stage 1: Filter locations by deletion status, search term, and licencee
         { $match: locationMatch },
+        // Stage 2: Lookup machine statistics for each location
         {
           $lookup: {
             from: "machines",
             let: { id: "$_id" },
             pipeline: [
+              // Stage 2a: Match machines for this location (excluding deleted ones)
               {
                 $match: {
                   $expr: { $eq: ["$gamingLocation", "$$id"] },
@@ -67,6 +70,7 @@ export async function GET(request: NextRequest) {
       ],
                 },
               },
+              // Stage 2b: Group machines to calculate counts and online status
               {
                 $group: {
                   _id: null,
@@ -91,12 +95,13 @@ export async function GET(request: NextRequest) {
             as: "machineStats",
           },
         },
-        // Add lookup for financial data (last 30 days by default)
+        // Stage 3: Lookup financial data from meters (last 30 days by default)
         {
           $lookup: {
             from: "meters",
             let: { locationId: { $toString: "$_id" } },
             pipeline: [
+              // Stage 3a: Match meter records for this location within date range
               {
                 $match: {
                   $expr: { $eq: ["$location", "$$locationId"] },
@@ -106,6 +111,7 @@ export async function GET(request: NextRequest) {
                   },
                 },
               },
+              // Stage 3b: Group meter records to calculate financial totals
               {
                 $group: {
                   _id: null,
@@ -119,6 +125,7 @@ export async function GET(request: NextRequest) {
             as: "financialData",
           },
         },
+        // Stage 4: Add computed fields for machine statistics and financial data
         {
           $addFields: {
             totalMachines: {
@@ -150,11 +157,13 @@ export async function GET(request: NextRequest) {
             noSMIBLocation: { $not: ["$hasSmib"] },
           },
         },
+        // Stage 5: Calculate gross revenue (money in minus money out)
         {
           $addFields: {
             gross: { $subtract: ["$moneyIn", "$moneyOut"] },
           },
         },
+        // Stage 6: Project final fields for location response
         {
           $project: {
             _id: 1,

@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set("token", result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", // Allow cross-site requests for IP addresses
       maxAge: 172800, // 48 hours
       path: "/",
     });

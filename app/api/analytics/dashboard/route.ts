@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const globalStatsPipeline = [
+      // Stage 1: Join machines with gaming locations to get location details
       {
         $lookup: {
           from: "gaminglocations",
@@ -24,14 +25,20 @@ export async function GET(request: NextRequest) {
           as: "locationDetails",
         },
       },
+      
+      // Stage 2: Flatten the location details array (each machine now has location info)
       {
         $unwind: "$locationDetails",
       },
+      
+      // Stage 3: Filter machines by licensee to get only relevant machines
       {
         $match: {
           "locationDetails.rel.licencee": licensee,
         },
       },
+      
+      // Stage 4: Aggregate financial and machine statistics across all machines
       {
         $group: {
           _id: null,
@@ -60,6 +67,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      
+      // Stage 5: Remove the _id field from final output
       {
         $project: {
           _id: 0,

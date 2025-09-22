@@ -15,14 +15,45 @@ import axios from "axios";
 import { toast } from "sonner";
 
 import type { DeleteLocationModalProps } from "@/lib/types/components";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 export default function DeleteLocationModal({
   onDelete,
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
-  const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
 
   const handleClose = () => {
@@ -39,11 +70,11 @@ export default function DeleteLocationModal({
       await axios.delete(`/api/locations?id=${location.location}`);
 
       // Log the deletion activity
-      await locationLogger(
+      await logActivity(
         "delete",
         "location",
-        { id: location.location as string, name: (location.locationName as string) || "Unknown Location" },
-        [],
+        location.location as string,
+        (location.locationName as string) || "Unknown Location",
         `Deleted location: ${location.locationName as string}`
       );
 

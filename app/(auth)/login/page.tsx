@@ -28,7 +28,8 @@ export default function LoginPage() {
     setIsMounted(true);
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent form submission and page refresh
     setErrors({});
     let valid = true;
     if (!identifier) {

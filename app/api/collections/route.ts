@@ -285,6 +285,32 @@ export async function DELETE(req: NextRequest) {
 
     await Collections.findByIdAndDelete(id);
 
+    // Revert machine's collectionMeters to previous values
+    if (collectionToDelete.machineId) {
+      try {
+        console.warn("🔄 Reverting machine collectionMeters after collection deletion:", {
+          machineId: collectionToDelete.machineId,
+          prevIn: collectionToDelete.prevIn,
+          prevOut: collectionToDelete.prevOut,
+          currentMetersIn: collectionToDelete.metersIn,
+          currentMetersOut: collectionToDelete.metersOut
+        });
+
+        await Machine.findByIdAndUpdate(collectionToDelete.machineId, {
+          $set: {
+            "collectionMeters.metersIn": collectionToDelete.prevIn || 0,
+            "collectionMeters.metersOut": collectionToDelete.prevOut || 0,
+            updatedAt: new Date(),
+          },
+        });
+
+        console.warn("✅ Machine collectionMeters reverted successfully");
+      } catch (machineUpdateError) {
+        console.error("❌ Failed to revert machine collectionMeters:", machineUpdateError);
+        // Don't fail the deletion if machine update fails, but log the error
+      }
+    }
+
     // Log activity
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {

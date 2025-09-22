@@ -118,16 +118,18 @@ export async function GET(request: NextRequest) {
     if (timePeriod && timePeriod !== "All Time") {
       // Use $facet to calculate specific time period efficiently
       const facetAggregation = await Meters.aggregate([
-        // 1) Restrict to the machine
+        // Stage 1: Filter meter records to only this specific machine
         { $match: { machine: id } },
 
-        // 2) Compute time boundaries (use Trinidad timezone)
+        // Stage 2: Set up timezone and current time for calculations
         {
           $set: {
             tz: "America/Port_of_Spain",
             now: "$$NOW",
           },
         },
+        
+        // Stage 3: Calculate time boundaries for different periods (today, last 7 days, last 30 days)
         {
           $set: {
             todayStart: {
@@ -151,7 +153,7 @@ export async function GET(request: NextRequest) {
           },
         },
 
-        // 3) Compute the requested time window
+        // Stage 4: Use $facet to compute metrics for the requested time window
         {
           $facet: {
             [timePeriod]: (() => {
@@ -318,7 +320,10 @@ export async function GET(request: NextRequest) {
     } else {
       // Fetch all meter data without filtering (All Time)
       meterData = await Meters.aggregate([
+        // Stage 1: Filter meter records to only this specific machine
         { $match: { machine: id } },
+        
+        // Stage 2: Aggregate all financial metrics across all time periods
         {
           $group: {
             _id: null,

@@ -6,6 +6,7 @@ import { Machine } from "@/app/api/lib/models/machines";
 export async function getTopLocations(licensee: string, startDate?: Date, endDate?: Date) {
   // First get all locations for the licensee
   const locations = await Machine.aggregate([
+    // Stage 1: Join machines with gaming locations to get location details
     {
       $lookup: {
         from: "gaminglocations",
@@ -14,14 +15,20 @@ export async function getTopLocations(licensee: string, startDate?: Date, endDat
         as: "locationDetails",
       },
     },
+    
+    // Stage 2: Flatten the location details array (each machine now has location info)
     {
       $unwind: "$locationDetails",
     },
+    
+    // Stage 3: Filter machines by licensee to get only relevant locations
     {
       $match: {
         "locationDetails.rel.licencee": licensee,
       },
     },
+    
+    // Stage 4: Group by location to aggregate machine statistics
     {
       $group: {
         _id: "$gamingLocation",
@@ -57,9 +64,12 @@ export async function getTopLocations(licensee: string, startDate?: Date, endDat
       }
       
       const metersAggregation = await Machine.db?.db?.collection("meters")?.aggregate([
+        // Stage 1: Filter meter records by location and date range
         {
           $match: matchStage,
         },
+        
+        // Stage 2: Aggregate financial metrics for this location
         {
           $group: {
             _id: null,

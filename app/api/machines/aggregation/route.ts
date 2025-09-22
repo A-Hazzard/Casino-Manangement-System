@@ -78,10 +78,10 @@ export async function GET(req: NextRequest) {
     }
 
     const pipeline: mongoose.PipelineStage[] = [
-      // 1) match relevant location(s)
+      // Stage 1: Filter gaming locations by criteria (locationId, licensee, active status)
       { $match: matchStage },
 
-      // 2) join machines with proper fields
+      // Stage 2: Join locations with their machines
       {
         $lookup: {
           from: "machines",
@@ -90,9 +90,11 @@ export async function GET(req: NextRequest) {
           as: "machines",
         },
       },
-      // Flatten machines
+      
+      // Stage 3: Flatten machines array (each location-machine pair becomes a document)
       { $unwind: { path: "$machines", preserveNullAndEmptyArrays: false } },
-      // Filter out deleted machines
+      
+      // Stage 4: Filter out deleted machines (keep only active machines)
       {
         $match: {
           $or: [
@@ -103,7 +105,7 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    // 3) If user typed a searchTerm
+    // Stage 5: Apply search filter if user provided search term
     if (searchTerm) {
       pipeline.push({
         $match: {
@@ -119,20 +121,21 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 4) Sort by lastActivity desc
+    // Stage 6: Sort by machine last activity (most recent first)
     pipeline.push({
       $sort: {
         "machines.lastActivity": -1,
       },
     });
 
-    // 5) Summation of meters for each machine - filtered by time period
+    // Stage 7: Aggregate meter data for each machine within the time period
     pipeline.push(
       {
         $lookup: {
           from: "meters",
           let: { machineId: "$machines._id" },
           pipeline: [
+            // Stage 7a: Filter meters by machine and date range
             {
               $match: {
                 $expr: {
@@ -146,7 +149,7 @@ export async function GET(req: NextRequest) {
                 },
               },
             },
-            // sum up the movement
+            // Stage 7b: Aggregate financial and gaming metrics for this machine
             {
               $group: {
                 _id: null,
@@ -163,6 +166,8 @@ export async function GET(req: NextRequest) {
           as: "meterAgg",
         },
       },
+      
+      // Stage 8: Flatten the meter aggregation results
       {
         $unwind: {
           path: "$meterAgg",
@@ -171,7 +176,7 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    // 6) Final project, update to ensure relayId is included
+    // Stage 9: Project final machine data with financial metrics
     pipeline.push({
       $project: {
         _id: "$machines._id",

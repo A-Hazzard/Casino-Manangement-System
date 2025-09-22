@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { ActivityLog } from "@/app/api/lib/models/activityLog";
+import { ActivityLog } from "../../app/api/lib/models/activityLog";
 import type {
   ActivityLog as ActivityLogType,
   ActivityLogActor,

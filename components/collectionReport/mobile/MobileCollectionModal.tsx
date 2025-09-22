@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, List } from "lucide-react";
+import axios from "axios";
 import type { NewCollectionModalProps } from "@/lib/types/componentProps";
 import type { CollectionDocument } from "@/lib/types/collections";
 import type { CollectionReportMachineSummary } from "@/lib/types/api";
@@ -50,8 +51,7 @@ export default function MobileCollectionModal({
     isEditing: false,
     editingEntryId: null,
   });
-
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isProcessing] = useState(false);
 
   // Navigation handlers
@@ -75,28 +75,47 @@ export default function MobileCollectionModal({
     }
   }, [modalState.currentView, navigateToView, onClose]);
 
+  const fetchMachinesForLocation = useCallback(async (locationId: string) => {
+    try {
+      const response = await axios.get(`/api/machines?locationId=${locationId}&_t=${Date.now()}`);
+      if (response.data?.success && response.data?.data) {
+        return response.data.data as CollectionReportMachineSummary[];
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching machines for location:", error);
+      return [];
+    }
+  }, []);
+
   const handleLocationSelect = useCallback(
-    (location: {
+    async (location: {
       _id: string;
       name: string;
       address?: string;
       profitShare?: number;
       machines?: unknown[];
     }) => {
-      const normalized: MobileLocation = {
-        _id: String(location._id),
-        name: location.name,
-        machines: (location.machines || []) as CollectionReportMachineSummary[],
-        address: location.address,
-        profitShare: location.profitShare,
-      };
-      setModalState((prev) => ({
-        ...prev,
-        selectedLocation: normalized,
-        currentView: "machines",
-      }));
+      setIsLoading(true);
+      try {
+        const machines = await fetchMachinesForLocation(location._id);
+        const normalized: MobileLocation = {
+          _id: String(location._id),
+          name: location.name,
+          machines: machines,
+          address: location.address,
+          profitShare: location.profitShare,
+        };
+        setModalState((prev) => ({
+          ...prev,
+          selectedLocation: normalized,
+          currentView: "machines",
+        }));
+      } finally {
+        setIsLoading(false);
+      }
     },
-    []
+    [fetchMachinesForLocation]
   );
 
   const handleMachineSelect = useCallback(

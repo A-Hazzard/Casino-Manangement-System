@@ -29,11 +29,14 @@ export async function GET(request: NextRequest) {
     }
 
     const chartsPipeline: PipelineStage[] = [
+      // Stage 1: Filter meter records by date range
       {
         $match: {
           readAt: { $gte: startDate, $lte: endDate },
         },
       },
+      
+      // Stage 2: Join meters with machines to get machine details
       {
         $lookup: {
           from: "machines",
@@ -42,9 +45,13 @@ export async function GET(request: NextRequest) {
           as: "machineDetails",
         },
       },
+      
+      // Stage 3: Flatten the machine details array (each meter now has machine info)
       {
         $unwind: "$machineDetails",
       },
+      
+      // Stage 4: Join with gaming locations to get location details
       {
         $lookup: {
           from: "gaminglocations",
@@ -53,14 +60,20 @@ export async function GET(request: NextRequest) {
           as: "locationDetails",
         },
       },
+      
+      // Stage 5: Flatten the location details array (each meter now has location info)
       {
         $unwind: "$locationDetails",
       },
+      
+      // Stage 6: Filter by licensee to get only relevant meters
       {
         $match: {
           "locationDetails.licensee": licenseeId,
         },
       },
+      
+      // Stage 7: Group by date to aggregate daily financial metrics
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$readAt" } },
@@ -78,9 +91,13 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      
+      // Stage 8: Sort by date for chronological order
       {
         $sort: { _id: 1 },
       },
+      
+      // Stage 9: Project final chart data structure
       {
         $project: {
           _id: 0,

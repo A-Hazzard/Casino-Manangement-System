@@ -59,12 +59,15 @@ export async function GET(request: NextRequest) {
 
     // Aggregate top machines for the location using meters collection
     const pipeline = [
+      // Stage 1: Filter meter records by location and date range
       {
         $match: {
           location: locationId,
           readAt: { $gte: start, $lte: end },
         },
       },
+      
+      // Stage 2: Group by machine to aggregate financial and gaming metrics
       {
         $group: {
           _id: "$machine",
@@ -74,6 +77,8 @@ export async function GET(request: NextRequest) {
           count: { $sum: 1 },
         },
       },
+      
+      // Stage 3: Join with machines collection to get machine details
       {
         $lookup: {
           from: "machines",
@@ -82,12 +87,16 @@ export async function GET(request: NextRequest) {
           as: "machineInfo",
         },
       },
+      
+      // Stage 4: Flatten the machine info array (each result now has machine details)
       {
         $unwind: {
           path: "$machineInfo",
           preserveNullAndEmptyArrays: true,
         },
       },
+      
+      // Stage 5: Calculate final metrics including revenue and hold percentage
       {
         $project: {
           id: "$_id",
@@ -106,9 +115,13 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      
+      // Stage 6: Sort by revenue in descending order (highest performers first)
       {
         $sort: { revenue: -1 },
       },
+      
+      // Stage 7: Limit to top 5 performing machines
       {
         $limit: 5,
       },

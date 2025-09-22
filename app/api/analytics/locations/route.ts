@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     const locationsPipeline: PipelineStage[] = [
-      // Match machines for the given licensee
+      // Stage 1: Join machines with gaming locations to get location details
       {
         $lookup: {
           from: "gaminglocations",
@@ -32,15 +32,20 @@ export async function GET(request: NextRequest) {
           as: "locationDetails",
         },
       },
+      
+      // Stage 2: Flatten the location details array (each machine now has location info)
       {
         $unwind: "$locationDetails",
       },
+      
+      // Stage 3: Filter machines by licensee to get only relevant locations
       {
         $match: {
           "locationDetails.rel.licencee": licensee,
         },
       },
-      // Group by location to aggregate machine data
+      
+      // Stage 4: Group by location to aggregate machine statistics
       {
         $group: {
           _id: "$gamingLocation",
@@ -58,11 +63,14 @@ export async function GET(request: NextRequest) {
           locationInfo: { $first: "$locationDetails" },
         },
       },
-      // Sort by gross revenue
+      
+      // Stage 5: Sort by gross revenue (highest performers first)
       { $sort: { gross: -1 } },
-      // Limit to top 5
+      
+      // Stage 6: Limit to top 5 performing locations
       { $limit: 5 },
-      // Project the final structure
+      
+      // Stage 7: Project final structure with location details and coordinates
       {
         $project: {
           _id: 0,
@@ -105,11 +113,14 @@ export async function GET(request: NextRequest) {
         
         // Get financial metrics from meters collection
         const metersAggregation = await db.collection("meters").aggregate([
+          // Stage 1: Filter meter records by location
           {
             $match: {
               location: locationId,
             },
           },
+          
+          // Stage 2: Aggregate financial metrics for this location
           {
             $group: {
               _id: null,

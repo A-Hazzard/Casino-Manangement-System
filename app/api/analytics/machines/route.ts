@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
     }
     
     const machinesPipeline: PipelineStage[] = [
+      // Stage 1: Filter machines by location and licensee criteria
       { $match: query },
+      
+      // Stage 2: Join machines with locations to get location details
       {
         $lookup: {
           from: "locations",
@@ -30,14 +33,20 @@ export async function GET(request: NextRequest) {
           as: "locationDetails"
         }
       },
+      
+      // Stage 3: Flatten the location details array (each machine now has location info)
       {
         $unwind: "$locationDetails"
       },
+      
+      // Stage 4: Filter by licensee to ensure only relevant machines are included
       {
         $match: {
           "locationDetails.rel.licencee": query.licenseeId,
         }
       },
+      
+      // Stage 5: Project only the fields needed for analytics
       {
         $project: {
           _id: 1,
@@ -49,6 +58,8 @@ export async function GET(request: NextRequest) {
           hasSas: 1
         }
       },
+      
+      // Stage 6: Sort machines by total drop in descending order (highest performers first)
       {
         $sort: {
           totalDrop: -1

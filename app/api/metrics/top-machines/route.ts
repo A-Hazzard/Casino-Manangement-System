@@ -24,13 +24,14 @@ export async function GET(req: NextRequest) {
 
     // Build aggregation pipeline
     const pipeline = [
-      // Match meters for the time period
+      // Stage 1: Filter meter records by date range
       {
         $match: {
           readAt: { $gte: startDate, $lte: endDate }
         }
       },
-      // Lookup machine details
+      
+      // Stage 2: Join meters with machines to get machine details
       {
         $lookup: {
           from: "machines",
@@ -39,10 +40,13 @@ export async function GET(req: NextRequest) {
           as: "machineDetails"
         }
       },
+      
+      // Stage 3: Flatten the machine details array (each meter now has machine info)
       {
         $unwind: "$machineDetails"
       },
-      // Lookup location details
+      
+      // Stage 4: Join with gaming locations to get location details
       {
         $lookup: {
           from: "gaminglocations",
@@ -51,22 +55,26 @@ export async function GET(req: NextRequest) {
           as: "locationDetails"
         }
       },
+      
+      // Stage 5: Flatten the location details array (each meter now has location info)
       {
         $unwind: "$locationDetails"
       },
-      // Filter by licencee if provided
+      
+      // Stage 6: Filter by licensee if provided
       ...(licencee ? [{
         $match: {
           "locationDetails.rel.licencee": licencee
         }
       }] : []),
-      // Filter by specific locations if provided
+      
+      // Stage 7: Filter by specific locations if provided
       ...(locationIds ? [{
         $match: {
           location: { $in: locationIds.split(",").map(id => id.trim()) }
         }
       }] : []),
-      // Group by machine
+      // Stage 8: Group by machine to aggregate financial and gaming metrics
       {
         $group: {
           _id: "$machine",
@@ -141,15 +149,18 @@ export async function GET(req: NextRequest) {
           gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } }
         }
       },
-      // Sort by handle (descending)
+      
+      // Stage 9: Sort by handle in descending order (highest performers first)
       {
         $sort: { handle: -1 }
       },
-      // Limit results
+      
+      // Stage 10: Limit to top N machines
       {
         $limit: limit
       },
-      // Project final format
+      
+      // Stage 11: Project final response format with rounded values
       {
         $project: {
           _id: 0,

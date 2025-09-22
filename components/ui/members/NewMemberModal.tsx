@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 
 type NewMemberModalProps = {
   isOpen: boolean;
@@ -24,7 +23,39 @@ export default function NewMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-  const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -115,11 +146,11 @@ export default function NewMemberModal({
         const createdMember = response.data;
 
         // Log the creation activity
-        await memberLogger(
+        await logActivity(
           "create",
           "member",
-          { id: createdMember._id || formData.username, name: `${formData.firstName} ${formData.lastName}` },
-          [],
+          createdMember._id || formData.username,
+          `${formData.firstName} ${formData.lastName}`,
           `Created new member: ${formData.firstName} ${formData.lastName} with username: ${formData.username}`
         );
 

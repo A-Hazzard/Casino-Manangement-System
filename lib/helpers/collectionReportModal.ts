@@ -113,14 +113,14 @@ export function validateMachineEntry(
 
   if (
     currentMetersIn.trim() === "" ||
-    !/^-?\d*\.?\d+$/.test(currentMetersIn.trim())
+    !/^-?\d*\.?\d*$/.test(currentMetersIn.trim())
   ) {
     return { isValid: false, error: "Meters In must be a valid number." };
   }
 
   if (
     currentMetersOut.trim() === "" ||
-    !/^-?\d*\.?\d+$/.test(currentMetersOut.trim())
+    !/^-?\d*\.?\d*$/.test(currentMetersOut.trim())
   ) {
     return { isValid: false, error: "Meters Out must be a valid number." };
   }

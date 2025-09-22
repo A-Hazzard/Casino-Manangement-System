@@ -10,6 +10,7 @@ export async function POST() {
   response.cookies.set("token", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
+    sameSite: "lax", // Consistent with login cookie settings
     maxAge: 0, // Expire immediately
     path: "/",
   });

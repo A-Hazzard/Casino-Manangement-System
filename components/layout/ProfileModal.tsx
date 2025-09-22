@@ -8,7 +8,6 @@ import Image from "next/image";
 import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
 import { toast } from "sonner";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import defaultAvatar from "@/public/defaultAvatar.svg";
 import cameraIcon from "@/public/cameraIcon.svg";
 import CircleCropModal from "@/components/ui/image/CircleCropModal";
@@ -41,7 +40,39 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const userLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -167,11 +198,11 @@ export default function ProfileModal({
       await axios.put(`/api/users/${userData._id}`, payload);
 
       // Log the profile update activity
-      await userLogger(
+      await logActivity(
         "update",
         "user",
-        { id: userData._id, name: userData.username },
-        [],
+        userData._id,
+        userData.username,
         `Updated profile for user: ${userData.username}`
       );
 

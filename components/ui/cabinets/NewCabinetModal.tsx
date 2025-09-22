@@ -16,7 +16,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { NewCabinetFormData } from "@/lib/types/cabinets";
 import { createCabinet } from "@/lib/helpers/cabinets";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
@@ -44,8 +43,39 @@ export const NewCabinetModal = ({
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
-  // Create activity logger for cabinet operations
-  const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging is now handled via API calls
+  const logActivity = async (
+    action: string,
+    resource: string,
+    resourceId: string,
+    resourceName: string,
+    details: string
+  ) => {
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          resource,
+          resourceId,
+          resourceName,
+          details,
+          userId: 'current-user', // This should be replaced with actual user ID
+          username: 'current-user', // This should be replaced with actual username
+          userRole: 'user', // This should be replaced with actual user role
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to log activity:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
@@ -203,11 +233,11 @@ export const NewCabinetModal = ({
       const success = await createCabinet(formData);
       if (success) {
         // Log the cabinet creation activity
-        await cabinetLogger(
+        await logActivity(
           "create",
           "cabinet",
-          { id: formData.serialNumber || "Unknown", name: `${formData.game} - ${formData.serialNumber}` },
-          [],
+          formData.serialNumber || "Unknown",
+          `${formData.game} - ${formData.serialNumber}`,
           `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`
         );
 
