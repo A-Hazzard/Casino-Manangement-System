@@ -8,6 +8,7 @@ import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { toast } from "sonner";
+import { useUserStore } from "@/lib/store/userStore";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export default function EditMemberModal({
 }: EditMemberModalProps) {
   const { isEditModalOpen, selectedMember, closeEditModal } =
     useMemberActionsStore();
+  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -43,10 +45,10 @@ export default function EditMemberModal({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -54,17 +56,17 @@ export default function EditMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -172,8 +174,12 @@ export default function EditMemberModal({
           "update",
           "member",
           selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`,
-          `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`
+          `${selectedMember.profile?.firstName || "Unknown"} ${
+            selectedMember.profile?.lastName || "Member"
+          }`,
+          `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${
+            selectedMember.profile?.lastName || "Member"
+          }`
         );
 
         toast.success("Member updated successfully");

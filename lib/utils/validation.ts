@@ -40,37 +40,64 @@ export function validateCollectionReportPayload(
   if (!payload.locationReportId) errors.push("Location report ID is required.");
   if (!payload.location) errors.push("Location ID is required.");
   if (!payload.timestamp) errors.push("Timestamp is required.");
-  if (typeof payload.variance !== "number" || isNaN(payload.variance))
-    errors.push("Variance is required and must be a number.");
+  // Only validate variance if it's provided (optional field)
   if (
-    typeof payload.previousBalance !== "number" ||
-    isNaN(payload.previousBalance)
+    payload.variance !== undefined &&
+    payload.variance !== null &&
+    (typeof payload.variance !== "number" || isNaN(payload.variance))
   )
-    errors.push("Previous balance is required and must be a number.");
+    errors.push("Variance must be a number if provided.");
+  // Only validate previous balance if it's provided (optional field)
+  if (
+    payload.previousBalance !== undefined &&
+    payload.previousBalance !== null &&
+    (typeof payload.previousBalance !== "number" ||
+      isNaN(payload.previousBalance))
+  )
+    errors.push("Previous balance must be a number if provided.");
   if (
     typeof payload.amountToCollect !== "number" ||
     isNaN(payload.amountToCollect)
   )
     errors.push("Amount to collect is required and must be a number.");
+  // Only validate collected amount if it's provided (optional field)
   if (
-    typeof payload.amountCollected !== "number" ||
-    isNaN(payload.amountCollected)
+    payload.amountCollected !== undefined &&
+    payload.amountCollected !== null &&
+    (typeof payload.amountCollected !== "number" ||
+      isNaN(payload.amountCollected))
   )
-    errors.push("Collected amount is required and must be a number.");
-  if (typeof payload.taxes !== "number" || isNaN(payload.taxes))
-    errors.push("Taxes is required and must be a number.");
-  if (typeof payload.advance !== "number" || isNaN(payload.advance))
-    errors.push("Advance is required and must be a number.");
+    errors.push("Collected amount must be a number if provided.");
+  // Only validate taxes if it's provided (optional field)
+  if (
+    payload.taxes !== undefined &&
+    payload.taxes !== null &&
+    (typeof payload.taxes !== "number" || isNaN(payload.taxes))
+  )
+    errors.push("Taxes must be a number if provided.");
+  // Only validate advance if it's provided (optional field)
+  if (
+    payload.advance !== undefined &&
+    payload.advance !== null &&
+    (typeof payload.advance !== "number" || isNaN(payload.advance))
+  )
+    errors.push("Advance must be a number if provided.");
   if (
     typeof payload.balanceCorrection !== "number" ||
     isNaN(payload.balanceCorrection)
   )
     errors.push("Balance correction is required and must be a number.");
-  if (payload.balanceCorrectionReas && payload.balanceCorrectionReas.trim() === "")
+  if (
+    payload.balanceCorrectionReas &&
+    payload.balanceCorrectionReas.trim() === ""
+  )
     errors.push("Balance correction reason cannot be empty if provided.");
   if (payload.varianceReason && payload.varianceReason.trim() === "")
     errors.push("Variance reason cannot be empty if provided.");
-  if (payload.reasonShortagePayment && payload.reasonShortagePayment.trim() === "")
+  if (
+    payload.reasonShortagePayment &&
+    payload.reasonShortagePayment.trim() === ""
+  )
     errors.push("Reason for shortage payment cannot be empty if provided.");
   return { isValid: errors.length === 0, errors };
 }
@@ -84,9 +111,9 @@ export function validateCollectionReportData(data: unknown): boolean {
   if (!data || typeof data !== "object") {
     return false;
   }
-  
+
   const report = data as Record<string, unknown>;
-  
+
   // Check for essential fields that indicate a valid collection report
   // Note: API returns transformed data with different field names than database
   return !!(
@@ -98,4 +125,3 @@ export function validateCollectionReportData(data: unknown): boolean {
     typeof report.locationMetrics === "object"
   );
 }
-

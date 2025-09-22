@@ -14,7 +14,7 @@ import PaginationControls from "@/components/ui/PaginationControls";
 import AdministrationNavigation from "@/components/administration/AdministrationNavigation";
 import { ADMINISTRATION_TABS_CONFIG } from "@/lib/constants/administration";
 import type { AdministrationSection } from "@/lib/constants/administration";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging removed - handled via API calls
 import {
   fetchUsers,
   updateUser,
@@ -28,20 +28,22 @@ import type {
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { IMAGES } from "@/lib/constants/images";
+import { useUserStore } from "@/lib/store/userStore";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import UserModal from "@/components/administration/UserModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
 import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
 import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import LicenseeTable from "@/components/administration/LicenseeTable";
-import { handleSectionChange, administrationUtils } from "@/lib/helpers/administrationPage";
+import {
+  handleSectionChange,
+  administrationUtils,
+} from "@/lib/helpers/administrationPage";
 import LicenseeCard from "@/components/administration/LicenseeCard";
 import AddLicenseeModal from "@/components/administration/AddLicenseeModal";
 import EditLicenseeModal from "@/components/administration/EditLicenseeModal";
 import DeleteLicenseeModal from "@/components/administration/DeleteLicenseeModal";
-import {
-  fetchLicensees,
-} from "@/lib/helpers/clientLicensees";
+import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 import LicenseeSearchBar from "@/components/administration/LicenseeSearchBar";
 import ActivityLogsTable from "@/components/administration/ActivityLogsTable";
@@ -62,6 +64,7 @@ function AdministrationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { user } = useUserStore();
   // Prevent hydration mismatch by rendering content only on client
   const [__mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -69,8 +72,7 @@ function AdministrationPageContent() {
   }, []);
 
   // Create activity loggers
-  const userLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-  const licenseeLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+  // Activity logging removed - handled via API calls
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -198,20 +200,33 @@ function AdministrationPageContent() {
   }, [selectedLicencee]);
 
   const processedUsers = useMemo(() => {
-    return administrationUtils.processUsers(allUsers, searchValue, searchMode, sortConfig);
+    return administrationUtils.processUsers(
+      allUsers,
+      searchValue,
+      searchMode,
+      sortConfig
+    );
   }, [allUsers, searchValue, searchMode, sortConfig]);
 
   const { paginatedItems: paginatedUsers, totalPages } = useMemo(() => {
-    return administrationUtils.paginate(processedUsers, currentPage, itemsPerPage);
+    return administrationUtils.paginate(
+      processedUsers,
+      currentPage,
+      itemsPerPage
+    );
   }, [processedUsers, currentPage, itemsPerPage]);
 
-  const requestSort = administrationUtils.createSortHandler(sortConfig, setSortConfig, setCurrentPage);
+  const requestSort = administrationUtils.createSortHandler(
+    sortConfig,
+    setSortConfig,
+    setCurrentPage
+  );
 
   const handleEditUser = async (user: User) => {
     // Set loading state and open modal first
     setIsUserModalOpen(true);
     setSelectedUser(null); // Set to null initially to trigger loading state
-    
+
     try {
       // Fetch detailed user information
       const response = await axios.get(`/api/users/${user._id}`);
@@ -247,13 +262,26 @@ function AdministrationPageContent() {
       await updateUser(newData);
 
       // Log the update activity
-      await userLogger(
-        "update",
-        "user",
-        { id: selectedUser._id, name: selectedUser.username },
-        [], // changes array can be empty or calculated if needed
-        `Updated user profile and permissions for ${selectedUser.username}`
-      );
+      try {
+        await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "update",
+            resource: "user",
+            resourceId: selectedUser._id,
+            resourceName: selectedUser.username,
+            details: `Updated user profile and permissions for ${selectedUser.username}`,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to log activity:", error);
+      }
 
       setIsUserModalOpen(false);
       setSelectedUser(null);
@@ -266,7 +294,6 @@ function AdministrationPageContent() {
       toast.error("Failed to update user");
     }
   };
-
 
   // Add User modal handlers
   const openAddUserModal = () => {
@@ -327,13 +354,28 @@ function AdministrationPageContent() {
       const createdUser = await createUser(payload);
 
       // Log the creation activity
-      await userLogger(
-        "create",
-        "user",
-        { id: createdUser._id || username, name: username },
-        [],
-        `Created new user: ${username} with roles: ${roles.join(", ")}`
-      );
+      try {
+        await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "create",
+            resource: "user",
+            resourceId: createdUser._id || username,
+            resourceName: username,
+            details: `Created new user: ${username} with roles: ${roles.join(
+              ", "
+            )}`,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to log activity:", error);
+      }
 
       setIsAddUserModalOpen(false);
       // Refresh users
@@ -403,13 +445,26 @@ function AdministrationPageContent() {
 
       // Log the creation activity
       if (result.licensee) {
-        await licenseeLogger(
-          "create",
-          "licensee",
-          { id: result.licensee._id, name: result.licensee.name },
-          [],
-          `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`
-        );
+        try {
+          await fetch("/api/activity-logs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "create",
+              resource: "licensee",
+              resourceId: result.licensee._id,
+              resourceName: result.licensee.name,
+              details: `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`,
+              userId: user?._id || "unknown",
+              username: user?.emailAddress || "unknown",
+              userRole: user?.roles?.[0] || "user",
+            }),
+          });
+        } catch (error) {
+          console.error("Failed to log activity:", error);
+        }
       }
 
       // Show success modal with license key
@@ -485,13 +540,26 @@ function AdministrationPageContent() {
       }
 
       // Log the update activity
-      await licenseeLogger(
-        "update",
-        "licensee",
-        { id: selectedLicensee._id, name: selectedLicensee.name },
-        [],
-        `Updated licensee: ${selectedLicensee.name} - Modified details and settings`
-      );
+      try {
+        await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "update",
+            resource: "licensee",
+            resourceId: selectedLicensee._id,
+            resourceName: selectedLicensee.name,
+            details: `Updated licensee: ${selectedLicensee.name} - Modified details and settings`,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to log activity:", error);
+      }
 
       setIsEditLicenseeModalOpen(false);
       setSelectedLicensee(null);
@@ -537,13 +605,26 @@ function AdministrationPageContent() {
       }
 
       // Log the deletion activity
-      await licenseeLogger(
-        "delete",
-        "licensee",
-        { id: selectedLicensee._id, name: selectedLicensee.name },
-        [],
-        `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`
-      );
+      try {
+        await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "delete",
+            resource: "licensee",
+            resourceId: selectedLicensee._id,
+            resourceName: selectedLicensee.name,
+            details: `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to log activity:", error);
+      }
 
       setIsDeleteLicenseeModalOpen(false);
       setSelectedLicensee(null);
@@ -628,17 +709,30 @@ function AdministrationPageContent() {
       await axios.put("/api/licensees", updateData);
 
       // Log the payment status change activity
-      await licenseeLogger(
-        "update",
-        "licensee",
-        { id: selectedLicenseeForPaymentChange._id, name: selectedLicenseeForPaymentChange.name },
-        [],
-        `Changed payment status for ${
-          selectedLicenseeForPaymentChange.name
-        } from ${currentIsPaid ? "Paid" : "Unpaid"} to ${
-          newIsPaid ? "Paid" : "Unpaid"
-        }`
-      );
+      try {
+        await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "update",
+            resource: "licensee",
+            resourceId: selectedLicenseeForPaymentChange._id,
+            resourceName: selectedLicenseeForPaymentChange.name,
+            details: `Changed payment status for ${
+              selectedLicenseeForPaymentChange.name
+            } from ${currentIsPaid ? "Paid" : "Unpaid"} to ${
+              newIsPaid ? "Paid" : "Unpaid"
+            }`,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to log activity:", error);
+      }
 
       // Refresh licensees list
       setIsLicenseesLoading(true);
@@ -875,15 +969,28 @@ function AdministrationPageContent() {
               });
 
               // Log the deletion activity
-              await userLogger(
-                "delete",
-                "user",
-                { id: selectedUserToDelete._id, name: selectedUserToDelete.username },
-                [],
-                `Deleted user: ${selectedUserToDelete.username} with roles: ${
-                  userData.roles?.join(", ") || "N/A"
-                }`
-              );
+              try {
+                await fetch("/api/activity-logs", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    action: "delete",
+                    resource: "user",
+                    resourceId: selectedUserToDelete._id,
+                    resourceName: selectedUserToDelete.username,
+                    details: `Deleted user: ${
+                      selectedUserToDelete.username
+                    } with roles: ${userData.roles?.join(", ") || "N/A"}`,
+                    userId: user?._id || "unknown",
+                    username: user?.emailAddress || "unknown",
+                    userRole: user?.roles?.[0] || "user",
+                  }),
+                });
+              } catch (error) {
+                console.error("Failed to log activity:", error);
+              }
 
               // Refresh users
               const usersData = await fetchUsers();
@@ -937,52 +1044,52 @@ function AdministrationPageContent() {
             height={32}
           />
         </div>
-            {activeSection === "users" ? (
-              <Button
-                onClick={openAddUserModal}
-                className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
-              >
-                <Image
-                  src="/plusButtonWhite.svg"
-                  width={16}
-                  height={16}
-                  alt="Add"
-                />
-                <span>Add User</span>
-              </Button>
-            ) : activeSection === "licensees" ? (
-              <Button
-                onClick={handleOpenAddLicensee}
-                className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
-              >
-                <Image
-                  src="/plusButtonWhite.svg"
-                  width={16}
-                  height={16}
-                  alt="Add"
-                />
-                <span>Add Licensee</span>
-              </Button>
-            ) : null}
-          </div>
-
-          {/* Section Navigation */}
-          <div className="mt-8 mb-6">
-            <AdministrationNavigation
-              tabs={ADMINISTRATION_TABS_CONFIG}
-              activeSection={activeSection}
-              onChange={handleSectionChangeLocal}
-              isLoading={isLoading || isLicenseesLoading}
-            />
-          </div>
-
-          {/* Section Content with smooth transitions */}
-          <div
-            data-section-content
-            className="transition-all duration-300 ease-in-out"
+        {activeSection === "users" ? (
+          <Button
+            onClick={openAddUserModal}
+            className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
           >
-            {renderSectionContent()}
-          </div>
+            <Image
+              src="/plusButtonWhite.svg"
+              width={16}
+              height={16}
+              alt="Add"
+            />
+            <span>Add User</span>
+          </Button>
+        ) : activeSection === "licensees" ? (
+          <Button
+            onClick={handleOpenAddLicensee}
+            className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
+          >
+            <Image
+              src="/plusButtonWhite.svg"
+              width={16}
+              height={16}
+              alt="Add"
+            />
+            <span>Add Licensee</span>
+          </Button>
+        ) : null}
+      </div>
+
+      {/* Section Navigation */}
+      <div className="mt-8 mb-6">
+        <AdministrationNavigation
+          tabs={ADMINISTRATION_TABS_CONFIG}
+          activeSection={activeSection}
+          onChange={handleSectionChangeLocal}
+          isLoading={isLoading || isLicenseesLoading}
+        />
+      </div>
+
+      {/* Section Content with smooth transitions */}
+      <div
+        data-section-content
+        className="transition-all duration-300 ease-in-out"
+      >
+        {renderSectionContent()}
+      </div>
     </PageLayout>
   );
 }

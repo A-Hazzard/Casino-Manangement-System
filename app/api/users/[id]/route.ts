@@ -6,6 +6,16 @@ export async function GET(request: NextRequest) {
   await connectDB();
   try {
     const id = request.nextUrl.pathname.split("/").pop();
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // console.log("Looking for user with ID:", id);
+
     let user = await UserModel.findById(id).select("-password");
     if (!user) {
       // Fallback: if ID stored as ObjectId, try converting
@@ -13,12 +23,14 @@ export async function GET(request: NextRequest) {
         const { Types } = await import("mongoose");
         const asObjectId = new Types.ObjectId(id);
         user = await UserModel.findById(asObjectId).select("-password");
-      } catch {
-        // ignore invalid cast
+        // console.log("Tried ObjectId conversion, found user:", !!user);
+      } catch (conversionError) {
+        console.warn("Failed to convert ID to ObjectId:", conversionError);
       }
     }
 
     if (!user) {
+      // console.log("User not found in database for ID:", id);
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
@@ -53,14 +65,14 @@ export async function PUT(request: NextRequest) {
   await connectDB();
   try {
     const id = request.nextUrl.pathname.split("/").pop();
-    
+
     if (!id) {
       return NextResponse.json(
         { success: false, message: "User ID is required" },
         { status: 400 }
       );
     }
-    
+
     const body = await request.json();
     const { profile, password, profilePicture } = body;
 
@@ -124,10 +136,11 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error updating user:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to update user";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update user";
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
     );
   }
-} 
+}

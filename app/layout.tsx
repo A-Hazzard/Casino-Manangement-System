@@ -3,6 +3,7 @@ import "./globals.css";
 import { Montserrat } from "next/font/google";
 import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import GlobalSidebarWrapper from "@/components/layout/GlobalSidebarWrapper";
 
 export const metadata: Metadata = {
@@ -66,11 +67,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        <SidebarProvider>
-          <GlobalSidebarWrapper />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
-        <Toaster position="top-right" />
+        <ErrorBoundary>
+          <SidebarProvider>
+            <GlobalSidebarWrapper />
+            <SidebarInset>{children}</SidebarInset>
+          </SidebarProvider>
+          <Toaster position="top-right" />
+        </ErrorBoundary>
       </body>
     </html>
   );

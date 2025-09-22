@@ -3,7 +3,7 @@ import { NewCabinetFormData, CabinetFormData } from "../types/cabinets";
 
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging removed - handled via API calls
 
 import type { CabinetDetails, CabinetMetrics } from "@/lib/types/cabinets";
 
@@ -139,7 +139,7 @@ export const createCabinet = async (
   data: NewCabinetFormData | CabinetFormData
 ) => {
   try {
-    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+    // Activity logging removed - handled via API calls
 
     let apiData;
     let endpoint = "/api/machines";
@@ -164,28 +164,7 @@ export const createCabinet = async (
     const response = await axios.post(endpoint, apiData);
 
     if (response.data && response.data.success) {
-      // Log the cabinet creation activity
-      const cabinetId = response.data.data._id || "unknown";
-      const cabinetName =
-        "serialNumber" in apiData
-          ? apiData.serialNumber
-          : "assetNumber" in apiData
-          ? apiData.assetNumber
-          : "Unknown";
-      const gameName =
-        "game" in apiData
-          ? apiData.game
-          : "installedGame" in apiData
-          ? apiData.installedGame
-          : "Unknown";
-
-      await cabinetLogger(
-        "create",
-        "cabinet",
-        { id: cabinetId, name: `${gameName} - ${cabinetName}` },
-        [],
-        `Created new cabinet: ${gameName} (${cabinetName})`
-      );
+      // Activity logging removed - handled via API calls
 
       return response.data.data;
     }
@@ -209,7 +188,12 @@ export const updateCabinet = async (
   timePeriod?: string
 ) => {
   try {
-    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+    // console.log(
+    //   "updateCabinet called with data:",
+    //   JSON.stringify(data, null, 2)
+    // );
+    // console.log("gameType in data:", data.gameType);
+    // Activity logging removed - handled via API calls
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${data.id}`;
@@ -231,22 +215,21 @@ export const updateCabinet = async (
     }
 
     const locationId = cabinet.gamingLocation;
+    // console.log(
+    //   "Sending PUT request to:",
+    //   `/api/locations/${locationId}/cabinets/${data.id}`
+    // );
+    // console.log("Request payload:", JSON.stringify(data, null, 2));
+
     const response = await axios.put(
       `/api/locations/${locationId}/cabinets/${data.id}`,
       data
     );
 
+    // console.log("API response:", response.data);
+
     if (response.data && response.data.success) {
-      // Log the cabinet update activity
-      await cabinetLogger(
-        "update",
-        "cabinet",
-        { id: data.id, name: `${data.installedGame || "Unknown"} - ${data.assetNumber || "Unknown"}` },
-        [],
-        `Updated cabinet: ${data.installedGame || "Unknown"} (${
-          data.assetNumber || "Unknown"
-        })`
-      );
+      // Activity logging removed - handled via API calls
 
       return response.data.data;
     }
@@ -267,7 +250,7 @@ export const updateCabinet = async (
  */
 export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
   try {
-    const cabinetLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
+    // Activity logging removed - handled via API calls
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${cabinetId}`;
@@ -294,14 +277,7 @@ export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
     );
 
     if (response.data && response.data.success) {
-      // Log the cabinet deletion activity
-      await cabinetLogger(
-        "delete",
-        "cabinet",
-        { id: cabinetId, name: "Cabinet" },
-        [],
-        `Deleted cabinet with ID: ${cabinetId}`
-      );
+      // Activity logging removed - handled via API calls
 
       return true;
     }

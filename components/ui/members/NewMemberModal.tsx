@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
+import { useUserStore } from "@/lib/store/userStore";
 
 type NewMemberModalProps = {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function NewMemberModal({
   onClose,
   onMemberCreated,
 }: NewMemberModalProps) {
+  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -32,10 +34,10 @@ export default function NewMemberModal({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -43,17 +45,17 @@ export default function NewMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -234,7 +236,10 @@ export default function NewMemberModal({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="firstName"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       First Name *
                     </Label>
                     <Input
@@ -248,7 +253,10 @@ export default function NewMemberModal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="lastName"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Last Name *
                     </Label>
                     <Input
@@ -263,7 +271,10 @@ export default function NewMemberModal({
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">
-                  <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  <Label
+                    htmlFor="username"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Username *
                   </Label>
                   <Input
@@ -286,7 +297,10 @@ export default function NewMemberModal({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="email"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Email Address
                     </Label>
                     <Input
@@ -300,7 +314,10 @@ export default function NewMemberModal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="phoneNumber"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Phone Number
                     </Label>
                     <Input
@@ -314,7 +331,10 @@ export default function NewMemberModal({
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">
-                  <Label htmlFor="address" className="text-sm font-medium text-gray-700">
+                  <Label
+                    htmlFor="address"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Address
                   </Label>
                   <Input
@@ -327,7 +347,10 @@ export default function NewMemberModal({
                   />
                 </div>
                 <div className="mt-4 space-y-2">
-                  <Label htmlFor="occupation" className="text-sm font-medium text-gray-700">
+                  <Label
+                    htmlFor="occupation"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Occupation
                   </Label>
                   <Input
@@ -349,7 +372,10 @@ export default function NewMemberModal({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="points" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="points"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Points
                     </Label>
                     <Input
@@ -363,7 +389,10 @@ export default function NewMemberModal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="uaccount" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="uaccount"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Account Balance
                     </Label>
                     <Input

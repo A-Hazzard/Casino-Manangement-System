@@ -28,6 +28,7 @@ import type {
   CreateCollectionReportPayload,
 } from "@/lib/types/api";
 import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
+import { useUserStore } from "@/lib/store/userStore";
 import {
   createCollectionReport,
   calculateSasMetrics,
@@ -35,7 +36,6 @@ import {
 import { updateCollection } from "@/lib/helpers/collections";
 import { calculateMovement } from "@/lib/utils/movementCalculation";
 import { validateMachineEntry } from "@/lib/helpers/collectionReportModal";
-import { useUserStore } from "@/lib/store/userStore";
 import { v4 as uuidv4 } from "uuid";
 import { updateMachineCollectionHistory } from "@/lib/helpers/cabinets";
 import { NewCollectionModalSkeleton } from "@/components/ui/skeletons/NewCollectionModalSkeleton";
@@ -44,38 +44,6 @@ import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
 // Activity logging will be handled via API calls
-const logActivity = async (
-  action: string,
-  resource: string,
-  resourceId: string,
-  resourceName: string,
-  details: string
-) => {
-  try {
-    const response = await fetch('/api/activity-logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action,
-        resource,
-        resourceId,
-        resourceName,
-        details,
-        userId: 'current-user', // This should be replaced with actual user ID
-        username: 'current-user', // This should be replaced with actual username
-        userRole: 'user', // This should be replaced with actual user role
-      }),
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to log activity:', response.statusText);
-    }
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
-};
 import {
   Tooltip,
   TooltipContent,
@@ -127,7 +95,44 @@ export default function NewCollectionModal({
   const hasResetRef = useRef(false);
   const user = useUserStore((state) => state.user);
   const userId = user?._id;
-  // Activity logging is now handled via API calls
+
+  // Activity logging function
+  const logActivity = useCallback(
+    async (
+      action: string,
+      resource: string,
+      resourceId: string,
+      resourceName: string,
+      details: string
+    ) => {
+      try {
+        const response = await fetch("/api/activity-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action,
+            resource,
+            resourceId,
+            resourceName,
+            details,
+            userId: user?._id || "unknown",
+            username: user?.emailAddress || "unknown",
+            userRole: user?.roles?.[0] || "user",
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to log activity:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error logging activity:", error);
+      }
+    },
+    [user]
+  );
+
   const [hasChanges, setHasChanges] = useState(false);
 
   // Custom close handler that checks for changes
@@ -143,6 +148,7 @@ export default function NewCollectionModal({
       setSelectedLocationName("");
       setSelectedMachineId(undefined);
       setLockedLocationId(undefined);
+      setMachineSearchTerm("");
       setHasChanges(false);
     }
 
@@ -182,6 +188,29 @@ export default function NewCollectionModal({
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
+  const [machineSearchTerm, setMachineSearchTerm] = useState("");
+  const [lockedLocationId, setLockedLocationId] = useState<string | undefined>(
+    undefined
+  );
+
+  // Filter machines based on search term when location is locked
+  const filteredMachines = useMemo(() => {
+    if (!lockedLocationId || !machineSearchTerm.trim()) {
+      return machinesOfSelectedLocation;
+    }
+
+    return machinesOfSelectedLocation.filter(
+      (machine) =>
+        (machine.name &&
+          machine.name
+            .toLowerCase()
+            .includes(machineSearchTerm.toLowerCase())) ||
+        (machine.serialNumber &&
+          machine.serialNumber
+            .toLowerCase()
+            .includes(machineSearchTerm.toLowerCase()))
+    );
+  }, [machinesOfSelectedLocation, machineSearchTerm, lockedLocationId]);
 
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
@@ -237,8 +266,8 @@ export default function NewCollectionModal({
   });
 
   // Base value typed by the user before entering collected amount
-  const [baseBalanceCorrection, setBaseBalanceCorrection] = useState<string>("");
-
+  const [baseBalanceCorrection, setBaseBalanceCorrection] =
+    useState<string>("");
 
   const [prevIn, setPrevIn] = useState<number | null>(null);
   const [prevOut, setPrevOut] = useState<number | null>(null);
@@ -247,9 +276,6 @@ export default function NewCollectionModal({
   >(undefined);
   const [isLoadingExistingCollections, setIsLoadingExistingCollections] =
     useState(false);
-  const [lockedLocationId, setLockedLocationId] = useState<string | undefined>(
-    undefined
-  );
 
   const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
@@ -304,7 +330,7 @@ export default function NewCollectionModal({
     const taxes = Number(financials.taxes) || 0;
     const variance = Number(financials.variance) || 0;
     const advance = Number(financials.advance) || 0;
-    
+
     // Use the location's previous balance, not the calculated one
     const locationPreviousBalance = selectedLocation?.collectionBalance || 0;
 
@@ -313,11 +339,16 @@ export default function NewCollectionModal({
 
     // Calculate partner profit: (gross - variance - advance) * profitShare / 100 - taxes
     const partnerProfit =
-      ((reportTotalData.gross - variance - advance) * profitShare) / 100 - taxes;
+      ((reportTotalData.gross - variance - advance) * profitShare) / 100 -
+      taxes;
 
     // Calculate amount to collect: gross - variance - advance - partnerProfit + locationPreviousBalance
     const amountToCollect =
-      reportTotalData.gross - variance - advance - partnerProfit + locationPreviousBalance;
+      reportTotalData.gross -
+      variance -
+      advance -
+      partnerProfit +
+      locationPreviousBalance;
 
     setFinancials((prev) => ({
       ...prev,
@@ -347,29 +378,33 @@ export default function NewCollectionModal({
       selectedMachineId,
       machinesCount: machinesOfSelectedLocation.length,
       found: !!found,
-      machineIds: machinesOfSelectedLocation.map(m => m._id),
-      foundMachine: found ? {
-        _id: found._id,
-        name: found.name,
-        serialNumber: found.serialNumber,
-        collectionMeters: found.collectionMeters
-      } : null,
+      machineIds: machinesOfSelectedLocation.map((m) => m._id),
+      foundMachine: found
+        ? {
+            _id: found._id,
+            name: found.name,
+            serialNumber: found.serialNumber,
+            collectionMeters: found.collectionMeters,
+          }
+        : null,
       // Debug: show all machines for comparison
-      allMachines: machinesOfSelectedLocation.map(m => ({
+      allMachines: machinesOfSelectedLocation.map((m) => ({
         _id: m._id,
         name: m.name,
-        serialNumber: m.serialNumber
-      }))
+        serialNumber: m.serialNumber,
+      })),
     });
-    
+
     if (!found && selectedMachineId && machinesOfSelectedLocation.length > 0) {
       console.error("❌ Machine not found! This might be the issue:", {
         selectedMachineId,
-        availableIds: machinesOfSelectedLocation.map(m => String(m._id)),
-        availableSerialNumbers: machinesOfSelectedLocation.map(m => m.serialNumber)
+        availableIds: machinesOfSelectedLocation.map((m) => String(m._id)),
+        availableSerialNumbers: machinesOfSelectedLocation.map(
+          (m) => m.serialNumber
+        ),
       });
     }
-    
+
     return found;
   }, [machinesOfSelectedLocation, selectedMachineId]);
 
@@ -378,30 +413,72 @@ export default function NewCollectionModal({
     return !!machineForDataEntry || !!selectedMachineId;
   }, [machineForDataEntry, selectedMachineId]);
 
+  // Validation for "Add Machine" button - check if required fields are filled
+  const isAddMachineEnabled = useMemo(() => {
+    // Must have a machine selected
+    if (!machineForDataEntry) return false;
+
+    // Must have meters in and out entered
+    if (!currentMetersIn || !currentMetersOut) return false;
+
+    // If RAM Clear is checked, must have RAM Clear meters
+    if (
+      currentRamClear &&
+      (!currentRamClearMetersIn || !currentRamClearMetersOut)
+    ) {
+      return false;
+    }
+
+    return true;
+  }, [
+    machineForDataEntry,
+    currentMetersIn,
+    currentMetersOut,
+    currentRamClear,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+  ]);
+
   // Monitor arrays for undefined values that could cause key issues
   useEffect(() => {
     console.warn("🔍 Monitoring arrays for undefined values:");
-    console.warn("🔍 machinesOfSelectedLocation:", machinesOfSelectedLocation.map((m, i) => ({
-      index: i,
-      _id: m._id,
-      name: m.name,
-      serialNumber: m.serialNumber,
-      hasUndefinedId: m._id === undefined,
-      hasId: !!m._id
-    })));
-    console.warn("🔍 collectedMachineEntries:", collectedMachineEntries.map((e, i) => ({
-      index: i,
-      _id: e._id,
-      hasUndefinedId: e._id === undefined,
-      machineId: e.machineId
-    })));
+    console.warn(
+      "🔍 machinesOfSelectedLocation:",
+      machinesOfSelectedLocation.map((m, i) => ({
+        index: i,
+        _id: m._id,
+        name: m.name,
+        serialNumber: m.serialNumber,
+        hasUndefinedId: m._id === undefined,
+        hasId: !!m._id,
+      }))
+    );
+    console.warn(
+      "🔍 collectedMachineEntries:",
+      collectedMachineEntries.map((e, i) => ({
+        index: i,
+        _id: e._id,
+        hasUndefinedId: e._id === undefined,
+        machineId: e.machineId,
+      }))
+    );
     console.warn("🔍 selectedMachineId:", selectedMachineId);
-    console.warn("🔍 machineForDataEntry:", machineForDataEntry ? {
-      _id: machineForDataEntry._id,
-      name: machineForDataEntry.name,
-      serialNumber: machineForDataEntry.serialNumber
-    } : null);
-  }, [machinesOfSelectedLocation, collectedMachineEntries, selectedMachineId, machineForDataEntry]);
+    console.warn(
+      "🔍 machineForDataEntry:",
+      machineForDataEntry
+        ? {
+            _id: machineForDataEntry._id,
+            name: machineForDataEntry.name,
+            serialNumber: machineForDataEntry.serialNumber,
+          }
+        : null
+    );
+  }, [
+    machinesOfSelectedLocation,
+    collectedMachineEntries,
+    selectedMachineId,
+    machineForDataEntry,
+  ]);
 
   // Function to handle clicks on disabled input fields
   const handleDisabledFieldClick = useCallback(() => {
@@ -445,7 +522,6 @@ export default function NewCollectionModal({
         "Please enter last meters before Ram clear (or rollover)"
       );
     }
-
   }, [
     selectedMachineId,
     machineForDataEntry,
@@ -628,21 +704,18 @@ export default function NewCollectionModal({
       // Always fetch fresh data when modal opens, regardless of current state
       fetchExistingCollections(selectedLocationId);
     }
-  }, [
-    show,
-    selectedLocationId,
-    fetchExistingCollections,
-    locations.length,
-  ]);
+  }, [show, selectedLocationId, fetchExistingCollections, locations.length]);
 
   // Always fetch fresh data when modal opens to ensure latest values
   useEffect(() => {
     if (show) {
       console.warn("🔄 Modal opened - ensuring fresh data is available");
-      
+
       // Trigger a refresh of the parent component's data if onRefresh is available
       if (onRefresh) {
-        console.warn("🔄 Triggering parent data refresh to ensure fresh locations and machines data");
+        console.warn(
+          "🔄 Triggering parent data refresh to ensure fresh locations and machines data"
+        );
         onRefresh();
       }
     }
@@ -671,16 +744,28 @@ export default function NewCollectionModal({
       // Always fetch fresh machine data from API to ensure latest meter values
       const fetchMachinesForLocation = async () => {
         try {
-          console.warn("🔄 ALWAYS fetching fresh machines for location from API:", locationIdToUse);
+          console.warn(
+            "🔄 ALWAYS fetching fresh machines for location from API:",
+            locationIdToUse
+          );
           // Add cache-busting parameter to ensure fresh machine data
-          const response = await axios.get(`/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`);
+          const response = await axios.get(
+            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
+          );
           if (response.data?.success && response.data?.data) {
-            console.warn("🔄 Fresh machines fetched from API:", response.data.data.length, "machines");
-            console.warn("🔄 Machine meter data:", response.data.data.map((m: CollectionReportMachineSummary) => ({
-              name: m.name,
-              serialNumber: m.serialNumber,
-              collectionMeters: m.collectionMeters
-            })));
+            console.warn(
+              "🔄 Fresh machines fetched from API:",
+              response.data.data.length,
+              "machines"
+            );
+            console.warn(
+              "🔄 Machine meter data:",
+              response.data.data.map((m: CollectionReportMachineSummary) => ({
+                name: m.name,
+                serialNumber: m.serialNumber,
+                collectionMeters: m.collectionMeters,
+              }))
+            );
             setMachinesOfSelectedLocation(response.data.data);
           } else {
             console.warn("🔄 No machines found in API response");
@@ -691,13 +776,14 @@ export default function NewCollectionModal({
           setMachinesOfSelectedLocation([]);
         }
       };
-      
+
       fetchMachinesForLocation();
       setSelectedMachineId(undefined);
     } else {
       console.warn("No location ID to use");
       setMachinesOfSelectedLocation([]);
       setSelectedMachineId(undefined);
+      setMachineSearchTerm("");
     }
   }, [selectedLocationId, lockedLocationId]);
 
@@ -705,16 +791,21 @@ export default function NewCollectionModal({
   // This is now handled by the main location loading useEffect to avoid duplicate API calls
 
   useEffect(() => {
-    console.warn("🔍 useEffect for selectedMachineId and machineForDataEntry:", {
-      selectedMachineId,
-      machineForDataEntry: machineForDataEntry ? {
-        _id: machineForDataEntry._id,
-        name: machineForDataEntry.name,
-        serialNumber: machineForDataEntry.serialNumber,
-        collectionMeters: machineForDataEntry.collectionMeters
-      } : null
-    });
-    
+    console.warn(
+      "🔍 useEffect for selectedMachineId and machineForDataEntry:",
+      {
+        selectedMachineId,
+        machineForDataEntry: machineForDataEntry
+          ? {
+              _id: machineForDataEntry._id,
+              name: machineForDataEntry.name,
+              serialNumber: machineForDataEntry.serialNumber,
+              collectionMeters: machineForDataEntry.collectionMeters,
+            }
+          : null,
+      }
+    );
+
     if (selectedMachineId && machineForDataEntry) {
       // Check if this machine is already in the collected list
       const existingEntry = collectedMachineEntries.find(
@@ -729,7 +820,7 @@ export default function NewCollectionModal({
           metersIn: existingEntry.metersIn,
           metersOut: existingEntry.metersOut,
           prevIn: existingEntry.prevIn,
-          prevOut: existingEntry.prevOut
+          prevOut: existingEntry.prevOut,
         });
         setCurrentMetersIn(existingEntry.metersIn?.toString() || "");
         setCurrentMetersOut(existingEntry.metersOut?.toString() || "");
@@ -747,7 +838,7 @@ export default function NewCollectionModal({
         console.warn("🔍 Using machine data for new entry:", {
           collectionMeters: machineForDataEntry.collectionMeters,
           metersIn: machineForDataEntry.collectionMeters?.metersIn,
-          metersOut: machineForDataEntry.collectionMeters?.metersOut
+          metersOut: machineForDataEntry.collectionMeters?.metersOut,
         });
         if (machineForDataEntry.collectionMeters) {
           const metersIn = machineForDataEntry.collectionMeters.metersIn || 0;
@@ -756,12 +847,14 @@ export default function NewCollectionModal({
             metersIn,
             metersOut,
             originalMetersIn: machineForDataEntry.collectionMeters.metersIn,
-            originalMetersOut: machineForDataEntry.collectionMeters.metersOut
+            originalMetersOut: machineForDataEntry.collectionMeters.metersOut,
           });
           setPrevIn(metersIn);
           setPrevOut(metersOut);
         } else {
-          console.warn("🔍 No collectionMeters found, setting prevIn/prevOut to 0");
+          console.warn(
+            "🔍 No collectionMeters found, setting prevIn/prevOut to 0"
+          );
           setPrevIn(0);
           setPrevOut(0);
         }
@@ -789,32 +882,48 @@ export default function NewCollectionModal({
       console.warn("🔍 useEffect triggered with:", {
         selectedMachineId,
         machinesCount: machinesOfSelectedLocation.length,
-        machineForDataEntry: machineForDataEntry ? {
-          _id: machineForDataEntry._id,
-          collectionMeters: machineForDataEntry.collectionMeters
-        } : null,
-        shouldClear: selectedMachineId === undefined && machinesOfSelectedLocation.length > 0
+        machineForDataEntry: machineForDataEntry
+          ? {
+              _id: machineForDataEntry._id,
+              collectionMeters: machineForDataEntry.collectionMeters,
+            }
+          : null,
+        shouldClear:
+          selectedMachineId === undefined &&
+          machinesOfSelectedLocation.length > 0,
       });
-      
+
       // Only clear if no machine is selected AND machines are available
       // Don't clear if a machine is selected, even if machineForDataEntry is not found yet
-      if (selectedMachineId === undefined && machinesOfSelectedLocation.length > 0) {
-        console.warn("🔄 Clearing prevIn/prevOut because no machine is selected but machines are available");
+      if (
+        selectedMachineId === undefined &&
+        machinesOfSelectedLocation.length > 0
+      ) {
+        console.warn(
+          "🔄 Clearing prevIn/prevOut because no machine is selected but machines are available"
+        );
         setPrevIn(null);
         setPrevOut(null);
       } else if (selectedMachineId && machineForDataEntry) {
-        console.warn("🔍 Machine is selected and found, should NOT clear prevIn/prevOut");
+        console.warn(
+          "🔍 Machine is selected and found, should NOT clear prevIn/prevOut"
+        );
       } else if (selectedMachineId && !machineForDataEntry) {
-        console.warn("⚠️ Machine is selected but not found in machinesOfSelectedLocation - this might be the issue!");
+        console.warn(
+          "⚠️ Machine is selected but not found in machinesOfSelectedLocation - this might be the issue!"
+        );
         // Try to find the machine manually and set prevIn/prevOut
         const manualFound = machinesOfSelectedLocation.find(
           (m) => String(m._id) === selectedMachineId
         );
         if (manualFound && manualFound.collectionMeters) {
-          console.warn("🔧 Manually setting prevIn/prevOut from found machine:", {
-            metersIn: manualFound.collectionMeters.metersIn,
-            metersOut: manualFound.collectionMeters.metersOut
-          });
+          console.warn(
+            "🔧 Manually setting prevIn/prevOut from found machine:",
+            {
+              metersIn: manualFound.collectionMeters.metersIn,
+              metersOut: manualFound.collectionMeters.metersOut,
+            }
+          );
           setPrevIn(manualFound.collectionMeters.metersIn || 0);
           setPrevOut(manualFound.collectionMeters.metersOut || 0);
         }
@@ -856,10 +965,11 @@ export default function NewCollectionModal({
       setIsLoadingExistingCollections(false);
       setHasChanges(false);
       setLockedLocationId(undefined);
+      setMachineSearchTerm("");
 
       // Reset all form fields
       resetMachineSpecificInputFields();
-      
+
       // Reset financials to default values
       setFinancials({
         taxes: "0",
@@ -977,7 +1087,7 @@ export default function NewCollectionModal({
       let sasStartTime: Date;
       if (machineForDataEntry?.collectionTime) {
         const parsedTime = new Date(machineForDataEntry.collectionTime);
-        sasStartTime = isNaN(parsedTime.getTime()) 
+        sasStartTime = isNaN(parsedTime.getTime())
           ? new Date(Date.now() - 24 * 60 * 60 * 1000) // Fallback to 24 hours ago
           : parsedTime;
       } else {
@@ -987,7 +1097,7 @@ export default function NewCollectionModal({
       console.warn("🔄 SAS time calculation:", {
         collectionTime: machineForDataEntry?.collectionTime,
         sasStartTime: sasStartTime.toISOString(),
-        isValid: !isNaN(sasStartTime.getTime())
+        isValid: !isNaN(sasStartTime.getTime()),
       });
 
       let sasMetrics;
@@ -997,16 +1107,17 @@ export default function NewCollectionModal({
           machineForDataEntry?.name ||
           selectedMachineId;
         // Ensure currentCollectionTime is valid
-        const validEndTime = currentCollectionTime && !isNaN(currentCollectionTime.getTime()) 
-          ? currentCollectionTime 
-          : new Date();
+        const validEndTime =
+          currentCollectionTime && !isNaN(currentCollectionTime.getTime())
+            ? currentCollectionTime
+            : new Date();
 
         console.warn("🔄 SAS metrics calculation:", {
           machineIdentifier,
           sasStartTime: sasStartTime.toISOString(),
           sasEndTime: validEndTime.toISOString(),
           startTimeValid: !isNaN(sasStartTime.getTime()),
-          endTimeValid: !isNaN(validEndTime.getTime())
+          endTimeValid: !isNaN(validEndTime.getTime()),
         });
 
         sasMetrics = await calculateSasMetrics(
@@ -1099,8 +1210,12 @@ export default function NewCollectionModal({
           "create",
           "collection",
           createdCollection._id,
-          `${machineForDataEntry?.name || selectedMachineId} at ${selectedLocationName}`,
-          `Added machine ${machineForDataEntry?.name || selectedMachineId} to collection list`
+          `${
+            machineForDataEntry?.name || selectedMachineId
+          } at ${selectedLocationName}`,
+          `Added machine ${
+            machineForDataEntry?.name || selectedMachineId
+          } to collection list`
         );
       }
     } catch (error) {
@@ -1129,13 +1244,17 @@ export default function NewCollectionModal({
     userId,
     resetMachineSpecificInputFields,
     getCollectorName,
+    logActivity,
   ]);
 
   // Main handler that checks for rollover conditions and calls the actual addition logic
   const handleAddEntry = useCallback(async () => {
     console.warn("🔄 handleAddEntry called, isProcessing:", isProcessing);
     console.warn("🔄 handleAddEntry - inputsEnabled:", inputsEnabled);
-    console.warn("🔄 handleAddEntry - machineForDataEntry:", machineForDataEntry);
+    console.warn(
+      "🔄 handleAddEntry - machineForDataEntry:",
+      machineForDataEntry
+    );
     if (isProcessing) return; // Prevent multiple submissions
 
     // Check for rollover conditions first
@@ -1160,15 +1279,12 @@ export default function NewCollectionModal({
     inputsEnabled,
   ]);
 
-
-
-
   const handleDeleteCollectedEntry = useCallback(
     (_id: string) => {
       if (isProcessing) return; // Prevent deletion during processing
 
-    setEntryToDelete(_id);
-    setShowDeleteConfirmation(true);
+      setEntryToDelete(_id);
+      setShowDeleteConfirmation(true);
     },
     [isProcessing]
   );
@@ -1177,32 +1293,40 @@ export default function NewCollectionModal({
     async (entryId: string) => {
       if (isProcessing) return;
 
-      const entryToEdit = collectedMachineEntries.find((e) => e._id === entryId);
+      const entryToEdit = collectedMachineEntries.find(
+        (e) => e._id === entryId
+      );
       if (entryToEdit) {
         // Set editing state
         setEditingEntryId(entryId);
-        
+
         // Set the selected machine ID
         setSelectedMachineId(entryToEdit.machineId);
-        
+
         // Populate form fields with existing data
         setCurrentMetersIn(entryToEdit.metersIn.toString());
         setCurrentMetersOut(entryToEdit.metersOut.toString());
         setCurrentMachineNotes(entryToEdit.notes || "");
         setCurrentRamClear(entryToEdit.ramClear || false);
-        setCurrentRamClearMetersIn(entryToEdit.ramClearMetersIn?.toString() || "");
-        setCurrentRamClearMetersOut(entryToEdit.ramClearMetersOut?.toString() || "");
-        
+        setCurrentRamClearMetersIn(
+          entryToEdit.ramClearMetersIn?.toString() || ""
+        );
+        setCurrentRamClearMetersOut(
+          entryToEdit.ramClearMetersOut?.toString() || ""
+        );
+
         // Set the collection time
         if (entryToEdit.timestamp) {
           setCurrentCollectionTime(new Date(entryToEdit.timestamp));
         }
-        
+
         // Set previous values for display
         setPrevIn(entryToEdit.prevIn || 0);
         setPrevOut(entryToEdit.prevOut || 0);
-        
-        toast.info("Edit mode activated. Make your changes and click 'Update Entry in List'.");
+
+        toast.info(
+          "Edit mode activated. Make your changes and click 'Update Entry in List'."
+        );
       }
     },
     [isProcessing, collectedMachineEntries]
@@ -1241,12 +1365,7 @@ export default function NewCollectionModal({
     if (machineForDataEntry) {
       handleAddEntry();
     }
-  }, [
-    isProcessing,
-    editingEntryId,
-    machineForDataEntry,
-    handleAddEntry
-  ]);
+  }, [isProcessing, editingEntryId, machineForDataEntry, handleAddEntry]);
 
   const confirmAddOrUpdateEntry = useCallback(async () => {
     if (isProcessing) return;
@@ -1281,8 +1400,12 @@ export default function NewCollectionModal({
           metersOut: Number(currentMetersOut),
           notes: currentMachineNotes,
           ramClear: currentRamClear,
-          ramClearMetersIn: currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
-          ramClearMetersOut: currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
+          ramClearMetersIn: currentRamClearMetersIn
+            ? Number(currentRamClearMetersIn)
+            : undefined,
+          ramClearMetersOut: currentRamClearMetersOut
+            ? Number(currentRamClearMetersOut)
+            : undefined,
           timestamp: currentCollectionTime,
           prevIn: prevIn || 0,
           prevOut: prevOut || 0,
@@ -1291,9 +1414,7 @@ export default function NewCollectionModal({
         // Update local state
         setCollectedMachineEntries((prev) =>
           prev.map((entry) =>
-            entry._id === editingEntryId
-              ? { ...entry, ...result }
-              : entry
+            entry._id === editingEntryId ? { ...entry, ...result } : entry
           )
         );
 
@@ -1323,7 +1444,7 @@ export default function NewCollectionModal({
     prevIn,
     prevOut,
     userId,
-    handleAddEntry
+    handleAddEntry,
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -1366,7 +1487,7 @@ export default function NewCollectionModal({
             prevIn: entryData.prevIn,
             prevOut: entryData.prevOut,
             metersIn: entryData.metersIn,
-            metersOut: entryData.metersOut
+            metersOut: entryData.metersOut,
           });
 
           await updateMachineCollectionHistory(
@@ -1383,7 +1504,9 @@ export default function NewCollectionModal({
             // Don't pass entryId, let the API delete by locationReportId
           );
 
-          console.warn("✅ Machine collection history entry deleted successfully");
+          console.warn(
+            "✅ Machine collection history entry deleted successfully"
+          );
         } catch (historyError) {
           console.error(
             "❌ Failed to delete from machine collection history:",
@@ -1420,6 +1543,7 @@ export default function NewCollectionModal({
         // Unlock location if no machines remain
         if (newEntries.length === 0) {
           setLockedLocationId(undefined);
+          setMachineSearchTerm("");
         }
         return newEntries;
       });
@@ -1428,7 +1552,9 @@ export default function NewCollectionModal({
 
       // Refresh parent data to get updated machine meter values
       if (onRefresh) {
-        console.warn("🔄 Triggering parent refresh to get updated machine data after deletion");
+        console.warn(
+          "🔄 Triggering parent refresh to get updated machine data after deletion"
+        );
         onRefresh();
       }
 
@@ -1448,6 +1574,7 @@ export default function NewCollectionModal({
     collectedMachineEntries,
     selectedLocationName,
     onRefresh,
+    logActivity,
   ]);
 
   const handleCreateMultipleReportsInternal = useCallback(async () => {
@@ -1466,15 +1593,30 @@ export default function NewCollectionModal({
 
       // Step 2: Create a single collection report with all the financial data
       const payload: CreateCollectionReportPayload = {
-        variance: Number(financials.variance) || 0,
-        previousBalance: Number(financials.previousBalance) || 0,
+        variance:
+          financials.variance && financials.variance.trim() !== ""
+            ? Number(financials.variance)
+            : 0,
+        previousBalance:
+          financials.previousBalance && financials.previousBalance.trim() !== ""
+            ? Number(financials.previousBalance)
+            : 0,
         currentBalance: 0,
         amountToCollect: Number(financials.amountToCollect) || 0,
-        amountCollected: Number(financials.collectedAmount) || 0,
+        amountCollected:
+          financials.collectedAmount && financials.collectedAmount.trim() !== ""
+            ? Number(financials.collectedAmount)
+            : 0,
         amountUncollected: 0,
         partnerProfit: 0,
-        taxes: Number(financials.taxes) || 0,
-        advance: Number(financials.advance) || 0,
+        taxes:
+          financials.taxes && financials.taxes.trim() !== ""
+            ? Number(financials.taxes)
+            : 0,
+        advance:
+          financials.advance && financials.advance.trim() !== ""
+            ? Number(financials.advance)
+            : 0,
         collectorName: getCollectorName(),
         locationName: selectedLocationName,
         locationReportId: reportId,
@@ -1628,13 +1770,20 @@ export default function NewCollectionModal({
 
     if (!allMachinesHaveRequiredData) return false;
 
-    // Check that collectedAmount has a value (only required field)
-    const collectedAmountHasValue =
-      financials.collectedAmount !== undefined &&
-      financials.collectedAmount !== null &&
-      financials.collectedAmount.toString().trim() !== "";
+    // Check that amount to collect has a value (auto-calculated, always required)
+    const amountToCollectHasValue =
+      financials.amountToCollect !== undefined &&
+      financials.amountToCollect !== null &&
+      financials.amountToCollect.toString().trim() !== "" &&
+      Number(financials.amountToCollect) !== 0;
 
-    return collectedAmountHasValue;
+    // Check that balance correction has a value (user input, always required)
+    const balanceCorrectionHasValue =
+      financials.balanceCorrection !== undefined &&
+      financials.balanceCorrection !== null &&
+      financials.balanceCorrection.toString().trim() !== "";
+
+    return amountToCollectHasValue && balanceCorrectionHasValue;
   }, [collectedMachineEntries, financials]);
 
   if (!show) {
@@ -1678,7 +1827,8 @@ export default function NewCollectionModal({
                 New Collection Report Batch
               </DialogTitle>
               <DialogDescription>
-                Create a new collection report for the selected location and machines.
+                Create a new collection report for the selected location and
+                machines.
               </DialogDescription>
             </DialogHeader>
 
@@ -1719,6 +1869,25 @@ export default function NewCollectionModal({
                   </p>
                 )}
 
+                {/* Search bar for machines when location is locked */}
+                {lockedLocationId && (
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Search machines..."
+                      value={machineSearchTerm}
+                      onChange={(e) => setMachineSearchTerm(e.target.value)}
+                      className="w-full"
+                    />
+                    {machineSearchTerm && (
+                      <p className="text-xs text-gray-500">
+                        Showing {filteredMachines.length} of{" "}
+                        {machinesOfSelectedLocation.length} machines
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex-grow space-y-2 min-h-[100px]">
                   {isLoadingExistingCollections ? (
                     <div className="space-y-2">
@@ -1749,12 +1918,18 @@ export default function NewCollectionModal({
                         );
                       }
 
-                      return machinesOfSelectedLocation.length > 0 ? (
-                        machinesOfSelectedLocation.map((machine, index) => (
+                      return filteredMachines.length > 0 ? (
+                        filteredMachines.map((machine, index) => (
                           <Button
-                            key={machine._id ? String(machine._id) : `machine-${index}-${machine.serialNumber || 'unknown'}`}
+                            key={
+                              machine._id
+                                ? String(machine._id)
+                                : `machine-${index}-${
+                                    machine.serialNumber || "unknown"
+                                  }`
+                            }
                             variant={
-                                selectedMachineId === machine._id
+                              selectedMachineId === machine._id
                                 ? "secondary"
                                 : collectedMachineEntries.find(
                                     (e) => e.machineId === machine._id
@@ -1780,7 +1955,7 @@ export default function NewCollectionModal({
                                 machineId: String(machine._id),
                                 machineName: machine.name,
                                 serialNumber: machine.serialNumber,
-                                collectionMeters: machine.collectionMeters
+                                collectionMeters: machine.collectionMeters,
                               });
                               setSelectedMachineId(String(machine._id));
                             }}
@@ -1796,9 +1971,15 @@ export default function NewCollectionModal({
                                 !editingEntryId)
                             }
                           >
-                            {machine.name} ({(() => {
+                            {machine.name} (
+                            {(() => {
                               // Direct approach: prioritize serialNumber and custom.name
-                              const serialId = machine.serialNumber || machine.custom?.name || machine.origSerialNumber || String(machine._id) || "N/A";
+                              const serialId =
+                                machine.serialNumber ||
+                                machine.custom?.name ||
+                                machine.origSerialNumber ||
+                                String(machine._id) ||
+                                "N/A";
                               // Serial number resolved successfully
                               return serialId;
                             })()}
@@ -1815,7 +1996,9 @@ export default function NewCollectionModal({
                         ))
                       ) : (
                         <p className="text-xs md:text-sm text-grayHighlight pt-2">
-                          No machines for this location.
+                          {machineSearchTerm && lockedLocationId
+                            ? `No machines found matching "${machineSearchTerm}".`
+                            : "No machines for this location."}
                         </p>
                       );
                     })()
@@ -1851,10 +2034,16 @@ export default function NewCollectionModal({
                           {machineForDataEntry.name} (
                           {(() => {
                             // Direct approach: prioritize serialNumber and custom.name
-                            const serialId = machineForDataEntry.serialNumber || machineForDataEntry.custom?.name || machineForDataEntry.origSerialNumber || String(machineForDataEntry._id) || "N/A";
+                            const serialId =
+                              machineForDataEntry.serialNumber ||
+                              machineForDataEntry.custom?.name ||
+                              machineForDataEntry.origSerialNumber ||
+                              String(machineForDataEntry._id) ||
+                              "N/A";
                             // Serial number resolved successfully
                             return serialId;
-                          })()})
+                          })()}
+                          )
                         </>
                       ) : (
                         "Select a machine to edit"
@@ -1896,14 +2085,17 @@ export default function NewCollectionModal({
                           Prev In: {prevIn !== null ? prevIn : "N/A"}
                         </p>
                         {/* Regular Meters In Validation */}
-                        {currentMetersIn && prevIn && 
-                         Number(currentMetersIn) < Number(prevIn) && (
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                            <p className="text-red-600 text-xs">
-                              Warning: Meters In ({currentMetersIn}) should be higher than or equal to Previous Meters In ({prevIn})
-                            </p>
-                          </div>
-                        )}
+                        {currentMetersIn &&
+                          prevIn &&
+                          Number(currentMetersIn) < Number(prevIn) && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                              <p className="text-red-600 text-xs">
+                                Warning: Meters In ({currentMetersIn}) should be
+                                higher than or equal to Previous Meters In (
+                                {prevIn})
+                              </p>
+                            </div>
+                          )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-grayHighlight mb-1">
@@ -1927,14 +2119,17 @@ export default function NewCollectionModal({
                           Prev Out: {prevOut !== null ? prevOut : "N/A"}
                         </p>
                         {/* Regular Meters Out Validation */}
-                        {currentMetersOut && prevOut && 
-                         Number(currentMetersOut) < Number(prevOut) && (
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                            <p className="text-red-600 text-xs">
-                              Warning: Meters Out ({currentMetersOut}) should be higher than or equal to Previous Meters Out ({prevOut})
-                            </p>
-                          </div>
-                        )}
+                        {currentMetersOut &&
+                          prevOut &&
+                          Number(currentMetersOut) < Number(prevOut) && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                              <p className="text-red-600 text-xs">
+                                Warning: Meters Out ({currentMetersOut}) should
+                                be higher than or equal to Previous Meters Out (
+                                {prevOut})
+                              </p>
+                            </div>
+                          )}
                       </div>
                     </div>
 
@@ -1965,21 +2160,27 @@ export default function NewCollectionModal({
                               }}
                               disabled={!inputsEnabled || isProcessing}
                               className={`border-blue-300 focus:border-blue-500 ${
-                                currentRamClearMetersIn && prevIn && 
+                                currentRamClearMetersIn &&
+                                prevIn &&
                                 Number(currentRamClearMetersIn) > Number(prevIn)
                                   ? "border-red-500 focus:border-red-500"
                                   : ""
                               }`}
                             />
                             {/* RAM Clear Meters In Validation */}
-                            {currentRamClearMetersIn && prevIn && 
-                             Number(currentRamClearMetersIn) > Number(prevIn) && (
-                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                                <p className="text-red-600 text-xs">
-                                  Warning: RAM Clear Meters In ({currentRamClearMetersIn}) should be lower than or equal to Previous Meters In ({prevIn})
-                                </p>
-                              </div>
-                            )}
+                            {currentRamClearMetersIn &&
+                              prevIn &&
+                              Number(currentRamClearMetersIn) >
+                                Number(prevIn) && (
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                  <p className="text-red-600 text-xs">
+                                    Warning: RAM Clear Meters In (
+                                    {currentRamClearMetersIn}) should be lower
+                                    than or equal to Previous Meters In (
+                                    {prevIn})
+                                  </p>
+                                </div>
+                              )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-blue-700 mb-1">
@@ -1997,26 +2198,32 @@ export default function NewCollectionModal({
                               }}
                               disabled={!inputsEnabled || isProcessing}
                               className={`border-blue-300 focus:border-blue-500 ${
-                                currentRamClearMetersOut && prevOut && 
-                                Number(currentRamClearMetersOut) > Number(prevOut)
+                                currentRamClearMetersOut &&
+                                prevOut &&
+                                Number(currentRamClearMetersOut) >
+                                  Number(prevOut)
                                   ? "border-red-500 focus:border-red-500"
                                   : ""
                               }`}
                             />
                             {/* RAM Clear Meters Out Validation */}
-                            {currentRamClearMetersOut && prevOut && 
-                             Number(currentRamClearMetersOut) > Number(prevOut) && (
-                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                                <p className="text-red-600 text-xs">
-                                  Warning: RAM Clear Meters Out ({currentRamClearMetersOut}) should be lower than or equal to Previous Meters Out ({prevOut})
-                                </p>
-                              </div>
-                            )}
+                            {currentRamClearMetersOut &&
+                              prevOut &&
+                              Number(currentRamClearMetersOut) >
+                                Number(prevOut) && (
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                  <p className="text-red-600 text-xs">
+                                    Warning: RAM Clear Meters Out (
+                                    {currentRamClearMetersOut}) should be lower
+                                    than or equal to Previous Meters Out (
+                                    {prevOut})
+                                  </p>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
                     )}
-
 
                     <div
                       className="flex items-center space-x-2 mt-2"
@@ -2082,7 +2289,10 @@ export default function NewCollectionModal({
                               }
                             }}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={(!inputsEnabled && !editingEntryId) || isProcessing}
+                            disabled={
+                              (!inputsEnabled && !editingEntryId) ||
+                              isProcessing
+                            }
                           >
                             {isProcessing
                               ? "Processing..."
@@ -2090,21 +2300,50 @@ export default function NewCollectionModal({
                           </Button>
                         </>
                       ) : (
-                        <Button
-                          onClick={() => {
-                            if (machineForDataEntry) {
-                              handleAddEntry();
-                            } else {
-                              handleDisabledFieldClick();
-                            }
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                          disabled={!inputsEnabled || isProcessing}
-                        >
-                          {isProcessing
-                            ? "Processing..."
-                            : "Add Machine to List"}
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                onClick={() => {
+                                  if (machineForDataEntry) {
+                                    handleAddEntry();
+                                  } else {
+                                    handleDisabledFieldClick();
+                                  }
+                                }}
+                                className={`w-full text-white ${
+                                  isAddMachineEnabled
+                                    ? "bg-blue-600 hover:bg-blue-700"
+                                    : "bg-gray-400 cursor-not-allowed"
+                                }`}
+                                disabled={
+                                  !inputsEnabled ||
+                                  isProcessing ||
+                                  !isAddMachineEnabled
+                                }
+                              >
+                                {isProcessing
+                                  ? "Processing..."
+                                  : "Add Machine to List"}
+                              </Button>
+                            </TooltipTrigger>
+                            {!isAddMachineEnabled && (
+                              <TooltipContent>
+                                <p>
+                                  {!machineForDataEntry
+                                    ? "Please select a machine"
+                                    : !currentMetersIn || !currentMetersOut
+                                    ? "Please enter meters in and out"
+                                    : currentRamClear &&
+                                      (!currentRamClearMetersIn ||
+                                        !currentRamClearMetersOut)
+                                    ? "Please enter RAM Clear meters when RAM Clear is checked"
+                                    : "Please fill required fields"}
+                                </p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
 
@@ -2116,7 +2355,7 @@ export default function NewCollectionModal({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Taxes: <span className="text-red-500">*</span>
+                          Taxes:
                         </label>
                         <Input
                           type="text"
@@ -2135,7 +2374,7 @@ export default function NewCollectionModal({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Advance: <span className="text-red-500">*</span>
+                          Advance:
                         </label>
                         <Input
                           type="text"
@@ -2154,7 +2393,7 @@ export default function NewCollectionModal({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Variance: <span className="text-red-500">*</span>
+                          Variance:
                         </label>
                         <Input
                           type="text"
@@ -2191,6 +2430,7 @@ export default function NewCollectionModal({
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Amount To Collect:{" "}
+                          <span className="text-red-500">*</span>{" "}
                           <span className="text-xs text-gray-400">
                             (Auto-calculated)
                           </span>
@@ -2206,52 +2446,74 @@ export default function NewCollectionModal({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Collected Amount: <span className="text-red-500">*</span>
+                          Collected Amount:
                         </label>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div>
                                 <Input
-                          type="text"
-                          placeholder="0"
-                          value={financials.collectedAmount}
-                          onChange={(e) => {
-                            if (
-                              /^-?\d*\.?\d*$/.test(e.target.value) ||
-                              e.target.value === ""
-                            ) {
-                              setFinancials({
-                                ...financials,
-                                collectedAmount: e.target.value,
-                              });
-                              // Trigger manual calculations
-                              setTimeout(() => {
-                                const amountCollected =
-                                  Number(e.target.value) || 0;
-                                const amountToCollect =
-                                  Number(financials.amountToCollect) || 0;
+                                  type="text"
+                                  placeholder="0"
+                                  value={financials.collectedAmount}
+                                  onChange={(e) => {
+                                    if (
+                                      /^-?\d*\.?\d*$/.test(e.target.value) ||
+                                      e.target.value === ""
+                                    ) {
+                                      setFinancials({
+                                        ...financials,
+                                        collectedAmount: e.target.value,
+                                      });
+                                      // Trigger manual calculations
+                                      setTimeout(() => {
+                                        const amountCollected =
+                                          Number(e.target.value) || 0;
+                                        const amountToCollect =
+                                          Number(financials.amountToCollect) ||
+                                          0;
 
-                                // Calculate previous balance: collectedAmount - amountToCollect
-                                const previousBalance =
-                                  amountCollected - amountToCollect;
+                                        // Only calculate previous balance if collected amount is 0 or more
+                                        let previousBalance =
+                                          financials.previousBalance; // Keep existing value
+                                        if (
+                                          e.target.value !== "" &&
+                                          amountCollected >= 0
+                                        ) {
+                                          // Calculate previous balance: collectedAmount - amountToCollect
+                                          previousBalance = (
+                                            amountCollected - amountToCollect
+                                          ).toString();
+                                        }
 
-                                // Final correction = base entered first + collected amount
-                                const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
+                                        // Final correction = base entered first + collected amount
+                                        const finalCorrection =
+                                          (Number(baseBalanceCorrection) || 0) +
+                                          amountCollected;
 
-                                setFinancials((prev) => ({
-                                  ...prev,
-                                  previousBalance: previousBalance.toString(),
-                                  balanceCorrection: e.target.value === "" ? (baseBalanceCorrection || "0") : finalCorrection.toString(),
-                                }));
-                              }, 0);
-                            }
-                          }}
-                                  disabled={isProcessing || (baseBalanceCorrection.trim() === "" && financials.balanceCorrection.trim() === "")}
+                                        setFinancials((prev) => ({
+                                          ...prev,
+                                          previousBalance: previousBalance,
+                                          balanceCorrection:
+                                            e.target.value === ""
+                                              ? baseBalanceCorrection || "0"
+                                              : finalCorrection.toString(),
+                                        }));
+                                      }, 0);
+                                    }
+                                  }}
+                                  disabled={
+                                    isProcessing ||
+                                    (baseBalanceCorrection.trim() === "" &&
+                                      financials.balanceCorrection.trim() ===
+                                        "")
+                                  }
                                 />
                               </div>
                             </TooltipTrigger>
-                            {isProcessing || (baseBalanceCorrection.trim() === "" && financials.balanceCorrection.trim() === "") ? (
+                            {isProcessing ||
+                            (baseBalanceCorrection.trim() === "" &&
+                              financials.balanceCorrection.trim() === "") ? (
                               <TooltipContent>
                                 <p>
                                   {isProcessing
@@ -2266,39 +2528,44 @@ export default function NewCollectionModal({
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Balance Correction:{" "}
-                          <span className="text-xs text-gray-400">
-                            (Auto-sets to collected amount, editable)
-                          </span>
+                          <span className="text-red-500">*</span>
                         </label>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div>
                                 <Input
-                          type="text"
-                          placeholder="0"
-                          value={financials.balanceCorrection}
-                          onChange={(e) => {
-                            if (
-                              /^-?\d*\.?\d*$/.test(e.target.value) ||
-                              e.target.value === ""
-                            ) {
-                              const newBalanceCorrection = e.target.value;
-                              
-                              setFinancials((prev) => ({
-                                ...prev,
-                                balanceCorrection: newBalanceCorrection,
-                              }));
-                              setBaseBalanceCorrection(newBalanceCorrection);
-                            }
-                          }}
+                                  type="text"
+                                  placeholder="0"
+                                  value={financials.balanceCorrection}
+                                  onChange={(e) => {
+                                    if (
+                                      /^-?\d*\.?\d*$/.test(e.target.value) ||
+                                      e.target.value === ""
+                                    ) {
+                                      const newBalanceCorrection =
+                                        e.target.value;
+
+                                      setFinancials((prev) => ({
+                                        ...prev,
+                                        balanceCorrection: newBalanceCorrection,
+                                      }));
+                                      setBaseBalanceCorrection(
+                                        newBalanceCorrection
+                                      );
+                                    }
+                                  }}
                                   className="bg-white border-gray-300 focus:border-primary"
                                   title="Balance correction amount (editable)"
-                                  disabled={isProcessing || financials.collectedAmount.trim() !== ""}
+                                  disabled={
+                                    isProcessing ||
+                                    financials.collectedAmount.trim() !== ""
+                                  }
                                 />
                               </div>
                             </TooltipTrigger>
-                            {isProcessing || financials.collectedAmount.trim() !== "" ? (
+                            {isProcessing ||
+                            financials.collectedAmount.trim() !== "" ? (
                               <TooltipContent>
                                 <p>
                                   {isProcessing
@@ -2331,7 +2598,8 @@ export default function NewCollectionModal({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Previous Balance:{" "}
                           <span className="text-xs text-gray-400">
-                            (Auto-calculated: collected amount - amount to collect)
+                            (Auto-calculated: collected amount - amount to
+                            collect)
                           </span>
                         </label>
                         <Input
@@ -2367,7 +2635,6 @@ export default function NewCollectionModal({
                         />
                       </div>
                     </div>
-
                   </>
                 ) : (
                   <div className="flex-grow flex items-center justify-center h-full">
@@ -2406,59 +2673,82 @@ export default function NewCollectionModal({
                     No machines added to the list yet.
                   </p>
                 ) : (
-                  collectedMachineEntries.map((entry, index) => (
-                    <div
-                      key={entry._id ? String(entry._id) : `entry-${index}-${entry.machineCustomName || entry.machineId || 'unknown'}`}
-                      className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
-                    >
-                      <p className="font-semibold text-sm text-primary">
-                        {entry.machineName} ({entry.serialNumber || "N/A"})
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        Time: {formatDate(entry.timestamp)}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        Meters In:{" "}
-                        {entry.ramClear
-                          ? entry.movement?.metersIn || entry.metersIn
-                          : entry.metersIn}{" "}
-                        | Meters Out:{" "}
-                        {entry.ramClear
-                          ? entry.movement?.metersOut || entry.metersOut
-                          : entry.metersOut}
-                      </p>
-                      {entry.notes && (
-                        <p className="text-xs text-gray-600 italic">
-                          Notes: {entry.notes}
+                  [...collectedMachineEntries]
+                    .sort((a, b) => {
+                      // Sort by timestamp in descending order (most recent first)
+                      const timestampA =
+                        a.timestamp instanceof Date
+                          ? a.timestamp
+                          : new Date(a.timestamp);
+                      const timestampB =
+                        b.timestamp instanceof Date
+                          ? b.timestamp
+                          : new Date(b.timestamp);
+                      return timestampB.getTime() - timestampA.getTime();
+                    })
+                    .map((entry, index) => (
+                      <div
+                        key={
+                          entry._id
+                            ? String(entry._id)
+                            : `entry-${index}-${
+                                entry.machineCustomName ||
+                                entry.machineId ||
+                                "unknown"
+                              }`
+                        }
+                        className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
+                      >
+                        <p className="font-semibold text-sm text-primary">
+                          {entry.machineName} ({entry.serialNumber || "N/A"})
                         </p>
-                      )}
-                      {entry.ramClear && (
-                        <p className="text-xs text-red-600 font-semibold">
-                          RAM Clear: Enabled
+                        <p className="text-xs text-gray-600">
+                          Time: {formatDate(entry.timestamp)}
                         </p>
-                      )}
-                      <div className="absolute top-2 right-2 flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 p-0 hover:bg-gray-200"
-                          onClick={() => handleEditCollectedEntry(entry._id)}
-                          disabled={isProcessing}
-                        >
-                          <Edit3 className="h-3.5 w-3.5 text-blue-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 p-0 hover:bg-gray-200"
-                          onClick={() => handleDeleteCollectedEntry(entry._id)}
-                          disabled={isProcessing}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                        </Button>
+                        <p className="text-xs text-gray-600">
+                          Meters In:{" "}
+                          {entry.ramClear
+                            ? entry.movement?.metersIn || entry.metersIn
+                            : entry.metersIn}{" "}
+                          | Meters Out:{" "}
+                          {entry.ramClear
+                            ? entry.movement?.metersOut || entry.metersOut
+                            : entry.metersOut}
+                        </p>
+                        {entry.notes && (
+                          <p className="text-xs text-gray-600 italic">
+                            Notes: {entry.notes}
+                          </p>
+                        )}
+                        {entry.ramClear && (
+                          <p className="text-xs text-red-600 font-semibold">
+                            RAM Clear: Enabled
+                          </p>
+                        )}
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0 hover:bg-gray-200"
+                            onClick={() => handleEditCollectedEntry(entry._id)}
+                            disabled={isProcessing}
+                          >
+                            <Edit3 className="h-3.5 w-3.5 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0 hover:bg-gray-200"
+                            onClick={() =>
+                              handleDeleteCollectedEntry(entry._id)
+                            }
+                            disabled={isProcessing}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 )}
               </div>
             </div>
@@ -2497,7 +2787,8 @@ export default function NewCollectionModal({
               ⚠️ Rollover/Ramclear Warning
             </DialogTitle>
             <DialogDescription>
-              This machine has detected a rollover or ramclear event. Proceed with caution.
+              This machine has detected a rollover or ramclear event. Proceed
+              with caution.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -2557,7 +2848,6 @@ export default function NewCollectionModal({
         cancelText="Cancel"
         isLoading={isProcessing}
       />
-
 
       {/* Create Report Confirmation Dialog */}
       <ConfirmationDialog

@@ -18,14 +18,13 @@ export default function CollectionNavigation({
 }: Props) {
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
-
       {/* Desktop - md: and above */}
-      <nav className="hidden md:flex space-x-8 px-6">
+      <nav className="hidden md:flex space-x-1 md:space-x-2 lg:justify-between lg:space-x-0 px-1 md:px-2 lg:px-6">
         {tabs.map((tab) => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`navigation-button flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 cursor-pointer ${
+            className={`navigation-button flex items-center space-x-0.5 md:space-x-1 lg:space-x-2 py-1 md:py-2 lg:py-4 px-0.5 md:px-1 lg:px-2 border-b-2 font-medium text-xs xl:text-sm whitespace-nowrap transition-all duration-200 cursor-pointer ${
               activeView === tab.id
                 ? "border-buttonActive text-buttonActive bg-buttonActive/5"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"

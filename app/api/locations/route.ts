@@ -14,7 +14,6 @@ import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import { Countries } from "@/app/api/lib/models/countries";
 
-
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
     request as NextRequest,
@@ -48,9 +47,6 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
-
-
-
     // Return minimal or full set based on query
     const locationsToReturn = minimal ? locations : locations;
 
@@ -71,6 +67,13 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
+
+    // Debug: Log the incoming request body
+    // console.log(
+    //   "POST /api/locations - Request body:",
+    //   JSON.stringify(body, null, 2)
+    // );
+
     const {
       name,
       address,
@@ -84,13 +87,14 @@ export async function POST(request: Request) {
     } = body;
 
     // Validate required fields
+    // console.log("Validating name:", name);
     if (!name) {
+      // console.log("Validation failed: Location name is required");
       return NextResponse.json(
         { success: false, message: "Location name is required" },
         { status: 400 }
       );
     }
-
 
     // Additional backend validations mirroring frontend
     if (
@@ -121,17 +125,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // If a country ID is provided, verify it exists
-    if (typeof country === "string" && country.trim().length > 0) {
+    // If a country ID is provided, verify it exists (country is optional)
+    // console.log("Validating country:", country);
+    if (country && typeof country === "string" && country.trim().length > 0) {
+      // console.log("Looking up country with ID:", country);
       const countryDoc = await Countries.findById(country).lean();
+      // console.log("Country found:", !!countryDoc);
       if (!countryDoc) {
+        // console.log("Validation failed: Invalid country ID");
         return NextResponse.json(
           { success: false, message: "Invalid country ID" },
           { status: 400 }
         );
       }
     }
-
 
     // Create new location with proper MongoDB ObjectId-style hex string
     const locationId = await generateMongoId();
@@ -217,13 +224,37 @@ export async function POST(request: Request) {
             newValue: geoCoords?.longitude || 0,
           },
 
-          { field: "address.street", oldValue: null, newValue: address?.street || "" },
-          { field: "address.city", oldValue: null, newValue: address?.city || "" },
-          { field: "rel.licencee", oldValue: null, newValue: rel?.licencee || "" },
+          {
+            field: "address.street",
+            oldValue: null,
+            newValue: address?.street || "",
+          },
+          {
+            field: "address.city",
+            oldValue: null,
+            newValue: address?.city || "",
+          },
+          {
+            field: "rel.licencee",
+            oldValue: null,
+            newValue: rel?.licencee || "",
+          },
           { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
-          { field: "isLocalServer", oldValue: null, newValue: isLocalServer || false },
-          { field: "geoCoords.latitude", oldValue: null, newValue: geoCoords?.latitude || 0 },
-          { field: "geoCoords.longitude", oldValue: null, newValue: geoCoords?.longitude || 0 },
+          {
+            field: "isLocalServer",
+            oldValue: null,
+            newValue: isLocalServer || false,
+          },
+          {
+            field: "geoCoords.latitude",
+            oldValue: null,
+            newValue: geoCoords?.latitude || 0,
+          },
+          {
+            field: "geoCoords.longitude",
+            oldValue: null,
+            newValue: geoCoords?.longitude || 0,
+          },
         ];
 
         await logActivity(
@@ -342,8 +373,8 @@ export async function PUT(request: Request) {
         );
       }
 
-      // Verify country exists when updating
-      if (typeof country === "string" && country.trim().length > 0) {
+      // Verify country exists when updating (country is optional)
+      if (country && typeof country === "string" && country.trim().length > 0) {
         const countryDoc = await Countries.findById(country).lean();
         if (!countryDoc) {
           return NextResponse.json(
@@ -391,7 +422,6 @@ export async function PUT(request: Request) {
 
       // Handle billValidatorOptions
       if (billValidatorOptions) {
-
         updateData.billValidatorOptions = Object.fromEntries(
           Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
         ) as UpdateLocationData["billValidatorOptions"];
@@ -544,14 +574,46 @@ export async function DELETE(request: Request) {
             newValue: null,
           },
 
-          { field: "country", oldValue: locationToDelete.country, newValue: null },
-          { field: "address.street", oldValue: locationToDelete.address?.street || "", newValue: null },
-          { field: "address.city", oldValue: locationToDelete.address?.city || "", newValue: null },
-          { field: "rel.licencee", oldValue: locationToDelete.rel?.licencee || "", newValue: null },
-          { field: "profitShare", oldValue: locationToDelete.profitShare, newValue: null },
-          { field: "isLocalServer", oldValue: locationToDelete.isLocalServer, newValue: null },
-          { field: "geoCoords.latitude", oldValue: locationToDelete.geoCoords?.latitude || 0, newValue: null },
-          { field: "geoCoords.longitude", oldValue: locationToDelete.geoCoords?.longitude || 0, newValue: null },
+          {
+            field: "country",
+            oldValue: locationToDelete.country,
+            newValue: null,
+          },
+          {
+            field: "address.street",
+            oldValue: locationToDelete.address?.street || "",
+            newValue: null,
+          },
+          {
+            field: "address.city",
+            oldValue: locationToDelete.address?.city || "",
+            newValue: null,
+          },
+          {
+            field: "rel.licencee",
+            oldValue: locationToDelete.rel?.licencee || "",
+            newValue: null,
+          },
+          {
+            field: "profitShare",
+            oldValue: locationToDelete.profitShare,
+            newValue: null,
+          },
+          {
+            field: "isLocalServer",
+            oldValue: locationToDelete.isLocalServer,
+            newValue: null,
+          },
+          {
+            field: "geoCoords.latitude",
+            oldValue: locationToDelete.geoCoords?.latitude || 0,
+            newValue: null,
+          },
+          {
+            field: "geoCoords.longitude",
+            oldValue: locationToDelete.geoCoords?.longitude || 0,
+            newValue: null,
+          },
         ];
 
         await logActivity(

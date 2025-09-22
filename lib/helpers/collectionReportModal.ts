@@ -105,7 +105,7 @@ export function validateMachineEntry(
   if (!selectedMachineId) {
     return { isValid: false, error: "Please select a machine first." };
   }
-  
+
   // In normal mode (not edit), we need both selectedMachineId and machineForDataEntry
   if (!isEditMode && !machineForDataEntry) {
     return { isValid: false, error: "Please select a machine first." };
@@ -145,21 +145,21 @@ export function validateMachineEntry(
       prevOut,
       ramClear,
       ramClearMetersIn,
-      ramClearMetersOut
+      ramClearMetersOut,
     });
 
     if (!ramClearValidation.isValid) {
-      return { 
-        isValid: false, 
+      return {
+        isValid: false,
         error: ramClearValidation.errors.join(", "),
-        warnings: ramClearValidation.warnings
+        warnings: ramClearValidation.warnings,
       };
     }
 
     if (ramClearValidation.warnings.length > 0) {
-      return { 
-        isValid: true, 
-        warnings: ramClearValidation.warnings
+      return {
+        isValid: true,
+        warnings: ramClearValidation.warnings,
       };
     }
   }
@@ -248,17 +248,10 @@ export function validateFinancialFields(financials: {
   previousBalance: string;
   reasonForShortagePayment: string;
 }): boolean {
+  // Only amount to collect and balance correction are required
   return Boolean(
-    financials.taxes.trim() !== "" &&
-      financials.advance.trim() !== "" &&
-      financials.variance.trim() !== "" &&
-      financials.varianceReason.trim() !== "" &&
-      financials.amountToCollect.trim() !== "" &&
-      financials.collectedAmount.trim() !== "" &&
-      financials.balanceCorrection.trim() !== "" &&
-      financials.balanceCorrectionReason.trim() !== "" &&
-      financials.previousBalance.trim() !== "" &&
-      financials.reasonForShortagePayment.trim() !== ""
+    financials.amountToCollect.trim() !== "" &&
+      financials.balanceCorrection.trim() !== ""
   );
 }
 

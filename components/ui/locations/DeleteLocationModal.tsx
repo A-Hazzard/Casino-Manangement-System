@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import axios from "axios";
 import { toast } from "sonner";
+import { useUserStore } from "@/lib/store/userStore";
 
 import type { DeleteLocationModalProps } from "@/lib/types/components";
 
@@ -21,6 +22,7 @@ export default function DeleteLocationModal({
 }: DeleteLocationModalProps) {
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationActionsStore();
+  const { user } = useUserStore();
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
@@ -30,10 +32,10 @@ export default function DeleteLocationModal({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -41,20 +43,19 @@ export default function DeleteLocationModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
-
 
   const handleClose = () => {
     // Modal closed
@@ -65,7 +66,6 @@ export default function DeleteLocationModal({
     const location = selectedLocation as Record<string, unknown>;
     if (!location?.location) return;
 
-   
     try {
       await axios.delete(`/api/locations?id=${location.location}`);
 
@@ -93,7 +93,11 @@ export default function DeleteLocationModal({
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription>
-            This will mark the location &quot;{(selectedLocation as Record<string, unknown>)?.locationName as string}
+            This will mark the location &quot;
+            {
+              (selectedLocation as Record<string, unknown>)
+                ?.locationName as string
+            }
             &quot; as deleted. The location will be hidden from the system but
             can be restored if needed.
           </DialogDescription>

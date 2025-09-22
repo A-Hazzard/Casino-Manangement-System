@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 import { LocationStore } from "@/lib/types/location";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging removed - handled via API calls
 
 // Define a no-op version for SSR
 const dummyState: LocationStore = {
@@ -19,8 +19,6 @@ const createStore = () => {
     closeLocationModal: () => set({ isLocationModalOpen: false }),
     createLocation: async (location) => {
       try {
-        const locationLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-
         const response = await axios.post("/api/locations", {
           name: location.name,
           address: {
@@ -36,14 +34,7 @@ const createStore = () => {
           },
         });
 
-        // Log the location creation activity
-        await locationLogger(
-          "location_created",
-          "location",
-          { id: response.data?.data?._id || location.name, name: location.name },
-          [],
-          `Created new location: ${location.name} at ${location.address}`
-        );
+        // Activity logging removed - handled via API calls
 
         // Return the created location data
         return response.data?.data;

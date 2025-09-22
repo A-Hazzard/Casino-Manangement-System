@@ -37,6 +37,10 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
  */
 export async function getUserIdFromServer(): Promise<string | null> {
   const user: JWTPayload | null = await getUserFromServer();
+  if (user) {
+    // console.log("Extracted user ID from JWT:", user._id);
+    // console.log("JWT payload:", user);
+  }
   return user ? (user._id as string) : null;
 }
 
