@@ -377,7 +377,7 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
                       {row.eventType || "General"}
                     </div>
                   </TableCell>
-                  <TableCell className="text-left">
+                  <TableCell isFirstColumn={true}>
                     <div className="flex items-center justify-between">
                       <span>{row.description || "No activity"}</span>
                       {row.sequence && row.sequence.length > 0 && (

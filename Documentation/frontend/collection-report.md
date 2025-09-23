@@ -2,7 +2,7 @@
 # Collection Report System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 20th, 2025
+**Last Updated:** August 29th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -24,19 +24,74 @@
 For detailed explanations of all financial fields used in collection reports, see:
 **[Collection Report Financial Fields](./collection-report-financial-fields.md)**
 
-This document explains:
-- **Taxes**: Government taxes and regulatory fees
-- **Advance**: Money paid to locations when in negative balance
-- **Variance**: Optional field for collection discrepancies (deprecated software meters)
-- **Previous Balance**: Outstanding balance from previous collections
-- **Amount to Collect**: Total amount to be collected from location
-- **Collected Amount**: Actual cash collected by collector
-- **Balance Correction**: Manual adjustments to balance
-- **Partner Profit**: Location's share of revenue
+### Core Collection Report Fields
+
+**Required Fields (Must have values before creating a report):**
+- **Amount to Collect**: Auto-calculated total amount to be collected from location based on gaming activities
+- **Collected Amount**: Actual cash collected by collector (user input required)
+
+**Optional Fields (Can be left blank):**
+- **Taxes**: Government taxes and regulatory fees (optional)
+- **Advance**: Money paid to locations when in negative balance (optional)
+- **Variance**: Collection discrepancies between expected and actual amounts (optional)
+- **Previous Balance**: Outstanding balance from previous collections (auto-calculated only when Collected Amount is 0 or more)
+
+**Auto-Calculated Fields:**
+- **Amount to Collect**: Automatically calculated based on meter readings and profit sharing
+- **Previous Balance**: Only calculated when user inputs 0 or more for Collected Amount
+
+### Field Behavior Rules
+
+1. **Amount to Collect**: Always auto-calculated, cannot be manually edited
+2. **Collected Amount**: User input required, triggers Previous Balance calculation when value is 0 or more
+3. **Previous Balance**: 
+   - NOT calculated if Collected Amount is left blank
+   - ONLY calculated when Collected Amount is 0 or more
+   - Formula: `Previous Balance = Collected Amount - Amount to Collect`
+4. **Taxes, Advance, Variance**: All optional fields that can be left blank
 
 ## Overview
 
-The Collection Report System manages casino slot machine money collection. It calculates amounts to collect based on meter readings, profit sharing, and balance management.
+The Collection Report System manages casino slot machine money collection operations. It serves as the financial control center for tracking money flow from gaming machines to bank accounts, ensuring regulatory compliance and operational efficiency.
+
+### Casino Collection Operations Context
+
+**What Collection Reports Are:**
+Collection reports are detailed financial documents that record the money collection process from slot machines at gaming locations. They track the complete financial transaction cycle from machine revenue generation to final cash collection.
+
+**Key Components of Casino Collection Operations:**
+
+1. **Amount to Collect**: The total sum calculated based on gaming activities, representing the funds that need to be collected from the location
+2. **Collected Amount**: The actual amount of money collected during the reporting period by collectors
+3. **Previous Balance**: The balance carried over from the previous reporting period (customer's net win/loss)
+4. **Taxes**: Any applicable taxes deducted from the collected amount (optional)
+5. **Advances**: Any advance payments or credits applied during the reporting period (optional)
+6. **Variance**: The difference between the expected amount to collect and the actual collected amount (optional)
+
+**Business Context:**
+- **Previous Balance**: Represents the money that customers gained or lost from previous gaming activities
+- **Collected Amount**: The amount "we" (the casino/operator) have actually received in cash
+- **Amount to Collect**: The total amount due for both the client (location) and the casino before any revenue split
+
+### Variance Handling
+
+**Is Variance Auto-Calculated?**
+No, variance is **not auto-calculated**. It requires manual input or verification to ensure accuracy. Variance represents discrepancies that may indicate issues such as:
+- Theft or unauthorized access
+- Machine malfunctions or overpouring
+- Breakage or unrecorded transactions
+- Collection errors or discrepancies
+
+**Variance Calculation (Manual):**
+```
+Variance = Expected Amount to Collect - Actual Collected Amount
+```
+
+**Variance Display Logic:**
+- **No SAS Data**: Shows "No SAS Data" when SAS meter data is unavailable
+- **Zero Variance**: Shows "No Variance" when variance equals zero
+- **Positive Variance**: Meters exceed expected amounts
+- **Negative Variance**: Expected amounts exceed actual meters
 
 ## Collection Process
 
@@ -44,9 +99,25 @@ The Collection Report System manages casino slot machine money collection. It ca
 
 1. **Select Location** → System loads machines and previous balance
 2. **Add Machines** → Enter meter readings for each machine
-3. **Financial Inputs** → Enter collected amount, variance, taxes, advance
-4. **Auto-Calculations** → System calculates amount to collect and balance correction
-5. **Create Report** → Saves to database and updates location balance
+3. **Auto-Calculate Amount to Collect** → System automatically calculates based on meter readings
+4. **Enter Collected Amount** → User inputs actual cash collected (required field)
+5. **Optional Financial Inputs** → Enter variance, taxes, advance (all optional)
+6. **Previous Balance Calculation** → System calculates only when Collected Amount is 0 or more
+7. **Create Report** → Saves to database and updates location balance
+
+### Field Requirements Summary
+
+**Mandatory Fields for Report Creation:**
+- **Amount to Collect**: Auto-calculated (always required)
+- **Collected Amount**: User input (always required)
+
+**Optional Fields (can be left blank):**
+- **Taxes**: Government taxes and regulatory fees
+- **Advance**: Money paid to locations when in negative balance  
+- **Variance**: Collection discrepancies (manual input, not auto-calculated)
+
+**Conditional Fields:**
+- **Previous Balance**: Only calculated when Collected Amount is 0 or more
 
 ### Database Fields
 
@@ -105,7 +176,7 @@ Amount to Collect = Total Gross - Variance - Advance - Partner Profit + Previous
 
 **Partner Profit Formula:**
 ```
-Partner Profit = Floor((Total Gross - Variance - Advance) × Profit Share % ÷ 100) - Taxes
+Partner Profit = Math.floor((Total Gross - Variance - Advance) × Profit Share % ÷ 100) - Taxes
 ```
 
 **Example:**
@@ -125,8 +196,19 @@ Amount to Collect = 1000 - 0 - 50 - 450 + 200 = $700
 
 **Auto-Calculation:**
 ```
-Balance Correction = Amount Collected (defaults to this value, but editable)
+Balance Correction = Base Balance Correction + Collected Amount
 ```
+
+**Previous Balance Calculation:**
+```
+Previous Balance = Collected Amount - Amount to Collect
+```
+
+**Balance Correction Logic:**
+- User enters a base balance correction amount first
+- When collected amount is entered, it adds to the base amount
+- Balance correction is editable but becomes locked when collected amount is entered
+- To edit balance correction again, user must clear the collected amount field
 
 **Balance Update:**
 
@@ -150,7 +232,7 @@ Balance Correction = Amount Collected (defaults to this value, but editable)
 The Collection Report page provides comprehensive financial collection management for the casino system, including collection reports, monthly summaries, and collector scheduling. This page serves as the central hub for managing all aspects of casino money collection operations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 6th, 2025  
+**Last Updated:** September 22th, 2025  
 **Version:** 2.0.0
 
 ### File Information
@@ -540,6 +622,12 @@ CollectionReport {
 - **Machine Meter Updates**: Edit meter readings for individual machines
 - **Financial Data Updates**: Modify collected amounts, variance, taxes, advance
 - **History Tracking**: Updates machine collection history appropriately
+- **Add New Machines**: Add additional machines to existing collection reports
+- **Delete Individual Collections**: Remove specific machine entries from reports
+- **Fresh Data Fetching**: Always fetches latest machine and location data
+- **Machine Meter Reversion**: When deleting collections, reverts machine meters to previous values
+- **Database Persistence**: New machines are immediately saved to database
+- **Form Validation**: Real-time validation of meter readings and financial inputs
 
 **Edit Process Flow:**
 1. **Click Pencil Icon**: User clicks edit button on collection entry
@@ -555,6 +643,10 @@ CollectionReport {
 - **Meter Reading Updates**: Change current meter readings
 - **Notes and Comments**: Update collection notes and reasons
 - **Timestamp Updates**: Modify collection time if needed
+- **Balance Correction Logic**: Complex balance correction with base amount + collected amount
+- **Previous Balance Auto-calculation**: Automatically calculates previous balance as collected amount - amount to collect
+- **Field Dependencies**: Balance correction locks when collected amount is entered
+- **Real-time Calculations**: All financial calculations update automatically as values change
 
 ### Delete Collection Reports - Comprehensive Cleanup
 

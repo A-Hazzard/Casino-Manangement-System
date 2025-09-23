@@ -1,6 +1,6 @@
 import type { CabinetDetail } from "./cabinets";
 import type { TimePeriod } from "./api";
-import type { UserAuthPayload } from "./index";
+import { UserAuthPayload } from "@/lib/types/auth";
 
 // Frontend-specific hook types
 export type UseCabinetDetailsReturn = {

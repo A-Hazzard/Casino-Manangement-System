@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { useUserStore } from "@/lib/store/userStore";
 
 import axios from "axios";
 
@@ -24,12 +25,12 @@ import type { Licensee } from "@/lib/types/licensee";
 import { fetchCountries } from "@/lib/helpers/countries";
 import type { Country } from "@/lib/helpers/countries";
 
-
 export default function NewLocationModal({
   isOpen,
   onClose,
   onCreated,
 }: NewLocationModalProps) {
+  const { user: _user } = useUserStore();
 
   // Remove the store dependency since we'll call API directly
 
@@ -164,9 +165,6 @@ export default function NewLocationModal({
     }
   }, [isOpen]);
 
-
-
-
   const loadLicensees = async () => {
     setLicenseesLoading(true);
     try {
@@ -180,21 +178,20 @@ export default function NewLocationModal({
     }
   };
 
-
   const loadCountries = async () => {
     setCountriesLoading(true);
     try {
       const countriesData = await fetchCountries();
-      
+
       // Remove duplicates based on country name using Map for better performance
       const uniqueCountriesMap = new Map();
-      countriesData.forEach(country => {
+      countriesData.forEach((country) => {
         if (!uniqueCountriesMap.has(country.name)) {
           uniqueCountriesMap.set(country.name, country);
         }
       });
       const uniqueCountries = Array.from(uniqueCountriesMap.values());
-      
+
       setCountries(uniqueCountries as unknown as Country[]);
     } catch (error) {
       console.error("Failed to fetch countries:", error);
@@ -203,7 +200,6 @@ export default function NewLocationModal({
       setCountriesLoading(false);
     }
   };
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -248,7 +244,6 @@ export default function NewLocationModal({
     setMapLoadError(false);
   };
 
-
   // Get user's current location when map is enabled
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -274,7 +269,6 @@ export default function NewLocationModal({
       }
     );
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,6 +305,12 @@ export default function NewLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
       };
 
+      // Debug: Log the data being sent
+      // console.log(
+      //   "Sending location data:",
+      //   JSON.stringify(locationData, null, 2)
+      // );
+
       // Add location by calling API directly
       const response = await axios.post("/api/locations", locationData);
       console.warn("Location created successfully:", response.data);
@@ -324,9 +324,19 @@ export default function NewLocationModal({
       onClose();
     } catch (error) {
       console.error("Error adding location:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to add location"
-      );
+
+      // Enhanced error handling for axios errors
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.message || error.message;
+        const statusCode = error.response?.status;
+        console.error(`API Error (${statusCode}):`, errorMessage);
+        console.error("Response data:", error.response?.data);
+        toast.error(`Failed to add location: ${errorMessage}`);
+      } else {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to add location"
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -344,9 +354,6 @@ export default function NewLocationModal({
           onSubmit={handleSubmit}
           className="p-4 md:p-6 space-y-4 md:space-y-6 max-h-[calc(95vh-120px)] md:max-h-[calc(90vh-120px)] overflow-y-auto"
         >
-
-
-
           {/* Location Name */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-grayHighlight mb-2">
@@ -385,7 +392,6 @@ export default function NewLocationModal({
               name="city"
               value={formData.city}
               onChange={handleInputChange}
-
               placeholder="City"
               className="w-full h-12 bg-container border-border text-base"
             />
@@ -461,7 +467,6 @@ export default function NewLocationModal({
             </select>
           </div>
 
-
           {/* Day Start Time */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-grayHighlight mb-2">
@@ -483,7 +488,6 @@ export default function NewLocationModal({
             </select>
           </div>
 
-
           {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* No SMIB Location Checkbox */}
@@ -497,7 +501,10 @@ export default function NewLocationModal({
                 className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
               />
 
-              <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
+              <Label
+                htmlFor="isLocalServer"
+                className="text-sm font-medium flex-1"
+              >
                 No SMIB Location
               </Label>
             </div>
@@ -507,7 +514,6 @@ export default function NewLocationModal({
               <Checkbox
                 id="useMap"
                 checked={useMap}
-
                 onCheckedChange={(checked) => {
                   setUseMap(checked === true);
                   if (checked === true) {
@@ -566,11 +572,10 @@ export default function NewLocationModal({
               {mapLoadError && (
                 <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md relative z-10">
                   <p className="text-xs text-yellow-700">
-
                     ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check
-                    the &quot;Use Map&quot; button again.
-
-                          ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check the &quot;Use Map&quot; button again.
+                    the &quot;Use Map&quot; button again. ⚠️ Map hasn&apos;t
+                    loaded properly. Please uncheck and check the &quot;Use
+                    Map&quot; button again.
                   </p>
                 </div>
               )}
@@ -610,8 +615,10 @@ export default function NewLocationModal({
                 { key: "denom5000", label: "$5,000" },
                 { key: "denom10000", label: "$10,000" },
               ].map(({ key, label }) => (
-
-                <div key={key} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                <div
+                  key={key}
+                  className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
+                >
                   <Checkbox
                     id={key}
                     checked={

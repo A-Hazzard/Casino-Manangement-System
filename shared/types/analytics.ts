@@ -26,12 +26,7 @@ export type MachineMetricsResponse = {
   status: "online" | "offline" | "maintenance";
 };
 
-export type ApiResponse<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-};
+// ApiResponse type is defined in shared/types/common.ts
 
 export type MetricsFilters = {
   dateRange?: {

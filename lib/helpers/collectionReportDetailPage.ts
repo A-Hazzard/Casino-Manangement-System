@@ -177,6 +177,7 @@ export function generateMachineMetricsData(
       variation: variation.toLocaleString(),
       sasStartTime: sasStartTime === "-" ? "-" : formatSasTime(sasStartTime),
       sasEndTime: sasEndTime === "-" ? "-" : formatSasTime(sasEndTime),
+      ramClear: col.ramClear || false,
     };
   });
 

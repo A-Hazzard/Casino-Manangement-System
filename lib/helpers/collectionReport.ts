@@ -477,41 +477,158 @@ export async function getAllLocationNames(): Promise<string[]> {
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const response = await axios.get("/api/collectionReport/locations");
+    const response = await axios.get("/api/collectionReport/locations", {
+      timeout: 10000, // 10 second timeout
+    });
     const data: Record<string, unknown> = response.data;
     if ("locations" in data && Array.isArray(data.locations)) {
       return data.locations.map((location: unknown) => String(location));
     }
     return [];
   } catch (error: unknown) {
-    console.error("Error fetching location names:", error);
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Location names request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching location names - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Location names endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching location names:",
+          error.message
+        );
+      }
+    } else {
+      console.warn("⚠️ Unexpected error fetching location names:", error);
+    }
     return [];
   }
 }
 
 export async function getLocationsWithMachines() {
-  const { data } = await axios.get(
-    "/api/collectionReport?locationsWithMachines=1"
-  );
-  return data.locations || [];
+  try {
+    const { data } = await axios.get(
+      "/api/collectionReport?locationsWithMachines=1",
+      { timeout: 10000 } // 10 second timeout
+    );
+    return data.locations || [];
+  } catch (error) {
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Locations with machines request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching locations with machines - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Locations with machines endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching locations with machines:",
+          error.message
+        );
+      }
+    } else {
+      console.warn(
+        "⚠️ Unexpected error fetching locations with machines:",
+        error
+      );
+    }
+    return [];
+  }
 }
 
 export async function createCollectionReport(
   payload: CreateCollectionReportPayload
 ) {
-  const { data } = await axios.post("/api/collectionReport", payload);
-  return data;
+  try {
+    const { data } = await axios.post("/api/collectionReport", payload, {
+      timeout: 15000, // 15 second timeout for creation
+    });
+    return data;
+  } catch (error) {
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn("⏰ Collection report creation timed out");
+        throw new Error("Request timed out. Please try again.");
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error creating collection report - database may be unavailable"
+        );
+        throw new Error("Server error. Please try again later.");
+      } else if (error.response?.status === 400) {
+        console.warn(
+          "⚠️ Validation error creating collection report:",
+          error.response.data
+        );
+        throw new Error("Invalid data provided. Please check your inputs.");
+      } else {
+        console.warn(
+          "⚠️ Network error creating collection report:",
+          error.message
+        );
+        throw new Error("Network error. Please check your connection.");
+      }
+    } else {
+      console.warn("⚠️ Unexpected error creating collection report:", error);
+      throw new Error("An unexpected error occurred. Please try again.");
+    }
+  }
 }
 
 export async function updateCollectionReport(
   reportId: string,
   payload: Partial<CreateCollectionReportPayload>
 ) {
-  const { data } = await axios.patch(
-    `/api/collection-report/${reportId}`,
-    payload
-  );
-  return data;
+  try {
+    const { data } = await axios.patch(
+      `/api/collection-report/${reportId}`,
+      payload,
+      { timeout: 15000 } // 15 second timeout for updates
+    );
+    return data;
+  } catch (error) {
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn("⏰ Collection report update timed out");
+        throw new Error("Request timed out. Please try again.");
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error updating collection report - database may be unavailable"
+        );
+        throw new Error("Server error. Please try again later.");
+      } else if (error.response?.status === 400) {
+        console.warn(
+          "⚠️ Validation error updating collection report:",
+          error.response.data
+        );
+        throw new Error("Invalid data provided. Please check your inputs.");
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Collection report not found for update");
+        throw new Error("Collection report not found.");
+      } else {
+        console.warn(
+          "⚠️ Network error updating collection report:",
+          error.message
+        );
+        throw new Error("Network error. Please check your connection.");
+      }
+    } else {
+      console.warn("⚠️ Unexpected error updating collection report:", error);
+      throw new Error("An unexpected error occurred. Please try again.");
+    }
+  }
 }
 
 /**
@@ -543,10 +660,33 @@ export async function fetchCollectionReportsByLicencee(
       params.endDate = dateRange.to.toISOString();
     }
 
-    const { data } = await axios.get("/api/collectionReport", { params });
+    const { data } = await axios.get("/api/collectionReport", {
+      params,
+      timeout: 10000, // 10 second timeout
+    });
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Failed to fetch collection reports by licencee:", error);
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Collection reports request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching collection reports - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Collection reports endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching collection reports:",
+          error.message
+        );
+      }
+    } else {
+      console.warn("⚠️ Unexpected error fetching collection reports:", error);
+    }
     return [];
   }
 }
@@ -727,7 +867,7 @@ export async function calculateSasMetrics(
         sasStartTime: sasStartTime,
         sasEndTime: sasEndTime,
         startTimeValid: !isNaN(sasStartTime.getTime()),
-        endTimeValid: !isNaN(sasEndTime.getTime())
+        endTimeValid: !isNaN(sasEndTime.getTime()),
       });
       throw new Error("Invalid date values provided to calculateSasMetrics");
     }
@@ -735,7 +875,7 @@ export async function calculateSasMetrics(
     console.warn("🔄 calculateSasMetrics called with:", {
       machineIdentifier,
       sasStartTime: sasStartTime.toISOString(),
-      sasEndTime: sasEndTime.toISOString()
+      sasEndTime: sasEndTime.toISOString(),
     });
 
     // Query meters collection for the machine and time period
@@ -823,8 +963,6 @@ export function calculateMovement(
   };
 }
 
-
-
 /**
  * Calculate amount to collect for a single machine
  * @param metersIn - Current meters in value
@@ -844,10 +982,10 @@ export function calculateAmountToCollectForMachine(
   const drop = metersIn - prevIn;
   const cancelledCredits = metersOut - prevOut;
   const gross = drop - cancelledCredits;
-  
+
   // Calculate partner profit: gross * profitShare / 100
-  const partnerProfit = Math.floor(gross * profitShare / 100);
-  
+  const partnerProfit = Math.floor((gross * profitShare) / 100);
+
   // Amount to collect = gross - partner profit
   return gross - partnerProfit;
 }
@@ -866,10 +1004,10 @@ export function calculateTotalAmountToCollect(
     const drop = (machine.metersIn || 0) - (machine.prevIn || 0);
     const cancelledCredits = (machine.metersOut || 0) - (machine.prevOut || 0);
     const gross = drop - cancelledCredits;
-    
+
     // Calculate partner profit: gross * profitShare / 100
-    const partnerProfit = Math.floor(gross * profitShare / 100);
-    
+    const partnerProfit = Math.floor((gross * profitShare) / 100);
+
     // Amount to collect = gross - partner profit
     return total + (gross - partnerProfit);
   }, 0);

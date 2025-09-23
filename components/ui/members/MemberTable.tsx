@@ -72,7 +72,7 @@ const MemberTable: React.FC<MemberTableProps> = ({
         >
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
-              <TableHead
+              <TableHead isFirstColumn={true}
                 className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("locationName")}
               >
@@ -83,7 +83,7 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   </span>
                 )}
               </TableHead>
-              <TableHead
+              <TableHead isFirstColumn={true}
                 centered
                 className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("name")}
@@ -133,7 +133,7 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   }
                 }}
               >
-                <TableCell className="text-left">
+                <TableCell isFirstColumn={true}>
                   {member.locationName || "Unknown Location"}
                 </TableCell>
                 <TableCell centered>

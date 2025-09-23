@@ -20,7 +20,8 @@ import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function PcLayout(props: PcLayoutProps) {
-  const { activeMetricsFilter, customDateRange, selectedLicencee } = useDashBoardStore();
+  const { activeMetricsFilter, customDateRange, selectedLicencee } =
+    useDashBoardStore();
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
@@ -41,7 +42,9 @@ export default function PcLayout(props: PcLayoutProps) {
     const fetchAgg = async () => {
       // Only fetch if we have a valid activeMetricsFilter - no fallback
       if (!activeMetricsFilter) {
-        console.warn("⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch");
+        console.warn(
+          "⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch"
+        );
         setLocationAggregates([]);
         setAggLoading(false);
         return;
@@ -51,26 +54,28 @@ export default function PcLayout(props: PcLayoutProps) {
       try {
         const params = new URLSearchParams();
         params.append("timePeriod", activeMetricsFilter);
-        
+
         // Add custom date range if applicable
         if (activeMetricsFilter === "Custom" && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
-            const sd = customDateRange.startDate instanceof Date
-              ? customDateRange.startDate
-              : new Date(customDateRange.startDate as unknown as string);
-            const ed = customDateRange.endDate instanceof Date
-              ? customDateRange.endDate
-              : new Date(customDateRange.endDate as unknown as string);
+            const sd =
+              customDateRange.startDate instanceof Date
+                ? customDateRange.startDate
+                : new Date(customDateRange.startDate as unknown as string);
+            const ed =
+              customDateRange.endDate instanceof Date
+                ? customDateRange.endDate
+                : new Date(customDateRange.endDate as unknown as string);
             params.append("startDate", sd.toISOString());
             params.append("endDate", ed.toISOString());
           }
         }
-        
+
         // Add licensee filter if applicable
         if (selectedLicencee && selectedLicencee !== "all") {
           params.append("licencee", selectedLicencee);
         }
-        
+
         const res = await axios.get(
           `/api/locationAggregation?${params.toString()}`
         );
@@ -127,68 +132,61 @@ export default function PcLayout(props: PcLayoutProps) {
             </div>
           </div>
 
-
-          {/* Three Metric Cards (Vertical on mobile, Horizontal on md) */}
+          {/* Financial Metrics Cards */}
           {props.loadingChartData ? (
             <DashboardFinancialMetricsSkeleton />
           ) : (
-            <div className="flex flex-col md:flex-row gap-4">
-              <>
-                {/* Money In Card */}
-                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                    Money In
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {/* Money In Card */}
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
+                  Money In
+                </p>
+                <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
+                <div className="flex-1 flex items-center justify-center">
+                  <p
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                      props.totals?.moneyIn
+                    )}`}
+                  >
+                    {props.totals ? formatCurrency(props.totals.moneyIn) : "--"}
                   </p>
-                  <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <p
-                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
-                        props.totals?.moneyIn
-                      )}`}
-                    >
-                      {props.totals
-                        ? formatCurrency(props.totals.moneyIn)
-                        : "--"}
-                    </p>
-                  </div>
                 </div>
-                {/* Money Out Card */}
-                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                    Money Out
+              </div>
+              {/* Money Out Card */}
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
+                  Money Out
+                </p>
+                <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
+                <div className="flex-1 flex items-center justify-center">
+                  <p
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                      props.totals?.moneyOut
+                    )}`}
+                  >
+                    {props.totals
+                      ? formatCurrency(props.totals.moneyOut)
+                      : "--"}
                   </p>
-                  <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <p
-                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
-                        props.totals?.moneyOut
-                      )}`}
-                    >
-                      {props.totals
-                        ? formatCurrency(props.totals.moneyOut)
-                        : "--"}
-                    </p>
-                  </div>
                 </div>
-                {/* Gross Card */}
-                <div className="flex-1 px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-                  <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                    Gross
+              </div>
+              {/* Gross Card - Will wrap to new line when space is limited */}
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center md:col-span-2 lg:col-span-2 xl:col-span-1">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
+                  Gross
+                </p>
+                <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
+                <div className="flex-1 flex items-center justify-center">
+                  <p
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                      props.totals?.gross
+                    )}`}
+                  >
+                    {props.totals ? formatCurrency(props.totals.gross) : "--"}
                   </p>
-                  <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <p
-                      className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
-                        props.totals?.gross
-                      )}`}
-                    >
-                      {props.totals
-                        ? formatCurrency(props.totals.gross)
-                        : "--"}
-                    </p>
-                  </div>
                 </div>
-              </>
+              </div>
             </div>
           )}
 
@@ -219,7 +217,7 @@ export default function PcLayout(props: PcLayoutProps) {
                 </div>
               )}
             </div>
-            
+
             {aggLoading ? (
               <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
                 <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
@@ -330,20 +328,20 @@ export default function PcLayout(props: PcLayoutProps) {
                 {/* Chart and Legend */}
                 <div className="flex items-center justify-between">
                   <ul className="space-y-2 flex-1">
-                    {props.topPerformingData.map((item: TopPerformingItem, index: number) => (
-                      <li
-                        key={index}
-                        className="flex items-center space-x-2 text-sm"
-                      >
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        ></div>
-                        <span className="text-gray-700">
-                          {item.name}
-                        </span>
-                      </li>
-                    ))}
+                    {props.topPerformingData.map(
+                      (item: TopPerformingItem, index: number) => (
+                        <li
+                          key={index}
+                          className="flex items-center space-x-2 text-sm"
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                          <span className="text-gray-700">{item.name}</span>
+                        </li>
+                      )
+                    )}
                   </ul>
                   <ResponsiveContainer width={160} height={160}>
                     <PieChart>
@@ -357,9 +355,11 @@ export default function PcLayout(props: PcLayoutProps) {
                         labelLine={false}
                         label={props.renderCustomizedLabel}
                       >
-                        {props.topPerformingData.map((entry: TopPerformingItem, index: number) => (
-                          <Cell key={index} fill={entry.color} />
-                        ))}
+                        {props.topPerformingData.map(
+                          (entry: TopPerformingItem, index: number) => (
+                            <Cell key={index} fill={entry.color} />
+                          )
+                        )}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>

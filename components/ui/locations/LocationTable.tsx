@@ -35,15 +35,13 @@ const LocationTable: React.FC<LocationTableProps> = ({
   return (
     <>
       <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <Table
-          ref={tableRef}
-          className="table-fixed w-full"
-        >
+        <Table ref={tableRef} className="table-fixed w-full">
           <TableHeader>
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
               <TableHead
                 className="text-white font-semibold cursor-pointer relative"
                 onClick={() => onSort("name")}
+                isFirstColumn={true}
               >
                 <span>LOCATION NAME</span>
                 {sortOption === "name" && (
@@ -85,7 +83,9 @@ const LocationTable: React.FC<LocationTableProps> = ({
                   </span>
                 )}
               </TableHead>
-              <TableHead className="text-white font-semibold">ACTIONS</TableHead>
+              <TableHead className="text-white font-semibold">
+                ACTIONS
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,62 +101,59 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     }
                   }}
                 >
-                  <TableCell className="text-left">
+                  <TableCell isFirstColumn={true}>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        {(location.locationName as string) || "Unknown Location"}
+                        {(location.locationName as string) ||
+                          "Unknown Location"}
                       </span>
                     </div>
                   </TableCell>
-                <TableCell className="text-center">
-                  {formatCurrency(loc.moneyIn || 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {formatCurrency(loc.moneyOut || 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <span className="text-green-600 font-semibold">
-                    {formatCurrency(loc.gross || 0)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAction("edit", loc);
-                      }}
-                      className="p-1 h-8 w-8 hover:bg-accent"
-                    >
-                      <Image
-                        src={editIcon}
-                        alt="Edit"
-                        width={16}
-                        height={16}
-                        className="w-4 h-4"
-                      />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAction("delete", loc);
-                      }}
-                      className="p-1 h-8 w-8 hover:bg-accent"
-                    >
-                      <Image
-                        src={deleteIcon}
-                        alt="Delete"
-                        width={16}
-                        height={16}
-                        className="w-4 h-4"
-                      />
-                    </Button>
-                  </div>
-                </TableCell>
+                  <TableCell>{formatCurrency(loc.moneyIn || 0)}</TableCell>
+                  <TableCell>{formatCurrency(loc.moneyOut || 0)}</TableCell>
+                  <TableCell>
+                    <span className="text-green-600 font-semibold">
+                      {formatCurrency(loc.gross || 0)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAction("edit", loc);
+                        }}
+                        className="p-1 h-8 w-8 hover:bg-accent"
+                      >
+                        <Image
+                          src={editIcon}
+                          alt="Edit"
+                          width={16}
+                          height={16}
+                          className="w-4 h-4"
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAction("delete", loc);
+                        }}
+                        className="p-1 h-8 w-8 hover:bg-accent"
+                      >
+                        <Image
+                          src={deleteIcon}
+                          alt="Delete"
+                          width={16}
+                          height={16}
+                          className="w-4 h-4"
+                        />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             })}

@@ -60,7 +60,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const body = await request.json() as Partial<CreateCollectionReportPayload>;
+    const body =
+      (await request.json()) as Partial<CreateCollectionReportPayload>;
 
     // Find the existing report
     const existingReport = await CollectionReport.findById(reportId);
@@ -74,9 +75,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // Update the report
     const updatedReport = await CollectionReport.findByIdAndUpdate(
       reportId,
-      { 
+      {
         ...body,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       { new: true }
     );
@@ -92,10 +93,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const updateChanges = Object.keys(body).map(key => ({
+        const updateChanges = Object.keys(body).map((key) => ({
           field: key,
           oldValue: existingReport[key as keyof typeof existingReport],
-          newValue: body[key as keyof typeof body]
+          newValue: body[key as keyof typeof body],
         }));
 
         await logActivity(
@@ -106,7 +107,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           },
           "UPDATE",
           "collection",
-          { id: reportId, name: `${existingReport.locationName} - ${existingReport.collectorName}` },
+          {
+            id: reportId,
+            name: `${existingReport.locationName} - ${existingReport.collectorName}`,
+          },
           updateChanges,
           `Updated collection report for ${existingReport.locationName}`,
           getClientIP(request) || undefined
@@ -153,8 +157,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // Get all collections associated with this report
-    const associatedCollections = await Collections.find({ locationReportId: reportId });
-    
+    const associatedCollections = await Collections.find({
+      locationReportId: reportId,
+    });
+
     // First, remove all collection history entries with this locationReportId from all machines
     // Handle both ObjectId and string types for _id in collectionMetersHistory
     try {
@@ -164,15 +170,15 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         {
           $pull: {
             collectionMetersHistory: {
-              locationReportId: reportId
-            }
+              locationReportId: reportId,
+            },
           },
           $set: {
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         }
       );
-      
+
       // If no matches found with ObjectId, try with string _id (old format)
       if (updateResult.modifiedCount === 0) {
         updateResult = await Machine.updateMany(
@@ -180,48 +186,55 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           {
             $pull: {
               collectionMetersHistory: {
-                _id: reportId
-              }
+                _id: reportId,
+              },
             },
             $set: {
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           }
         );
       }
-      
-      console.warn(`Removed collection history entries from ${updateResult.modifiedCount} machines for reportId: ${reportId}`);
+
+      console.warn(
+        `Removed collection history entries from ${updateResult.modifiedCount} machines for reportId: ${reportId}`
+      );
     } catch (historyError) {
-      console.error(`Failed to remove collection history entries:`, historyError);
+      console.error(
+        `Failed to remove collection history entries:`,
+        historyError
+      );
     }
-    
+
     // Then revert collection meters for machines that had associated collections
     for (const collection of associatedCollections) {
       if (collection.machineId) {
         try {
           // Revert collection meters to previous values
           const machine = await Machine.findById(collection.machineId);
-          
+
           if (machine && machine.collectionMeters) {
             // Revert metersIn and metersOut to previous values
             const previousMetersIn = collection.prevIn || 0;
             const previousMetersOut = collection.prevOut || 0;
-            
-            await Machine.findByIdAndUpdate(
-              collection.machineId,
-              {
-                $set: {
-                  "collectionMeters.metersIn": previousMetersIn,
-                  "collectionMeters.metersOut": previousMetersOut,
-                  updatedAt: new Date()
-                }
-              }
-            );
 
-            console.warn(`Reverted collection meters for machine ${collection.machineId}: metersIn=${previousMetersIn}, metersOut=${previousMetersOut}`);
+            await Machine.findByIdAndUpdate(collection.machineId, {
+              $set: {
+                "collectionMeters.metersIn": previousMetersIn,
+                "collectionMeters.metersOut": previousMetersOut,
+                updatedAt: new Date(),
+              },
+            });
+
+            console.warn(
+              `Reverted collection meters for machine ${collection.machineId}: metersIn=${previousMetersIn}, metersOut=${previousMetersOut}`
+            );
           }
         } catch (revertError) {
-          console.error(`Failed to revert collection meters for machine ${collection.machineId}:`, revertError);
+          console.error(
+            `Failed to revert collection meters for machine ${collection.machineId}:`,
+            revertError
+          );
           // Don't fail the entire operation if meter revert fails
         }
       }
@@ -245,7 +258,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           },
           "DELETE",
           "collection",
-          { id: reportId, name: `${existingReport.locationName} - ${existingReport.collectorName}` },
+          {
+            id: reportId,
+            name: `${existingReport.locationName} - ${existingReport.collectorName}`,
+          },
           [],
           `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
           getClientIP(request) || undefined
@@ -255,9 +271,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Collection report and ${associatedCollections.length} associated collections deleted successfully. Collection meters reverted to previous values.` 
+    return NextResponse.json({
+      success: true,
+      message: `Collection report and ${associatedCollections.length} associated collections deleted successfully. Collection meters reverted to previous values.`,
     });
   } catch (error) {
     console.error("Error deleting collection report:", error);

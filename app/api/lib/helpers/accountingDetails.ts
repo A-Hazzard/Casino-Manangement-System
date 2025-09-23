@@ -391,13 +391,13 @@ export async function getCollectionReportById(
       const meterGross = collection.movement?.gross || 0;
       const sasGross = collection.sasMeters?.gross || 0;
       // Check if SAS data exists - if not, show "No SAS Data"
-       const variation =
-         !collection.sasMeters ||
-         collection.sasMeters.gross === undefined ||
-         collection.sasMeters.gross === null ||
-         collection.sasMeters.gross === 0
-           ? "No SAS Data"
-           : meterGross - sasGross;
+      const variation =
+        !collection.sasMeters ||
+        collection.sasMeters.gross === undefined ||
+        collection.sasMeters.gross === null ||
+        collection.sasMeters.gross === 0
+          ? "No SAS Data"
+          : meterGross - sasGross;
 
       return {
         id: String(idx + 1),
@@ -413,6 +413,7 @@ export async function getCollectionReportById(
         sasStartTime: collection.sasMeters?.sasStartTime || "-",
         sasEndTime: collection.sasMeters?.sasEndTime || "-",
         hasIssue: false,
+        ramClear: collection.ramClear || false,
       };
     }),
     locationMetrics,

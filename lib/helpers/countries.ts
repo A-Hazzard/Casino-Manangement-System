@@ -1,7 +1,6 @@
 import axios from "axios";
 
-
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging removed - handled via API calls
 
 export type Country = {
   _id: string;
@@ -12,7 +11,6 @@ export type Country = {
   createdAt: Date;
   updatedAt: Date;
 };
-
 
 /**
  * Fetches all countries from the API
@@ -33,52 +31,25 @@ export async function fetchCountries(): Promise<Country[]> {
 export const createCountry = async (
   country: Omit<Country, "_id" | "createdAt" | "updatedAt">
 ) => {
-  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-  
   const response = await axios.post("/api/countries", country);
-  
-  // Log the country creation activity
-  await countryLogger(
-    "create",
-    "country",
-    { id: response.data.country._id, name: response.data.country.name },
-    [],
-    `Created new country: ${country.name}`
-  );
-  
+
+  // Activity logging removed - handled via API calls
+
   return response.data.country;
 };
 
 export const updateCountry = async (country: Country) => {
-  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-  
   const response = await axios.put(`/api/countries/${country._id}`, country);
-  
-  // Log the country update activity
-  await countryLogger(
-    "update",
-    "country",
-    { id: country._id, name: country.name },
-    [],
-    `Updated country: ${country.name}`
-  );
-  
+
+  // Activity logging removed - handled via API calls
+
   return response.data.country;
 };
 
 export const deleteCountry = async (id: string) => {
-  const countryLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-  
   const response = await axios.delete(`/api/countries/${id}`);
-  
-  // Log the country deletion activity
-  await countryLogger(
-    "delete",
-    "country",
-    { id, name: "Unknown Country" },
-    [],
-    `Deleted country with ID: ${id}`
-  );
-  
+
+  // Activity logging removed - handled via API calls
+
   return response.data.success;
 };

@@ -21,7 +21,7 @@ const formatSasTime = (dateString: string) => {
 };
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Zap } from "lucide-react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -39,6 +39,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Layout components
 
@@ -314,34 +320,71 @@ export default function CollectionReportPage() {
       );
     }
     return (
-      <>
+      <div>
         <div className="lg:hidden space-y-4">
           <h2 className="text-xl font-bold text-center my-4">
             Machine Metrics
           </h2>
+          {metricsData.some((m) => m.ramClear) && (
+            <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-md">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <Zap className="h-5 w-5 text-orange-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-orange-700 font-semibold">
+                    {metricsData.filter((m) => m.ramClear).length} machine(s)
+                    were ram cleared
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {paginatedMetricsData.map((metric: MachineMetric) => (
             <div
               key={metric.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${
+                metric.ramClear
+                  ? "border-l-4 border-orange-500 bg-orange-50 shadow-lg"
+                  : ""
+              }`}
             >
               <div className="bg-lighterBlueHighlight text-white p-3">
-                <h3
-                  className="font-semibold cursor-pointer hover:underline"
-                  onClick={() => {
-                    if (metric.actualMachineId) {
-                      const url = `/cabinets/${metric.actualMachineId}`;
-                      console.warn("Navigating to:", url);
-                      router.push(url);
-                    } else {
-                      console.warn(
-                        "No actualMachineId found for machine:",
-                        metric.machineId
-                      );
-                    }
-                  }}
-                >
-                  {metric.machineId}
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3
+                    className="font-semibold cursor-pointer hover:underline"
+                    onClick={() => {
+                      if (metric.actualMachineId) {
+                        const url = `/cabinets/${metric.actualMachineId}`;
+                        console.warn("Navigating to:", url);
+                        router.push(url);
+                      } else {
+                        console.warn(
+                          "No actualMachineId found for machine:",
+                          metric.machineId
+                        );
+                      }
+                    }}
+                  >
+                    {metric.machineId}
+                  </h3>
+                  {metric.ramClear && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center justify-center w-6 h-6 bg-orange-500 rounded-full shadow-lg border-2 border-orange-600 animate-pulse">
+                            <Zap className="w-3 h-3 text-white" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-semibold text-orange-600">
+                            ⚡ Machine was ram cleared
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -388,145 +431,187 @@ export default function CollectionReportPage() {
             </div>
           ))}
         </div>
-        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto pb-6">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-button hover:bg-button">
-                <TableHead className="text-white font-semibold">
-                  MACHINE
-                </TableHead>
-                <TableHead className="text-white font-semibold">
-                  DROP/CANCELLED
-                </TableHead>
-                <TableHead className="text-white font-semibold">
-                  METER GROSS
-                </TableHead>
-                <TableHead className="text-white font-semibold">
-                  SAS GROSS
-                </TableHead>
-                <TableHead className="text-white font-semibold">
-                  VARIATION
-                </TableHead>
-                <TableHead className="text-white font-semibold">
-                  SAS TIMES
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedMetricsData.map((metric: MachineMetric) => (
-                <TableRow key={metric.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium">
-                    <span
-                      className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
-                      onClick={() => {
-                        console.warn("Machine click debug:", {
-                          machineId: metric.machineId,
-                          actualMachineId: metric.actualMachineId,
-                          metric: metric,
-                        });
-                        if (metric.actualMachineId) {
-                          const url = `/cabinets/${metric.actualMachineId}`;
-                          console.warn("Navigating to:", url);
-                          router.push(url);
-                        } else {
-                          console.warn(
-                            "No actualMachineId found for machine:",
-                            metric.machineId
-                          );
-                        }
-                      }}
-                    >
-                      {metric.machineId}
-                    </span>
-                  </TableCell>
-                  <TableCell>{metric.dropCancelled || "0.00"}</TableCell>
-                  <TableCell>
-                    {metric.metersGross?.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }) || "0.00"}
-                  </TableCell>
-                  <TableCell>
-                    {metric.sasGross?.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }) || "0.00"}
-                  </TableCell>
-                  <TableCell>
-                    {metric.variation?.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }) || "0.00"}
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
-                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
-                  </TableCell>
+        <div className="hidden lg:block">
+          {metricsData.some((m) => m.ramClear) && (
+            <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-md mb-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <Zap className="h-5 w-5 text-orange-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-orange-700 font-semibold">
+                    {metricsData.filter((m) => m.ramClear).length} machine(s)
+                    were ram cleared
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-lg shadow-md overflow-x-auto pb-6">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-button hover:bg-button">
+                  <TableHead className="text-white font-semibold">
+                    MACHINE
+                  </TableHead>
+                  <TableHead className="text-white font-semibold">
+                    DROP/CANCELLED
+                  </TableHead>
+                  <TableHead className="text-white font-semibold">
+                    METER GROSS
+                  </TableHead>
+                  <TableHead className="text-white font-semibold">
+                    SAS GROSS
+                  </TableHead>
+                  <TableHead className="text-white font-semibold">
+                    VARIATION
+                  </TableHead>
+                  <TableHead className="text-white font-semibold">
+                    SAS TIMES
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="mt-6 flex items-center justify-center space-x-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setMachinePage(1)}
-              disabled={machinePage === 1}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
-            >
-              <DoubleArrowLeftIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setMachinePage((p) => Math.max(1, p - 1))}
-              disabled={machinePage === 1}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
-            >
-              <ChevronLeftIcon className="h-4 w-4" />
-            </Button>
-            <span className="text-gray-700 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={machineTotalPages}
-              value={machinePage}
-              onChange={(e) => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > machineTotalPages) val = machineTotalPages;
-                setMachinePage(val);
-              }}
-              className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
-              aria-label="Page number"
-            />
-            <span className="text-gray-700 text-sm">
-              of {machineTotalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                setMachinePage((p) => Math.min(machineTotalPages, p + 1))
-              }
-              disabled={machinePage === machineTotalPages}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
-            >
-              <ChevronRightIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setMachinePage(machineTotalPages)}
-              disabled={machinePage === machineTotalPages}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
-            >
-              <DoubleArrowRightIcon className="h-4 w-4" />
-            </Button>
+              </TableHeader>
+              <TableBody>
+                {paginatedMetricsData.map((metric: MachineMetric) => (
+                  <TableRow
+                    key={metric.id}
+                    className={`hover:bg-gray-50 ${
+                      metric.ramClear
+                        ? "bg-orange-50 border-l-4 border-orange-500 shadow-sm"
+                        : ""
+                    }`}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
+                          onClick={() => {
+                            console.warn("Machine click debug:", {
+                              machineId: metric.machineId,
+                              actualMachineId: metric.actualMachineId,
+                              metric: metric,
+                            });
+                            if (metric.actualMachineId) {
+                              const url = `/cabinets/${metric.actualMachineId}`;
+                              console.warn("Navigating to:", url);
+                              router.push(url);
+                            } else {
+                              console.warn(
+                                "No actualMachineId found for machine:",
+                                metric.machineId
+                              );
+                            }
+                          }}
+                        >
+                          {metric.machineId}
+                        </span>
+                        {metric.ramClear && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center justify-center w-6 h-6 bg-orange-500 rounded-full shadow-lg border-2 border-orange-600 animate-pulse">
+                                  <Zap className="w-3 h-3 text-white" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="font-semibold text-orange-600">
+                                  ⚡ Machine was ram cleared
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{metric.dropCancelled || "0.00"}</TableCell>
+                    <TableCell>
+                      {metric.metersGross?.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) || "0.00"}
+                    </TableCell>
+                    <TableCell>
+                      {metric.sasGross?.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) || "0.00"}
+                    </TableCell>
+                    <TableCell>
+                      {metric.variation?.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) || "0.00"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <div>{formatSasTime(metric.sasStartTime || "")}</div>
+                      <div>{formatSasTime(metric.sasEndTime || "")}</div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-6 flex items-center justify-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setMachinePage(1)}
+                disabled={machinePage === 1}
+                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              >
+                <DoubleArrowLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setMachinePage((p) => Math.max(1, p - 1))}
+                disabled={machinePage === 1}
+                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <span className="text-gray-700 text-sm">Page</span>
+              <input
+                type="number"
+                min={1}
+                max={machineTotalPages}
+                value={machinePage}
+                onChange={(e) => {
+                  let val = Number(e.target.value);
+                  if (isNaN(val)) val = 1;
+                  if (val < 1) val = 1;
+                  if (val > machineTotalPages) val = machineTotalPages;
+                  setMachinePage(val);
+                }}
+                className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                aria-label="Page number"
+              />
+              <span className="text-gray-700 text-sm">
+                of {machineTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  setMachinePage((p) => Math.min(machineTotalPages, p + 1))
+                }
+                disabled={machinePage === machineTotalPages}
+                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setMachinePage(machineTotalPages)}
+                disabled={machinePage === machineTotalPages}
+                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              >
+                <DoubleArrowRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
-      </>
+      </div>
     );
   };
 

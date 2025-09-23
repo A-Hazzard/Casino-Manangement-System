@@ -142,6 +142,7 @@ export type MachineMetric = {
   sasStartTime?: string;
   sasEndTime?: string;
   hasIssue?: boolean;
+  ramClear?: boolean;
 };
 
 export type LocationMetric = {

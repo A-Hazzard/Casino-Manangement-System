@@ -43,6 +43,7 @@ export default function CabinetTable({
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
               onClick={() => onColumnSort("assetNumber" as CabinetSortOption)}
+              isFirstColumn={true}
             >
               <span>ASSET NUMBER</span>
               {sortOption === "assetNumber" && (
@@ -125,7 +126,7 @@ export default function CabinetTable({
                   navigateToCabinet(cab._id);
                 }}
               >
-                <TableCell className="text-left">
+                <TableCell isFirstColumn={true}>
                   <div className="font-medium">
                     {cab.assetNumber || "(No Asset #)"}
                   </div>
@@ -154,18 +155,14 @@ export default function CabinetTable({
                     <ClockIcon className="w-3 h-3" /> {lastOnlineText}
                   </div>
                 </TableCell>
-                <TableCell className="text-center">
-                  {formatCurrency(cab.moneyIn)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {formatCurrency(cab.moneyOut)}
-                </TableCell>
-                <TableCell className="text-center">
+                <TableCell>{formatCurrency(cab.moneyIn)}</TableCell>
+                <TableCell>{formatCurrency(cab.moneyOut)}</TableCell>
+                <TableCell>
                   <span className="font-semibold">
                     {formatCurrency(cab.jackpot)}
                   </span>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell>
                   <span className="text-green-600 font-semibold">
                     {formatCurrency(cab.gross)}
                   </span>

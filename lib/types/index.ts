@@ -13,7 +13,7 @@ export type { TimePeriod };
 
 export * from "@/lib/types/movementRequests";
 
-export type { LoginRequestBody, AuthResult, UserAuthPayload } from "./auth";
+export type { LoginRequestBody, AuthResult } from "./auth";
 
 // Dashboard types
 export type dashboardData = {

@@ -3,7 +3,9 @@ import "./globals.css";
 import { Montserrat } from "next/font/google";
 import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import GlobalSidebarWrapper from "@/components/layout/GlobalSidebarWrapper";
+import UserValidationWrapper from "@/components/UserValidationWrapper";
 
 export const metadata: Metadata = {
   title: "Dynamic1 CMS - Manage Casinos Seamlessly",
@@ -66,11 +68,14 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        <SidebarProvider>
-          <GlobalSidebarWrapper />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
-        <Toaster position="top-right" />
+        <ErrorBoundary>
+          <SidebarProvider>
+            <GlobalSidebarWrapper />
+            <SidebarInset>{children}</SidebarInset>
+          </SidebarProvider>
+          <UserValidationWrapper />
+          <Toaster position="top-right" />
+        </ErrorBoundary>
       </body>
     </html>
   );

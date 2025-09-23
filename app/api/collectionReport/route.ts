@@ -18,100 +18,115 @@ import { calculateCollectionReportTotals } from "@/app/api/lib/helpers/collectio
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 
 export async function GET(req: NextRequest) {
-  await connectDB();
-  const { searchParams } = new URL(req.url);
+  try {
+    await connectDB();
+    const { searchParams } = new URL(req.url);
 
-  // If ?locationsOnly is present, return locations with machines
-  if (searchParams.get("locationsWithMachines")) {
-    // Fetch all locations
-    const locations = await GamingLocations.find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
-        ],
-      },
-      "_id name previousCollectionTime profitShare"
-    ).lean();
-    // For each location, fetch its machines
-    const locationsWithMachines = await Promise.all(
-      locations.map(async (loc) => {
-        const machines = await Machine.find(
-          {
-            gamingLocation: loc._id,
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date("1970-01-01") } },
-            ],
-          },
-          "_id serialNumber custom.name collectionMeters collectionTime"
-        ).lean();
-        return {
-          _id: loc._id,
-          name: loc.name,
-          previousCollectionTime: loc.previousCollectionTime,
-          profitShare: loc.profitShare,
-          machines: machines.map((m) => ({
-            _id: m._id,
-            serialNumber: m.serialNumber,
-            name: m.custom?.name || m.serialNumber || "Unnamed Machine",
-            collectionMeters: m.collectionMeters || {
-              metersIn: 0,
-              metersOut: 0,
+    // If ?locationsOnly is present, return locations with machines
+    if (searchParams.get("locationsWithMachines")) {
+      // Fetch all locations
+      const locations = await GamingLocations.find(
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
+        },
+        "_id name previousCollectionTime profitShare"
+      ).lean();
+      // For each location, fetch its machines
+      const locationsWithMachines = await Promise.all(
+        locations.map(async (loc) => {
+          const machines = await Machine.find(
+            {
+              gamingLocation: loc._id,
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("1970-01-01") } },
+              ],
             },
-            collectionTime: m.collectionTime,
-          })),
-        };
-      })
-    );
-    return NextResponse.json({ locations: locationsWithMachines });
-  }
+            "_id serialNumber custom.name collectionMeters collectionTime"
+          ).lean();
+          return {
+            _id: loc._id,
+            name: loc.name,
+            previousCollectionTime: loc.previousCollectionTime,
+            profitShare: loc.profitShare,
+            machines: machines.map((m) => ({
+              _id: m._id,
+              serialNumber: m.serialNumber,
+              name: m.custom?.name || m.serialNumber || "Unnamed Machine",
+              collectionMeters: m.collectionMeters || {
+                metersIn: 0,
+                metersOut: 0,
+              },
+              collectionTime: m.collectionTime,
+            })),
+          };
+        })
+      );
+      return NextResponse.json({ locations: locationsWithMachines });
+    }
 
-  const timePeriod =
-    (searchParams.get("timePeriod") as TimePeriod) || undefined;
-  const startDateStr = searchParams.get("startDate");
-  const endDateStr = searchParams.get("endDate");
-  const locationName = searchParams.get("locationName") || undefined;
-  const licencee = searchParams.get("licencee") || undefined;
+    const timePeriod =
+      (searchParams.get("timePeriod") as TimePeriod) || undefined;
+    const startDateStr = searchParams.get("startDate");
+    const endDateStr = searchParams.get("endDate");
+    const locationName = searchParams.get("locationName") || undefined;
+    const licencee = searchParams.get("licencee") || undefined;
 
-  // If startDate and endDate are present AND no timePeriod is specified, treat as monthly aggregation
-  if (startDateStr && endDateStr && !timePeriod) {
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
+    // If startDate and endDate are present AND no timePeriod is specified, treat as monthly aggregation
+    if (startDateStr && endDateStr && !timePeriod) {
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
 
-    // Use the updated monthly aggregation functions that now support licensee filtering
-    const summary = await getMonthlyCollectionReportSummary(
+      // Use the updated monthly aggregation functions that now support licensee filtering
+      const summary = await getMonthlyCollectionReportSummary(
+        startDate,
+        endDate,
+        locationName,
+        licencee
+      );
+      const details = await getMonthlyCollectionReportByLocation(
+        startDate,
+        endDate,
+        locationName,
+        licencee
+      );
+      return NextResponse.json({ summary, details });
+    }
+
+    // Handle individual collection reports with time period or date filtering
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+
+    if (timePeriod && timePeriod !== "Custom") {
+      // Convert time period to date range
+      const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
+      startDate = s;
+      endDate = e;
+    } else if (startDateStr && endDateStr) {
+      // Use custom date range
+      startDate = new Date(startDateStr);
+      endDate = new Date(endDateStr);
+    }
+
+    const reports = await getAllCollectionReportsWithMachineCounts(
+      licencee,
       startDate,
-      endDate,
-      locationName,
-      licencee
+      endDate
     );
-    const details = await getMonthlyCollectionReportByLocation(
-      startDate,
-      endDate,
-      locationName,
-      licencee
+    return NextResponse.json(reports);
+  } catch (error) {
+    console.error("❌ Error in collectionReport GET endpoint:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch collection reports",
+        details: "Database connection or query failed",
+      },
+      { status: 500 }
     );
-    return NextResponse.json({ summary, details });
   }
-
-  // Handle individual collection reports with time period or date filtering
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-
-  if (timePeriod && timePeriod !== "Custom") {
-    // Convert time period to date range
-    const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
-    startDate = s;
-    endDate = e;
-  } else if (startDateStr && endDateStr) {
-    // Use custom date range
-    startDate = new Date(startDateStr);
-    endDate = new Date(endDateStr);
-  }
-
-  const reports = await getAllCollectionReportsWithMachineCounts(licencee, startDate, endDate);
-  return NextResponse.json(reports);
 }
 
 export async function POST(req: NextRequest) {
@@ -184,9 +199,15 @@ export async function POST(req: NextRequest) {
           // Get current machine data to access previous meters
           const currentMachine = await Machine.findById(m.machineId).lean();
           if (currentMachine) {
-            const currentMachineData = currentMachine as Record<string, unknown>;
-            const currentCollectionMeters = currentMachineData.collectionMeters as { metersIn: number; metersOut: number } | undefined;
-            
+            const currentMachineData = currentMachine as Record<
+              string,
+              unknown
+            >;
+            const currentCollectionMeters =
+              currentMachineData.collectionMeters as
+                | { metersIn: number; metersOut: number }
+                | undefined;
+
             // Prepare history entry
             const historyEntry = {
               _id: new mongoose.Types.ObjectId(), // Use mongoose ObjectId for proper type
@@ -224,14 +245,18 @@ export async function POST(req: NextRequest) {
           if (currentMachine) {
             const machineData = currentMachine as Record<string, unknown>;
             const gamingLocationId = machineData.gamingLocation as string;
-            
+
             if (gamingLocationId) {
-              const { GamingLocations } = await import("@/app/api/lib/models/gaminglocations");
+              const { GamingLocations } = await import(
+                "@/app/api/lib/models/gaminglocations"
+              );
               await GamingLocations.findByIdAndUpdate(
                 gamingLocationId,
                 {
                   $set: {
-                    previousCollectionTime: new Date(m.collectionTime || body.timestamp), // Use machine collection time or fallback to report timestamp
+                    previousCollectionTime: new Date(
+                      m.collectionTime || body.timestamp
+                    ), // Use machine collection time or fallback to report timestamp
                     updatedAt: new Date(),
                   },
                 },
@@ -253,14 +278,38 @@ export async function POST(req: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const createChanges = [
-          { field: "locationName", oldValue: null, newValue: body.locationName },
-          { field: "collectorName", oldValue: null, newValue: body.collectorName },
-          { field: "amountCollected", oldValue: null, newValue: body.amountCollected },
-          { field: "amountToCollect", oldValue: null, newValue: body.amountToCollect },
+          {
+            field: "locationName",
+            oldValue: null,
+            newValue: body.locationName,
+          },
+          {
+            field: "collectorName",
+            oldValue: null,
+            newValue: body.collectorName,
+          },
+          {
+            field: "amountCollected",
+            oldValue: null,
+            newValue: body.amountCollected,
+          },
+          {
+            field: "amountToCollect",
+            oldValue: null,
+            newValue: body.amountToCollect,
+          },
           { field: "variance", oldValue: null, newValue: body.variance },
-          { field: "partnerProfit", oldValue: null, newValue: body.partnerProfit },
+          {
+            field: "partnerProfit",
+            oldValue: null,
+            newValue: body.partnerProfit,
+          },
           { field: "taxes", oldValue: null, newValue: body.taxes },
-          { field: "machines", oldValue: null, newValue: body.machines?.length || 0 },
+          {
+            field: "machines",
+            oldValue: null,
+            newValue: body.machines?.length || 0,
+          },
         ];
 
         await logActivity(
@@ -271,9 +320,16 @@ export async function POST(req: NextRequest) {
           },
           "CREATE",
           "collection",
-          { id: created._id.toString(), name: `${body.locationName} - ${body.collectorName}` },
+          {
+            id: created._id.toString(),
+            name: `${body.locationName} - ${body.collectorName}`,
+          },
           createChanges,
-          `Created collection report for ${body.locationName} by ${body.collectorName} (${body.machines?.length || 0} machines, $${body.amountCollected} collected)`,
+          `Created collection report for ${body.locationName} by ${
+            body.collectorName
+          } (${body.machines?.length || 0} machines, $${
+            body.amountCollected
+          } collected)`,
           getClientIP(req) || undefined
         );
       } catch (logError) {

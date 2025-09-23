@@ -2,6 +2,8 @@
 import { Types } from "mongoose";
 import type {
   SasMeters,
+} from "./common";
+import type {
   MeterData,
   BillValidatorData,
   CollectionMetersHistoryEntry,

@@ -146,17 +146,30 @@ export function CollectedMachinesList({
                 </p>
               </div>
             ) : (
-              collectedMachines.map((machine, index) => (
-                <MachineListItem
-                  key={machine._id || index}
-                  machine={machine}
-                  onEdit={() => onEditMachine(machine)}
-                  onDelete={() => handleDeleteConfirm(machine._id)}
-                  showDeleteConfirm={showDeleteConfirm === machine._id}
-                  onDeleteConfirm={() => handleDeleteConfirmYes(machine._id)}
-                  onDeleteCancel={handleDeleteCancel}
-                />
-              ))
+              [...collectedMachines]
+                .sort((a, b) => {
+                  // Sort by timestamp in descending order (most recent first)
+                  const timestampA =
+                    a.timestamp instanceof Date
+                      ? a.timestamp
+                      : new Date(a.timestamp);
+                  const timestampB =
+                    b.timestamp instanceof Date
+                      ? b.timestamp
+                      : new Date(b.timestamp);
+                  return timestampB.getTime() - timestampA.getTime();
+                })
+                .map((machine, index) => (
+                  <MachineListItem
+                    key={machine._id || index}
+                    machine={machine}
+                    onEdit={() => onEditMachine(machine)}
+                    onDelete={() => handleDeleteConfirm(machine._id)}
+                    showDeleteConfirm={showDeleteConfirm === machine._id}
+                    onDeleteConfirm={() => handleDeleteConfirmYes(machine._id)}
+                    onDeleteCancel={handleDeleteCancel}
+                  />
+                ))
             )}
           </div>
         </div>

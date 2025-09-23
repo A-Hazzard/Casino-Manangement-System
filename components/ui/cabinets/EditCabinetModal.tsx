@@ -13,6 +13,7 @@ import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useUserStore } from "@/lib/store/userStore";
 import {
   Select,
   SelectContent,
@@ -30,11 +31,15 @@ export const EditCabinetModal = ({
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetActionsStore();
   const { activeMetricsFilter } = useDashBoardStore();
+  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [cabinetDataLoading, setCabinetDataLoading] = useState(false);
+  const [userModifiedFields, setUserModifiedFields] = useState<Set<string>>(
+    new Set()
+  );
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
@@ -60,10 +65,10 @@ export const EditCabinetModal = ({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -71,17 +76,17 @@ export const EditCabinetModal = ({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -176,7 +181,8 @@ export const EditCabinetModal = ({
   useEffect(() => {
     // Initial form data setup from selected cabinet
     if (selectedCabinet) {
-      setFormData({
+      // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
+      const initialFormData = {
         id: selectedCabinet._id,
         assetNumber: selectedCabinet.assetNumber || "",
         installedGame: selectedCabinet.installedGame || "",
@@ -190,7 +196,9 @@ export const EditCabinetModal = ({
         status: selectedCabinet.status || "functional",
         isCronosMachine: selectedCabinet.isCronosMachine || false,
         manufacturer: selectedCabinet.manufacturer || "",
-      });
+      };
+      // console.log("Initial form data gameType:", initialFormData.gameType);
+      setFormData(initialFormData);
 
       // Fetch locations and manufacturers data when modal opens
       fetchLocations();
@@ -202,22 +210,55 @@ export const EditCabinetModal = ({
         fetchCabinetById(selectedCabinet._id, activeMetricsFilter)
           .then((cabinetDetails) => {
             if (cabinetDetails) {
-              setFormData((prevData) => ({
-                ...prevData,
-                installedGame:
-                  cabinetDetails.installedGame || prevData.installedGame,
-                gameType: cabinetDetails.gameType || prevData.gameType,
-                accountingDenomination: String(
-                  cabinetDetails.accountingDenomination ||
-                    prevData.accountingDenomination
-                ),
-                collectionMultiplier:
-                  cabinetDetails.collectionMultiplier ||
-                  prevData.collectionMultiplier,
-                status: cabinetDetails.status || prevData.status,
-                isCronosMachine:
-                  cabinetDetails.isCronosMachine || prevData.isCronosMachine,
-              }));
+              // console.log("Cabinet details gameType:", cabinetDetails.gameType);
+              // console.log(
+              //   "Cabinet details manufacturer:",
+              //   cabinetDetails.manufacturer
+              // );
+              // console.log("Full cabinet details:", cabinetDetails);
+              setFormData((prevData) => {
+                // console.log(
+                //   "User modified fields:",
+                //   Array.from(userModifiedFields)
+                // );
+                // console.log(
+                //   "Will override gameType:",
+                //   !userModifiedFields.has("gameType")
+                // );
+                // console.log("API gameType:", cabinetDetails.gameType);
+                // console.log("Current form gameType:", prevData.gameType);
+
+                const newData = {
+                  ...prevData,
+                  installedGame:
+                    cabinetDetails.installedGame || prevData.installedGame,
+                  // Only update gameType if user hasn't modified it
+                  gameType: userModifiedFields.has("gameType")
+                    ? prevData.gameType
+                    : cabinetDetails.gameType || prevData.gameType,
+                  // Only update manufacturer if user hasn't modified it
+                  manufacturer: userModifiedFields.has("manufacturer")
+                    ? prevData.manufacturer
+                    : cabinetDetails.manufacturer || prevData.manufacturer,
+                  accountingDenomination: String(
+                    cabinetDetails.accountingDenomination ||
+                      prevData.accountingDenomination
+                  ),
+                  collectionMultiplier:
+                    cabinetDetails.collectionMultiplier ||
+                    prevData.collectionMultiplier,
+                  status: cabinetDetails.status || prevData.status,
+                  isCronosMachine:
+                    cabinetDetails.isCronosMachine || prevData.isCronosMachine,
+                };
+                // console.log(
+                //   "Updated form data with gameType:",
+                //   newData.gameType,
+                //   "User modified gameType:",
+                //   userModifiedFields.has("gameType")
+                // );
+                return newData;
+              });
             }
           })
           .catch((error) => {
@@ -236,6 +277,7 @@ export const EditCabinetModal = ({
     fetchLocations,
     fetchManufacturersData,
     activeMetricsFilter,
+    userModifiedFields,
   ]);
 
   useEffect(() => {
@@ -261,6 +303,9 @@ export const EditCabinetModal = ({
   }, [isEditModalOpen]);
 
   const handleClose = () => {
+    // Clear user modified fields when closing modal
+    setUserModifiedFields(new Set());
+
     gsap.to(modalRef.current, {
       opacity: 0,
       y: -20,
@@ -368,20 +413,39 @@ export const EditCabinetModal = ({
         return;
       }
 
+      // Debug: Log the form data being sent
+      // console.log("Submitting form data:", JSON.stringify(formData, null, 2));
+      // console.log("Sending to updateCabinet:", formData);
+
       // Pass the entire formData object with id included
       const success = await updateCabinet(formData, activeMetricsFilter);
       if (success) {
         // Log the cabinet update activity
         await logActivity(
           "update",
-          "cabinet",
+          "machine",
           selectedCabinet._id,
-          `${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} - ${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"}`,
-          `Updated cabinet: ${selectedCabinet.installedGame || selectedCabinet.game || "Unknown"} (${selectedCabinet.assetNumber || getSerialNumberIdentifier(selectedCabinet) || "Unknown"})`
+          `${
+            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
+          } - ${
+            selectedCabinet.assetNumber ||
+            getSerialNumberIdentifier(selectedCabinet) ||
+            "Unknown"
+          }`,
+          `Updated cabinet: ${
+            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
+          } (${
+            selectedCabinet.assetNumber ||
+            getSerialNumberIdentifier(selectedCabinet) ||
+            "Unknown"
+          })`
         );
 
         // Call the callback to refresh data
         onCabinetUpdated?.();
+
+        // Clear user modified fields after successful update
+        setUserModifiedFields(new Set());
 
         // Show success feedback
         toast.success("Cabinet updated successfully");
@@ -504,15 +568,25 @@ export const EditCabinetModal = ({
                   ) : (
                     <Select
                       value={formData.gameType}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, gameType: value }))
-                      }
+                      onValueChange={(value) => {
+                        // console.log("GameType changed to:", value);
+                        setUserModifiedFields(
+                          (prev) => new Set([...prev, "gameType"])
+                        );
+                        setFormData((prev) => {
+                          const newData = { ...prev, gameType: value };
+                          // console.log("New form data:", newData);
+                          return newData;
+                        });
+                      }}
                     >
                       <SelectTrigger className="bg-container border-border">
                         <SelectValue placeholder="Select Game Type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Slot">Slot</SelectItem>
+                        <SelectItem value="Video Poker">Video Poker</SelectItem>
+                        <SelectItem value="Table Game">Table Game</SelectItem>
                         <SelectItem value="Roulette">Roulette</SelectItem>
                         <SelectItem value="Blackjack">Blackjack</SelectItem>
                         <SelectItem value="Poker">Poker</SelectItem>
@@ -536,6 +610,9 @@ export const EditCabinetModal = ({
                       onValueChange={(value) => {
                         // Prevent setting the disabled "no-manufacturers" value
                         if (value !== "no-manufacturers") {
+                          setUserModifiedFields(
+                            (prev) => new Set([...prev, "manufacturer"])
+                          );
                           setFormData((prev) => ({
                             ...prev,
                             manufacturer: value,

@@ -1,5 +1,5 @@
 import { Document } from "mongoose";
-import type { UserAuthPayload } from "@/lib/types";
+import type { UserAuthPayload } from "@/lib/types/auth";
 
 export type UserDocument = Document & {
   _id: string;

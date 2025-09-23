@@ -12,6 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { toast } from "sonner";
+import { useAsyncError } from "@/components/ui/ErrorBoundary";
 
 import PageLayout from "@/components/layout/PageLayout";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -126,6 +127,7 @@ export default function CollectionReportPage() {
 
 function CollectionReportContent() {
   const searchParams = useSearchParams();
+  const { handleError } = useAsyncError();
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -295,12 +297,22 @@ function CollectionReportContent() {
           setLoading(false);
         })
         .catch((error: unknown) => {
-          console.error("❌ Error fetching collection reports:", error);
+          // Error is already handled gracefully in fetchCollectionReportsByLicencee
           setReports([]);
           setLoading(false);
+          // Handle async errors gracefully
+          if (error instanceof Error) {
+            handleError(error);
+          }
         });
     }
-  }, [activeTab, selectedLicencee, activeMetricsFilter, customDateRange]);
+  }, [
+    activeTab,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    handleError,
+  ]);
 
   // Function to refresh collection reports data
   const refreshCollectionReports = useCallback(() => {
@@ -339,12 +351,22 @@ function CollectionReportContent() {
           setLoading(false);
         })
         .catch((error: unknown) => {
-          console.error("❌ Error fetching collection reports:", error);
+          // Error is already handled gracefully in fetchCollectionReportsByLicencee
           setReports([]);
           setLoading(false);
+          // Handle async errors gracefully
+          if (error instanceof Error) {
+            handleError(error);
+          }
         });
     }
-  }, [activeTab, selectedLicencee, activeMetricsFilter, customDateRange]);
+  }, [
+    activeTab,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    handleError,
+  ]);
 
   // Animate content when tab changes
   useEffect(() => {
@@ -683,8 +705,10 @@ function CollectionReportContent() {
 
     try {
       // Delete the collection report and all associated collections
-      const response = await axios.delete(`/api/collection-report/${reportToDelete}`);
-      
+      const response = await axios.delete(
+        `/api/collection-report/${reportToDelete}`
+      );
+
       if (response.data.success) {
         toast.success("Collection report deleted successfully!");
         // Refresh the reports list
@@ -731,9 +755,11 @@ function CollectionReportContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-
         {/* Title Row */}
-        <div className="flex items-center justify-between mt-4 w-full max-w-full" suppressHydrationWarning>
+        <div
+          className="flex items-center justify-between mt-4 w-full max-w-full"
+          suppressHydrationWarning
+        >
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
               Collection Report

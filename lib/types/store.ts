@@ -6,8 +6,8 @@ import {
   dateRange,
   locations,
   TopPerformingData,
-  UserAuthPayload,
 } from "@/lib/types/index";
+import type { UserAuthPayload } from "@/shared/types/auth";
 import { TimePeriod } from "@/app/api/lib/types";
 import type { Firmware } from "./firmware";
 

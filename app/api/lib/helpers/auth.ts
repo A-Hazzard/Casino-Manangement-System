@@ -1,7 +1,7 @@
 import { SignJWT } from "jose";
 import { getUserByEmail, getUserByUsername } from "./users";
 import { sendEmail } from "../../lib/utils/email";
-import { UserAuthPayload } from "@/lib/types";
+import { UserAuthPayload } from "@/lib/types/auth";
 import { comparePassword } from "../utils/validation";
 import type { AuthResult } from "../types/auth";
 
@@ -32,6 +32,7 @@ export async function authenticateUser(
   const jwtPayload = {
     _id: userObject._id.toString(),
     emailAddress: userObject.emailAddress,
+    username: String(userObject.username || ""),
     isEnabled: userObject.isEnabled,
     roles: userObject.roles || [],
     permissions: userObject.permissions || [],
@@ -45,6 +46,7 @@ export async function authenticateUser(
   const userPayload: UserAuthPayload = {
     _id: userObject._id.toString(),
     emailAddress: userObject.emailAddress,
+    username: String(userObject.username || ""),
     isEnabled: userObject.isEnabled,
     roles: userObject.roles || [],
     permissions: userObject.permissions || [],
@@ -55,6 +57,7 @@ export async function authenticateUser(
           resources: string[];
         };
       }) || {},
+    profile: userObject.profile || undefined,
   };
 
   return { success: true, token, user: userPayload };

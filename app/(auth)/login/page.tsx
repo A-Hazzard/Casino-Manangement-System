@@ -5,21 +5,27 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { loginUser } from "@/lib/helpers/clientAuth";
 import { validatePassword } from "@/lib/utils/validation";
-import { toast } from "sonner";
 import LiquidGradient from "@/components/ui/LiquidGradient";
 import LoginForm from "@/components/auth/LoginForm";
 import { LoginPageSkeleton } from "@/components/ui/skeletons/LoginSkeletons";
+
+// Import images as variables for better performance
+import EOSLogo from "/public/EOS_Logo.png";
+import SlotMachineImage from "/public/slotMachine.png";
 
 export default function LoginPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>(
-    {}
-  );
-  const [message] = useState("");
-  const [messageType] = useState<"error" | "success" | "info" | undefined>(undefined);
+  const [errors, setErrors] = useState<{
+    identifier?: string;
+    password?: string;
+  }>({});
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<
+    "error" | "success" | "info" | undefined
+  >(undefined);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
@@ -31,9 +37,15 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent form submission and page refresh
     setErrors({});
+    setMessage("");
+    setMessageType(undefined);
+
     let valid = true;
     if (!identifier) {
-      setErrors((prev) => ({ ...prev, identifier: "Enter email or username." }));
+      setErrors((prev) => ({
+        ...prev,
+        identifier: "Enter email or username.",
+      }));
       valid = false;
     }
     if (!validatePassword(password)) {
@@ -44,21 +56,25 @@ export default function LoginPage() {
       valid = false;
     }
     if (!valid) return;
+
     setLoading(true);
     try {
       const response = await loginUser({ identifier, password });
       if (response.success) {
-        toast.success("Login successful. Redirecting...");
+        setMessage("Login successful. Redirecting...");
+        setMessageType("success");
         setRedirecting(true);
         router.push("/");
       } else {
         const backendMsg =
           response.message || "Invalid email or password. Please try again.";
-        toast.error(backendMsg);
+        setMessage(backendMsg);
+        setMessageType("error");
       }
     } catch {
       const fallbackMsg = "An unexpected error occurred. Please try again.";
-      toast.error(fallbackMsg);
+      setMessage(fallbackMsg);
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
@@ -78,11 +94,12 @@ export default function LoginPage() {
               <div className="mx-auto w-full max-w-sm">
                 <div className="text-center">
                   <Image
-                    src="/EOS_Logo.png"
+                    src={EOSLogo}
                     alt="Evolution One Solutions Logo"
                     width={150}
                     height={75}
                     className="mb-6 inline-block"
+                    priority
                   />
                 </div>
                 <LoginForm
@@ -103,10 +120,14 @@ export default function LoginPage() {
             </div>
             <div className="relative w-full md:w-1/2 min-h-[250px] md:min-h-0">
               <Image
-                src="/slotMachine.png"
+                src={SlotMachineImage}
                 alt="Casino Slot Machine"
-                layout="fill"
-                objectFit="cover"
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+                style={{
+                  objectFit: "cover",
+                }}
               />
               <div className="absolute inset-0" />
               <div className="absolute bottom-10 left-10 pr-4">

@@ -123,17 +123,18 @@ export type MeterMovement = {
 export type SasMeters = {
   coinIn: number;
   coinOut: number;
-  totalCancelledCredits: number;
-  totalHandPaidCancelledCredits: number;
-  totalWonCredits: number;
-  drop: number;
+  drop: number; // Money physically inserted (Money In)
   jackpot: number;
-  currentCredits: number;
   gamesPlayed: number;
   gamesWon: number;
-  gross: number;
+  currentCredits: number;
+  totalCancelledCredits?: number; // Manual payouts (Money Out)
+  totalHandPaidCancelledCredits?: number; // Total hand paid cancelled credits
+  totalWonCredits?: number;
+  gross?: number;
   sasStartTime?: string;
   sasEndTime?: string;
+  [key: string]: unknown;
 };
 
 export type MeterData = {

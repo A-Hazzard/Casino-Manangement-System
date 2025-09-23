@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import axios from "axios";
 import { toast } from "sonner";
+import { useUserStore } from "@/lib/store/userStore";
 
 import type { EditLocationModalProps } from "@/lib/types/components";
 // Activity logging will be handled via API calls
@@ -63,6 +64,7 @@ export default function EditLocationModal({
 }: EditLocationModalProps) {
   const { isEditModalOpen, selectedLocation, closeEditModal } =
     useLocationActionsStore();
+  const { user } = useUserStore();
 
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -87,10 +89,10 @@ export default function EditLocationModal({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -98,17 +100,17 @@ export default function EditLocationModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -141,7 +143,6 @@ export default function EditLocationModal({
       denom10000: false,
     },
   });
-
 
   // Generate time options for day start time dropdown (similar to the image)
   const generateTimeOptions = () => {
@@ -191,7 +192,6 @@ export default function EditLocationModal({
 
   const timeOptions = generateTimeOptions();
 
-
   // Fetch full location details when modal opens
   const fetchLocationDetails = async (locationId: string) => {
     setLocationDetailsLoading(true);
@@ -222,22 +222,21 @@ export default function EditLocationModal({
     }
   };
 
-
   // Load countries
   const loadCountries = async () => {
     setCountriesLoading(true);
     try {
       const countriesData = await fetchCountries();
-      
+
       // Remove duplicates based on country name using Map for better performance
       const uniqueCountriesMap = new Map();
-      countriesData.forEach(country => {
+      countriesData.forEach((country) => {
         if (!uniqueCountriesMap.has(country.name)) {
           uniqueCountriesMap.set(country.name, country);
         }
       });
       const uniqueCountries = Array.from(uniqueCountriesMap.values());
-      
+
       setCountries(uniqueCountries as unknown as Country[]);
     } catch (error) {
       console.error("Failed to fetch countries:", error);
@@ -246,7 +245,6 @@ export default function EditLocationModal({
       setCountriesLoading(false);
     }
   };
-
 
   // Initialize form data when a location is selected
   useEffect(() => {
@@ -285,7 +283,6 @@ export default function EditLocationModal({
     }
   }, [selectedLocation]);
 
-
   // Load licensees and countries when modal opens
   useEffect(() => {
     if (isEditModalOpen) {
@@ -314,7 +311,6 @@ export default function EditLocationModal({
   const handleMapLoadSuccess = () => {
     setMapLoadError(false);
   };
-
 
   // Get user's current location when map is enabled
   const getCurrentLocation = () => {
@@ -658,7 +654,6 @@ export default function EditLocationModal({
 
                 {/* City */}
                 <div className="mb-4">
-
                   <label className="block text-sm font-medium text-grayHighlight mb-2">
                     City
                   </label>
@@ -714,7 +709,9 @@ export default function EditLocationModal({
                         onChange={handleInputChange}
                         className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base pr-12"
                       />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">%</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">
+                        %
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -782,7 +779,10 @@ export default function EditLocationModal({
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
 
-                    <Label htmlFor="isLocalServer" className="text-sm font-medium flex-1">
+                    <Label
+                      htmlFor="isLocalServer"
+                      className="text-sm font-medium flex-1"
+                    >
                       No SMIB Location
                     </Label>
                   </div>
@@ -800,12 +800,14 @@ export default function EditLocationModal({
                       }}
                       className="text-grayHighlight border-buttonActive focus:ring-buttonActive w-5 h-5"
                     />
-                    <Label htmlFor="useMap" className="text-sm font-medium flex-1">
+                    <Label
+                      htmlFor="useMap"
+                      className="text-sm font-medium flex-1"
+                    >
                       Use Map to Select Location
                     </Label>
                   </div>
                 </div>
-
 
                 {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}
                 <div className="mb-4">
@@ -845,11 +847,10 @@ export default function EditLocationModal({
                     {mapLoadError && (
                       <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md relative z-10">
                         <p className="text-xs text-yellow-700">
-
                           ⚠️ Map hasn&apos;t loaded properly. Please uncheck and
-                          check the &quot;Use Map&quot; button again.
-
-                          ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check the &quot;Use Map&quot; button again.
+                          check the &quot;Use Map&quot; button again. ⚠️ Map
+                          hasn&apos;t loaded properly. Please uncheck and check
+                          the &quot;Use Map&quot; button again.
                         </p>
                       </div>
                     )}

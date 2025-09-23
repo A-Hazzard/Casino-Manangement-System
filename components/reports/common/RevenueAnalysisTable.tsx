@@ -329,7 +329,7 @@ export default function RevenueAnalysisTable({
                           {location.name}
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell>
                         <Badge variant="secondary" className="font-mono">
                           {location.totalMachines}
                         </Badge>

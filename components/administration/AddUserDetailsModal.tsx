@@ -7,6 +7,7 @@ import gsap from "gsap";
 import defaultAvatar from "@/public/defaultAvatar.svg";
 import cameraIcon from "@/public/cameraIcon.svg";
 import CircleCropModal from "@/components/ui/image/CircleCropModal";
+import { validateNameWithMessage } from "@/lib/utils/nameValidation";
 
 type AddUserDetailsModalProps = {
   open: boolean;
@@ -45,6 +46,10 @@ export default function AddUserDetailsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+  }>({});
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -83,6 +88,50 @@ export default function AddUserDetailsModal({
     setRawImageSrc(null);
   };
 
+  const handleFirstNameChange = (value: string) => {
+    setFormState({ firstName: value });
+    // Clear error when user starts typing valid characters
+    if (errors.firstName) {
+      const validation = validateNameWithMessage(value);
+      if (validation.isValid) {
+        setErrors(prev => ({ ...prev, firstName: undefined }));
+      }
+    }
+  };
+
+  const handleLastNameChange = (value: string) => {
+    setFormState({ lastName: value });
+    // Clear error when user starts typing valid characters
+    if (errors.lastName) {
+      const validation = validateNameWithMessage(value);
+      if (validation.isValid) {
+        setErrors(prev => ({ ...prev, lastName: undefined }));
+      }
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: typeof errors = {};
+    let isValid = true;
+
+    // Validate firstName
+    const firstNameValidation = validateNameWithMessage(formState.firstName || "");
+    if (!firstNameValidation.isValid) {
+      newErrors.firstName = firstNameValidation.error;
+      isValid = false;
+    }
+
+    // Validate lastName
+    const lastNameValidation = validateNameWithMessage(formState.lastName || "");
+    if (!lastNameValidation.isValid) {
+      newErrors.lastName = lastNameValidation.error;
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   if (!open) return null;
 
   return (
@@ -115,7 +164,9 @@ export default function AddUserDetailsModal({
             className="w-full flex flex-col gap-8"
             onSubmit={(e) => {
               e.preventDefault();
-              onNext();
+              if (validateForm()) {
+                onNext();
+              }
             }}
           >
             {/* Top section: Profile pic + username/email (left), user info fields (right) */}
@@ -197,26 +248,34 @@ export default function AddUserDetailsModal({
                     First Name:
                   </label>
                   <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
+                    className={`w-full rounded-md p-3 bg-white border ${
+                      errors.firstName ? "border-red-500" : "border-border"
+                    }`}
                     value={formState.firstName || ""}
-                    onChange={(e) =>
-                      setFormState({ firstName: e.target.value })
-                    }
+                    onChange={(e) => handleFirstNameChange(e.target.value)}
                     placeholder="Enter First Name"
                     required
                   />
+                  {errors.firstName && (
+                    <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-1 text-gray-900">
                     Last Name:
                   </label>
                   <input
-                    className="w-full rounded-md p-3 bg-white border border-border"
+                    className={`w-full rounded-md p-3 bg-white border ${
+                      errors.lastName ? "border-red-500" : "border-border"
+                    }`}
                     value={formState.lastName || ""}
-                    onChange={(e) => setFormState({ lastName: e.target.value })}
+                    onChange={(e) => handleLastNameChange(e.target.value)}
                     placeholder="Enter Last Name"
                     required
                   />
+                  {errors.lastName && (
+                    <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-1 text-gray-900">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useUserStore } from "@/lib/store/userStore";
 import { fetchUserId } from "@/lib/helpers/user";
 import axios from "axios";
-import type { UserAuthPayload } from "@/lib/types";
+import type { UserAuthPayload } from "@/lib/types/auth";
 
 import type { AuthState } from "@/lib/types/hooks";
 
@@ -32,10 +32,12 @@ export function useAuth(): AuthState {
               const userData: UserAuthPayload = {
                 _id: response.data.user._id,
                 emailAddress: response.data.user.email,
+                username: response.data.user.username || "",
                 isEnabled: response.data.user.enabled,
                 roles: response.data.user.roles || [],
                 permissions: response.data.user.permissions || [],
                 resourcePermissions: response.data.user.resourcePermissions || {},
+                profile: response.data.user.profile || undefined,
               };
               setUser(userData);
             }

@@ -22,13 +22,35 @@ export async function loginUser(credentials: {
     const data = await response.json();
 
     if (!response.ok) {
-      return { success: false, message: data.error || "Login failed" };
+      // Handle different error status codes with specific messages
+      let errorMessage = "Login failed";
+
+      if (response.status === 400) {
+        errorMessage =
+          data.message || "Invalid email/username or password format";
+      } else if (response.status === 401) {
+        errorMessage =
+          data.message ||
+          "Invalid credentials. Please check your email/username and password";
+      } else if (response.status === 500) {
+        errorMessage = "Server error. Please try again later";
+      } else if (response.status === 404) {
+        errorMessage = "User not found. Please check your credentials";
+      } else {
+        errorMessage =
+          data.message || data.error || `Login failed (${response.status})`;
+      }
+
+      return { success: false, message: errorMessage };
     }
 
     return data;
   } catch (error) {
     console.error("Login error:", error);
-    return { success: false, message: "Network error occurred" };
+    return {
+      success: false,
+      message: "Network error occurred. Please check your connection",
+    };
   }
 }
 
@@ -47,8 +69,8 @@ export async function logoutUser(): Promise<AuthResult> {
     });
 
     // Clear client-side storage regardless of API response
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
       sessionStorage.clear();
     }
 
@@ -60,8 +82,8 @@ export async function logoutUser(): Promise<AuthResult> {
   } catch (error) {
     console.error("Logout error:", error);
     // Still clear local storage even if API call fails
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
       sessionStorage.clear();
     }
     return { success: true, message: "Logged out locally" };

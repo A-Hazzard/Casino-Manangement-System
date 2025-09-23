@@ -58,25 +58,26 @@ func main() {
 	defer disconnectWithLogging(ctx, dstClient)
 
 	srcDB := srcClient.Database("sas-prod")
-	dstDB := dstClient.Database("sas-dev")
+	dstDB := dstClient.Database("sas-prod-local")
 
 	collections := []string{
-		"acceptedbills",
-		"activityLogs",
-		"collections",
-		"collectionreports",
-		"countries",
-		"firmwares",
-		"gaminglocations",
 		"licencees",
-		"machineevents",
-		"machinesessions",
-		"machines",
-		"meters",
-		"members",
-		"movementrequests",
-		"schedulers",
-		"users",
+		// "acceptedbills",
+		// "activityLogs",
+		// "collections",
+		// "collectionreports",
+		// "countries",
+		// "firmwares",
+		// "gaminglocations",
+		// "licencees",
+		// "machineevents",
+		// "machinesessions",
+		// "machines",
+		// "meters",
+		// "members",
+		// "movementrequests",
+		// "schedulers",
+		// "users",
 	}
 
 	var wg sync.WaitGroup
@@ -151,6 +152,16 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 		if err := cursor.Decode(&doc); err != nil {
 			log.Printf("⚠️ Error decoding doc from %s: %v\n", collName, err)
 			continue
+		}
+
+		// Special handling for licencees collection to fix licenseKey issues
+		if collName == "licencees" {
+			// Remove licenseKey field if it's null or empty to avoid unique constraint issues
+			if licenseKey, exists := doc["licenseKey"]; exists {
+				if licenseKey == nil || licenseKey == "" {
+					delete(doc, "licenseKey")
+				}
+			}
 		}
 
 		id := doc["_id"]

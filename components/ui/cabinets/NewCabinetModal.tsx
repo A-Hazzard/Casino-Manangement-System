@@ -19,6 +19,7 @@ import { createCabinet } from "@/lib/helpers/cabinets";
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
+import { useUserStore } from "@/lib/store/userStore";
 
 type NewCabinetModalProps = {
   locations?: { _id: string; name: string }[];
@@ -33,6 +34,7 @@ export const NewCabinetModal = ({
 }: NewCabinetModalProps) => {
   const { isCabinetModalOpen, locationId, closeCabinetModal } =
     useNewCabinetStore();
+  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -52,10 +54,10 @@ export const NewCabinetModal = ({
     details: string
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -63,17 +65,17 @@ export const NewCabinetModal = ({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: user?.emailAddress || "unknown",
+          userRole: user?.roles?.[0] || "user",
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -230,12 +232,15 @@ export const NewCabinetModal = ({
         return;
       }
 
+      // Debug: Log the form data being sent
+      // console.log("Form data being sent:", formData);
+
       const success = await createCabinet(formData);
       if (success) {
         // Log the cabinet creation activity
         await logActivity(
           "create",
-          "cabinet",
+          "machine",
           formData.serialNumber || "Unknown",
           `${formData.game} - ${formData.serialNumber}`,
           `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`
@@ -357,10 +362,15 @@ export const NewCabinetModal = ({
   };
 
   const handleSelectChange = (field: string, value: string) => {
-    setFormData((prev: NewCabinetFormData) => ({
-      ...prev,
-      [field]: value,
-    }));
+    // console.log(`NewCabinet handleSelectChange: ${field} = ${value}`);
+    setFormData((prev: NewCabinetFormData) => {
+      const newData = {
+        ...prev,
+        [field]: value,
+      };
+      // console.log("NewCabinet new form data:", newData);
+      return newData;
+    });
   };
 
   if (!isCabinetModalOpen) return null;
@@ -447,9 +457,10 @@ export const NewCabinetModal = ({
                     </label>
                     <Select
                       value={formData.gameType}
-                      onValueChange={(value) =>
-                        handleSelectChange("gameType", value)
-                      }
+                      onValueChange={(value) => {
+                        // console.log("NewCabinet GameType changed to:", value);
+                        handleSelectChange("gameType", value);
+                      }}
                     >
                       <SelectTrigger className="bg-container border-border">
                         <SelectValue placeholder="Select Game Type" />
@@ -458,6 +469,11 @@ export const NewCabinetModal = ({
                         <SelectItem value="Slot">Slot</SelectItem>
                         <SelectItem value="Video Poker">Video Poker</SelectItem>
                         <SelectItem value="Table Game">Table Game</SelectItem>
+                        <SelectItem value="Roulette">Roulette</SelectItem>
+                        <SelectItem value="Blackjack">Blackjack</SelectItem>
+                        <SelectItem value="Poker">Poker</SelectItem>
+                        <SelectItem value="Baccarat">Baccarat</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

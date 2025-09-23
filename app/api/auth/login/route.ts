@@ -15,12 +15,14 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { identifier, password } =
-      (await request.json()) as LoginRequestBody;
+    const { identifier, password } = (await request.json()) as LoginRequestBody;
 
     // Accept either valid email or a username with basic constraints
     const isEmail = /\S+@\S+\.\S+/.test(identifier);
-    const isUsername = !isEmail && typeof identifier === "string" && identifier.trim().length >= 3;
+    const isUsername =
+      !isEmail &&
+      typeof identifier === "string" &&
+      identifier.trim().length >= 3;
     if (!(isEmail || isUsername) || !validatePassword(password)) {
       return NextResponse.json(
         {
@@ -33,8 +35,20 @@ export async function POST(request: NextRequest) {
 
     const result: AuthResult = await authenticateUser(identifier, password);
     if (!result.success || !result.user || !result.token) {
+      // Provide more specific error messages based on the authentication result
+      let errorMessage = "Invalid credentials.";
+
+      if (result.message === "User not found.") {
+        errorMessage =
+          "No account found with this email/username. Please check your credentials or create an account.";
+      } else if (result.message === "Incorrect password.") {
+        errorMessage = "Incorrect password. Please try again.";
+      } else if (result.message) {
+        errorMessage = result.message;
+      }
+
       return NextResponse.json(
-        { success: false, message: result.message || "Invalid credentials." },
+        { success: false, message: errorMessage },
         { status: 401 }
       );
     }

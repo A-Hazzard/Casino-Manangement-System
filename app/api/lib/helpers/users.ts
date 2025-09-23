@@ -37,6 +37,10 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
  */
 export async function getUserIdFromServer(): Promise<string | null> {
   const user: JWTPayload | null = await getUserFromServer();
+  if (user) {
+    // console.log("Extracted user ID from JWT:", user._id);
+    // console.log("JWT payload:", user);
+  }
   return user ? (user._id as string) : null;
 }
 
@@ -93,6 +97,16 @@ export async function getAllUsers() {
         { deletedAt: { $lt: new Date("2020-01-01") } },
       ],
     },
+    "-password"
+  );
+}
+
+/**
+ * Retrieves a user by ID from database
+ */
+export async function getUserById(userId: string) {
+  return await UserModel.findById(
+    userId,
     "-password"
   );
 }

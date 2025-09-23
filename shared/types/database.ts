@@ -69,19 +69,23 @@ export type MeterMovement = {
   coinOut?: number;
 };
 
-// SAS meters data
-export type SasMeters = {
-  coinIn: number;
-  coinOut: number;
-  drop: number; // Money physically inserted (Money In)
-  jackpot: number;
-  gamesPlayed: number;
-  gamesWon: number;
-  currentCredits: number;
-  totalCancelledCredits?: number; // Manual payouts (Money Out)
-  totalHandPaidCancelledCredits?: number; // Total hand paid cancelled credits
-  [key: string]: unknown;
-};
+// SAS meters data - use SasMeters from shared/types/common.ts
+// export type SasMeters = {
+//   coinIn: number;
+//   coinOut: number;
+//   drop: number;
+//   jackpot: number;
+//   gamesPlayed: number;
+//   gamesWon: number;
+//   currentCredits: number;
+//   totalCancelledCredits?: number;
+//   totalHandPaidCancelledCredits?: number;
+//   totalWonCredits?: number;
+//   gross?: number;
+//   sasStartTime?: string;
+//   sasEndTime?: string;
+//   [key: string]: unknown;
+// };
 
 // Meter data type matching Mongoose document structure
 export type MeterData = {

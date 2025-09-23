@@ -100,6 +100,11 @@ export async function PUT(
 
     // Parse the request data
     const data = await request.json();
+    // console.log(
+    //   "Received cabinet update request:",
+    //   JSON.stringify(data, null, 2)
+    // );
+    // console.log("gameType in request:", data.gameType);
 
     // Get original cabinet data for change tracking
     const originalCabinet = await Machine.findById(cabinetId);
@@ -123,8 +128,14 @@ export async function PUT(
       updateFields.game = data.installedGame;
     }
 
+    // console.log("Processing gameType field:", data.gameType);
+    // console.log(
+    //   "Will update gameType:",
+    //   data.gameType !== undefined && data.gameType !== ""
+    // );
     if (data.gameType !== undefined && data.gameType !== "") {
       updateFields.gameType = data.gameType;
+      // console.log("Added gameType to updateFields:", updateFields.gameType);
     }
     if (data.manufacturer !== undefined && data.manufacturer !== "") {
       updateFields.manufacturer = data.manufacturer;
@@ -162,6 +173,9 @@ export async function PUT(
     }
 
     // Update the machine with only the fields that were provided
+    // console.log("Update fields being sent to DB:", updateFields);
+    // console.log("gameType in updateFields:", updateFields.gameType);
+
     const updatedMachine = await Machine.findByIdAndUpdate(
       cabinetId,
       updateFields,
@@ -176,7 +190,11 @@ export async function PUT(
     }
 
     // If serial number was updated, also update it in Collections
-    if (data.assetNumber !== undefined && data.assetNumber !== "" && data.assetNumber !== originalCabinet.serialNumber) {
+    if (
+      data.assetNumber !== undefined &&
+      data.assetNumber !== "" &&
+      data.assetNumber !== originalCabinet.serialNumber
+    ) {
       try {
         await Collections.updateMany(
           { machineId: cabinetId },
@@ -187,13 +205,20 @@ export async function PUT(
           `Updated serial number in Collections for machine ${cabinetId} from "${originalCabinet.serialNumber}" to "${data.assetNumber}"`
         );
       } catch (collectionsError) {
-        console.error("Failed to update serial number in Collections:", collectionsError);
+        console.error(
+          "Failed to update serial number in Collections:",
+          collectionsError
+        );
         // Don't fail the entire operation if Collections update fails
       }
     }
 
     // If game name was updated, also update it in Collections
-    if (data.installedGame !== undefined && data.installedGame !== "" && data.installedGame !== originalCabinet.game) {
+    if (
+      data.installedGame !== undefined &&
+      data.installedGame !== "" &&
+      data.installedGame !== originalCabinet.game
+    ) {
       try {
         await Collections.updateMany(
           { machineId: cabinetId },
@@ -204,7 +229,10 @@ export async function PUT(
           `Updated machine name in Collections for machine ${cabinetId} from "${originalCabinet.game}" to "${data.installedGame}"`
         );
       } catch (collectionsError) {
-        console.error("Failed to update machine name in Collections:", collectionsError);
+        console.error(
+          "Failed to update machine name in Collections:",
+          collectionsError
+        );
         // Don't fail the entire operation if Collections update fails
       }
     }
@@ -213,8 +241,10 @@ export async function PUT(
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-
-        const changes = calculateChanges(originalCabinet.toObject(), updateFields);
+        const changes = calculateChanges(
+          originalCabinet.toObject(),
+          updateFields
+        );
 
         await logActivity(
           {
@@ -224,15 +254,26 @@ export async function PUT(
           },
           "UPDATE",
           "machine",
-          { id: cabinetId, name: originalCabinet.serialNumber || originalCabinet.game },
+          {
+            id: cabinetId,
+            name: originalCabinet.serialNumber || originalCabinet.game,
+          },
           changes,
-          `Updated cabinet "${originalCabinet.serialNumber || originalCabinet.game}" in location "${location.name}"`,
+          `Updated cabinet "${
+            originalCabinet.serialNumber || originalCabinet.game
+          }" in location "${location.name}"`,
           getClientIP(request) || undefined
         );
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
     }
+
+    // console.log("Sending response to frontend:", {
+    //   success: true,
+    //   data: updatedMachine,
+    // });
+    // console.log("Response gameType:", updatedMachine?.gameType);
 
     return NextResponse.json({
       success: true,
@@ -277,6 +318,11 @@ export async function PATCH(
 
     // Parse the request data
     const data = await request.json();
+    // console.log(
+    //   "Received cabinet update request:",
+    //   JSON.stringify(data, null, 2)
+    // );
+    // console.log("gameType in request:", data.gameType);
 
     // Get original cabinet data for change tracking
     const originalCabinet = await Machine.findById(cabinetId);
@@ -321,8 +367,10 @@ export async function PATCH(
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-
-        const changes = calculateChanges(originalCabinet.toObject(), updateFields);
+        const changes = calculateChanges(
+          originalCabinet.toObject(),
+          updateFields
+        );
 
         await logActivity(
           {
@@ -337,7 +385,9 @@ export async function PATCH(
             name: originalCabinet.serialNumber || originalCabinet.game,
           },
           changes,
-          `Updated collection settings for cabinet "${originalCabinet.serialNumber || originalCabinet.game}" in location "${location.name}"`,
+          `Updated collection settings for cabinet "${
+            originalCabinet.serialNumber || originalCabinet.game
+          }" in location "${location.name}"`,
           getClientIP(request) || undefined
         );
       } catch (logError) {
@@ -446,7 +496,9 @@ export async function DELETE(
             name: cabinetToDelete.serialNumber || cabinetToDelete.game,
           },
           deleteChanges,
-          `Deleted cabinet "${cabinetToDelete.serialNumber || cabinetToDelete.game}" from location "${location.name}"`,
+          `Deleted cabinet "${
+            cabinetToDelete.serialNumber || cabinetToDelete.game
+          }" from location "${location.name}"`,
           getClientIP(request) || undefined
         );
       } catch (logError) {

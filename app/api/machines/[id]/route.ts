@@ -20,9 +20,14 @@ export async function GET(
     const timePeriod = searchParams.get("timePeriod");
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
-    
-    console.warn("[DEBUG] API received parameters:", { id, timePeriod, startDateParam, endDateParam });
-    
+
+    console.warn("[DEBUG] API received parameters:", {
+      id,
+      timePeriod,
+      startDateParam,
+      endDateParam,
+    });
+
     // Only proceed if timePeriod or custom date range is provided
     if (!timePeriod && !startDateParam && !endDateParam) {
       return NextResponse.json(
@@ -84,7 +89,11 @@ export async function GET(
       // Handle predefined time periods
       switch (timePeriod) {
         case "Today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+          );
           endDate = new Date(
             now.getFullYear(),
             now.getMonth(),
@@ -116,23 +125,22 @@ export async function GET(
     } else {
       // Fallback to Today if no parameters provided
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      endDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1
-      );
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     }
 
     // Fetch financial metrics from meters collection using aggregation for date filtering
-    console.warn("[DEBUG] Querying meters with date range:", { startDate, endDate });
-    
+    console.warn("[DEBUG] Querying meters with date range:", {
+      startDate,
+      endDate,
+    });
+
     // Aggregate all meter readings within the specified date range
     const meterAggregation = await Meters.aggregate([
       {
         $match: {
           machine: id,
-          readAt: { $gte: startDate, $lte: endDate }
-        }
+          readAt: { $gte: startDate, $lte: endDate },
+        },
       },
       {
         $group: {
@@ -144,9 +152,9 @@ export async function GET(
           totalCoinOut: { $sum: "$movement.coinOut" },
           totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
           totalGamesWon: { $sum: "$movement.gamesWon" },
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     console.warn("[DEBUG] Meter aggregation result:", meterAggregation);
@@ -162,7 +170,16 @@ export async function GET(
     const gamesWon = aggregatedData.totalGamesWon || 0;
     const gross = moneyIn - moneyOut;
 
-    console.warn("[DEBUG] Calculated metrics:", { moneyIn, moneyOut, jackpot, coinIn, coinOut, gamesPlayed, gamesWon, gross });
+    console.warn("[DEBUG] Calculated metrics:", {
+      moneyIn,
+      moneyOut,
+      jackpot,
+      coinIn,
+      coinOut,
+      gamesPlayed,
+      gamesWon,
+      gross,
+    });
 
     // Transform the data to match frontend expectations
     const transformedMachine = {
@@ -215,6 +232,7 @@ export async function GET(
       curProcess: machine.curProcess || {},
       protocols: machine.protocols || [],
       manufacturer: machine.manufacturer || machine.manuf,
+      gameType: machine.gameType,
       validationId: machine.validationId,
       sequenceNumber: machine.sequenceNumber,
       isSasMachine: machine.isSasMachine,

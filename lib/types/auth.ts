@@ -1,24 +1,8 @@
-import { Document } from "mongoose";
-
-export type UserDocument = Document & {
-  _id: string;
-  emailAddress: string;
-  password: string;
-  isEnabled: boolean;
-  roles: string[];
-  permissions: string[];
-  resourcePermissions: Record<
-    string,
-    {
-      entity: string;
-      resources: string[];
-    }
-  >;
-};
 
 export type UserAuthPayload = {
   _id: string;
   emailAddress: string;
+  username: string;
   isEnabled: boolean;
   roles: string[];
   permissions: string[];
@@ -29,6 +13,10 @@ export type UserAuthPayload = {
       resources: string[];
     }
   >;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+  };
 };
 
 export type LoginRequestBody = {

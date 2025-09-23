@@ -4,9 +4,6 @@ import { jwtVerify } from "jose";
 const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
 const publicPaths = ["/login", "/forgot-password"];
 
-// For development purposes, set this to true to bypass authentication
-const BYPASS_AUTH_FOR_DEV = false;
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -19,11 +16,6 @@ export async function middleware(request: NextRequest) {
       /\.(png|jpg|jpeg|gif|svg|ico|webp|bmp|tiff|pdf|txt|css|js|woff|woff2|ttf|eot)$/i
     )
   ) {
-    return NextResponse.next();
-  }
-
-  // Development bypass
-  if (BYPASS_AUTH_FOR_DEV && process.env.NODE_ENV !== "production") {
     return NextResponse.next();
   }
 

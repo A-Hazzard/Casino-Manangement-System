@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { Member } from "@/lib/types/members";
-import { createActivityLogger } from "@/lib/helpers/activityLogger";
+// Activity logging removed - handled via API calls
 
 export type MembersQueryOptions = {
   page?: number;
@@ -103,19 +103,10 @@ export async function createMember(
   memberData: Partial<Member>
 ): Promise<Member> {
   try {
-    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-    
     const response = await axios.post("/api/members", memberData);
-    
-    // Log the member creation activity
-    await memberLogger(
-      "create",
-      "member",
-      { id: response.data._id || memberData.username || "unknown", name: `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}` },
-      [],
-      `Created new member: ${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`
-    );
-    
+
+    // Activity logging removed - handled via API calls
+
     return response.data;
   } catch (error) {
     console.error("❌ Error creating member:", error);
@@ -131,19 +122,10 @@ export async function updateMember(
   memberData: Partial<Member>
 ): Promise<Member> {
   try {
-    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-    
     const response = await axios.put(`/api/members/${memberId}`, memberData);
-    
-    // Log the member update activity
-    await memberLogger(
-      "update",
-      "member",
-      { id: memberId, name: `${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}` },
-      [],
-      `Updated member: ${memberData.profile?.firstName || "Unknown"} ${memberData.profile?.lastName || "Member"}`
-    );
-    
+
+    // Activity logging removed - handled via API calls
+
     return response.data;
   } catch (error) {
     console.error("❌ Error updating member:", error);
@@ -156,18 +138,9 @@ export async function updateMember(
  */
 export async function deleteMember(memberId: string): Promise<void> {
   try {
-    const memberLogger = createActivityLogger({ id: "system", email: "system", role: "system" });
-    
     await axios.delete(`/api/members/${memberId}`);
-    
-    // Log the member deletion activity
-    await memberLogger(
-      "delete",
-      "member",
-      { id: memberId, name: "Member" },
-      [],
-      `Deleted member with ID: ${memberId}`
-    );
+
+    // Activity logging removed - handled via API calls
   } catch (error) {
     console.error("❌ Error deleting member:", error);
     throw error;

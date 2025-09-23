@@ -71,11 +71,32 @@ export async function fetchCollectionReportsData(
     }
 
     const response = await axios.get(
-      `/api/collection-report?${params.toString()}`
+      `/api/collection-report?${params.toString()}`,
+      { timeout: 10000 } // 10 second timeout
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching collection reports:", error);
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Collection reports request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching collection reports - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Collection reports endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching collection reports:",
+          error.message
+        );
+      }
+    } else {
+      console.warn("⚠️ Unexpected error fetching collection reports:", error);
+    }
     return [];
   }
 }
@@ -148,7 +169,9 @@ export async function fetchManagerScheduleData(
 
     // Extract unique collectors from schedulers
     const collectors = [
-      ...new Set(data.schedulers.map((s: { collector: string }) => s.collector)),
+      ...new Set(
+        data.schedulers.map((s: { collector: string }) => s.collector)
+      ),
     ] as string[];
 
     return {
@@ -192,7 +215,9 @@ export async function fetchCollectorScheduleData(
 
     // Extract unique collectors from schedules
     const collectors = [
-      ...new Set(data.collectorSchedules.map((s: { collector: string }) => s.collector)),
+      ...new Set(
+        data.collectorSchedules.map((s: { collector: string }) => s.collector)
+      ),
     ] as string[];
 
     return {
@@ -225,10 +250,35 @@ export async function fetchLocationsWithMachines(): Promise<
   CollectionReportLocationWithMachines[]
 > {
   try {
-    const response = await axios.get("/api/collectionReport/locations");
+    const response = await axios.get("/api/collectionReport/locations", {
+      timeout: 10000, // 10 second timeout
+    });
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching locations with machines:", error);
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Locations with machines request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching locations with machines - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Locations with machines endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching locations with machines:",
+          error.message
+        );
+      }
+    } else {
+      console.warn(
+        "⚠️ Unexpected error fetching locations with machines:",
+        error
+      );
+    }
     return [];
   }
 }
@@ -240,10 +290,32 @@ export async function fetchAllGamingLocations(): Promise<
   { id: string; name: string }[]
 > {
   try {
-    const response = await axios.get("/api/gaming-locations");
+    const response = await axios.get("/api/gaming-locations", {
+      timeout: 10000, // 10 second timeout
+    });
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching gaming locations:", error);
+    // Handle different types of errors gracefully
+    if (axios.isAxiosError(error)) {
+      if (error.code === "ECONNABORTED") {
+        console.warn(
+          "⏰ Gaming locations request timed out - returning empty array"
+        );
+      } else if (error.response?.status === 500) {
+        console.warn(
+          "🔧 Server error fetching gaming locations - database may be unavailable"
+        );
+      } else if (error.response?.status === 404) {
+        console.warn("📭 Gaming locations endpoint not found");
+      } else {
+        console.warn(
+          "⚠️ Network error fetching gaming locations:",
+          error.message
+        );
+      }
+    } else {
+      console.warn("⚠️ Unexpected error fetching gaming locations:", error);
+    }
     return [];
   }
 }
