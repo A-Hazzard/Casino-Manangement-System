@@ -403,8 +403,10 @@ export async function fetchAggregatedLocationsData(
   timePeriod: TimePeriod,
   licensee?: string,
   filterString?: string,
-  dateRange?: { from: Date; to: Date }
-): Promise<AggregatedLocation[]> {
+  dateRange?: { from: Date; to: Date },
+  page: number = 1,
+  limit: number = 10
+): Promise<{ data: AggregatedLocation[]; pagination: any }> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;
@@ -416,6 +418,10 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     if (filterString)
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
+
+    // Add pagination parameters
+    queryParams.push(`page=${page}`);
+    queryParams.push(`limit=${limit}`);
 
     // Always show all locations, even those with 0 meters (like cabinets page)
     queryParams.push(`showAllLocations=true`);
@@ -437,25 +443,31 @@ export async function fetchAggregatedLocationsData(
 
     if (response.status !== 200) {
       console.error(`❌ API error (${response.status}):`, response.data);
-      return [];
+      return { data: [], pagination: {} };
     }
 
     // Handle paginated response structure
     const responseData = response.data;
     if (responseData && typeof responseData === 'object' && 'data' in responseData) {
       // Paginated response: { data: [...], pagination: {...} }
-      return responseData.data || [];
+      return {
+        data: responseData.data || [],
+        pagination: responseData.pagination || {}
+      };
     } else if (Array.isArray(responseData)) {
-      // Direct array response
-      return responseData;
+      // Direct array response (fallback for backward compatibility)
+      return {
+        data: responseData,
+        pagination: { page: 1, limit: responseData.length, totalCount: responseData.length }
+      };
     } else {
       // Fallback for unexpected structure
       console.warn('Unexpected API response structure:', responseData);
-      return [];
+      return { data: [], pagination: {} };
     }
   } catch (error) {
     console.error("Error fetching locations data:", error);
-    return [];
+    return { data: [], pagination: {} };
   }
 }
 

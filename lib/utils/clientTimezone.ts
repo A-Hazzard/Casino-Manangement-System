@@ -1,50 +1,15 @@
 /**
  * Client Timezone Utility
- *
+ * 
  * This utility handles date/time operations using the client's local timezone automatically.
- * Unlike hardcoded timezone utilities, this uses the browser's native timezone handling
- * to display dates in the user's local timezone.
+ * Unlike the hardcoded Trinidad timezone utilities, this uses the browser's native timezone
+ * handling to display dates in the user's local timezone.
  */
 
 /**
- * Converts UTC time to client's local time (automatic timezone detection)
- * @param utcDate - Date in UTC
- * @returns Date in client's local timezone (browser handles conversion automatically)
- */
-export function utcToClientTime(utcDate: Date): Date {
-  // The browser automatically handles timezone conversion when creating Date objects
-  // from UTC strings or when displaying dates
-  return new Date(utcDate);
-}
-
-/**
- * Converts client local time to UTC for database storage
- * @param clientDate - Date in client's local time
- * @returns Date adjusted to UTC for database storage
- */
-export function clientTimeToUtc(clientDate: Date): Date {
-  // Convert client local time to UTC by adjusting for timezone offset
-  const utcTime = new Date(clientDate.getTime() - (clientDate.getTimezoneOffset() * 60000));
-  return utcTime;
-}
-
-/**
- * Gets current client local time
- * @returns Current date/time in client's local timezone
- */
-export function getCurrentClientTime(): Date {
-  return new Date(); // This is already in client's local timezone
-}
-
-// Legacy functions for backward compatibility (now use client timezone)
-export const utcToTrinidadTime = utcToClientTime;
-export const trinidadTimeToUtc = clientTimeToUtc;
-export const getCurrentTrinidadTime = getCurrentClientTime;
-
-/**
- * Formats a UTC date as client's local time string
- * @param utcDate - Date in UTC
- * @param options - Intl.DateTimeFormatOptions
+ * Formats a UTC date to the client's local timezone
+ * @param utcDate - Date in UTC (from database)
+ * @param options - Intl.DateTimeFormatOptions for formatting
  * @returns Formatted date string in client's local timezone
  */
 export function formatClientTime(
@@ -67,14 +32,56 @@ export function formatClientTime(
   });
 }
 
-// Legacy function for backward compatibility
-export const formatTrinidadTime = formatClientTime;
+/**
+ * Formats a UTC date to client's local date only (no time)
+ * @param utcDate - Date in UTC
+ * @param options - Intl.DateTimeFormatOptions for formatting
+ * @returns Formatted date string in client's local timezone
+ */
+export function formatClientDate(
+  utcDate: Date,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  };
+
+  return utcDate.toLocaleDateString(undefined, {
+    ...defaultOptions,
+    ...options,
+  });
+}
 
 /**
- * Converts all date fields in an object from UTC to client's local time
+ * Formats a UTC date to client's local time only (no date)
+ * @param utcDate - Date in UTC
+ * @param options - Intl.DateTimeFormatOptions for formatting
+ * @returns Formatted time string in client's local timezone
+ */
+export function formatClientTimeOnly(
+  utcDate: Date,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  };
+
+  return utcDate.toLocaleTimeString(undefined, {
+    ...defaultOptions,
+    ...options,
+  });
+}
+
+/**
+ * Converts all date fields in an object to client's local timezone for display
  * @param obj - Object containing date fields
  * @param dateFields - Array of field names that contain dates
- * @returns Object with date fields converted to client's local time
+ * @returns Object with date fields formatted for client's local timezone
  */
 export function convertObjectDatesToClientTime<T extends Record<string, unknown>>(
   obj: T,
@@ -118,6 +125,7 @@ export function convertObjectDatesToClientTime<T extends Record<string, unknown>
   for (const field of allDateFields) {
     if (converted[field] && converted[field] instanceof Date) {
       // Keep the original Date object - the browser will handle timezone conversion automatically
+      // when displaying or formatting the date
       converted[field] = converted[field];
     }
 
@@ -148,14 +156,11 @@ export function convertObjectDatesToClientTime<T extends Record<string, unknown>
   return converted as T;
 }
 
-// Legacy function for backward compatibility
-export const convertObjectDatesToTrinidadTime = convertObjectDatesToClientTime;
-
 /**
- * Converts an array of objects with date fields from UTC to client's local time
+ * Converts an array of objects with date fields to client's local timezone
  * @param array - Array of objects
  * @param dateFields - Additional date field names to convert
- * @returns Array with all date fields converted to client's local time
+ * @returns Array with all date fields formatted for client's local timezone
  */
 export function convertArrayDatesToClientTime<T extends Record<string, unknown>>(
   array: T[],
@@ -166,6 +171,36 @@ export function convertArrayDatesToClientTime<T extends Record<string, unknown>>
   return array.map((item) =>
     convertObjectDatesToClientTime(item, dateFields)
   );
+}
+
+/**
+ * Middleware helper to convert response data to client's local timezone
+ * @param data - Response data (object or array)
+ * @param additionalDateFields - Additional date fields to convert
+ * @returns Data with dates formatted for client's local timezone
+ */
+export function convertResponseToClientTime<T>(
+  data: T,
+  additionalDateFields: string[] = []
+): T {
+  if (Array.isArray(data)) {
+    return convertArrayDatesToClientTime(data, additionalDateFields) as T;
+  } else if (data && typeof data === "object") {
+    return convertObjectDatesToClientTime(
+      data as Record<string, unknown>,
+      additionalDateFields
+    ) as T;
+  }
+
+  return data;
+}
+
+/**
+ * Gets the current time in the client's local timezone
+ * @returns Current date/time in client's local timezone
+ */
+export function getCurrentClientTime(): Date {
+  return new Date(); // This is already in client's local timezone
 }
 
 /**
@@ -189,33 +224,6 @@ export function createClientDateRangeFilter(
 }
 
 /**
- * Middleware helper to convert response data to client's local time
- * @param data - Response data (object or array)
- * @param additionalDateFields - Additional date fields to convert
- * @returns Data with dates converted to client's local time
- */
-export function convertResponseToClientTime<T>(
-  data: T,
-  additionalDateFields: string[] = []
-): T {
-  if (Array.isArray(data)) {
-    return convertArrayDatesToClientTime(data, additionalDateFields) as T;
-  } else if (data && typeof data === "object") {
-    return convertObjectDatesToClientTime(
-      data as Record<string, unknown>,
-      additionalDateFields
-    ) as T;
-  }
-
-  return data;
-}
-
-// Legacy functions for backward compatibility
-export const convertArrayDatesToTrinidadTime = convertArrayDatesToClientTime;
-export const createTrinidadDateRangeFilter = createClientDateRangeFilter;
-export const convertResponseToTrinidadTime = convertResponseToClientTime;
-
-/**
  * Debug utility to show current time in both UTC and client's local timezone
  */
 export function debugClientTimezone(): void {
@@ -228,6 +236,3 @@ export function debugClientTimezone(): void {
   console.warn(`   Timezone Offset: ${now.getTimezoneOffset()} minutes`);
   console.warn(`   Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
 }
-
-// Legacy function for backward compatibility
-export const debugTimezones = debugClientTimezone;

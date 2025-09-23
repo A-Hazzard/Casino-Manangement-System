@@ -30,6 +30,8 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
 import { NetworkError } from "@/components/ui/errors";
+import axios from "axios";
+import { getAuthHeaders } from "@/lib/utils/auth";
 
 import {
   ChevronLeftIcon,
@@ -137,8 +139,42 @@ function CabinetsPageContent() {
     }
   }, [searchParams, activeSection, getActiveSectionFromURLLocal]);
 
-  // Calculate financial totals from cabinet data
-  const financialTotals = calculateCabinetFinancialTotals(allCabinets);
+  // Financial totals state for overall totals (not just current page)
+  const [financialTotals, setFinancialTotals] = useState<{
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  } | null>(null);
+
+  // Fetch overall financial totals (not just current page)
+  const fetchOverallTotals = useCallback(async () => {
+    try {
+      let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter || "Today"}`;
+      
+      if (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
+        url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
+      }
+      
+      if (selectedLicencee && selectedLicencee !== "all") {
+        url += `&licencee=${selectedLicencee}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.status === 200) {
+        setFinancialTotals({
+          moneyIn: response.data.moneyIn || 0,
+          moneyOut: response.data.moneyOut || 0,
+          gross: response.data.gross || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching overall financial totals:", error);
+      setFinancialTotals(null);
+    }
+  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
 
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
@@ -220,7 +256,8 @@ function CabinetsPageContent() {
 
   useEffect(() => {
     loadCabinets();
-  }, [loadCabinets]);
+    fetchOverallTotals(); // Fetch overall financial totals
+  }, [loadCabinets, fetchOverallTotals]);
 
   useEffect(() => {
     filterCabinets(allCabinets, searchTerm);

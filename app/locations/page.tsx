@@ -46,6 +46,8 @@ import { fetchMachineStats } from "@/lib/helpers/machineStats";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { NetworkError } from "@/components/ui/errors";
+import axios from "axios";
+import { getAuthHeaders } from "@/lib/utils/auth";
 
 export default function LocationsPage() {
   const {
@@ -66,6 +68,14 @@ export default function LocationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   const [refreshing, setRefreshing] = useState(false);
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
@@ -94,12 +104,46 @@ export default function LocationsPage() {
   // Add isOpen state for NewLocationModal
   const [isNewLocationModalOpen, setIsNewLocationModalOpen] = useState(false);
 
-  // Calculate financial totals from location data
-  const financialTotals = calculateLocationFinancialTotals(locationData);
+  // Financial totals state for overall totals (not just current page)
+  const [financialTotals, setFinancialTotals] = useState<{
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  } | null>(null);
 
   // Replace openLocationModal with our local state handler
   const openLocationModalLocal = () => setIsNewLocationModalOpen(true);
   const closeLocationModal = () => setIsNewLocationModalOpen(false);
+
+  // Fetch overall financial totals (not just current page)
+  const fetchOverallTotals = useCallback(async () => {
+    try {
+      let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter || "Today"}`;
+      
+      if (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
+        url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
+      }
+      
+      if (selectedLicencee && selectedLicencee !== "all") {
+        url += `&licencee=${selectedLicencee}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.status === 200) {
+        setFinancialTotals({
+          moneyIn: response.data.moneyIn || 0,
+          moneyOut: response.data.moneyOut || 0,
+          gross: response.data.gross || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching overall financial totals:", error);
+      setFinancialTotals(null);
+    }
+  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -136,7 +180,7 @@ export default function LocationsPage() {
     };
   }, []);
 
-  // Optimized data fetching with better error handling
+  // Optimized data fetching with server-side pagination
   const fetchData = useCallback(async () => {
     console.warn("fetchData called - locations page");
     setLoading(true);
@@ -155,7 +199,7 @@ export default function LocationsPage() {
         return;
       }
 
-      // Otherwise, use the normal fetchLocationsData for metrics-based data
+      // Otherwise, use the normal fetchLocationsData for metrics-based data with pagination
       const filterString = selectedFilters.length
         ? selectedFilters.join(",")
         : "";
@@ -174,14 +218,24 @@ export default function LocationsPage() {
       // Use empty string as fallback if selectedLicencee is empty
       const effectiveLicencee = selectedLicencee || "";
 
-      const data = await fetchAggregatedLocationsData(
+      const result = await fetchAggregatedLocationsData(
         (activeMetricsFilter || "Today") as TimePeriod,
         effectiveLicencee,
         filterString,
-        dateRangeForFetch
+        dateRangeForFetch,
+        currentPage + 1, // API uses 1-based pagination
+        10 // items per page
       );
 
-      setLocationData(data);
+      setLocationData(result.data);
+      setPagination(result.pagination || {
+        page: currentPage + 1,
+        limit: 10,
+        totalCount: result.data.length,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
     } catch (err) {
       setLocationData([]); // Set empty array on error
       setError(err instanceof Error ? err.message : "Failed to load locations");
@@ -194,12 +248,14 @@ export default function LocationsPage() {
     selectedFilters,
     customDateRange,
     debouncedSearchTerm, // Use debounced search term
+    currentPage, // Add currentPage to dependencies for server-side pagination
   ]);
 
   // Fetch data when dependencies change
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchOverallTotals(); // Fetch overall financial totals
+  }, [fetchData, fetchOverallTotals]);
 
   // Refresh data when user returns to the page (e.g., after updating a machine elsewhere)
   useEffect(() => {
@@ -238,54 +294,11 @@ export default function LocationsPage() {
     }
   };
 
-  // Memoized filtered data to prevent unnecessary recalculations
-  const filtered = useMemo(() => {
-    const result = locationData.filter((loc) => {
-      // Filter by selected filters only (search is now handled by backend)
-      if (selectedFilters.length === 0) return true;
-      return selectedFilters.some((filter) => {
-        if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
-        if (filter === "SMIBLocationsOnly" && !loc.noSMIBLocation) return true;
-        if (filter === "NoSMIBLocation" && loc.noSMIBLocation === true)
-          return true;
-        return false;
-      });
-    });
-    return result;
-  }, [locationData, selectedFilters]);
-
-  // Memoized sorted data
-  const sortedData = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const valA = a[sortOption] ?? 0;
-      const valB = b[sortOption] ?? 0;
-
-      if (typeof valA === "string" && typeof valB === "string") {
-        return sortOrder === "asc"
-          ? valA.localeCompare(valB)
-          : valB.localeCompare(valA);
-      } else if (typeof valA === "number" && typeof valB === "number") {
-        return sortOrder === "asc" ? valA - valB : valB - valA;
-      } else {
-        // Fallback for mixed types or other types
-        return 0;
-      }
-    });
-  }, [filtered, sortOrder, sortOption]);
-
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const currentItems = sortedData.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
-
-  // Reset current page if it exceeds total pages
-  useEffect(() => {
-    if (currentPage >= totalPages && totalPages > 0) {
-      setCurrentPage(0);
-    }
-  }, [currentPage, totalPages]);
+  // For server-side pagination, we use the data directly from the API
+  // No need for client-side filtering or sorting since the API handles this
+  const currentItems = locationData;
+  const totalPages = pagination.totalPages;
+  const totalCount = pagination.totalCount;
 
   // Handle scroll to show/hide floating refresh button
   useEffect(() => {
@@ -301,10 +314,16 @@ export default function LocationsPage() {
 
   const handleFirstPage = () => setCurrentPage(0);
   const handleLastPage = () => setCurrentPage(totalPages - 1);
-  const handlePrevPage = () =>
-    currentPage > 0 && setCurrentPage((prev) => prev - 1);
-  const handleNextPage = () =>
-    currentPage < totalPages - 1 && setCurrentPage((prev) => prev + 1);
+  const handlePrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
 
   const handleLocationClick = (locationId: string): void => {
     router.push(`/locations/${locationId}`);
@@ -697,7 +716,7 @@ export default function LocationsPage() {
             {/* Mobile Pagination */}
             <div className="flex flex-col space-y-3 mt-4 sm:hidden">
               <div className="text-xs text-gray-600 text-center">
-                Page {currentPage + 1} of {totalPages} ({sortedData.length}{" "}
+                Page {currentPage + 1} of {totalPages} ({totalCount}{" "}
                 locations)
               </div>
               <div className="flex items-center justify-center space-x-2">
