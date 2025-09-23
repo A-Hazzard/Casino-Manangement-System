@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -40,7 +40,6 @@ import Image from "next/image";
 import ClientOnly from "@/components/ui/common/ClientOnly";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import { IMAGES } from "@/lib/constants/images";
-import { calculateLocationFinancialTotals } from "@/lib/utils/financial";
 import { useDebounce } from "@/lib/utils/hooks";
 import { fetchMachineStats } from "@/lib/helpers/machineStats";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -706,15 +705,12 @@ export default function LocationsPage() {
                   formatCurrency={formatCurrency}
                 />
               </div>
-            </>
-          )}
-        </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <>
-            {/* Mobile Pagination */}
-            <div className="flex flex-col space-y-3 mt-4 sm:hidden">
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <>
+                  {/* Mobile Pagination */}
+                  <div className="flex flex-col space-y-3 mt-6 sm:hidden">
               <div className="text-xs text-gray-600 text-center">
                 Page {currentPage + 1} of {totalPages} ({totalCount}{" "}
                 locations)
@@ -778,7 +774,7 @@ export default function LocationsPage() {
               </div>
             </div>
             {/* Desktop Pagination */}
-            <div className="hidden sm:flex justify-center items-center space-x-2 mt-4">
+            <div className="hidden sm:flex justify-center items-center space-x-2 mt-6">
               <Button
                 onClick={handleFirstPage}
                 disabled={currentPage === 0}
@@ -826,9 +822,12 @@ export default function LocationsPage() {
               >
                 <DoubleArrowRightIcon />
               </Button>
-            </div>
-          </>
-        )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </PageLayout>
       <EditLocationModal onLocationUpdated={fetchData} />
       <DeleteLocationModal onDelete={fetchData} />

@@ -23,7 +23,6 @@ import {
   handleSectionChange as handleSectionChangeHelper,
   filterCabinets as filterCabinetsHelper,
 } from "@/lib/helpers/cabinetsPage";
-import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";

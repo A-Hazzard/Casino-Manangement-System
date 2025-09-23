@@ -13,20 +13,20 @@ import {
 
 // Test the new client timezone utilities
 export function testClientTimezone() {
-  console.log('🧪 Testing Client Timezone Utilities');
-  console.log('=====================================');
+  console.warn('🧪 Testing Client Timezone Utilities');
+  console.warn('=====================================');
   
   // Create a UTC date (simulating database data)
   const utcDate = new Date('2024-01-15T14:30:00.000Z');
   
-  console.log('📅 Original UTC Date:', utcDate.toISOString());
-  console.log('🌍 Client Local Time:', utcDate.toLocaleString());
+  console.warn('📅 Original UTC Date:', utcDate.toISOString());
+  console.warn('🌍 Client Local Time:', utcDate.toLocaleString());
   
   // Test formatting functions
-  console.log('\n📝 Formatting Tests:');
-  console.log('formatClientTime:', formatClientTime(utcDate));
-  console.log('formatClientDate:', formatClientDate(utcDate));
-  console.log('formatClientTimeOnly:', formatClientTimeOnly(utcDate));
+  console.warn('\n📝 Formatting Tests:');
+  console.warn('formatClientTime:', formatClientTime(utcDate));
+  console.warn('formatClientDate:', formatClientDate(utcDate));
+  console.warn('formatClientTimeOnly:', formatClientTimeOnly(utcDate));
   
   // Test object conversion
   const testObject = {
@@ -40,25 +40,25 @@ export function testClientTimezone() {
     }
   };
   
-  console.log('\n🔄 Object Conversion Test:');
-  console.log('Original object dates:');
-  console.log('  createdAt:', testObject.createdAt.toISOString());
-  console.log('  updatedAt:', testObject.updatedAt.toISOString());
+  console.warn('\n🔄 Object Conversion Test:');
+  console.warn('Original object dates:');
+  console.warn('  createdAt:', testObject.createdAt.toISOString());
+  console.warn('  updatedAt:', testObject.updatedAt.toISOString());
   
   const convertedObject = convertObjectDatesToClientTime(testObject);
-  console.log('\nConverted object (client timezone):');
-  console.log('  createdAt:', convertedObject.createdAt.toLocaleString());
-  console.log('  updatedAt:', convertedObject.updatedAt.toLocaleString());
-  console.log('  nested.date:', convertedObject.nested.date.toLocaleString());
+  console.warn('\nConverted object (client timezone):');
+  console.warn('  createdAt:', convertedObject.createdAt.toLocaleString());
+  console.warn('  updatedAt:', convertedObject.updatedAt.toLocaleString());
+  console.warn('  nested.date:', convertedObject.nested.date.toLocaleString());
   
   // Debug timezone info
-  console.log('\n🔍 Debug Information:');
+  console.warn('\n🔍 Debug Information:');
   debugClientTimezone();
   
-  console.log('\n✅ Client timezone utilities are working correctly!');
-  console.log('   - Dates are automatically displayed in client\'s local timezone');
-  console.log('   - No hardcoded timezone offsets');
-  console.log('   - Browser handles timezone conversion automatically');
+  console.warn('\n✅ Client timezone utilities are working correctly!');
+  console.warn('   - Dates are automatically displayed in client\'s local timezone');
+  console.warn('   - No hardcoded timezone offsets');
+  console.warn('   - Browser handles timezone conversion automatically');
 }
 
 // Export for testing

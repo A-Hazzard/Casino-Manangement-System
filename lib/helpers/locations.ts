@@ -6,6 +6,26 @@ import { TimePeriod } from "../types/api";
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
 
+// Type-safe pagination interface
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+// Helper function to create default pagination
+const createDefaultPagination = (): PaginationInfo => ({
+  page: 1,
+  limit: 10,
+  totalCount: 0,
+  totalPages: 0,
+  hasNextPage: false,
+  hasPrevPage: false,
+});
+
 /**
  * Fetches both location details and its cabinets for a given locationId.
  *
@@ -406,7 +426,7 @@ export async function fetchAggregatedLocationsData(
   dateRange?: { from: Date; to: Date },
   page: number = 1,
   limit: number = 10
-): Promise<{ data: AggregatedLocation[]; pagination: any }> {
+): Promise<{ data: AggregatedLocation[]; pagination: PaginationInfo }> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;
@@ -443,7 +463,7 @@ export async function fetchAggregatedLocationsData(
 
     if (response.status !== 200) {
       console.error(`❌ API error (${response.status}):`, response.data);
-      return { data: [], pagination: {} };
+      return { data: [], pagination: createDefaultPagination() };
     }
 
     // Handle paginated response structure
@@ -458,16 +478,23 @@ export async function fetchAggregatedLocationsData(
       // Direct array response (fallback for backward compatibility)
       return {
         data: responseData,
-        pagination: { page: 1, limit: responseData.length, totalCount: responseData.length }
+        pagination: { 
+          page: 1, 
+          limit: responseData.length, 
+          totalCount: responseData.length, 
+          totalPages: 1, 
+          hasNextPage: false, 
+          hasPrevPage: false 
+        }
       };
     } else {
       // Fallback for unexpected structure
       console.warn('Unexpected API response structure:', responseData);
-      return { data: [], pagination: {} };
+      return { data: [], pagination: createDefaultPagination() };
     }
   } catch (error) {
     console.error("Error fetching locations data:", error);
-    return { data: [], pagination: {} };
+    return { data: [], pagination: { page: 1, limit: 10, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
   }
 }
 
