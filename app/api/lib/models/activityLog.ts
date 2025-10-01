@@ -14,12 +14,36 @@ const ActivityLogSchema = new Schema(
     action: {
       type: String,
       required: true,
-      enum: ["create", "update", "delete", "view", "download"],
+      enum: [
+        "create",
+        "update",
+        "delete",
+        "view",
+        "download",
+        "login_success",
+        "login_failed",
+        "login_blocked",
+        "login_error",
+        "logout",
+        "password_reset",
+        "account_locked",
+        "account_unlocked",
+      ],
     },
     resource: {
       type: String,
       required: true,
-      enum: ["user", "licensee", "member", "location", "machine", "session", "collection", "firmware"],
+      enum: [
+        "user",
+        "licensee",
+        "member",
+        "location",
+        "machine",
+        "session",
+        "collection",
+        "firmware",
+        "auth",
+      ],
     },
     resourceId: { type: String, required: true },
     resourceName: { type: String },
@@ -42,13 +66,17 @@ const ActivityLogSchema = new Schema(
       id: { type: String },
       name: { type: String },
     },
-    changes: [
-      {
-        field: { type: String },
-        oldValue: { type: Schema.Types.Mixed },
-        newValue: { type: Schema.Types.Mixed },
-      },
-    ],
+    changes: {
+      type: [
+        {
+          field: { type: String, required: true },
+          oldValue: { type: Schema.Types.Mixed },
+          newValue: { type: Schema.Types.Mixed },
+        },
+      ],
+      default: [],
+      required: true,
+    },
     description: { type: String },
   },
   { timestamps: true, versionKey: false }
@@ -67,4 +95,5 @@ ActivityLogSchema.index({ "actor.id": 1, timestamp: -1 });
 ActivityLogSchema.index({ actionType: 1, timestamp: -1 });
 
 export const ActivityLog =
-  models?.ActivityLog || model("ActivityLog", ActivityLogSchema, "activityLogs");
+  models?.ActivityLog ||
+  model("ActivityLog", ActivityLogSchema, "activityLogs");

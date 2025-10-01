@@ -10,7 +10,7 @@ import { CustomizedLabelProps } from "@/lib/types/componentProps";
 import { RADIAN } from "@/lib/constants/uiConstants";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
-import { TimePeriod } from "@/app/api/lib/types";
+import { TimePeriod } from "@/shared/types/common";
 import { fetchMetricsData } from "@/lib/helpers/dashboard";
 
 /**

@@ -15,15 +15,25 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import formatCurrency from "@/lib/utils/currency";
 import { formatDistanceToNow } from "date-fns";
-import { CabinetSortOption, CabinetTableProps } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+import type { DataTableProps } from "@/shared/types/components";
+import { formatMachineDisplayNameWithBold } from "@/lib/utils/machineDisplay";
+type CabinetTableProps = DataTableProps<Cabinet> & {
+  onMachineClick?: (machineId: string) => void;
+  showLocation?: boolean;
+  showStatus?: boolean;
+  showMetrics?: boolean;
+};
 import { ClockIcon, Cross1Icon, MobileIcon } from "@radix-ui/react-icons";
 import { IMAGES } from "@/lib/constants/images";
 
 export default function CabinetTable({
-  cabinets,
+  data: cabinets,
+  loading: _loading,
   sortOption,
   sortOrder,
-  onColumnSort,
+  onSort,
+  onPageChange: _onPageChange,
   onEdit,
   onDelete,
 }: CabinetTableProps) {
@@ -42,7 +52,7 @@ export default function CabinetTable({
           <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
-              onClick={() => onColumnSort("assetNumber" as CabinetSortOption)}
+              onClick={() => onSort("assetNumber")}
               isFirstColumn={true}
             >
               <span>ASSET NUMBER</span>
@@ -54,7 +64,7 @@ export default function CabinetTable({
             </TableHead>
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
-              onClick={() => onColumnSort("moneyIn" as CabinetSortOption)}
+              onClick={() => onSort("moneyIn")}
             >
               <span>MONEY IN</span>
               {sortOption === "moneyIn" && (
@@ -65,7 +75,7 @@ export default function CabinetTable({
             </TableHead>
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
-              onClick={() => onColumnSort("moneyOut" as CabinetSortOption)}
+              onClick={() => onSort("moneyOut")}
             >
               <span>MONEY OUT</span>
               {sortOption === "moneyOut" && (
@@ -76,7 +86,7 @@ export default function CabinetTable({
             </TableHead>
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
-              onClick={() => onColumnSort("jackpot" as CabinetSortOption)}
+              onClick={() => onSort("jackpot")}
             >
               <span>JACKPOT</span>
               {sortOption === "jackpot" && (
@@ -87,7 +97,7 @@ export default function CabinetTable({
             </TableHead>
             <TableHead
               className="text-white font-semibold cursor-pointer relative"
-              onClick={() => onColumnSort("gross" as CabinetSortOption)}
+              onClick={() => onSort("gross")}
             >
               <span>GROSS</span>
               {sortOption === "gross" && (
@@ -129,6 +139,9 @@ export default function CabinetTable({
                 <TableCell isFirstColumn={true}>
                   <div className="font-medium">
                     {cab.assetNumber || "(No Asset #)"}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {formatMachineDisplayNameWithBold(cab)}
                   </div>
                   <div className="text-xs text-gray-600 mt-1 font-bold">
                     {cab.locationName || "(No Location)"}
@@ -173,7 +186,7 @@ export default function CabinetTable({
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEdit(cab);
+                        onEdit?.(cab);
                       }}
                       className="p-1 h-8 w-8 hover:bg-accent"
                     >
@@ -189,7 +202,7 @@ export default function CabinetTable({
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(cab);
+                        onDelete?.(cab);
                       }}
                       className="p-1 h-8 w-8 hover:bg-accent"
                     >

@@ -1,5 +1,6 @@
 // Component utility functions for layouts
-import { Cabinet, CabinetProps } from "@/lib/types/cabinets";
+import { GamingMachine as Cabinet } from "@/shared/types/entities";
+type CabinetProps = Cabinet;
 
 /**
  * Formats metric numbers for display
@@ -32,13 +33,18 @@ export const calculatePieChartLabelPosition = (
 /**
  * Converts a Cabinet object to CabinetProps for rendering
  */
-export const mapToCabinetProps = (
-  cabinet: Cabinet,
-  onEditHandler: (cabinet: Cabinet) => void,
-  onDeleteHandler: (cabinet: Cabinet) => void
-): CabinetProps => {
+export const mapToCabinetProps = (cabinet: Cabinet): CabinetProps => {
   return {
     _id: cabinet._id,
+    serialNumber: cabinet.serialNumber || "",
+    relayId: cabinet.relayId || "",
+    game: cabinet.game || cabinet.installedGame || "",
+    assetStatus: cabinet.assetStatus || cabinet.status || "",
+    gamingLocation: cabinet.gamingLocation || cabinet.locationId || "",
+    accountingDenomination: cabinet.accountingDenomination || cabinet.gameConfig?.accountingDenomination || "",
+    createdAt: cabinet.createdAt || new Date(),
+    updatedAt: cabinet.updatedAt || new Date(),
+    // Optional fields with defaults
     locationId: cabinet.locationId || "",
     locationName: cabinet.locationName || "",
     assetNumber: cabinet.assetNumber || "",
@@ -56,16 +62,11 @@ export const mapToCabinetProps = (
       ? cabinet.lastActivity.toString()
       : "",
     installedGame: cabinet.installedGame || cabinet.game || "",
-    accountingDenomination:
-      cabinet.accountingDenomination ||
-      cabinet.gameConfig?.accountingDenomination?.toString() ||
-      "",
     collectionMultiplier: cabinet.collectionMultiplier || "",
     status: cabinet.status || cabinet.assetStatus || "",
-    gameType: cabinet.gameType,
-    isCronosMachine: cabinet.isCronosMachine,
-    cabinetType: cabinet.cabinetType,
-    onEdit: () => onEditHandler(cabinet),
-    onDelete: () => onDeleteHandler(cabinet),
+    gameType: cabinet.gameType || "",
+    isCronosMachine: cabinet.isCronosMachine || false,
+    cabinetType: cabinet.cabinetType || "",
+    custom: { name: cabinet.serialNumber || cabinet._id || "Unknown" },
   };
 };

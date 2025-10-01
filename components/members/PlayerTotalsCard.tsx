@@ -1,6 +1,6 @@
 import React from "react";
 import { ChevronDown } from "lucide-react";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 import { formatCurrency } from "@/lib/utils/formatters";
 
 type PlayerTotalsCardProps = {
@@ -90,18 +90,16 @@ export default function PlayerTotalsCard({
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard
-              title="Free Play Credits"
-              value={formatCurrency(member.freePlayCredits || 0)}
+              title="Account Balance"
+              value={formatCurrency(member.uaccount || 0)}
             />
             <StatCard
-              title="Account Balance"
-              value={formatCurrency(member.accountBalance || 0)}
+              title="Points Balance"
+              value={member.points || 0}
             />
             <StatCard
               title="Total Balance"
-              value={formatCurrency(
-                (member.accountBalance || 0) + (member.freePlayCredits || 0)
-              )}
+              value={formatCurrency(member.uaccount || 0)}
             />
             <StatCard
               title="Won/Loss"

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useAsyncError } from "@/components/ui/ErrorBoundary";
 
 import PageLayout from "@/components/layout/PageLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 import { gsap } from "gsap";
@@ -74,7 +75,8 @@ import type { CollectorSchedule } from "@/lib/types/components";
 import CollectionNavigation from "@/components/collectionReport/CollectionNavigation";
 import { COLLECTION_TABS_CONFIG } from "@/lib/constants/collection";
 import type { CollectionView } from "@/lib/types/collection";
-import { useCollectionNavigation } from "@/lib/hooks/useCollectionNavigation";
+import { useCollectionNavigation } from "@/lib/hooks/navigation";
+import { useUrlProtection } from "@/lib/hooks/useUrlProtection";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
 import "./animations.css";
@@ -108,7 +110,7 @@ const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
   }
 };
 
-export default function CollectionReportPage() {
+function CollectionReportPageContent() {
   return (
     <Suspense
       fallback={
@@ -148,6 +150,14 @@ function CollectionReportContent() {
     if (section === "collector") return "collector";
     if (section === "collection") return "collection";
     return "collection"; // default
+  });
+
+  // URL protection for collection report tabs
+  useUrlProtection({
+    page: "collection-report",
+    allowedTabs: ["collection", "monthly", "manager", "collector"],
+    defaultTab: "collection",
+    redirectPath: "/unauthorized",
   });
 
   // Update URL when tab changes
@@ -443,8 +453,12 @@ function CollectionReportContent() {
       licencee: selectedLicencee,
     })
       .then(({ summary, details }) => {
-        // Console log the drop calculation for verification
-        if (details && details.length > 0) {
+        // Calculate drop values for verification (development only)
+        if (
+          process.env.NODE_ENV === "development" &&
+          details &&
+          details.length > 0
+        ) {
           const dropValues = details.map(
             (detail) => parseInt(detail.drop) || 0
           );
@@ -520,7 +534,9 @@ function CollectionReportContent() {
           setLoadingSchedulers(false);
         })
         .catch((error) => {
-          console.error("Error fetching schedulers:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error fetching schedulers:", error);
+          }
           setLoadingSchedulers(false);
         });
     }
@@ -557,7 +573,9 @@ function CollectionReportContent() {
           setLoadingCollectorSchedules(false);
         })
         .catch((error) => {
-          console.error("Error fetching collector schedules:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error fetching collector schedules:", error);
+          }
           setLoadingCollectorSchedules(false);
         });
     }
@@ -586,7 +604,9 @@ function CollectionReportContent() {
           setAllLocationNames(names);
         })
         .catch((error: Error) => {
-          console.error("Error fetching locations:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error fetching locations:", error);
+          }
           setAllLocationNames([]);
         });
       fetchMonthlyData();
@@ -717,7 +737,9 @@ function CollectionReportContent() {
         toast.error("Failed to delete collection report");
       }
     } catch (error) {
-      console.error("Error deleting collection report:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting collection report:", error);
+      }
       toast.error("Failed to delete collection report. Please try again.");
     } finally {
       setShowDeleteConfirmation(false);
@@ -736,13 +758,15 @@ function CollectionReportContent() {
 
   // --- RENDER ---
 
-  // Debugging: Log data and filters to diagnose empty UI
-  // console.log("DEBUG: reports", reports);
-  // console.log("DEBUG: filteredReports", filteredReports);
-  // console.log("DEBUG: desktopData", desktopData);
-  // console.log("DEBUG: mobileData", mobileData);
-  // console.log("DEBUG: desktopPage", desktopPage);
-  // console.log("DEBUG: mobilePage", mobilePage);
+  // Debugging: Log data and filters to diagnose empty UI (development only)
+  // if (process.env.NODE_ENV === "development") {
+  //   console.log("DEBUG: reports", reports);
+  //   console.log("DEBUG: filteredReports", filteredReports);
+  //   console.log("DEBUG: desktopData", desktopData);
+  //   console.log("DEBUG: mobileData", mobileData);
+  //   console.log("DEBUG: desktopPage", desktopPage);
+  //   console.log("DEBUG: mobilePage", mobilePage);
+  // }
 
   return (
     <>
@@ -755,7 +779,7 @@ function CollectionReportContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* Title Row */}
+        {/* Header Section: Title, icon, and create collection report button */}
         <div
           className="flex items-center justify-between mt-4 w-full max-w-full"
           suppressHydrationWarning
@@ -800,7 +824,7 @@ function CollectionReportContent() {
           )}
         </div>
 
-        {/* Section Navigation */}
+        {/* Navigation Section: Tab navigation for different report types */}
         <div className="mt-8 mb-8">
           <CollectionNavigation
             tabs={COLLECTION_TABS_CONFIG}
@@ -810,7 +834,7 @@ function CollectionReportContent() {
           />
         </div>
 
-        {/* Date Filters */}
+        {/* Date Filters Section: Standard date filters for collection/manager/collector tabs */}
         {/* Show standard filters only for collection/manager/collector. Monthly uses its own controls */}
         {activeTab !== "monthly" && (
           <>
@@ -823,6 +847,7 @@ function CollectionReportContent() {
                     setLoading(true);
                   }
                 }}
+                hideAllTime={false}
               />
             </div>
             {/* Mobile Date Filters */}
@@ -835,12 +860,13 @@ function CollectionReportContent() {
                     setLoading(true);
                   }
                 }}
+                hideAllTime={false}
               />
             </div>
           </>
         )}
 
-        {/* Content Area */}
+        {/* Content Area Section: Main tab content with animations */}
         <div className="flex-1 overflow-hidden mt-6">
           <AnimatePresence mode="wait">
             <motion.div
@@ -1059,5 +1085,13 @@ function CollectionReportContent() {
         isLoading={false}
       />
     </>
+  );
+}
+
+export default function CollectionReportPage() {
+  return (
+    <ProtectedRoute requiredPage="collection-report">
+      <CollectionReportPageContent />
+    </ProtectedRoute>
   );
 }

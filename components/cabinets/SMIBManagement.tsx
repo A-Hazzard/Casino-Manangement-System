@@ -7,7 +7,10 @@ import Chip from "@/components/ui/common/Chip";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
-import type { SmibLocation } from "@/lib/types/cabinets";
+import type { SmibLocation } from "@/shared/types/entities";
+
+// Import SVG icons for pre-rendering
+import editIcon from "@/public/editIcon.svg";
 
 // TODO: Replace with MongoDB data fetching
 
@@ -27,8 +30,8 @@ export default function SMIBManagement() {
     setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
   };
 
-
-  const currentSelectedLocationName = "No locations available - MongoDB implementation pending";
+  const currentSelectedLocationName =
+    "No locations available - MongoDB implementation pending";
 
   return (
     <div className="w-full max-w-full min-h-[80vh] flex flex-col gap-6 text-gray-700">
@@ -45,7 +48,6 @@ export default function SMIBManagement() {
         </div>
         <CustomSelect
           value={selectedLocation}
-
           onValueChange={setSelectedLocation}
           options={
             MOCK_LOCATIONS.length === 0
@@ -141,7 +143,7 @@ export default function SMIBManagement() {
                 Network / WIFI
               </h3>
               <Image
-                src="/editIcon.svg"
+                src={editIcon}
                 alt="Edit"
                 width={20}
                 height={20}
@@ -175,7 +177,7 @@ export default function SMIBManagement() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg text-gray-700">Coms</h3>
               <Image
-                src="/editIcon.svg"
+                src={editIcon}
                 alt="Edit"
                 width={20}
                 height={20}

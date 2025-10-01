@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 
 // This is a store for member actions (edit/delete)
 
@@ -40,10 +40,10 @@ const createStore = () => {
     selectedMember: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
-    openEditModal: (_member) =>
-      set({ selectedMember: _member, isEditModalOpen: true }),
-    openDeleteModal: (_member) =>
-      set({ selectedMember: _member, isDeleteModalOpen: true }),
+    openEditModal: (member) =>
+      set({ selectedMember: member, isEditModalOpen: true }),
+    openDeleteModal: (member) =>
+      set({ selectedMember: member, isDeleteModalOpen: true }),
     closeEditModal: () => set({ isEditModalOpen: false }),
     closeDeleteModal: () => set({ isDeleteModalOpen: false }),
   }));

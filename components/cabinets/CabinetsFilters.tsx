@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Plus } from "lucide-react";
 
-import { CustomSelect } from "@/components/ui/custom-select";
-
 import {
   Select,
   SelectContent,
@@ -14,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CabinetSortOption } from "@/lib/types/cabinets";
+
+import type { CabinetSortOption } from "@/lib/hooks/data";
 
 type CabinetsFiltersProps = {
   searchTerm: string;
@@ -64,41 +63,6 @@ export default function CabinetsFilters({
         </div>
 
         {/* Location Filter */}
-
-        <CustomSelect
-          value={selectedLocation}
-          onValueChange={setSelectedLocation}
-          options={[
-            { value: "all", label: "All Locations" },
-            ...locations.map((location) => ({
-              value: location._id,
-              label: location.name,
-            })),
-          ]}
-          placeholder="Select location"
-          disabled={loading}
-          className="md:w-48"
-          searchable={true}
-          emptyMessage="No locations found"
-        />
-
-        {/* Sort Options */}
-        <CustomSelect
-          value={sortOption}
-          onValueChange={(value) => setSortOption(value as CabinetSortOption)}
-          options={[
-            { value: "moneyIn", label: "Money In" },
-            { value: "gross", label: "Gross" },
-            { value: "lastOnline", label: "Last Online" },
-            { value: "locationName", label: "Location" },
-            { value: "assetNumber", label: "Asset Number" },
-          ]}
-          placeholder="Sort by"
-          disabled={loading}
-          className="md:w-48"
-          emptyMessage="No sort options found"
-        />
-
         <Select
           value={selectedLocation}
           onValueChange={setSelectedLocation}
@@ -134,6 +98,7 @@ export default function CabinetsFilters({
             <SelectItem value="assetNumber">Asset Number</SelectItem>
           </SelectContent>
         </Select>
+
 
         <Button
           variant="outline"

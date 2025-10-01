@@ -115,7 +115,7 @@ export type licenceeSelectProps = {
 export type DashboardDateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
-  hideAllTime?: boolean;
+  hideAllTime: boolean;
   mode?: "auto" | "mobile" | "desktop";
 };
 

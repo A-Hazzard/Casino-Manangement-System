@@ -477,9 +477,7 @@ export async function getAllLocationNames(): Promise<string[]> {
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const response = await axios.get("/api/collectionReport/locations", {
-      timeout: 10000, // 10 second timeout
-    });
+    const response = await axios.get("/api/collectionReport/locations");
     const data: Record<string, unknown> = response.data;
     if ("locations" in data && Array.isArray(data.locations)) {
       return data.locations.map((location: unknown) => String(location));
@@ -515,7 +513,7 @@ export async function getLocationsWithMachines() {
   try {
     const { data } = await axios.get(
       "/api/collectionReport?locationsWithMachines=1",
-      { timeout: 10000 } // 10 second timeout
+      { timeout: 60000 } // 60 second timeout to match database timeout
     );
     return data.locations || [];
   } catch (error) {
@@ -552,7 +550,7 @@ export async function createCollectionReport(
 ) {
   try {
     const { data } = await axios.post("/api/collectionReport", payload, {
-      timeout: 15000, // 15 second timeout for creation
+      timeout: 60000, // 60 second timeout to match database timeout
     });
     return data;
   } catch (error) {
@@ -641,8 +639,11 @@ export async function updateCollectionReport(
 export async function fetchCollectionReportsByLicencee(
   licencee?: string,
   dateRange?: { from: Date; to: Date },
-  timePeriod?: string
+  timePeriod?: string,
+  retryCount = 0
 ): Promise<CollectionReportRow[]> {
+  const maxRetries = 2;
+  
   try {
     const params: Record<string, string> = {};
 
@@ -662,7 +663,7 @@ export async function fetchCollectionReportsByLicencee(
 
     const { data } = await axios.get("/api/collectionReport", {
       params,
-      timeout: 10000, // 10 second timeout
+      timeout: 60000, // 60 second timeout to match database timeout
     });
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -672,6 +673,12 @@ export async function fetchCollectionReportsByLicencee(
         console.warn(
           "⏰ Collection reports request timed out - returning empty array"
         );
+        // Retry on timeout if we haven't exceeded max retries
+        if (retryCount < maxRetries) {
+          console.warn(`🔄 Retrying collection reports request (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Exponential backoff
+          return fetchCollectionReportsByLicencee(licencee, dateRange, timePeriod, retryCount + 1);
+        }
       } else if (error.response?.status === 500) {
         console.warn(
           "🔧 Server error fetching collection reports - database may be unavailable"

@@ -4,7 +4,7 @@ import { CustomDate, TimePeriod } from "@/app/api/lib/types";
  * Calculates the start and end dates for a specified time period based on a given timezone.
  * Uses timezone-aware date calculations for Trinidad time (UTC-4).
  *
- * @param timePeriod - Specifies the period for date calculation. Acceptable values: 'Today', 'Yesterday', '7d', '30d', 'All Time'.
+ * @param timePeriod - Specifies the period for date calculation. Acceptable values: 'Today', 'Yesterday', '7d', '30d', 'All Time', 'Custom'.
  * @returns An object containing the calculated start and end dates, or undefined dates for 'All Time'.
  */
 export const getDatesForTimePeriod = (

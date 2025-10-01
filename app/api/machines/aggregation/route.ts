@@ -3,11 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "../../lib/middleware/db";
 import { TimePeriod } from "@shared/types";
-import {
-  MachineMatchStage,
-  MachineAggregationMatchStage,
-} from "@/lib/types/machines";
 import { getDateRangeForTimePeriodAlt, DateRangeAlt } from "@/app/api/lib/utils/dateUtils";
+import { MachineMatchStage, MachineAggregationMatchStage } from "@/shared/types/mongo";
 
 export async function GET(req: NextRequest) {
   try {
@@ -199,6 +196,7 @@ export async function GET(req: NextRequest) {
         isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
         lastOnline: "$machines.lastActivity",
         lastActivity: "$machines.lastActivity",
+        createdAt: "$machines.createdAt",
         // Financial metrics from meter aggregation
         moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
         moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
@@ -319,6 +317,7 @@ export async function GET(req: NextRequest) {
               isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
               lastOnline: "$machines.lastActivity",
               lastActivity: "$machines.lastActivity",
+              createdAt: "$machines.createdAt",
               // Financial metrics from meter aggregation
               moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
               moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },

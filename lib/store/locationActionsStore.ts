@@ -30,10 +30,10 @@ const createStore = () => {
     selectedLocation: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
-    openEditModal: (_location) =>
-      set({ selectedLocation: _location, isEditModalOpen: true }),
-    openDeleteModal: (_location) =>
-      set({ selectedLocation: _location, isDeleteModalOpen: true }),
+    openEditModal: (location) =>
+      set({ selectedLocation: location, isEditModalOpen: true }),
+    openDeleteModal: (location) =>
+      set({ selectedLocation: location, isDeleteModalOpen: true }),
     closeEditModal: () => set({ isEditModalOpen: false }),
     closeDeleteModal: () => set({ isDeleteModalOpen: false }),
   }));

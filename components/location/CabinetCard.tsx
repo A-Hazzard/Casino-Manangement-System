@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { CabinetDetail } from "@/lib/types/cabinets";
+import { GamingMachine as CabinetDetail } from "@/shared/types/entities";
 
 type ExtendedCabinetCardProps = {
   cabinet: CabinetDetail;

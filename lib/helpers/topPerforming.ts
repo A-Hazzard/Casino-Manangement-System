@@ -32,7 +32,10 @@ export async function fetchTopPerformingData(
       color: colorPalette[index % colorPalette.length],
     }));
   } catch (error) {
-    console.error(`Failed to fetch top-performing ${activeTab}:`, error);
+    // Error handling for top-performing data fetch
+    if (process.env.NODE_ENV === "development") {
+      console.error(`Failed to fetch top-performing ${activeTab}:`, error);
+    }
     return [];
   }
 }

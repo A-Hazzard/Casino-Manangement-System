@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { CabinetDetail } from "@/lib/types/cabinets";
+import type { GamingMachine as CabinetDetail } from "@/shared/types/entities";
 
 /**
  * Fetch cabinet by ID

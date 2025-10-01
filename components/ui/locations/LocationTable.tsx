@@ -40,11 +40,11 @@ const LocationTable: React.FC<LocationTableProps> = ({
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
               <TableHead
                 className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("name")}
+                onClick={() => onSort("locationName")}
                 isFirstColumn={true}
               >
                 <span>LOCATION NAME</span>
-                {sortOption === "name" && (
+                {sortOption === "locationName" && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
                     {sortOrder === "desc" ? "▼" : "▲"}
                   </span>

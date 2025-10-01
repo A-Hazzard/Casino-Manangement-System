@@ -68,7 +68,9 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [searchMode, setSearchMode] = useState<"username" | "email" | "description">("username");
+  const [searchMode, setSearchMode] = useState<
+    "username" | "email" | "description"
+  >("username");
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [actionFilter, setActionFilter] = useState("all");
   const [resourceFilter, setResourceFilter] = useState("all");
@@ -111,23 +113,25 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
           params.append("search", debouncedSearchTerm);
         }
       }
-      if (actionFilter && actionFilter !== "all") params.append("action", actionFilter);
-      if (resourceFilter && resourceFilter !== "all") params.append("resource", resourceFilter);
+      if (actionFilter && actionFilter !== "all")
+        params.append("action", actionFilter);
+      if (resourceFilter && resourceFilter !== "all")
+        params.append("resource", resourceFilter);
       if (dateFilter) {
         // Set start of the selected day
         const selectedDate = new Date(dateFilter);
         selectedDate.setHours(0, 0, 0, 0);
         params.append("startDate", selectedDate.toISOString());
-        
+
         // Set end of the selected day
         const endDate = new Date(dateFilter);
         endDate.setHours(23, 59, 59, 999);
         params.append("endDate", endDate.toISOString());
-        
+
         console.warn("Date filter applied:", {
           original: dateFilter.toISOString(),
           startDate: selectedDate.toISOString(),
-          endDate: endDate.toISOString()
+          endDate: endDate.toISOString(),
         });
       }
 
@@ -136,7 +140,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
       const data = await response.json();
 
       if (data.success) {
-        setLogs(data.data.logs);
+        setLogs(data.data.activities || data.data.logs || []);
         setTotalPages(data.data.pagination.totalPages);
         setTotalCount(data.data.pagination.totalCount);
         setHasNextPage(data.data.pagination.hasNextPage);
@@ -172,41 +176,46 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
     }
   };
 
-  // Get action badge variant
-  const getActionBadgeVariant = (action: string) => {
-    switch (action) {
+  // Get action badge styling with enhanced colors and icons
+  const getActionBadgeStyle = (action: string) => {
+    switch (action.toLowerCase()) {
       case "create":
-        return "default";
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold";
       case "update":
-        return "secondary";
+        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold";
       case "delete":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold";
       case "view":
-        return "outline";
+        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 font-semibold";
+      case "login":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 font-semibold";
+      case "logout":
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
     }
   };
 
-  // Get resource badge variant
-  const getResourceBadgeVariant = (resource: string) => {
-    switch (resource) {
+  // Get resource badge styling with enhanced colors
+  const getResourceBadgeStyle = (resource: string) => {
+    switch (resource.toLowerCase()) {
       case "user":
-        return "default";
+        return "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 font-medium";
       case "machine":
-        return "secondary";
+      case "cabinet":
+        return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 font-medium";
       case "location":
-        return "outline";
+        return "bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200 font-medium";
       case "collection":
-        return "destructive";
-      case "licensee":
-        return "default";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium";
       case "member":
-        return "secondary";
+        return "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium";
+      case "licensee":
+        return "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium";
       case "session":
-        return "outline";
+        return "bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-medium";
     }
   };
 
@@ -230,7 +239,6 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
     setIsDescriptionDialogOpen(false);
     setSelectedLog(null);
   };
-
 
   return (
     <div className={className}>
@@ -266,7 +274,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                 <SelectItem value="view">View</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={resourceFilter} onValueChange={setResourceFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Resource" />
@@ -282,7 +290,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                 <SelectItem value="session">Session</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <div className="flex gap-2">
               <DatePicker
                 date={dateFilter}
@@ -304,108 +312,159 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                 ))}
               </div>
             ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("timestamp")}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Timestamp
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead centered>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("username")}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      User
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead centered>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("action")}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Action
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead centered>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("resource")}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Resource
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead centered>Description</TableHead>
-                  <TableHead centered>IP Address</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log._id}>
-                    <TableCell className="font-mono text-sm">
-                      {formatDate(log.timestamp)}
-                    </TableCell>
-                    <TableCell centered>
-                      <div>
-                        {searchMode === "email" ? (
-                          <>
-                            <div className="font-medium">{log.actor?.email || "N/A"}</div>
-                            {log.username && (
-                              <div className="text-sm text-gray-500">
-                                {log.username}
+              <div className="overflow-x-auto">
+                <Table className="min-w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("timestamp")}
+                          className="h-auto p-0 font-semibold"
+                        >
+                          Timestamp
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead centered>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("username")}
+                          className="h-auto p-0 font-semibold"
+                        >
+                          User
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead centered>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("action")}
+                          className="h-auto p-0 font-semibold"
+                        >
+                          Action
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead centered>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("resource")}
+                          className="h-auto p-0 font-semibold"
+                        >
+                          Resource
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead className="min-w-0 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
+                        Description
+                      </TableHead>
+                      <TableHead centered>IP Address</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs && logs.length > 0 ? (
+                      logs.map((log) => (
+                        <TableRow key={log._id}>
+                          <TableCell className="font-mono text-sm">
+                            {formatDate(log.timestamp)}
+                          </TableCell>
+                          <TableCell centered>
+                            <div>
+                              {searchMode === "email" ? (
+                                <>
+                                  <div className="font-medium">
+                                    {log.actor?.email || "N/A"}
+                                  </div>
+                                  {log.username && (
+                                    <div className="text-sm text-gray-500">
+                                      {log.username}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-medium">
+                                    {log.username}
+                                  </div>
+                                  {log.actor?.email && (
+                                    <div className="text-sm text-gray-500">
+                                      {log.actor.email}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell centered>
+                            <Badge className={getActionBadgeStyle(log.action)}>
+                              {log.action.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell centered>
+                            <Badge
+                              className={getResourceBadgeStyle(log.resource)}
+                            >
+                              {log.resource}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="min-w-0 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
+                            <button
+                              onClick={() => handleDescriptionClick(log)}
+                              className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer transition-colors text-sm break-words whitespace-normal"
+                              title="Click to view full description"
+                            >
+                              <div className="flex items-start gap-1">
+                                <span className="flex-1 min-w-0 break-words">
+                                  {log.description ||
+                                    log.details ||
+                                    "No description"}
+                                </span>
+                                <span className="text-blue-500 text-xs flex-shrink-0 mt-0.5">
+                                  📋
+                                </span>
                               </div>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <div className="font-medium">{log.username}</div>
-                            {log.actor?.email && (
-                              <div className="text-sm text-gray-500">
-                                {log.actor.email}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell centered>
-                      <Badge variant={getActionBadgeVariant(log.action)}>
-                        {log.action.toUpperCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell centered>
-                      <Badge variant={getResourceBadgeVariant(log.resource)}>
-                        {log.resource}
-                      </Badge>
-                    </TableCell>
-                    <TableCell centered className="max-w-xs">
-                      <button
-                        onClick={() => handleDescriptionClick(log)}
-                        className="truncate text-left hover:text-blue-600 hover:underline cursor-pointer transition-colors"
-                        title="Click to view full description"
-                      >
-                        {log.description || log.details || "No description"}
-                      </button>
-                    </TableCell>
-                    <TableCell centered className="font-mono text-sm">
-                      {log.ipAddress || "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            </button>
+                          </TableCell>
+                          <TableCell centered className="font-mono text-sm">
+                            <div className="flex flex-col items-center">
+                              <span className="text-gray-800">
+                                {log.ipAddress || "N/A"}
+                              </span>
+                              {log.ipAddress &&
+                                log.ipAddress.includes("(Local)") && (
+                                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1">
+                                    Local Network
+                                  </span>
+                                )}
+                              {log.ipAddress &&
+                                log.ipAddress.includes("(Public)") && (
+                                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded mt-1">
+                                    Public IP
+                                  </span>
+                                )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="text-gray-500">
+                            <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                            <p className="text-lg font-medium">
+                              No activity logs found
+                            </p>
+                            <p className="text-sm">
+                              Try adjusting your search or filter criteria
+                            </p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
 
@@ -415,7 +474,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
               Array.from({ length: 10 }).map((_, i) => (
                 <ActivityLogCardSkeleton key={i} />
               ))
-            ) : (
+            ) : logs && logs.length > 0 ? (
               logs.map((log) => (
                 <ActivityLogCard
                   key={log._id}
@@ -424,6 +483,14 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                   onDescriptionClick={handleDescriptionClick}
                 />
               ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">No activity logs found</p>
+                <p className="text-sm">
+                  Try adjusting your search or filter criteria
+                </p>
+              </div>
             )}
           </div>
 
@@ -431,7 +498,8 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-gray-500">
-                Showing {((currentPage - 1) * 50) + 1} to {Math.min(currentPage * 50, totalCount)} of {totalCount} logs
+                Showing {(currentPage - 1) * 50 + 1} to{" "}
+                {Math.min(currentPage * 50, totalCount)} of {totalCount} logs
               </div>
               <div className="flex items-center gap-2">
                 <Button

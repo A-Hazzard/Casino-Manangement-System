@@ -17,7 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
+import {
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
+} from "@/lib/utils/changeDetection";
 
 type EditMemberModalProps = {
   isOpen: boolean;
@@ -36,13 +41,50 @@ export default function EditMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null,
+    changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
       const response = await fetch("/api/activity-logs", {
@@ -57,8 +99,11 @@ export default function EditMemberModal({
           resourceName,
           details,
           userId: user?._id || "unknown",
-          username: user?.emailAddress || "unknown",
-          userRole: user?.roles?.[0] || "user",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: changes || [], // Use provided changes or empty array
         }),
       });
 
@@ -153,23 +198,39 @@ export default function EditMemberModal({
       return;
     }
 
+    const updateData = {
+      profile: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        occupation: formData.occupation,
+        address: formData.address,
+      },
+      phoneNumber: formData.phoneNumber,
+      points: formData.points,
+      uaccount: formData.uaccount,
+    };
+
+    // Detect actual changes between old and new member data
+    const changes = detectChanges(selectedMember, updateData);
+    const meaningfulChanges = filterMeaningfulChanges(changes);
+
+    // Only proceed if there are actual changes
+    if (meaningfulChanges.length === 0) {
+      toast.info("No changes detected");
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await axios.put(`/api/members/${selectedMember._id}`, {
-        profile: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          occupation: formData.occupation,
-          address: formData.address,
-        },
-        phoneNumber: formData.phoneNumber,
-        points: formData.points,
-        uaccount: formData.uaccount,
-      });
+      const response = await axios.put(
+        `/api/members/${selectedMember._id}`,
+        updateData
+      );
 
       if (response.status === 200) {
-        // Log the update activity
+        // Log the update activity with proper change tracking
+        const changesSummary = getChangesSummary(meaningfulChanges);
         await logActivity(
           "update",
           "member",
@@ -177,12 +238,17 @@ export default function EditMemberModal({
           `${selectedMember.profile?.firstName || "Unknown"} ${
             selectedMember.profile?.lastName || "Member"
           }`,
-          `Updated member: ${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
-          }`
+          `Updated member: ${changesSummary}`,
+          selectedMember, // Previous data
+          response.data, // New data
+          meaningfulChanges.map((change) => ({
+            field: change.field,
+            oldValue: change.oldValue,
+            newValue: change.newValue,
+          }))
         );
 
-        toast.success("Member updated successfully");
+        toast.success(`Member updated successfully: ${changesSummary}`);
         onMemberUpdated();
         handleClose();
       } else {

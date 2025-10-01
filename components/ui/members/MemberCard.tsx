@@ -4,7 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { User, Calendar } from "lucide-react";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 import editIcon from "@/public/editIcon.svg";
 import deleteIcon from "@/public/deleteIcon.svg";
 import leftHamburgerMenu from "@/public/leftHamburgerMenu.svg";
@@ -118,7 +118,7 @@ export default function MemberCard({
           onClick={(e) => e.stopPropagation()}
         >
           <Calendar className="w-3 h-3 mr-1" />
-          {formatDate(member.createdAt)}
+          {formatDate(typeof member.createdAt === 'string' ? member.createdAt : member.createdAt.toISOString())}
         </Button>
       </div>
     </div>

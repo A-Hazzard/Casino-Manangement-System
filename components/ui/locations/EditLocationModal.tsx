@@ -18,6 +18,11 @@ import type { Licensee } from "@/lib/types/licensee";
 
 import { fetchCountries } from "@/lib/helpers/countries";
 import type { Country } from "@/lib/helpers/countries";
+import {
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
+} from "@/lib/utils/changeDetection";
 
 import LocationPickerMap from "./LocationPickerMap";
 import { SelectedLocation } from "@/lib/types/maps";
@@ -31,9 +36,7 @@ type LocationDetails = {
   };
   country?: string;
   profitShare?: number;
-
   gameDayOffset?: number;
-
   rel?: {
     licencee: string;
   };
@@ -57,6 +60,7 @@ type LocationDetails = {
     denom5000: boolean;
     denom10000: boolean;
   };
+  createdAt?: Date | string;
 };
 
 export default function EditLocationModal({
@@ -80,13 +84,49 @@ export default function EditLocationModal({
 
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null,
+    changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
       const response = await fetch("/api/activity-logs", {
@@ -101,8 +141,11 @@ export default function EditLocationModal({
           resourceName,
           details,
           userId: user?._id || "unknown",
-          username: user?.emailAddress || "unknown",
-          userRole: user?.roles?.[0] || "user",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: changes || [], // Use provided changes or empty array
         }),
       });
 
@@ -333,7 +376,7 @@ export default function EditLocationModal({
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 300000, // 5 minutes
+        maximumAge: 600000, // 5 minutes
       }
     );
   };
@@ -410,7 +453,18 @@ export default function EditLocationModal({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Special handling for profit share to only allow numbers
+    if (name === "profitShare") {
+      // Only allow digits and empty string
+      const numericValue = value.replace(/[^0-9]/g, "");
+      // Ensure value is between 0 and 100
+      const numValue = parseInt(numericValue) || 0;
+      const clampedValue = Math.min(Math.max(numValue, 0), 100);
+      setFormData((prev) => ({ ...prev, [name]: clampedValue.toString() }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -482,18 +536,37 @@ export default function EditLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
       };
 
+      // Detect actual changes between old and new location data
+      const changes = detectChanges(selectedLocation, locationData);
+      const meaningfulChanges = filterMeaningfulChanges(changes);
+
+      // Only proceed if there are actual changes
+      if (meaningfulChanges.length === 0) {
+        toast.info("No changes detected");
+        setLoading(false);
+        return;
+      }
+
       await axios.put("/api/locations", locationData);
 
-      // Log the update activity
+      // Log the update activity with proper change tracking
+      const changesSummary = getChangesSummary(meaningfulChanges);
       await logActivity(
         "update",
         "location",
         locationIdentifier,
         formData.name,
-        `Updated location: ${formData.name}`
+        `Updated location: ${changesSummary}`,
+        selectedLocation, // Previous data
+        locationData, // New data
+        meaningfulChanges.map((change) => ({
+          field: change.field,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+        }))
       );
 
-      toast.success("Location updated successfully");
+      toast.success(`Location updated successfully: ${changesSummary}`);
       console.warn("Calling onLocationUpdated callback");
       onLocationUpdated?.();
       handleClose();
@@ -527,7 +600,7 @@ export default function EditLocationModal({
           {/* Header */}
           <div className="p-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold text-center flex-1">
-              Edit Location Details
+              Edit {selectedLocation.locationName || "Location"} Details
             </h2>
           </div>
 
@@ -624,6 +697,40 @@ export default function EditLocationModal({
             ) : (
               // Show actual form content when loaded
               <>
+                {/* Location ID & Creation Date Display */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Location ID
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1 font-mono">
+                        {locationDetails?._id ||
+                          selectedLocation.location ||
+                          "Unknown"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Created
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {locationDetails?.createdAt
+                          ? new Date(
+                              locationDetails.createdAt
+                            ).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Unknown"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Location Name */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-grayHighlight mb-2">
@@ -705,8 +812,26 @@ export default function EditLocationModal({
                     <div className="relative">
                       <Input
                         name="profitShare"
+                        type="text"
                         value={formData.profitShare}
                         onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                          // Prevent non-numeric characters except backspace, delete, tab, escape, enter
+                          if (
+                            !/[0-9]/.test(e.key) &&
+                            ![
+                              "Backspace",
+                              "Delete",
+                              "Tab",
+                              "Escape",
+                              "Enter",
+                              "ArrowLeft",
+                              "ArrowRight",
+                            ].includes(e.key)
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
                         className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base pr-12"
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">

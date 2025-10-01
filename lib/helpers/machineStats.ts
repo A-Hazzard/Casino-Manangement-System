@@ -31,7 +31,10 @@ export async function fetchMachineStats(licensee: string = "all"): Promise<Machi
       offlineMachines: data.offlineMachines || 0,
     };
   } catch (error) {
-    console.error("Error fetching machine stats:", error);
+    // Error handling for machine stats fetch
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error fetching machine stats:", error);
+    }
     return {
       totalMachines: 0,
       onlineMachines: 0,

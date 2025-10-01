@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { JWTPayload, jwtVerify } from "jose";
+import { getCurrentDbConnectionString, getJwtSecret } from "@/lib/utils/auth";
 import UserModel from "../models/user";
 import { hashPassword } from "../utils/validation";
 import type { ResourcePermissions } from "@/lib/types/administration";
@@ -11,7 +12,40 @@ import type {
   UserDocument,
   UserDocumentWithPassword,
   OriginalUserType,
-} from "../types/users";
+} from "@/shared/types/users";
+
+/**
+ * Validates database context from JWT token
+ */
+function validateDatabaseContext(
+  tokenPayload: Record<string, unknown>
+): boolean {
+  if (!tokenPayload.dbContext) {
+    console.warn(
+      "JWT token missing database context - forcing re-authentication"
+    );
+    return false;
+  }
+
+  const currentDbContext = {
+    connectionString: getCurrentDbConnectionString(),
+  };
+
+  const tokenDbContext = tokenPayload.dbContext as {
+    connectionString?: string;
+  };
+
+  // Check if database context has changed
+  if (tokenDbContext.connectionString !== currentDbContext.connectionString) {
+    console.warn("Database context mismatch - forcing re-authentication", {
+      tokenContext: tokenDbContext,
+      currentContext: currentDbContext,
+    });
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Server-side function to get user from JWT token in cookies
@@ -23,8 +57,17 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(
       token,
-      new TextEncoder().encode(process.env.JWT_SECRET || "")
+      new TextEncoder().encode(getJwtSecret())
     );
+
+    // Validate database context
+    if (!validateDatabaseContext(payload)) {
+      console.warn(
+        "Database context validation failed - token invalid for current database"
+      );
+      return null;
+    }
+
     return payload as JWTPayload;
   } catch (error) {
     console.error("JWT verification failed:", error);
@@ -105,10 +148,7 @@ export async function getAllUsers() {
  * Retrieves a user by ID from database
  */
 export async function getUserById(userId: string) {
-  return await UserModel.findById(
-    userId,
-    "-password"
-  );
+  return await UserModel.findById(userId, "-password");
 }
 
 /**
@@ -182,19 +222,23 @@ export async function createUser(
         },
       ];
 
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
+      await logActivity({
+        action: "CREATE",
+        details: `Created new user "${username}" with email ${emailAddress}`,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+        userId: currentUser._id as string,
+        username: currentUser.emailAddress as string,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || "user",
+          resource: "User",
+          resourceId: newUser._id.toString(),
+          resourceName: username,
+          changes: createChanges,
         },
-        "CREATE",
-        "User",
-        { id: newUser._id.toString(), name: username },
-        createChanges,
-        `Created new user "${username}" with email ${emailAddress}`,
-        getClientIP(request) || undefined
-      );
+      });
     } catch (logError) {
       console.error("Failed to log activity:", logError);
     }
@@ -219,6 +263,22 @@ export async function updateUser(
     throw new Error("User not found");
   }
 
+  // Validate and hash password if provided
+  if (updateFields.password && typeof updateFields.password === "string") {
+    const { validatePasswordStrength } = await import("@/lib/utils/validation");
+    const passwordValidation = validatePasswordStrength(updateFields.password);
+    if (!passwordValidation.isValid) {
+      throw new Error(
+        `Password requirements not met: ${passwordValidation.feedback.join(
+          ", "
+        )}`
+      );
+    }
+    // Hash the password before saving
+    const { hashPassword } = await import("@/app/api/lib/utils/validation");
+    updateFields.password = await hashPassword(updateFields.password);
+  }
+
   // Calculate changes for activity log
   const changes = calculateUserChanges(user.toObject(), updateFields);
 
@@ -233,19 +293,23 @@ export async function updateUser(
   const currentUser = (await getUserFromServer()) as CurrentUser | null;
   const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
-    await logActivity(
-      {
-        id: currentUser._id,
-        email: currentUser.emailAddress,
-        role: currentUser.roles[0] || "user",
+    await logActivity({
+      action: "update",
+      details: `Updated user profile for "${updatedUser.username || "user"}"`,
+      ipAddress: clientIP || undefined,
+      userAgent: request.headers.get("user-agent") || undefined,
+      userId: currentUser._id as string,
+      username: currentUser.emailAddress as string,
+      metadata: {
+        userId: currentUser._id,
+        userEmail: currentUser.emailAddress,
+        userRole: currentUser.roles[0] || "user",
+        resource: "user",
+        resourceId: _id,
+        resourceName: updatedUser.username || "",
+        changes: changes,
       },
-      "update",
-      "user",
-      { id: _id, name: updatedUser.username || "" },
-      changes,
-      `Updated user profile for "${updatedUser.username || "user"}"`,
-      clientIP || undefined
-    );
+    });
   }
 
   return updatedUser;
@@ -305,19 +369,25 @@ export async function deleteUser(_id: string, request: NextRequest) {
         },
       ];
 
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
+      await logActivity({
+        action: "DELETE",
+        details: `Deleted user "${
+          deletedUser.username || deletedUser.emailAddress
+        }"`,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+        userId: currentUser._id as string,
+        username: currentUser.emailAddress as string,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || "user",
+          resource: "User",
+          resourceId: _id,
+          resourceName: deletedUser.username || deletedUser.emailAddress,
+          changes: deleteChanges,
         },
-        "DELETE",
-        "User",
-        { id: _id, name: deletedUser.username || deletedUser.emailAddress },
-        deleteChanges,
-        `Deleted user "${deletedUser.username || deletedUser.emailAddress}"`,
-        getClientIP(request) || undefined
-      );
+      });
     } catch (logError) {
       console.error("Failed to log activity:", logError);
     }

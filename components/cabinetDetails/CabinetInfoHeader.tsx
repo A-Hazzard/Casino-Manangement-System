@@ -7,14 +7,12 @@ type ExtendedCabinetInfoHeaderProps = {
   title: string;
   isLoading: boolean;
   isOnline?: boolean;
-  // lastCommunication?: string; // Removed as unused
 };
 
 const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
   title,
   isLoading,
   isOnline,
-  // lastCommunication,
 }) => {
   return (
     <motion.div
@@ -37,10 +35,20 @@ const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
           </h1>
 
           <p className="text-grayHighlight mt-2">
-            Manufacturer: {isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : "Some Manufacturer"}
+            Manufacturer:{" "}
+            {isLoading ? (
+              <Skeleton className="h-4 w-32 inline-block" />
+            ) : (
+              "Some Manufacturer"
+            )}
           </p>
           <p className="text-grayHighlight mt-1">
-            Game Type: {isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : "None"}
+            Game Type:{" "}
+            {isLoading ? (
+              <Skeleton className="h-4 w-24 inline-block" />
+            ) : (
+              "None"
+            )}
           </p>
           <p className="mt-1">
             <span className="text-button">{title}</span>

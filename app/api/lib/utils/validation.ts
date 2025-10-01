@@ -1,4 +1,4 @@
-import { UserDocument } from "@/app/api/lib/types/auth";
+import { UserDocument } from "@/shared/types/auth";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import bcrypt from "bcryptjs";
 

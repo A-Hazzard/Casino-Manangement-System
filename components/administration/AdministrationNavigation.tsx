@@ -5,6 +5,8 @@ import type {
   AdministrationSection,
   AdministrationTab,
 } from "@/lib/constants/administration";
+import { useUserStore } from "@/lib/store/userStore";
+import { hasTabAccess } from "@/lib/utils/permissions";
 
 type Props = {
   tabs: AdministrationTab[];
@@ -19,11 +21,28 @@ export default function AdministrationNavigation({
   onChange,
   isLoading = false,
 }: Props) {
+  const { user } = useUserStore();
+  const userRoles = user?.roles || [];
+
+  // Filter tabs based on user permissions
+  const accessibleTabs = tabs.filter((tab) => {
+    switch (tab.id) {
+      case "users":
+        return hasTabAccess(userRoles, "administration", "users");
+      case "licensees":
+        return hasTabAccess(userRoles, "administration", "licensees");
+      case "activity-logs":
+        return hasTabAccess(userRoles, "administration", "activity-logs");
+      default:
+        return true;
+    }
+  });
+
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
       {/* Desktop - md: and above */}
       <nav className="hidden md:flex space-x-8 px-6">
-        {tabs.map((tab) => (
+        {accessibleTabs.map((tab) => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
@@ -51,7 +70,7 @@ export default function AdministrationNavigation({
           className="navigation-button w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive cursor-pointer"
           disabled={isLoading}
         >
-          {tabs.map((t) => (
+          {accessibleTabs.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

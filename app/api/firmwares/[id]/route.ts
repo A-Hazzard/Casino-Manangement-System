@@ -12,13 +12,19 @@ export async function DELETE(req: NextRequest) {
     const id = req.nextUrl.pathname.split("/").pop();
 
     if (!id) {
-      return NextResponse.json({ message: "Firmware ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Firmware ID is required" },
+        { status: 400 }
+      );
     }
 
     // Get firmware data before deletion for logging
     const firmwareToDelete = await Firmware.findById(id);
     if (!firmwareToDelete) {
-      return NextResponse.json({ message: "Firmware not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Firmware not found" },
+        { status: 404 }
+      );
     }
 
     await Firmware.findByIdAndUpdate(
@@ -32,26 +38,48 @@ export async function DELETE(req: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
-          { field: "product", oldValue: firmwareToDelete.product, newValue: null },
-          { field: "version", oldValue: firmwareToDelete.version, newValue: null },
-          { field: "versionDetails", oldValue: firmwareToDelete.versionDetails, newValue: null },
-          { field: "fileName", oldValue: firmwareToDelete.fileName, newValue: null },
-          { field: "fileSize", oldValue: firmwareToDelete.fileSize, newValue: null },
+          {
+            field: "product",
+            oldValue: firmwareToDelete.product,
+            newValue: null,
+          },
+          {
+            field: "version",
+            oldValue: firmwareToDelete.version,
+            newValue: null,
+          },
+          {
+            field: "versionDetails",
+            oldValue: firmwareToDelete.versionDetails,
+            newValue: null,
+          },
+          {
+            field: "fileName",
+            oldValue: firmwareToDelete.fileName,
+            newValue: null,
+          },
+          {
+            field: "fileSize",
+            oldValue: firmwareToDelete.fileSize,
+            newValue: null,
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted firmware "${firmwareToDelete.product} v${firmwareToDelete.version}" (${firmwareToDelete.fileName})`,
+          ipAddress: getClientIP(req) || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "Firmware",
+            resourceId: id,
+            resourceName: `${firmwareToDelete.product} v${firmwareToDelete.version}`,
+            changes: deleteChanges,
           },
-          "DELETE",
-          "Firmware",
-          { id, name: `${firmwareToDelete.product} v${firmwareToDelete.version}` },
-          deleteChanges,
-          `Deleted firmware "${firmwareToDelete.product} v${firmwareToDelete.version}" (${firmwareToDelete.fileName})`,
-          getClientIP(req) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -69,4 +97,4 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

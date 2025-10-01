@@ -3,7 +3,7 @@
  * Ensures all required fields are present with appropriate default values
  */
 
-import type { MachineDocument } from "@/shared/types";
+import type { GamingMachine as MachineDocument } from "@/shared/types/entities";
 import type { CollectionDocument } from "@/lib/types/collections";
 
 /**
@@ -13,37 +13,49 @@ export function getMachineDefaults(
   partialData: Partial<MachineDocument>
 ): Partial<MachineDocument> {
   return {
-    // Basic fields
-    billValidator: {
-      balance: 0,
-      notes: [],
-      ...(partialData.billValidator || {}),
-    },
-    config: {
-      enableRte: false,
-      lockMachine: false,
-      lockBvOnLogOut: false,
-      ...(partialData.config || {}),
-    },
-    playableBalance: 0,
-    custom: { name: "" },
-    balances: { cashable: 0 },
-    curProcess: { name: "", next: "" },
-    tasks: {
-      pendingHandpay: {
-        name: "",
-        steps: [],
-        currentStepIndex: 0,
-        retryAttempts: 0,
-      },
-      ...(partialData.tasks || {}),
-    },
-    origSerialNumber: "",
-    machineId: "",
+    // Core identification fields
+    _id: "",
+    serialNumber: "",
     relayId: "",
-    gamingLocation: "",
     game: "",
+    gameType: "",
+    isCronosMachine: false,
+    cabinetType: "",
+    assetStatus: "",
+    gamingLocation: "",
+    accountingDenomination: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    
+    // Optional fields with defaults
+    assetNumber: "",
+    machineId: "",
+    smbId: "",
+    smibBoard: "",
+    installedGame: "",
+    gameNumber: "",
+    manufacturer: "",
+    manuf: "",
+    gamingBoard: "",
+    collectionMultiplier: "",
     lastActivity: new Date(),
+    lastOnline: new Date(),
+    loggedIn: false,
+    online: false,
+    
+    // Financial metrics
+    moneyIn: 0,
+    moneyOut: 0,
+    jackpot: 0,
+    cancelledCredits: 0,
+    gross: 0,
+    coinIn: 0,
+    coinOut: 0,
+    gamesPlayed: 0,
+    gamesWon: 0,
+    handle: 0,
+    
+    // SAS and meter data
     sasMeters: {
       drop: 0,
       totalCancelledCredits: 0,
@@ -60,7 +72,8 @@ export function getMachineDefaults(
       gamesWon: 0,
       ...(partialData.sasMeters || {}),
     },
-    operationsWhileIdle: { extendedMeters: new Date() },
+    
+    // Configuration objects
     gameConfig: {
       accountingDenomination: 0,
       theoreticalRtp: 0,
@@ -68,15 +81,7 @@ export function getMachineDefaults(
       payTableId: "",
       ...(partialData.gameConfig || {}),
     },
-    collectionMeters: { metersIn: 0, metersOut: 0 },
-    collectionTime: new Date(),
-    previousCollectionTime: new Date(),
-    collectionMetersHistory: [],
-    assetStatus: "",
-    cabinetType: "",
-    gamingBoard: "",
-    manuf: "",
-    smibBoard: "",
+    
     smibVersion: { firmware: "", version: "" },
     smibConfig: {
       mqtt: {
@@ -103,6 +108,19 @@ export function getMachineDefaults(
       },
       ...(partialData.smibConfig || {}),
     },
+    
+    // Collection and bill validator data
+    collectionMeters: { metersIn: 0, metersOut: 0 },
+    collectionTime: new Date(),
+    previousCollectionTime: new Date(),
+    collectorDenomination: 0,
+    collectionMetersHistory: [],
+    
+    billValidator: {
+      balance: 0,
+      notes: [],
+      ...(partialData.billValidator || {}),
+    },
     billMeters: {
       dollar1: 0,
       dollar2: 0,
@@ -119,41 +137,57 @@ export function getMachineDefaults(
       dollarTotalUnknown: 0,
       ...(partialData.billMeters || {}),
     },
-    orig: {
-      meters: {
-        coinIn: "",
-        coinOut: "",
-        drop: "",
-        jackpot: "",
-        gamesPlayed: "",
-        moneyOut: "",
-        slotDoorOpened: "",
-        powerReset: "",
-      },
-      deletedAt: 0,
-      ...(partialData.orig || {}),
+    
+    // Machine settings and features
+    machineMembershipSettings: {
+      isPointsAllowed: false,
+      isFreePlayAllowed: false,
+      pointsAwardMethod: "",
+      freePlayAmount: 0,
+      freePlayCreditsTimeout: 0,
     },
-    manufacturer: "",
-    serialNumber: "",
-    gameNumber: "",
+    
+    // Credits and balances
+    nonRestricted: 0,
+    restricted: 0,
+    uaccount: 0,
+    playableBalance: 0,
+    
+    // SAS protocol and protocols
+    sasVersion: "",
+    isSasMachine: false,
     protocols: [],
+    
+    // Game management
     numberOfEnabledGames: 0,
     enabledGameNumbers: [],
     noOfGames: 0,
-    viewingAccountDenomination: [],
-    isSunBoxDevice: false,
-    sessionHistory: [],
-    currentSession: "",
-    viewingAccountDenominationHistory: [],
-    selectedDenomination: { drop: 0, totalCancelledCredits: 0 },
-    isSasMachine: false,
-    lastBillMeterAt: new Date(),
-    lastSasMeterAt: new Date(),
+    
+    // Maintenance and history
     machineType: "",
     machineStatus: "",
     lastMaintenanceDate: new Date(),
     nextMaintenanceDate: new Date(),
     maintenanceHistory: [],
+    
+    sessionHistory: [],
+    currentSession: "",
+    
+    // Viewing account denomination
+    viewingAccountDenomination: [],
+    viewingAccountDenominationHistory: [],
+    selectedDenomination: { drop: 0, totalCancelledCredits: 0 },
+    
+    // Additional fields
+    isSunBoxDevice: false,
+    lastBillMeterAt: new Date(),
+    lastSasMeterAt: new Date(),
+    operationsWhileIdle: { extendedMeters: new Date() },
+    
+    // Frontend-specific fields
+    locationId: "",
+    locationName: "",
+    
     ...partialData,
   };
 }

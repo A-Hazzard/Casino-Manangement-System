@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../lib/middleware/db";
 import { ActivityLog } from "@/app/api/lib/models/activityLog";
 import { calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import { getIPInfo, formatIPForDisplay } from "@/lib/utils/ipDetection";
 
 import { generateMongoId } from "@/lib/utils/id";
-
 
 /**
  * GET /api/activity-logs
@@ -13,7 +13,7 @@ import { generateMongoId } from "@/lib/utils/id";
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    
+
     // Ensure ActivityLog model is available
     if (!ActivityLog) {
       console.error("ActivityLog model is not available");
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    
+
     // Pagination parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        logs,
+        activities: logs,
         pagination: {
           currentPage: page,
           totalPages,
@@ -161,9 +161,13 @@ export async function POST(request: NextRequest) {
 
     // Calculate changes if previousData and newData are provided
     let changes = body.changes || [];
-    if (body.previousData && body.newData && changes.length === 0) {
+    if (body.previousData && body.newData) {
       changes = calculateChanges(body.previousData, body.newData);
     }
+
+    // Get client IP information
+    const ipInfo = getIPInfo(request);
+    const formattedIP = formatIPForDisplay(ipInfo);
 
     // Generate a proper MongoDB ObjectId-style hex string for the activity log
     const activityLogId = await generateMongoId();
@@ -185,8 +189,8 @@ export async function POST(request: NextRequest) {
         email: username,
         role: userRole || "user",
       },
-      ipAddress: body.ipAddress,
-      userAgent: body.userAgent,
+      ipAddress: formattedIP,
+      userAgent: ipInfo.userAgent,
       changes: changes,
       previousData: body.previousData,
       newData: body.newData,

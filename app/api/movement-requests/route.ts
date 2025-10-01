@@ -94,25 +94,35 @@ export async function POST(req: NextRequest) {
       try {
         const createChanges = [
           { field: "cabinetIn", oldValue: null, newValue: data.cabinetIn },
-          { field: "locationFrom", oldValue: null, newValue: data.locationFrom },
+          {
+            field: "locationFrom",
+            oldValue: null,
+            newValue: data.locationFrom,
+          },
           { field: "locationTo", oldValue: null, newValue: data.locationTo },
           { field: "reason", oldValue: null, newValue: data.reason || "" },
-          { field: "status", oldValue: null, newValue: data.status || "pending" },
+          {
+            field: "status",
+            oldValue: null,
+            newValue: data.status || "pending",
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "CREATE",
+          details: `Created movement request for cabinet ${data.cabinetIn} from ${data.locationFrom} to ${data.locationTo}`,
+          ipAddress: getClientIP(req) || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "movement_request",
+            resourceId: created._id.toString(),
+            resourceName: `Cabinet ${data.cabinetIn}`,
+            changes: createChanges,
           },
-          "CREATE",
-          "machine",
-          { id: created._id.toString(), name: `Cabinet ${data.cabinetIn}` },
-          createChanges,
-          `Created movement request for cabinet ${data.cabinetIn} from ${data.locationFrom} to ${data.locationTo}`,
-          getClientIP(req) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

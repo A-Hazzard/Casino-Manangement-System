@@ -43,6 +43,7 @@ import MobileCollectionModal from "./mobile/MobileCollectionModal";
 import { validateCollectionReportPayload } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
+import { formatMachineDisplayNameWithBold } from "@/lib/utils/machineDisplay";
 // Activity logging will be handled via API calls
 import {
   Tooltip,
@@ -96,6 +97,39 @@ export default function NewCollectionModal({
   const user = useUserStore((state) => state.user);
   const userId = user?._id;
 
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = useCallback(() => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  }, [user]);
+
   // Activity logging function
   const logActivity = useCallback(
     async (
@@ -103,7 +137,9 @@ export default function NewCollectionModal({
       resource: string,
       resourceId: string,
       resourceName: string,
-      details: string
+      details: string,
+      previousData?: Record<string, unknown> | null,
+      newData?: Record<string, unknown> | null
     ) => {
       try {
         const response = await fetch("/api/activity-logs", {
@@ -118,8 +154,11 @@ export default function NewCollectionModal({
             resourceName,
             details,
             userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
+            username: getUserDisplayName(),
+            userRole: "user",
+            previousData: previousData || null,
+            newData: newData || null,
+            changes: [], // Will be calculated by the API
           }),
         });
 
@@ -130,7 +169,7 @@ export default function NewCollectionModal({
         console.error("Error logging activity:", error);
       }
     },
-    [user]
+    [user, getUserDisplayName]
   );
 
   const [hasChanges, setHasChanges] = useState(false);
@@ -155,6 +194,26 @@ export default function NewCollectionModal({
     onClose();
   }, [hasChanges, onRefresh, onClose]);
 
+  // Handle location selection
+  const handleLocationChange = useCallback(
+    (value: string) => {
+      setSelectedLocationId(value);
+      // Load previous balance from selected location
+      const selectedLocation = locations.find(
+        (loc) => String(loc._id) === value
+      );
+      if (selectedLocation) {
+        setFinancials((prev) => ({
+          ...prev,
+          previousBalance: (
+            (selectedLocation as Record<string, unknown>).collectionBalance || 0
+          ).toString(),
+        }));
+      }
+    },
+    [locations]
+  );
+
   // Function to generate collector name from user profile
   const getCollectorName = useCallback(() => {
     if (!user) return "Unknown Collector";
@@ -174,8 +233,17 @@ export default function NewCollectionModal({
       return user.profile.lastName;
     }
 
-    // If neither firstName nor lastName exist, use email
-    return user.emailAddress || "Unknown Collector";
+    // Fallback to username if available
+    if (user.username) {
+      return user.username;
+    }
+
+    // Final fallback to email address
+    if (user.emailAddress) {
+      return user.emailAddress;
+    }
+
+    return "Unknown Collector";
   }, [user]);
 
   const [selectedLocationId, setSelectedLocationId] = useState<
@@ -190,9 +258,9 @@ export default function NewCollectionModal({
     undefined
   );
 
-  // Filter machines based on search term when location is locked
+  // Filter machines based on search term when location is selected
   const filteredMachines = useMemo(() => {
-    if (!lockedLocationId || !machineSearchTerm.trim()) {
+    if (!machineSearchTerm.trim()) {
       return machinesOfSelectedLocation;
     }
 
@@ -207,7 +275,7 @@ export default function NewCollectionModal({
             .toLowerCase()
             .includes(machineSearchTerm.toLowerCase()))
     );
-  }, [machinesOfSelectedLocation, machineSearchTerm, lockedLocationId]);
+  }, [machinesOfSelectedLocation, machineSearchTerm]);
 
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
@@ -1212,7 +1280,9 @@ export default function NewCollectionModal({
           } at ${selectedLocationName}`,
           `Added machine ${
             machineForDataEntry?.name || selectedMachineId
-          } to collection list`
+          } to collection list`,
+          null, // No previous data for creation
+          createdCollection // New data
         );
       }
     } catch (error) {
@@ -1471,7 +1541,9 @@ export default function NewCollectionModal({
           "collection",
           entryToDelete,
           `${entryData.machineCustomName} at ${selectedLocationName}`,
-          `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`
+          `Deleted collection entry for machine: ${entryData.machineCustomName} at ${selectedLocationName}`,
+          entryData, // Previous data (the deleted entry)
+          null // No new data for deletion
         );
       }
 
@@ -1816,7 +1888,7 @@ export default function NewCollectionModal({
           }}
         >
           <DialogContent
-            className="max-w-5xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
+            className="max-w-6xl lg:max-w-7xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
             onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader className="p-4 md:p-6 pb-0">
@@ -1834,22 +1906,7 @@ export default function NewCollectionModal({
               <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
                 <LocationSelect
                   value={lockedLocationId || selectedLocationId || ""}
-                  onValueChange={(value) => {
-                    setSelectedLocationId(value);
-                    // Load previous balance from selected location
-                    const selectedLocation = locations.find(
-                      (loc) => String(loc._id) === value
-                    );
-                    if (selectedLocation) {
-                      setFinancials((prev) => ({
-                        ...prev,
-                        previousBalance: (
-                          (selectedLocation as Record<string, unknown>)
-                            .collectionBalance || 0
-                        ).toString(),
-                      }));
-                    }
-                  }}
+                  onValueChange={handleLocationChange}
                   locations={locations.map((loc) => ({
                     _id: String(loc._id),
                     name: loc.name,
@@ -1866,8 +1923,8 @@ export default function NewCollectionModal({
                   </p>
                 )}
 
-                {/* Search bar for machines when location is locked */}
-                {lockedLocationId && (
+                {/* Machine search bar - always visible when location is selected */}
+                {(selectedLocationId || lockedLocationId) && (
                   <div className="space-y-2">
                     <Input
                       type="text"
@@ -1934,7 +1991,7 @@ export default function NewCollectionModal({
                                 ? "default"
                                 : "outline"
                             }
-                            className="w-full justify-start text-left h-auto py-2 px-3 whitespace-normal"
+                            className="w-full justify-start text-left h-auto py-2 px-3 whitespace-normal break-words"
                             onClick={() => {
                               if (
                                 collectedMachineEntries.find(
@@ -1968,19 +2025,7 @@ export default function NewCollectionModal({
                                 !editingEntryId)
                             }
                           >
-                            {machine.name} (
-                            {(() => {
-                              // Direct approach: prioritize serialNumber and custom.name
-                              const serialId =
-                                machine.serialNumber ||
-                                machine.custom?.name ||
-                                machine.origSerialNumber ||
-                                String(machine._id) ||
-                                "N/A";
-                              // Serial number resolved successfully
-                              return serialId;
-                            })()}
-                            )
+                            {formatMachineDisplayNameWithBold(machine)}
                             {collectedMachineEntries.find(
                               (e) => e.machineId === machine._id
                             ) &&
@@ -2026,25 +2071,9 @@ export default function NewCollectionModal({
                       variant="default"
                       className="w-full bg-lighterBlueHighlight text-primary-foreground"
                     >
-                      {machineForDataEntry ? (
-                        <>
-                          {machineForDataEntry.name} (
-                          {(() => {
-                            // Direct approach: prioritize serialNumber and custom.name
-                            const serialId =
-                              machineForDataEntry.serialNumber ||
-                              machineForDataEntry.custom?.name ||
-                              machineForDataEntry.origSerialNumber ||
-                              String(machineForDataEntry._id) ||
-                              "N/A";
-                            // Serial number resolved successfully
-                            return serialId;
-                          })()}
-                          )
-                        </>
-                      ) : (
-                        "Select a machine to edit"
-                      )}
+                      {machineForDataEntry
+                        ? formatMachineDisplayNameWithBold(machineForDataEntry)
+                        : "Select a machine to edit"}
                     </Button>
 
                     <div className="mb-4">
@@ -2222,32 +2251,40 @@ export default function NewCollectionModal({
                       </div>
                     )}
 
-                    <div
-                      className="flex items-center space-x-2 mt-2"
-                      onClick={handleDisabledFieldClick}
-                    >
-                      <input
-                        type="checkbox"
-                        id="ramClearCheckbox"
-                        checked={currentRamClear}
-                        onChange={(e) => {
-                          setCurrentRamClear(e.target.checked);
-                          if (!e.target.checked) {
-                            // Clear RAM Clear meter fields when unchecked
-                            setCurrentRamClearMetersIn("");
-                            setCurrentRamClearMetersOut("");
+                  <div
+                    className="flex items-center space-x-2 mt-2"
+                    onClick={handleDisabledFieldClick}
+                  >
+                    <input
+                      type="checkbox"
+                      id="ramClearCheckbox"
+                      checked={currentRamClear}
+                      onChange={(e) => {
+                        setCurrentRamClear(e.target.checked);
+                        if (!e.target.checked) {
+                          // Clear RAM Clear meter fields when unchecked
+                          setCurrentRamClearMetersIn("");
+                          setCurrentRamClearMetersOut("");
+                        } else {
+                          // Auto-fill RAM Clear meters with previous values when checked
+                          if (prevIn !== null) {
+                            setCurrentRamClearMetersIn(prevIn.toString());
                           }
-                        }}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                        disabled={!inputsEnabled || isProcessing}
-                      />
-                      <label
-                        htmlFor="ramClearCheckbox"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        RAM Clear
-                      </label>
-                    </div>
+                          if (prevOut !== null) {
+                            setCurrentRamClearMetersOut(prevOut.toString());
+                          }
+                        }
+                      }}
+                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                      disabled={!inputsEnabled || isProcessing}
+                    />
+                    <label
+                      htmlFor="ramClearCheckbox"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      RAM Clear
+                    </label>
+                  </div>
 
                     <div>
                       <label className="block text-sm font-medium text-grayHighlight mb-1 mt-2">
@@ -2645,9 +2682,11 @@ export default function NewCollectionModal({
 
               {/* Mobile: Full width, Desktop: 1/4 width */}
               <div className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-300 p-3 md:p-4 flex flex-col space-y-2 overflow-y-auto bg-gray-50">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2 sticky top-0 bg-gray-50 py-1">
-                  Collected Machines ({collectedMachineEntries.length})
-                </h3>
+                <div className="sticky top-0 bg-gray-50 z-10 pb-2 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-700">
+                    Collected Machines ({collectedMachineEntries.length})
+                  </h3>
+                </div>
                 {isLoadingCollections || isLoadingExistingCollections ? (
                   <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map((i) => (
@@ -2696,8 +2735,12 @@ export default function NewCollectionModal({
                         }
                         className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
                       >
-                        <p className="font-semibold text-sm text-primary">
-                          {entry.machineName} ({entry.serialNumber || "N/A"})
+                        <p className="font-semibold text-sm text-primary break-words">
+                          {formatMachineDisplayNameWithBold({
+                            serialNumber: entry.serialNumber,
+                            assetNumber: entry.machineName,
+                            custom: { name: entry.machineCustomName },
+                          })}
                         </p>
                         <p className="text-xs text-gray-600">
                           Time: {formatDate(entry.timestamp)}

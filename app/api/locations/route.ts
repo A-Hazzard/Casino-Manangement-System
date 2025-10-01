@@ -257,19 +257,22 @@ export async function POST(request: Request) {
           },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "CREATE",
+          details: `Created new location "${name}" in ${country}`,
+          ipAddress: getClientIP(request as NextRequest) || undefined,
+          userAgent:
+            (request as NextRequest).headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "location",
+            resourceId: locationId,
+            resourceName: name,
+            changes: createChanges,
           },
-          "CREATE",
-          "location",
-          { id: locationId, name },
-          createChanges,
-          `Created new location "${name}" in ${country}`,
-          getClientIP(request as NextRequest) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -454,19 +457,22 @@ export async function PUT(request: Request) {
         try {
           const changes = calculateChanges(originalLocation, updateData);
 
-          await logActivity(
-            {
-              id: currentUser._id as string,
-              email: currentUser.emailAddress as string,
-              role: (currentUser.roles as string[])?.[0] || "user",
+          await logActivity({
+            action: "UPDATE",
+            details: `Updated location "${location.name}"`,
+            ipAddress: getClientIP(request as NextRequest) || undefined,
+            userAgent:
+              (request as NextRequest).headers.get("user-agent") || undefined,
+            metadata: {
+              userId: currentUser._id as string,
+              userEmail: currentUser.emailAddress as string,
+              userRole: (currentUser.roles as string[])?.[0] || "user",
+              resource: "location",
+              resourceId: locationId,
+              resourceName: location.name,
+              changes: changes,
             },
-            "UPDATE",
-            "location",
-            { id: locationId, name: location.name },
-            changes,
-            `Updated location "${location.name}"`,
-            getClientIP(request as NextRequest) || undefined
-          );
+          });
         } catch (logError) {
           console.error("Failed to log activity:", logError);
         }
@@ -616,19 +622,22 @@ export async function DELETE(request: Request) {
           },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted location "${locationToDelete.name}"`,
+          ipAddress: getClientIP(request as NextRequest) || undefined,
+          userAgent:
+            (request as NextRequest).headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "location",
+            resourceId: id,
+            resourceName: locationToDelete.name,
+            changes: deleteChanges,
           },
-          "DELETE",
-          "location",
-          { id, name: locationToDelete.name },
-          deleteChanges,
-          `Deleted location "${locationToDelete.name}"`,
-          getClientIP(request as NextRequest) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

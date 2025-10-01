@@ -114,19 +114,21 @@ export async function createLicensee(
         },
       ];
 
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
+      await logActivity({
+        action: "CREATE",
+        details: `Created new licensee "${name}" in ${country}`,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || "user",
+          resource: "licensee",
+          resourceId: newId,
+          resourceName: name,
+          changes: createChanges,
         },
-        "CREATE",
-        "licensee",
-        { id: newId, name },
-        createChanges,
-        `Created new licensee "${name}" in ${country}`,
-        getClientIP(request) || undefined
-      );
+      });
     } catch (logError) {
       console.error("Failed to log activity:", logError);
     }
@@ -284,22 +286,23 @@ export async function updateLicensee(
         }
       );
 
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
+      await logActivity({
+        action: "UPDATE",
+        details: `Updated licensee "${
+          (updateData.name as string) || originalLicensee.name
+        }"`,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || "user",
+          resource: "licensee",
+          resourceId: _id,
+          resourceName: (updateData.name as string) || originalLicensee.name,
+          changes: changes,
         },
-        "UPDATE",
-        "licensee",
-        {
-          id: _id,
-          name: (updateData.name as string) || originalLicensee.name,
-        },
-        changes,
-        undefined,
-        getClientIP(request) || undefined
-      );
+      });
     } catch (logError) {
       console.error("Failed to log activity:", logError);
     }
@@ -370,19 +373,21 @@ export async function deleteLicensee(_id: string, request: NextRequest) {
         },
       ];
 
-      await logActivity(
-        {
-          id: currentUser._id as string,
-          email: currentUser.emailAddress as string,
-          role: (currentUser.roles as string[])?.[0] || "user",
+      await logActivity({
+        action: "DELETE",
+        details: `Deleted licensee "${licenseeToDelete.name}"`,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get("user-agent") || undefined,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || "user",
+          resource: "licensee",
+          resourceId: _id,
+          resourceName: licenseeToDelete.name,
+          changes: deleteChanges,
         },
-        "DELETE",
-        "licensee",
-        { id: _id, name: licenseeToDelete.name },
-        deleteChanges,
-        `Deleted licensee "${licenseeToDelete.name}"`,
-        getClientIP(request) || undefined
-      );
+      });
     } catch (logError) {
       console.error("Failed to log activity:", logError);
     }

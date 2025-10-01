@@ -10,7 +10,7 @@ import {
   SaveIcon,
   Loader2Icon,
 } from "lucide-react";
-import type { SmibConfig } from "@/lib/types/cabinets";
+import type { SmibConfig } from "@/shared/types/entities";
 
 type ExtendedCommunicationModeSectionProps = {
   smibConfig?: SmibConfig;

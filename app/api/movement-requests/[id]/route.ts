@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { MovementRequest } from "@/app/api/lib/models/movementrequests";
-import { logActivity, calculateChanges } from "@/app/api/lib/helpers/activityLogger";
+import {
+  logActivity,
+  calculateChanges,
+} from "@/app/api/lib/helpers/activityLogger";
 import { getUserFromServer } from "../../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 
@@ -42,26 +45,48 @@ export async function DELETE(
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
-          { field: "cabinetIn", oldValue: movementRequestToDelete.cabinetIn, newValue: null },
-          { field: "locationFrom", oldValue: movementRequestToDelete.locationFrom, newValue: null },
-          { field: "locationTo", oldValue: movementRequestToDelete.locationTo, newValue: null },
-          { field: "reason", oldValue: movementRequestToDelete.reason, newValue: null },
-          { field: "status", oldValue: movementRequestToDelete.status, newValue: null },
+          {
+            field: "cabinetIn",
+            oldValue: movementRequestToDelete.cabinetIn,
+            newValue: null,
+          },
+          {
+            field: "locationFrom",
+            oldValue: movementRequestToDelete.locationFrom,
+            newValue: null,
+          },
+          {
+            field: "locationTo",
+            oldValue: movementRequestToDelete.locationTo,
+            newValue: null,
+          },
+          {
+            field: "reason",
+            oldValue: movementRequestToDelete.reason,
+            newValue: null,
+          },
+          {
+            field: "status",
+            oldValue: movementRequestToDelete.status,
+            newValue: null,
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "movement_request",
+            resourceId: id,
+            resourceName: `Cabinet ${movementRequestToDelete.cabinetIn}`,
+            changes: deleteChanges,
           },
-          "DELETE",
-          "machine",
-          { id, name: `Cabinet ${movementRequestToDelete.cabinetIn}` },
-          deleteChanges,
-          `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -135,21 +160,26 @@ export async function PATCH(
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const changes = calculateChanges(originalMovementRequest.toObject(), body);
-
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
-          },
-          "UPDATE",
-          "machine",
-          { id, name: `Cabinet ${originalMovementRequest.cabinetIn}` },
-          changes,
-          `Updated movement request for cabinet ${originalMovementRequest.cabinetIn} from ${originalMovementRequest.locationFrom} to ${originalMovementRequest.locationTo}`,
-          getClientIP(request) || undefined
+        const changes = calculateChanges(
+          originalMovementRequest.toObject(),
+          body
         );
+
+        await logActivity({
+          action: "UPDATE",
+          details: `Updated movement request for cabinet ${originalMovementRequest.cabinetIn} from ${originalMovementRequest.locationFrom} to ${originalMovementRequest.locationTo}`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "movement_request",
+            resourceId: id,
+            resourceName: `Cabinet ${originalMovementRequest.cabinetIn}`,
+            changes: changes,
+          },
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

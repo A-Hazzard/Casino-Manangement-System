@@ -99,22 +99,21 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           newValue: body[key as keyof typeof body],
         }));
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "UPDATE",
+          details: `Updated collection report for ${existingReport.locationName}`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "collection",
+            resourceId: reportId,
+            resourceName: `${existingReport.locationName} - ${existingReport.collectorName}`,
+            changes: updateChanges,
           },
-          "UPDATE",
-          "collection",
-          {
-            id: reportId,
-            name: `${existingReport.locationName} - ${existingReport.collectorName}`,
-          },
-          updateChanges,
-          `Updated collection report for ${existingReport.locationName}`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -250,22 +249,21 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "collection",
+            resourceId: reportId,
+            resourceName: `${existingReport.locationName} - ${existingReport.collectorName}`,
+            changes: [],
           },
-          "DELETE",
-          "collection",
-          {
-            id: reportId,
-            name: `${existingReport.locationName} - ${existingReport.collectorName}`,
-          },
-          [],
-          `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

@@ -2,23 +2,28 @@
  * Cabinet utility functions for data transformation and mapping
  */
 
-import type { Cabinet, CabinetProps } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+type CabinetProps = Cabinet;
 
 /**
  * Maps a Cabinet object to CabinetProps for component consumption
  * @param cabinet - Raw cabinet data from API
- * @param handlers - Optional event handlers for edit/delete actions
  * @returns Transformed cabinet props for UI components
  */
 export function mapToCabinetProps(
-  cabinet: Cabinet,
-  handlers?: {
-    onEdit?: (cabinet: Cabinet) => void;
-    onDelete?: (cabinet: Cabinet) => void;
-  }
+  cabinet: Cabinet
 ): CabinetProps {
   return {
     _id: cabinet._id,
+    serialNumber: cabinet.serialNumber || "",
+    relayId: cabinet.relayId || "",
+    game: cabinet.game || cabinet.installedGame || "",
+    assetStatus: cabinet.assetStatus || cabinet.status || "",
+    gamingLocation: cabinet.gamingLocation || cabinet.locationId || "",
+    accountingDenomination: cabinet.accountingDenomination || cabinet.gameConfig?.accountingDenomination || "",
+    createdAt: cabinet.createdAt || new Date(),
+    updatedAt: cabinet.updatedAt || new Date(),
+    // Optional fields with defaults
     locationId: cabinet.locationId || "",
     locationName: cabinet.locationName || "",
     assetNumber: cabinet.assetNumber || "",
@@ -37,32 +42,22 @@ export function mapToCabinetProps(
       ? cabinet.lastActivity.toString()
       : "",
     installedGame: cabinet.installedGame || cabinet.game || "",
-    accountingDenomination:
-      cabinet.accountingDenomination ||
-      cabinet.gameConfig?.accountingDenomination?.toString() ||
-      "",
     collectionMultiplier: cabinet.collectionMultiplier || "",
     status: cabinet.status || cabinet.assetStatus || "",
-    gameType: cabinet.gameType,
-    isCronosMachine: cabinet.isCronosMachine,
-    cabinetType: cabinet.cabinetType,
-    onEdit: handlers?.onEdit ? () => handlers.onEdit!(cabinet) : () => {},
-    onDelete: handlers?.onDelete ? () => handlers.onDelete!(cabinet) : () => {},
+    gameType: cabinet.gameType || "",
+    isCronosMachine: cabinet.isCronosMachine || false,
+    cabinetType: cabinet.cabinetType || "",
+    custom: { name: cabinet.serialNumber || cabinet._id || "Unknown" },
   };
 }
 
 /**
  * Transforms an array of cabinets to cabinet props
  * @param cabinets - Array of cabinet objects
- * @param handlers - Optional event handlers for edit/delete actions
  * @returns Array of transformed cabinet props
  */
 export function transformCabinetsToProps(
-  cabinets: Cabinet[],
-  handlers?: {
-    onEdit?: (cabinet: Cabinet) => void;
-    onDelete?: (cabinet: Cabinet) => void;
-  }
+  cabinets: Cabinet[]
 ): CabinetProps[] {
-  return cabinets.map(cabinet => mapToCabinetProps(cabinet, handlers));
+  return cabinets.map(cabinet => mapToCabinetProps(cabinet));
 }

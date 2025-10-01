@@ -23,7 +23,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import { updateMovementRequest } from "@/lib/helpers/movementRequests";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
-import type { Cabinet } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 import axios from "axios";
 
 export default function EditMovementRequestModal({

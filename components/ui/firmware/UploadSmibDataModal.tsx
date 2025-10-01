@@ -12,15 +12,50 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
 import type { UploadSmibDataModalProps } from "@/lib/types/components";
+import { useUserStore } from "@/lib/store/userStore";
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
   onClose,
   onRefresh,
 }) => {
+  const { user } = useUserStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comments, setComments] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
 
   // Activity logging is now handled via API calls
   const logActivity = async (
@@ -28,13 +63,15 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -42,17 +79,20 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: [], // Will be calculated by the API
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -87,7 +127,9 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
         `SMIB Data Upload: ${selectedFile.name}`,
         `Uploaded SMIB data file: ${selectedFile.name} (${(
           selectedFile.size / 1024
-        ).toFixed(2)} KB)`
+        ).toFixed(2)} KB)`,
+        null, // No previous data for creation
+        response.data // New data
       );
 
       // Refresh the parent page data after successful upload

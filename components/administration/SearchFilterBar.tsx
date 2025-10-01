@@ -1,7 +1,4 @@
-import { Button } from "@/components/ui/button";
 import { MagnifyingGlassIcon, ChevronDownIcon } from "@radix-ui/react-icons";
-import Image from "next/image";
-import activityLogIcon from "@/public/activityLogIcon.svg";
 
 type SearchFilterBarProps = {
   searchValue: string;
@@ -10,8 +7,6 @@ type SearchFilterBarProps = {
   setSearchMode: (mode: "username" | "email") => void;
   searchDropdownOpen: boolean;
   setSearchDropdownOpen: (open: boolean) => void;
-  // Optional prop for User Activity Log
-  onActivityLogClick?: () => void;
 };
 
 export default function SearchFilterBar({
@@ -21,7 +16,6 @@ export default function SearchFilterBar({
   setSearchMode,
   searchDropdownOpen,
   setSearchDropdownOpen,
-  onActivityLogClick,
 }: SearchFilterBarProps) {
   // Responsive Search and Filter Layout
   return (
@@ -85,22 +79,6 @@ export default function SearchFilterBar({
             )}
           </div>
         </div>
-        {onActivityLogClick && (
-          <Button
-            onClick={onActivityLogClick}
-            className="bg-button text-white px-3 md:px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-buttonActive transition-colors text-sm md:text-base"
-          >
-            <Image
-              src={activityLogIcon}
-              alt="User Activity Log"
-              width={16}
-              height={16}
-              className="md:w-5 md:h-5"
-            />
-            <span className="hidden sm:inline">User Activity Log</span>
-            <span className="sm:hidden">Activity Log</span>
-          </Button>
-        )}
       </div>
     </div>
   );

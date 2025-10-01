@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { CabinetProps } from "@/lib/types/cabinets";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import gsap from "gsap";
 import { useParams, useRouter } from "next/navigation";
@@ -9,6 +8,10 @@ import { formatCurrency } from "@/lib/utils";
 import { CabinetCardProps } from "@/lib/types/cardProps";
 import Image from "next/image";
 import { motion } from "framer-motion";
+
+// Import SVG icons for pre-rendering
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 
 export default function CabinetCard(props: CabinetCardProps) {
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -44,21 +47,6 @@ export default function CabinetCard(props: CabinetCardProps) {
     }
   }, [props]);
 
-  // Create a Cabinet object for modal actions
-  const cabinetData: Partial<CabinetProps> = {
-    _id: props._id,
-    assetNumber: props.assetNumber,
-    game: props.game,
-    smbId: props.smbId,
-    serialNumber: props.serialNumber,
-    moneyIn: props.moneyIn,
-    cancelledCredits: props.moneyOut,
-    jackpot: props.jackpot,
-    gross: props.gross,
-    lastOnline: props.lastOnline,
-    locationId: props.locationId,
-  };
-
   const handleCardClick = () => {
     if (props._id) {
       // Ensure locationId is available, fallback if needed
@@ -79,12 +67,66 @@ export default function CabinetCard(props: CabinetCardProps) {
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
-    openEditModal(cabinetData as CabinetProps);
+    const cabinetData = {
+      _id: props._id,
+      assetNumber: props.assetNumber || "",
+      serialNumber: props.serialNumber || "",
+      game: props.game || "",
+      locationId: props.locationId || "",
+      locationName: props.locationName || "",
+      smbId: props.smbId || "",
+      relayId: props.smbId || "",
+      moneyIn: props.moneyIn || 0,
+      moneyOut: props.moneyOut || 0,
+      gross: props.gross || 0,
+      jackpot: props.jackpot || 0,
+      lastOnline: props.lastOnline,
+      installedGame: props.game || "",
+      accountingDenomination: "1",
+      collectionMultiplier: "1",
+      status: props.status || "functional",
+      assetStatus: props.status || "functional",
+      gameType: "slot",
+      isCronosMachine: false,
+      cabinetType: "Standing",
+      gamingLocation: props.locationId || "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      custom: { name: props.serialNumber || props._id || "Unknown" },
+    };
+    openEditModal(cabinetData);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
-    openDeleteModal(cabinetData as CabinetProps);
+    const cabinetData = {
+      _id: props._id,
+      assetNumber: props.assetNumber || "",
+      serialNumber: props.serialNumber || "",
+      game: props.game || "",
+      locationId: props.locationId || "",
+      locationName: props.locationName || "",
+      smbId: props.smbId || "",
+      relayId: props.smbId || "",
+      moneyIn: props.moneyIn || 0,
+      moneyOut: props.moneyOut || 0,
+      gross: props.gross || 0,
+      jackpot: props.jackpot || 0,
+      lastOnline: props.lastOnline,
+      installedGame: props.game || "",
+      accountingDenomination: "1",
+      collectionMultiplier: "1",
+      status: props.status || "functional",
+      assetStatus: props.status || "functional",
+      gameType: "slot",
+      isCronosMachine: false,
+      cabinetType: "Standing",
+      gamingLocation: props.locationId || "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      custom: { name: props.serialNumber || props._id || "Unknown" },
+    };
+    openDeleteModal(cabinetData);
   };
 
   // Determine if cabinet is online
@@ -115,7 +157,7 @@ export default function CabinetCard(props: CabinetCardProps) {
         </h3>
         <button onClick={handleEditClick} className="text-button">
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
             width={20}
             height={20}
             alt="Edit"
@@ -168,7 +210,7 @@ export default function CabinetCard(props: CabinetCardProps) {
       <div className="hidden absolute bottom-2 right-2 action-buttons">
         <button onClick={handleDeleteClick} className="text-destructive">
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
             width={20}
             height={20}
             alt="Delete"

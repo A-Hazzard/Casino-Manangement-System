@@ -8,6 +8,7 @@ import UserTableSkeleton from "@/components/administration/UserTableSkeleton";
 import LicenseeCardSkeleton from "@/components/administration/LicenseeCardSkeleton";
 import LicenseeTableSkeleton from "@/components/administration/LicenseeTableSkeleton";
 import PageLayout from "@/components/layout/PageLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import { Button } from "@/components/ui/button";
 import PaginationControls from "@/components/ui/PaginationControls";
@@ -15,11 +16,7 @@ import AdministrationNavigation from "@/components/administration/Administration
 import { ADMINISTRATION_TABS_CONFIG } from "@/lib/constants/administration";
 import type { AdministrationSection } from "@/lib/constants/administration";
 // Activity logging removed - handled via API calls
-import {
-  fetchUsers,
-  updateUser,
-  createUser,
-} from "@/lib/helpers/administration";
+import { fetchUsers, updateUser } from "@/lib/helpers/administration";
 import type {
   ResourcePermissions,
   SortKey,
@@ -32,8 +29,6 @@ import { useUserStore } from "@/lib/store/userStore";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import UserModal from "@/components/administration/UserModal";
 import AddUserDetailsModal from "@/components/administration/AddUserDetailsModal";
-import AddUserRolesModal from "@/components/administration/AddUserRolesModal";
-import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import LicenseeTable from "@/components/administration/LicenseeTable";
 import {
   handleSectionChange,
@@ -47,17 +42,24 @@ import { fetchLicensees } from "@/lib/helpers/clientLicensees";
 import type { Licensee } from "@/lib/types/licensee";
 import LicenseeSearchBar from "@/components/administration/LicenseeSearchBar";
 import ActivityLogsTable from "@/components/administration/ActivityLogsTable";
-import ActivityLogModal from "@/components/administration/ActivityLogModal";
 import PaymentHistoryModal from "@/components/administration/PaymentHistoryModal";
-import UserActivityLogModal from "@/components/administration/UserActivityLogModal";
 import LicenseeSuccessModal from "@/components/administration/LicenseeSuccessModal";
 import PaymentStatusConfirmModal from "@/components/administration/PaymentStatusConfirmModal";
 import { getNext30Days } from "@/lib/utils/licensee";
 import { toast } from "sonner";
+import {
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
+} from "@/lib/utils/changeDetection";
+import { useUrlProtection } from "@/lib/hooks/useUrlProtection";
 
 import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import axios from "axios";
+
+// Import SVG icons for pre-rendering
+import plusButtonWhite from "@/public/plusButtonWhite.svg";
 
 function AdministrationPageContent() {
   const pathname = usePathname();
@@ -65,8 +67,42 @@ function AdministrationPageContent() {
   const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = useCallback(() => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  }, [user]);
+
   // Prevent hydration mismatch by rendering content only on client
-  const [__mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -99,6 +135,14 @@ function AdministrationPageContent() {
   const [searchMode, setSearchMode] = useState<"username" | "email">(
     "username"
   );
+
+  // URL protection for administration tabs
+  useUrlProtection({
+    page: "administration",
+    allowedTabs: ["users", "licensees", "activity-logs"],
+    defaultTab: "users",
+    redirectPath: "/unauthorized",
+  });
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey;
@@ -127,13 +171,10 @@ function AdministrationPageContent() {
   );
   const [licenseeForm, setLicenseeForm] = useState<AddLicenseeForm>({});
   const [licenseeSearchValue, setLicenseeSearchValue] = useState("");
-  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
     useState(false);
   const [selectedLicenseeForPayment, setSelectedLicenseeForPayment] =
     useState<Licensee | null>(null);
-  const [isUserActivityLogModalOpen, setIsUserActivityLogModalOpen] =
-    useState(false);
   const [createdLicensee, setCreatedLicensee] = useState<{
     name: string;
     licenseKey: string;
@@ -149,18 +190,6 @@ function AdministrationPageContent() {
 
   const itemsPerPage = 5;
 
-  // Handle section changes with URL updates
-  const handleSectionChangeLocal = (section: AdministrationSection) => {
-    handleSectionChange(
-      section,
-      setActiveSection,
-      setCurrentPage,
-      pathname,
-      searchParams,
-      router
-    );
-  };
-
   // Sync state with URL changes
   useEffect(() => {
     const newSection = getActiveSectionFromURL();
@@ -169,35 +198,77 @@ function AdministrationPageContent() {
     }
   }, [searchParams, activeSection, getActiveSectionFromURL]);
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      setIsLoading(true);
-      try {
-        const usersData = await fetchUsers(selectedLicencee);
-        setAllUsers(usersData || []);
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
-        setAllUsers([]);
-      }
-      setIsLoading(false);
-    };
-    loadUsers();
-  }, [selectedLicencee]);
+  // Track which sections have been loaded
+  const [loadedSections, setLoadedSections] = useState<
+    Set<AdministrationSection>
+  >(new Set());
 
-  useEffect(() => {
-    const loadLicensees = async () => {
-      setIsLicenseesLoading(true);
-      try {
-        const licenseesData = await fetchLicensees();
-        setAllLicensees(licenseesData);
-      } catch (error) {
-        console.error("Failed to fetch licensees:", error);
-        setAllLicensees([]);
+  // Track tab transition loading state
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
+
+  // Handle section changes with transition loading
+  const handleSectionChangeWithTransition = useCallback(
+    (section: AdministrationSection) => {
+      // Show transition loading if switching to a section that hasn't been loaded
+      if (!loadedSections.has(section) && section !== "activity-logs") {
+        setIsTabTransitioning(true);
       }
-      setIsLicenseesLoading(false);
-    };
-    loadLicensees();
-  }, [selectedLicencee]);
+
+      handleSectionChange(
+        section,
+        setActiveSection,
+        setCurrentPage,
+        pathname,
+        searchParams,
+        router
+      );
+    },
+    [loadedSections, pathname, searchParams, router]
+  );
+
+  // Load users only when users tab is active and not already loaded
+  useEffect(() => {
+    if (activeSection === "users" && !loadedSections.has("users")) {
+      const loadUsers = async () => {
+        setIsLoading(true);
+        try {
+          const usersData = await fetchUsers(selectedLicencee);
+          setAllUsers(usersData || []);
+          setLoadedSections((prev) => new Set(prev).add("users"));
+        } catch (error) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Failed to fetch users:", error);
+          }
+          setAllUsers([]);
+        }
+        setIsLoading(false);
+        setIsTabTransitioning(false);
+      };
+      loadUsers();
+    }
+  }, [activeSection, selectedLicencee, loadedSections]);
+
+  // Load licensees only when licensees tab is active and not already loaded
+  useEffect(() => {
+    if (activeSection === "licensees" && !loadedSections.has("licensees")) {
+      const loadLicensees = async () => {
+        setIsLicenseesLoading(true);
+        try {
+          const licenseesData = await fetchLicensees();
+          setAllLicensees(licenseesData);
+          setLoadedSections((prev) => new Set(prev).add("licensees"));
+        } catch (error) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Failed to fetch licensees:", error);
+          }
+          setAllLicensees([]);
+        }
+        setIsLicenseesLoading(false);
+        setIsTabTransitioning(false);
+      };
+      loadLicensees();
+    }
+  }, [activeSection, selectedLicencee, loadedSections]);
 
   const processedUsers = useMemo(() => {
     return administrationUtils.processUsers(
@@ -237,7 +308,9 @@ function AdministrationPageContent() {
         setIsUserModalOpen(false);
       }
     } catch (error) {
-      console.error("Failed to fetch user details:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to fetch user details:", error);
+      }
       toast.error("Failed to load user details");
       setIsUserModalOpen(false);
     }
@@ -256,13 +329,30 @@ function AdministrationPageContent() {
   ) => {
     if (!selectedUser) return;
 
+    // Validate that the updated data has the proper structure
+    if (!updated.profile || !updated.profile.firstName) {
+      toast.error("Invalid user data structure. Please check the form fields.");
+      return;
+    }
+
+    // Detect actual changes between old and new user data
+    const changes = detectChanges(selectedUser, updated);
+    const meaningfulChanges = filterMeaningfulChanges(changes);
+
+    // Only proceed if there are actual changes
+    if (meaningfulChanges.length === 0) {
+      toast.info("No changes detected");
+      return;
+    }
+
     const newData = { ...updated, _id: selectedUser._id };
 
     try {
       await updateUser(newData);
 
-      // Log the update activity
+      // Log the update activity with proper change tracking
       try {
+        const changesSummary = getChangesSummary(meaningfulChanges);
         await fetch("/api/activity-logs", {
           method: "POST",
           headers: {
@@ -273,25 +363,40 @@ function AdministrationPageContent() {
             resource: "user",
             resourceId: selectedUser._id,
             resourceName: selectedUser.username,
-            details: `Updated user profile and permissions for ${selectedUser.username}`,
+            details: `Updated user: ${changesSummary}`,
             userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
+            username: getUserDisplayName(),
+            userRole: "user",
+            previousData: selectedUser,
+            newData: newData,
+            changes: meaningfulChanges.map((change) => ({
+              field: change.field,
+              oldValue: change.oldValue,
+              newValue: change.newValue,
+            })),
           }),
         });
       } catch (error) {
-        console.error("Failed to log activity:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to log activity:", error);
+        }
       }
 
+      // Only close modal and refresh data on success
       setIsUserModalOpen(false);
       setSelectedUser(null);
       // Refresh users with licensee filter
       const usersData = await fetchUsers(selectedLicencee);
       setAllUsers(usersData);
-      toast.success("User updated successfully");
+      toast.success(
+        `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+      );
     } catch (error) {
-      console.error("Failed to update user:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to update user:", error);
+      }
       toast.error("Failed to update user");
+      // Don't close modal on error - let user try again
     }
   };
 
@@ -301,98 +406,17 @@ function AdministrationPageContent() {
     setAddUserForm({ roles: [], allowedLocations: [] });
     setIsAddUserModalOpen(true);
   };
-  const closeAddUserModal = () => {
+  const closeAddUserModal = async () => {
     setIsAddUserModalOpen(false);
+    // Refresh users data when modal is closed
+    try {
+      const usersData = await fetchUsers(selectedLicencee);
+      setAllUsers(usersData);
+    } catch (error) {
+      console.error("Failed to refresh users data:", error);
+    }
   };
   const handleAddUserNext = () => setAddUserStep(2);
-  const handleAddUserBack = () => setAddUserStep(1);
-  const handleAddUserSave = async () => {
-    // Frontend validation
-    const {
-      username,
-      email,
-      password,
-      roles,
-      firstName,
-      lastName,
-      gender,
-      profilePicture,
-      resourcePermissions,
-    } = addUserForm;
-    if (!username || typeof username !== "string") {
-      toast.error("Username is required");
-      return;
-    }
-    if (!email || !validateEmail(email)) {
-      toast.error("A valid email is required");
-      return;
-    }
-    if (!password || !validatePassword(password)) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-    if (!roles || !Array.isArray(roles) || roles.length === 0) {
-      toast.error("At least one role is required");
-      return;
-    }
-    // Map to backend payload
-    const payload = {
-      username,
-      emailAddress: email,
-      password,
-      roles,
-      profile: {
-        firstName: firstName || "",
-        lastName: lastName || "",
-        gender: gender || "",
-      },
-      isEnabled: true,
-      profilePicture: profilePicture || null,
-      resourcePermissions: resourcePermissions || {},
-    };
-    try {
-      const createdUser = await createUser(payload);
-
-      // Log the creation activity
-      try {
-        await fetch("/api/activity-logs", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "create",
-            resource: "user",
-            resourceId: createdUser._id || username,
-            resourceName: username,
-            details: `Created new user: ${username} with roles: ${roles.join(
-              ", "
-            )}`,
-            userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
-          }),
-        });
-      } catch (error) {
-        console.error("Failed to log activity:", error);
-      }
-
-      setIsAddUserModalOpen(false);
-      // Refresh users
-      const usersData = await fetchUsers();
-      setAllUsers(usersData);
-      toast.success("User created successfully");
-    } catch (err) {
-      const error = err as Error & {
-        response?: { data?: { message?: string } };
-      };
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to create user"
-      );
-    }
-  };
   const handleAddUserFormChange = (data: Partial<AddUserForm>) =>
     setAddUserForm((prev) => ({ ...prev, ...data }));
 
@@ -458,12 +482,17 @@ function AdministrationPageContent() {
               resourceName: result.licensee.name,
               details: `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`,
               userId: user?._id || "unknown",
-              username: user?.emailAddress || "unknown",
-              userRole: user?.roles?.[0] || "user",
+              username: getUserDisplayName(),
+              userRole: "user",
+              previousData: null,
+              newData: result.licensee,
+              changes: [], // Will be calculated by the API
             }),
           });
         } catch (error) {
-          console.error("Failed to log activity:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Failed to log activity:", error);
+          }
         }
       }
 
@@ -525,6 +554,16 @@ function AdministrationPageContent() {
         isPaid: selectedLicensee.isPaid, // Preserve current payment status
       };
 
+      // Detect actual changes between old and new licensee data
+      const changes = detectChanges(selectedLicensee, updateData);
+      const meaningfulChanges = filterMeaningfulChanges(changes);
+
+      // Only proceed if there are actual changes
+      if (meaningfulChanges.length === 0) {
+        toast.info("No changes detected");
+        return;
+      }
+
       const response = await fetch("/api/licensees", {
         method: "PUT",
         headers: {
@@ -539,8 +578,9 @@ function AdministrationPageContent() {
         throw new Error(result.message || "Failed to update licensee");
       }
 
-      // Log the update activity
+      // Log the update activity with proper change tracking
       try {
+        const changesSummary = getChangesSummary(meaningfulChanges);
         await fetch("/api/activity-logs", {
           method: "POST",
           headers: {
@@ -551,16 +591,26 @@ function AdministrationPageContent() {
             resource: "licensee",
             resourceId: selectedLicensee._id,
             resourceName: selectedLicensee.name,
-            details: `Updated licensee: ${selectedLicensee.name} - Modified details and settings`,
+            details: `Updated licensee: ${changesSummary}`,
             userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
+            username: getUserDisplayName(),
+            userRole: "user",
+            previousData: selectedLicensee,
+            newData: updateData,
+            changes: meaningfulChanges.map((change) => ({
+              field: change.field,
+              oldValue: change.oldValue,
+              newValue: change.newValue,
+            })),
           }),
         });
       } catch (error) {
-        console.error("Failed to log activity:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to log activity:", error);
+        }
       }
 
+      // Only close modal and refresh data on success
       setIsEditLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setLicenseeForm({});
@@ -568,7 +618,9 @@ function AdministrationPageContent() {
       const data = await fetchLicensees();
       setAllLicensees(data);
       setIsLicenseesLoading(false);
-      toast.success("Licensee updated successfully");
+      toast.success(
+        `Licensee updated successfully: ${getChangesSummary(meaningfulChanges)}`
+      );
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -578,6 +630,7 @@ function AdministrationPageContent() {
           error?.message ||
           "Failed to update licensee"
       );
+      // Don't close modal on error - let user try again
     }
   };
   const handleOpenDeleteLicensee = (licensee: Licensee) => {
@@ -618,12 +671,17 @@ function AdministrationPageContent() {
             resourceName: selectedLicensee.name,
             details: `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`,
             userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
+            username: getUserDisplayName(),
+            userRole: "user",
+            previousData: licenseeData,
+            newData: null,
+            changes: [], // Will be calculated by the API
           }),
         });
       } catch (error) {
-        console.error("Failed to log activity:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to log activity:", error);
+        }
       }
 
       setIsDeleteLicenseeModalOpen(false);
@@ -726,12 +784,17 @@ function AdministrationPageContent() {
               newIsPaid ? "Paid" : "Unpaid"
             }`,
             userId: user?._id || "unknown",
-            username: user?.emailAddress || "unknown",
-            userRole: user?.roles?.[0] || "user",
+            username: getUserDisplayName(),
+            userRole: "user",
+            previousData: selectedLicenseeForPaymentChange,
+            newData: updateData,
+            changes: [], // Will be calculated by the API
           }),
         });
       } catch (error) {
-        console.error("Failed to log activity:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to log activity:", error);
+        }
       }
 
       // Refresh licensees list
@@ -745,12 +808,14 @@ function AdministrationPageContent() {
       setSelectedLicenseeForPaymentChange(null);
       toast.success("Licensee payment status updated successfully");
     } catch (error) {
-      console.error("Failed to update payment status:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to update payment status:", error);
+      }
       toast.error("Failed to update payment status");
     }
   };
 
-  const renderSectionContent = () => {
+  const renderSectionContent = useCallback(() => {
     if (activeSection === "activity-logs") {
       return <ActivityLogsTable />;
     }
@@ -773,7 +838,6 @@ function AdministrationPageContent() {
           <LicenseeSearchBar
             searchValue={licenseeSearchValue}
             setSearchValue={setLicenseeSearchValue}
-            onActivityLogClick={() => setIsActivityLogModalOpen(true)}
           />
           <div className="block xl:hidden">
             {paginatedLicensees.length > 0 ? (
@@ -811,7 +875,16 @@ function AdministrationPageContent() {
           />
           <AddLicenseeModal
             open={isAddLicenseeModalOpen}
-            onClose={() => setIsAddLicenseeModalOpen(false)}
+            onClose={async () => {
+              setIsAddLicenseeModalOpen(false);
+              // Refresh licensees data when modal is closed
+              try {
+                const data = await fetchLicensees();
+                setAllLicensees(data);
+              } catch (error) {
+                console.error("Failed to refresh licensees data:", error);
+              }
+            }}
             onSave={handleSaveAddLicensee}
             formState={licenseeForm}
             setFormState={(data) =>
@@ -820,7 +893,16 @@ function AdministrationPageContent() {
           />
           <EditLicenseeModal
             open={isEditLicenseeModalOpen}
-            onClose={() => setIsEditLicenseeModalOpen(false)}
+            onClose={async () => {
+              setIsEditLicenseeModalOpen(false);
+              // Refresh licensees data when modal is closed
+              try {
+                const data = await fetchLicensees();
+                setAllLicensees(data);
+              } catch (error) {
+                console.error("Failed to refresh licensees data:", error);
+              }
+            }}
             onSave={handleSaveEditLicensee}
             formState={licenseeForm}
             setFormState={(data) =>
@@ -832,10 +914,6 @@ function AdministrationPageContent() {
             onClose={() => setIsDeleteLicenseeModalOpen(false)}
             onDelete={handleDeleteLicensee}
             licensee={selectedLicensee}
-          />
-          <ActivityLogModal
-            open={isActivityLogModalOpen}
-            onClose={() => setIsActivityLogModalOpen(false)}
           />
           <PaymentHistoryModal
             open={isPaymentHistoryModalOpen}
@@ -902,7 +980,6 @@ function AdministrationPageContent() {
           setSearchMode={setSearchMode}
           searchDropdownOpen={searchDropdownOpen}
           setSearchDropdownOpen={setSearchDropdownOpen}
-          onActivityLogClick={() => setIsUserActivityLogModalOpen(true)}
         />
         <div className="block xl:hidden md:block">
           {paginatedUsers.length > 0 ? (
@@ -945,9 +1022,16 @@ function AdministrationPageContent() {
         <UserModal
           open={isUserModalOpen}
           user={selectedUser}
-          onClose={() => {
+          onClose={async () => {
             setIsUserModalOpen(false);
             setSelectedUser(null);
+            // Refresh users data when modal is closed
+            try {
+              const usersData = await fetchUsers(selectedLicencee);
+              setAllUsers(usersData);
+            } catch (error) {
+              console.error("Failed to refresh users data:", error);
+            }
           }}
           onSave={handleSaveUser}
         />
@@ -984,12 +1068,17 @@ function AdministrationPageContent() {
                       selectedUserToDelete.username
                     } with roles: ${userData.roles?.join(", ") || "N/A"}`,
                     userId: user?._id || "unknown",
-                    username: user?.emailAddress || "unknown",
-                    userRole: user?.roles?.[0] || "user",
+                    username: getUserDisplayName(),
+                    userRole: "user",
+                    previousData: userData,
+                    newData: null,
+                    changes: [], // Will be calculated by the API
                   }),
                 });
               } catch (error) {
-                console.error("Failed to log activity:", error);
+                if (process.env.NODE_ENV === "development") {
+                  console.error("Failed to log activity:", error);
+                }
               }
 
               // Refresh users
@@ -997,7 +1086,9 @@ function AdministrationPageContent() {
               setAllUsers(usersData);
               toast.success("User deleted successfully");
             } catch (error) {
-              console.error("Failed to delete user:", error);
+              if (process.env.NODE_ENV === "development") {
+                console.error("Failed to delete user:", error);
+              }
               toast.error("Failed to delete user");
             }
             setIsDeleteModalOpen(false);
@@ -1011,29 +1102,57 @@ function AdministrationPageContent() {
           formState={addUserForm}
           setFormState={handleAddUserFormChange}
         />
-        <AddUserRolesModal
-          open={isAddUserModalOpen && addUserStep === 2}
-          onClose={closeAddUserModal}
-          onBack={handleAddUserBack}
-          onSave={handleAddUserSave}
-          formState={addUserForm}
-          setFormState={handleAddUserFormChange}
-        />
-        <UserActivityLogModal
-          open={isUserActivityLogModalOpen}
-          onClose={() => setIsUserActivityLogModalOpen(false)}
-        />
       </>
     );
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeSection,
+    isLicenseesLoading,
+    isLoading,
+    paginatedLicensees,
+    paginatedUsers,
+    currentPage,
+    totalLicenseePages,
+    totalPages,
+    sortConfig,
+    licenseeSearchValue,
+    allUsers,
+    searchValue,
+    searchMode,
+    handleOpenEditLicensee,
+    handleOpenDeleteLicensee,
+    handlePaymentHistory,
+    handleTogglePaymentStatus,
+    handleEditUser,
+    handleDeleteUser,
+    requestSort,
+    setCurrentPage,
+    isAddLicenseeModalOpen,
+    isEditLicenseeModalOpen,
+    isDeleteLicenseeModalOpen,
+    isPaymentHistoryModalOpen,
+    isPaymentConfirmModalOpen,
+    isLicenseeSuccessModalOpen,
+    licenseeForm,
+    setLicenseeForm,
+    handleSaveAddLicensee,
+    handleSaveEditLicensee,
+    handleDeleteLicensee,
+    handleConfirmPaymentStatusChange,
+    selectedLicensee,
+    selectedLicenseeForPayment,
+    selectedLicenseeForPaymentChange,
+    fetchLicensees,
+    fetchUsers,
+  ]);
 
-  if (!__mounted) return null;
+  if (!mounted) return null;
   return (
     <PageLayout
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
     >
-      {/* Admin icon and title layout, matching original design */}
+      {/* Header Section: Admin icon, title, and action buttons */}
       <div className={`flex items-center ${"mt-6 justify-between"}`}>
         <div className="flex items-center">
           <h1 className="text-3xl font-bold mr-4">Administration</h1>
@@ -1049,12 +1168,7 @@ function AdministrationPageContent() {
             onClick={openAddUserModal}
             className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
           >
-            <Image
-              src="/plusButtonWhite.svg"
-              width={16}
-              height={16}
-              alt="Add"
-            />
+            <Image src={plusButtonWhite} width={16} height={16} alt="Add" />
             <span>Add User</span>
           </Button>
         ) : activeSection === "licensees" ? (
@@ -1062,33 +1176,37 @@ function AdministrationPageContent() {
             onClick={handleOpenAddLicensee}
             className="flex bg-button text-white px-6 py-2 rounded-md items-center gap-2 text-lg font-semibold"
           >
-            <Image
-              src="/plusButtonWhite.svg"
-              width={16}
-              height={16}
-              alt="Add"
-            />
+            <Image src={plusButtonWhite} width={16} height={16} alt="Add" />
             <span>Add Licensee</span>
           </Button>
         ) : null}
       </div>
 
-      {/* Section Navigation */}
+      {/* Navigation Section: Tab navigation for different administration sections */}
       <div className="mt-8 mb-6">
         <AdministrationNavigation
           tabs={ADMINISTRATION_TABS_CONFIG}
           activeSection={activeSection}
-          onChange={handleSectionChangeLocal}
-          isLoading={isLoading || isLicenseesLoading}
+          onChange={handleSectionChangeWithTransition}
+          isLoading={isLoading || isLicenseesLoading || isTabTransitioning}
         />
       </div>
 
-      {/* Section Content with smooth transitions */}
+      {/* Content Section: Main administration content with smooth transitions */}
       <div
         data-section-content
         className="transition-all duration-300 ease-in-out"
       >
-        {renderSectionContent()}
+        {isTabTransitioning ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-button"></div>
+              <p className="text-gray-600">Loading {activeSection}...</p>
+            </div>
+          </div>
+        ) : (
+          renderSectionContent()
+        )}
       </div>
     </PageLayout>
   );
@@ -1096,8 +1214,10 @@ function AdministrationPageContent() {
 
 export default function AdministrationPage() {
   return (
-    <Suspense fallback={<UserTableSkeleton />}>
-      <AdministrationPageContent />
-    </Suspense>
+    <ProtectedRoute requireAdminAccess={true}>
+      <Suspense fallback={<UserTableSkeleton />}>
+        <AdministrationPageContent />
+      </Suspense>
+    </ProtectedRoute>
   );
 }

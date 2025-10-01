@@ -9,7 +9,62 @@ import type {
 } from "../types/activityLog";
 
 /**
- * Logs an activity to the database.
+ * Simple activity logger for auth events and other simple logging needs
+ */
+export async function logActivity(params: {
+  action: string;
+  details: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, unknown>;
+  userId?: string;
+  username?: string;
+}): Promise<void> {
+  try {
+    const activityLog = await ActivityLog.create({
+      _id: new mongoose.Types.ObjectId().toString(),
+      timestamp: new Date(),
+      // Required fields - use provided user info or fallback to system
+      userId: params.userId || "system",
+      username: params.username || "system",
+      action: params.action.toLowerCase(),
+      resource: "session",
+      resourceId: "auth",
+      resourceName: "Authentication",
+      // Optional fields
+      details: params.details,
+      ipAddress: params.ipAddress || "unknown",
+      userAgent: params.userAgent || "unknown",
+      // Legacy fields for backward compatibility
+      actor: {
+        id: params.userId || "system",
+        email: params.username || "system@system.com",
+        role: "user",
+      },
+      actionType: params.action.toUpperCase(),
+      entityType: "Auth",
+      entity: {
+        id: "auth",
+        name: "Authentication",
+      },
+      description: params.details,
+      changes: [],
+      metadata: {
+        ...params.metadata,
+        timestamp: new Date().toISOString(),
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    console.warn("Activity logged:", activityLog._id);
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+}
+
+/**
+ * Logs an activity to the database (original function for complex activities).
  *
  * @param actor - The user performing the action
  * @param actionType - The type of action (CREATE, UPDATE, DELETE, etc.)
@@ -20,7 +75,7 @@ import type {
  * @param ipAddress - Optional IP address of the actor
  * @returns Promise resolving to the created activity log
  */
-export async function logActivity(
+export async function logDetailedActivity(
   actor: ActivityLogActor,
   actionType: string,
   entityType: string,

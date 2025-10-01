@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import axios from "axios";
-import type { CabinetDetail, SmibConfig } from "@/lib/types/cabinets";
+import type { GamingMachine as CabinetDetail, SmibConfig } from "@/shared/types/entities";
 import {
   configContentVariants,
   itemVariants,
@@ -15,14 +15,10 @@ import { toast } from "sonner";
 
 type ExtendedSmibConfigurationProps = {
   cabinet: CabinetDetail | null;
-  // loading: boolean; // Removed as unused
-  // error: string | null; // Removed as unused
 };
 
 export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
   cabinet,
-  // loading, // Removed as unused
-  // error, // Removed as unused
 }) => {
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const configSectionRef = useRef<HTMLDivElement>(null);

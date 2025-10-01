@@ -48,7 +48,7 @@ export type LocationTableItem = {
 };
 
 export type LocationSortOption =
-  | "name"
+  | "locationName"
   | "moneyIn"
   | "moneyOut"
   | "gross"

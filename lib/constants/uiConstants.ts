@@ -1,6 +1,6 @@
 import { TimeFrames } from "../types";
 import { licenceeOption } from "../types";
-import { TimePeriod } from "../types/api";
+import { TimePeriod } from "@/shared/types/common";
 
 /**
  * Color palette used for charts and UI elements throughout the dashboard (e.g., PieChart, StatCards)

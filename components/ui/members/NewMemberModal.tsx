@@ -25,13 +25,49 @@ export default function NewMemberModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null
   ) => {
     try {
       const response = await fetch("/api/activity-logs", {
@@ -46,8 +82,11 @@ export default function NewMemberModal({
           resourceName,
           details,
           userId: user?._id || "unknown",
-          username: user?.emailAddress || "unknown",
-          userRole: user?.roles?.[0] || "user",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: [], // Will be calculated by the API
         }),
       });
 
@@ -153,7 +192,9 @@ export default function NewMemberModal({
           "member",
           createdMember._id || formData.username,
           `${formData.firstName} ${formData.lastName}`,
-          `Created new member: ${formData.firstName} ${formData.lastName} with username: ${formData.username}`
+          `Created new member: ${formData.firstName} ${formData.lastName} with username: ${formData.username}`,
+          null, // No previous data for creation
+          createdMember // New data
         );
 
         toast.success("Member created successfully");

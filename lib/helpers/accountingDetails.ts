@@ -5,7 +5,7 @@ import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
 } from "@/lib/types/api";
-import type { Machine as _MachineType } from "@/lib/types/machines";
+import type { GamingMachine as _MachineType } from "@/shared/types/entities";
 import { CollectionReportData } from "@/lib/types/api";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 
@@ -20,9 +20,10 @@ const formatSmartDecimal = (value: number): string => {
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
 import { Collections } from "@/app/api/lib/models/collections";
-import type { CollectionMetersHistoryEntry } from "@/lib/types/machines";
+import type { GamingMachine } from "@/shared/types/entities";
+type CollectionMetersHistoryEntry = NonNullable<GamingMachine["collectionMetersHistory"]>[0];
 import { getDatesForTimePeriod } from "../utils/dates";
-import type { TimePeriod } from "@/app/api/lib/types";
+import type { TimePeriod } from "@/shared/types/common";
 
 /**
  * Fetches accepted bills for a given machine ID.

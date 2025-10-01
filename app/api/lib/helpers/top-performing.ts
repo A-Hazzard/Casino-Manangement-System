@@ -68,16 +68,16 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
     {
       $project: {
         _id: 0,
-        location: "$locationDetails.name",
+        name: "$locationDetails.name",
         totalDrop: 1,
         totalGamesPlayed: 1,
         totalJackpot: 1,
       },
     },
-    { $sort: { location: 1, totalDrop: -1 } },
+    { $sort: { name: 1, totalDrop: -1 } },
     {
       $group: {
-        _id: "$location",
+        _id: "$name",
         totalDrop: { $first: "$totalDrop" },
         totalGamesPlayed: { $first: "$totalGamesPlayed" },
         totalJackpot: { $first: "$totalJackpot" },
@@ -86,7 +86,7 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
     {
       $project: {
         _id: 0,
-        location: "$_id",
+        name: "$_id",
         totalDrop: 1,
         totalGamesPlayed: 1,
         totalJackpot: 1,
@@ -138,7 +138,7 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
     {
       $project: {
         _id: 0,
-        machine: "$machineDetails.serialNumber",
+        name: "$machineDetails.serialNumber",
         location: "$locationDetails.name",
         totalCoinIn: 1,
         totalCoinOut: 1,
@@ -148,11 +148,11 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
         totalJackpot: 1,
       },
     },
-    { $sort: { location: 1, totalDrop: -1 } },
+    { $sort: { name: 1, totalDrop: -1 } },
     {
       $group: {
-        _id: "$location",
-        machine: { $first: "$machine" },
+        _id: "$name",
+        machine: { $first: "$name" },
         totalCoinIn: { $first: "$totalCoinIn" },
         totalCoinOut: { $first: "$totalCoinOut" },
         totalDrop: { $first: "$totalDrop" },
@@ -164,8 +164,8 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
     {
       $project: {
         _id: 0,
+        name: "$machine",
         location: "$_id",
-        machine: 1,
         totalCoinIn: 1,
         totalCoinOut: 1,
         totalDrop: 1,

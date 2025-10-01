@@ -79,8 +79,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
     <div className="xl:hidden space-y-6">
       {/* Date Filter Controls (mobile) */}
       <div className="flex flex-wrap items-center gap-2">
-        <DashboardDateFilters
+        <DashboardDateFilters   
           disabled={props.loadingChartData || props.refreshing}
+          hideAllTime={false}
         />
       </div>
 

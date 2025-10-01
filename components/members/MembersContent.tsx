@@ -11,8 +11,8 @@ import PageLayout from "@/components/layout/PageLayout";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 // Hooks
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useMembersNavigation } from "@/lib/hooks/useMembersNavigation";
+import { useMembersNavigation } from "@/lib/hooks/navigation";
+import { useMembersTabContent } from "@/lib/hooks/data";
 
 // Components
 import MembersNavigation from "@/components/members/common/MembersNavigation";
@@ -29,7 +29,7 @@ import {
 } from "@/lib/constants/members";
 
 // Types
-import type { MembersView } from "@/lib/types/members";
+import type { MembersView } from "@/shared/types/entities";
 
 /**
  * Main content component for the members page
@@ -37,13 +37,28 @@ import type { MembersView } from "@/lib/types/members";
  */
 export default function MembersContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
-  const { isAuthenticated } = useAuth();
+  
+  // All authenticated users have access to members
+  const hasAccess = true;
+  const availableTabs = MEMBERS_TABS_CONFIG;
+  const accessDeniedMessage = null;
 
-  const { activeTab, availableTabs, handleTabClick } =
-    useMembersNavigation(MEMBERS_TABS_CONFIG);
+  const { activeTab, handleTabClick } = useMembersNavigation(MEMBERS_TABS_CONFIG);
+
+  // Tab content rendering
+  const tabComponents: Record<MembersView, React.ReactElement> = {
+    members: <MembersListTab />,
+    "summary-report": <MembersSummaryTab />,
+  };
+
+  const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({
+    activeTab,
+    animations: MEMBERS_ANIMATIONS,
+    tabComponents,
+  });
 
   // Access denied if not authenticated or no available tabs
-  if (!isAuthenticated || availableTabs.length === 0) {
+  if (!hasAccess) {
     return (
       <>
 
@@ -62,7 +77,7 @@ export default function MembersContent() {
                 Access Restricted
               </h2>
               <p className="text-gray-600">
-                You don&apos;t have permission to access member data.
+                {accessDeniedMessage || "You don't have permission to access member data."}
               </p>
             </div>
           </div>
@@ -75,26 +90,13 @@ export default function MembersContent() {
    * Render the content for the active tab
    */
   const renderTabContent = () => {
-    const tabComponents: Record<MembersView, React.ReactElement> = {
-      members: <MembersListTab />,
-      "summary-report": <MembersSummaryTab />,
-    };
-
     return (
       <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          variants={MEMBERS_ANIMATIONS.tabVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.2 }}
-          className="h-full"
-        >
+        <motion.div {...getTabAnimationProps()}>
           <Suspense fallback={
             activeTab === "members" ? <MembersListTabSkeleton /> : <MembersSummaryTabSkeleton />
           }>
-            {tabComponents[activeTab]}
+            {currentTabComponent}
           </Suspense>
         </motion.div>
       </AnimatePresence>

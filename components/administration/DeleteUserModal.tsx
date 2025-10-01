@@ -5,6 +5,9 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
+// Import SVG icons for pre-rendering
+import deleteIcon from "@/public/deleteIcon.svg";
+
 export default function DeleteUserModal({
   open,
   user,
@@ -63,12 +66,7 @@ export default function DeleteUserModal({
           <div className="p-6">
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                <Image
-                  src="/deleteIcon.svg"
-                  alt="Delete"
-                  width={64}
-                  height={64}
-                />
+                <Image src={deleteIcon} alt="Delete" width={64} height={64} />
               </div>
               <p className="text-lg font-semibold text-grayHighlight mb-4">
                 Are you sure you want to delete user

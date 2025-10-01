@@ -1,115 +1,159 @@
-import { useEffect, useState } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useUserStore } from "@/lib/store/userStore";
-import { fetchUserId } from "@/lib/helpers/user";
-import axios from "axios";
-import type { UserAuthPayload } from "@/lib/types/auth";
+import { toast } from "sonner";
 
-import type { AuthState } from "@/lib/types/hooks";
-
-// Re-export frontend-specific types for convenience
-export type { AuthState };
+interface TokenRefreshOptions {
+  refreshInterval?: number; // Default 10 minutes (check every 10 min for 15 min tokens)
+  onTokenExpired?: () => void;
+  onTokenRefreshed?: () => void;
+}
 
 /**
- * Custom hook for authentication and role-based access control.
- * 
- * Provides user authentication state and permission checking functions
- * specifically designed for the reports module's role-based access control.
- * 
- * @returns AuthState object with user data and permission checking functions
+ * Custom hook for automatic token refresh and authentication management
+ * Prevents random logouts by automatically refreshing tokens before they expire
  */
-export function useAuth(): AuthState {
-  const { user, setUser } = useUserStore();
-  const [isLoading, setIsLoading] = useState(true);
+export function useAuth(options: TokenRefreshOptions = {}) {
+  const { user, clearUser } = useUserStore();
+  const {
+    refreshInterval = 10 * 60 * 1000, // 10 minutes
+    onTokenExpired,
+    onTokenRefreshed,
+  } = options;
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      if (!user) {
-        try {
-          const userId = await fetchUserId();
-          if (userId) {
-            const response = await axios.get(`/api/users/${userId}`);
-            if (response.data.success) {
-              const userData: UserAuthPayload = {
-                _id: response.data.user._id,
-                emailAddress: response.data.user.email,
-                username: response.data.user.username || "",
-                isEnabled: response.data.user.enabled,
-                roles: response.data.user.roles || [],
-                permissions: response.data.user.permissions || [],
-                resourcePermissions: response.data.user.resourcePermissions || {},
-                profile: response.data.user.profile || undefined,
-              };
-              setUser(userData);
-            }
-          }
-        } catch (error) {
-          console.error("Failed to initialize auth:", error);
-        }
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRefreshingRef = useRef(false);
+
+  /**
+   * Attempt to refresh the access token using the refresh token
+   */
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    if (isRefreshingRef.current) {
+      return false; // Already refreshing
+    }
+
+    try {
+      isRefreshingRef.current = true;
+
+      // Get refresh token from cookies (it's httpOnly, so we need to call our API)
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken: "auto" }), // Server will get refresh token from cookies
+      });
+
+      if (response.ok) {
+        onTokenRefreshed?.();
+        return true;
+      } else {
+        // Refresh token is invalid or expired
+        const errorData = await response.json();
+        console.warn("Token refresh failed:", errorData.message);
+        return false;
       }
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      return false;
+    } finally {
+      isRefreshingRef.current = false;
+    }
+  }, [onTokenRefreshed]);
+
+  /**
+   * Check if the current token is valid and refresh if needed
+   */
+  const checkAndRefreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      // Check if we have a valid token by calling the token endpoint
+      const response = await fetch("/api/auth/token");
+
+      if (response.ok) {
+        // Token is still valid
+        return true;
+      } else if (response.status === 401) {
+        // Token is expired, try to refresh
+        const refreshSuccess = await refreshToken();
+
+        if (!refreshSuccess) {
+          // Refresh failed, user needs to login again
+          if (process.env.NODE_ENV === "development") {
+            console.warn("Token refresh failed, logging out user");
+          }
+          toast.error("Your session has expired. Please log in again.");
+          clearUser();
+          onTokenExpired?.();
+          return false;
+        }
+
+        return true;
+      } else {
+        // Other error
+        console.error("Token check failed with status:", response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error("Token check error:", error);
+      return false;
+    }
+  }, [refreshToken, clearUser, onTokenExpired]);
+
+  /**
+   * Set up automatic token refresh interval
+   */
+  const startTokenRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearInterval(refreshTimeoutRef.current);
+    }
+
+    refreshTimeoutRef.current = setInterval(async () => {
+      if (user) {
+        // Only check if user is logged in
+        await checkAndRefreshToken();
+      }
+    }, refreshInterval);
+  }, [user, checkAndRefreshToken, refreshInterval]);
+
+  /**
+   * Stop automatic token refresh
+   */
+  const stopTokenRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearInterval(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Set up automatic token refresh when user is logged in
+  useEffect(() => {
+    if (user) {
+      // Start the refresh interval
+      startTokenRefresh();
+
+      // Also check immediately when user is set
+      checkAndRefreshToken();
+    } else {
+      // Stop refresh when user is logged out
+      stopTokenRefresh();
+    }
+
+    return () => {
+      stopTokenRefresh();
     };
+  }, [user, startTokenRefresh, stopTokenRefresh, checkAndRefreshToken]);
 
-    initializeAuth();
-  }, [user, setUser]);
-
-  const hasRole = (role: string): boolean => {
-    return user?.roles?.includes(role) || false;
-  };
-
-  const hasPermission = (permission: string): boolean => {
-    return user?.permissions?.includes(permission) || false;
-  };
-
-  const hasAnyRole = (roles: string[]): boolean => {
-    if (!user?.roles || roles.length === 0) return false;
-    return roles.some(role => user.roles.includes(role));
-  };
-
-  const hasAnyPermission = (permissions: string[]): boolean => {
-    if (!user?.permissions || permissions.length === 0) return false;
-    return permissions.some(permission => user.permissions.includes(permission));
-  };
-
-  const hasLocationAccess = (locationId: string): boolean => {
-    if (!user?.resourcePermissions) return false;
-    const gamingLocations = user.resourcePermissions["gaming-locations"];
-    if (!gamingLocations) return false;
-    return gamingLocations.resources.includes(locationId);
-  };
-
-  const getUserLocationIds = (): string[] => {
-    if (!user?.resourcePermissions) return [];
-    const gamingLocations = user.resourcePermissions["gaming-locations"];
-    return gamingLocations?.resources || [];
-  };
-
-  const canAccessReport = (requiredRoles?: string[], requiredPermissions?: string[]): boolean => {
-    // Admin role has access to all reports
-    if (hasRole("admin")) return true;
-
-    // Check if user has any of the required roles
-    if (requiredRoles && requiredRoles.length > 0) {
-      if (!hasAnyRole(requiredRoles)) return false;
-    }
-
-    // Check if user has any of the required permissions
-    if (requiredPermissions && requiredPermissions.length > 0) {
-      if (!hasAnyPermission(requiredPermissions)) return false;
-    }
-
-    return true;
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopTokenRefresh();
+    };
+  }, [stopTokenRefresh]);
 
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user && user.isEnabled,
-    hasRole,
-    hasPermission,
-    hasAnyRole,
-    hasAnyPermission,
-    hasLocationAccess,
-    getUserLocationIds,
-    canAccessReport,
+    refreshToken,
+    checkAndRefreshToken,
+    startTokenRefresh,
+    stopTokenRefresh,
+    isRefreshing: isRefreshingRef.current,
   };
-} 
+}

@@ -28,6 +28,11 @@ export type UserDocumentWithPassword = UserDocument & {
       resources: string[];
     };
   };
+  isLocked?: boolean;
+  lockedUntil?: Date | string;
+  failedLoginAttempts?: number;
+  loginCount?: number;
+  lastLoginAt?: Date | string;
   toObject: (_options?: Record<string, unknown>) => {
     _id: string;
     emailAddress: string;
@@ -42,6 +47,7 @@ export type UserDocumentWithPassword = UserDocument & {
     };
     [key: string]: unknown;
   };
+  updateOne: (update: Record<string, unknown>) => Promise<unknown>;
 };
 
 export type OriginalUserType = {

@@ -63,7 +63,7 @@ export default function SessionEventsPage() {
             : new Date(customDateRange.endDate as unknown as string);
         params.append("startDate", sd.toISOString());
         params.append("endDate", ed.toISOString());
-      } else if (activeMetricsFilter && activeMetricsFilter !== "All Time") {
+      } else if (activeMetricsFilter && activeMetricsFilter !== "Custom") {
         // Add date filtering based on activeMetricsFilter
         const now = new Date();
         let startDate: Date;
@@ -106,7 +106,9 @@ export default function SessionEventsPage() {
       setEvents(data.data.events);
       setPagination(data.data.pagination);
     } catch (err) {
-      console.error("❌ Events Page Error:", err);
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Events Page Error:", err);
+      }
       toast.error("Failed to fetch events");
     } finally {
       setLoading(false);
@@ -489,13 +491,16 @@ export default function SessionEventsPage() {
         mainClassName="flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4"
         showToaster={false}
       >
+        {/* Main Content Section: Session events display with navigation and filters */}
         <div className="w-full mt-8">
+            {/* Navigation Section: Back button to return to sessions */}
             <div className="mb-6">
               <Button variant="outline" size="sm" onClick={() => router.back()}>
                 Back to Sessions
               </Button>
             </div>
 
+            {/* Header Section: Page title and description */}
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">
                 Session Events
@@ -505,7 +510,7 @@ export default function SessionEventsPage() {
               </p>
             </div>
 
-            {/* Date Filter Section */}
+            {/* Date Filter Section: Date range filtering for events */}
             <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Filter Events by Date
@@ -517,6 +522,7 @@ export default function SessionEventsPage() {
               />
             </div>
 
+            {/* Error Display Section: Error messages and notifications */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                 <h2 className="text-red-800 font-semibold">Error</h2>
@@ -524,11 +530,13 @@ export default function SessionEventsPage() {
               </div>
             )}
 
-            {/* Desktop: Table view */}
+            {/* Desktop Events Display Section: Table view for desktop users */}
             <div className="hidden lg:block">{renderEventsTable()}</div>
 
-            {/* Mobile: Card view */}
+            {/* Mobile Events Display Section: Card view for mobile users */}
             <div className="block lg:hidden">{renderEventsCards()}</div>
+            
+            {/* Pagination Section: Navigation controls for event pages */}
             {renderPagination()}
         </div>
       </PageLayout>

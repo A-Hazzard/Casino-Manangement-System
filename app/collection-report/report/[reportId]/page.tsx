@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Date formatting function for SAS times
 const formatSasTime = (dateString: string) => {
@@ -76,7 +77,7 @@ import type { CollectionReportData } from "@/lib/types/api";
 import type { CollectionDocument } from "@/lib/types/collections";
 import type { MachineMetric } from "@/lib/types/api";
 
-export default function CollectionReportPage() {
+function CollectionReportPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -121,7 +122,9 @@ export default function CollectionReportPage() {
         }
       })
       .catch((error) => {
-        console.error("Error fetching collection report:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error fetching collection report:", error);
+        }
         setError("Failed to fetch report data. Please try again.");
         setReportData(null);
       })
@@ -204,7 +207,9 @@ export default function CollectionReportPage() {
       );
       setCollections(collectionsData);
     } catch (error) {
-      console.error("Error syncing meters:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error syncing meters:", error);
+      }
       setError("Failed to sync meter data.");
     } finally {
       setRefreshing(false);
@@ -356,13 +361,17 @@ export default function CollectionReportPage() {
                     onClick={() => {
                       if (metric.actualMachineId) {
                         const url = `/cabinets/${metric.actualMachineId}`;
-                        console.warn("Navigating to:", url);
+                        if (process.env.NODE_ENV === "development") {
+                          console.warn("Navigating to:", url);
+                        }
                         router.push(url);
                       } else {
-                        console.warn(
-                          "No actualMachineId found for machine:",
-                          metric.machineId
-                        );
+                        if (process.env.NODE_ENV === "development") {
+                          console.warn(
+                            "No actualMachineId found for machine:",
+                            metric.machineId
+                          );
+                        }
                       }
                     }}
                   >
@@ -486,20 +495,26 @@ export default function CollectionReportPage() {
                         <span
                           className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
                           onClick={() => {
-                            console.warn("Machine click debug:", {
-                              machineId: metric.machineId,
-                              actualMachineId: metric.actualMachineId,
-                              metric: metric,
-                            });
+                            if (process.env.NODE_ENV === "development") {
+                              console.warn("Machine click debug:", {
+                                machineId: metric.machineId,
+                                actualMachineId: metric.actualMachineId,
+                                metric: metric,
+                              });
+                            }
                             if (metric.actualMachineId) {
                               const url = `/cabinets/${metric.actualMachineId}`;
-                              console.warn("Navigating to:", url);
+                              if (process.env.NODE_ENV === "development") {
+                                console.warn("Navigating to:", url);
+                              }
                               router.push(url);
                             } else {
-                              console.warn(
-                                "No actualMachineId found for machine:",
-                                metric.machineId
-                              );
+                              if (process.env.NODE_ENV === "development") {
+                                console.warn(
+                                  "No actualMachineId found for machine:",
+                                  metric.machineId
+                                );
+                              }
                             }
                           }}
                         >
@@ -642,13 +657,15 @@ export default function CollectionReportPage() {
             </div>
             <div className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Dropped / Cancelled</span>
+                <span className="text-gray-600">
+                  Total Drop / Total Cancelled
+                </span>
                 <span className="font-medium text-gray-800">
                   {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Meters Gross</span>
+                <span className="text-gray-600">Total Meters Gross</span>
                 <span
                   className={`font-medium ${getFinancialColorClass(
                     reportData?.locationMetrics?.metersGross
@@ -664,7 +681,7 @@ export default function CollectionReportPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">SAS Gross</span>
+                <span className="text-gray-600">Total SAS Gross</span>
                 <span
                   className={`font-medium ${getFinancialColorClass(
                     reportData?.locationMetrics?.sasGross
@@ -680,7 +697,7 @@ export default function CollectionReportPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Variation</span>
+                <span className="text-gray-600">Total Variation</span>
                 <span
                   className={`font-medium ${getFinancialColorClass(
                     reportData?.locationMetrics?.variation
@@ -877,14 +894,16 @@ export default function CollectionReportPage() {
             <tbody>
               <tr className="border-b border-gray-200">
                 <td className="p-3 font-medium text-gray-700">
-                  Dropped / Cancelled
+                  Total Drop / Total Cancelled
                 </td>
                 <td className="p-3 text-right">
                   {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="p-3 font-medium text-gray-700">Meters Gross</td>
+                <td className="p-3 font-medium text-gray-700">
+                  Total Meters Gross
+                </td>
                 <td
                   className={`p-3 text-right ${getFinancialColorClass(
                     reportData?.locationMetrics?.metersGross
@@ -900,7 +919,9 @@ export default function CollectionReportPage() {
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="p-3 font-medium text-gray-700">SAS Gross</td>
+                <td className="p-3 font-medium text-gray-700">
+                  Total SAS Gross
+                </td>
                 <td
                   className={`p-3 text-right ${getFinancialColorClass(
                     reportData?.locationMetrics?.sasGross
@@ -916,7 +937,9 @@ export default function CollectionReportPage() {
                 </td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-gray-700">Variation</td>
+                <td className="p-3 font-medium text-gray-700">
+                  Total Variation
+                </td>
                 <td
                   className={`p-3 text-right ${getFinancialColorClass(
                     reportData?.locationMetrics?.variation
@@ -1279,6 +1302,7 @@ export default function CollectionReportPage() {
       mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
       showToaster={false}
     >
+      {/* Header Section: Back button, title, and sync button */}
       <div className="px-2 lg:px-6 pt-6 hidden lg:block">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -1303,6 +1327,7 @@ export default function CollectionReportPage() {
         </div>
       </div>
 
+      {/* Report Header Section: Location name, report ID, and financial summary */}
       <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
         <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
           <div className="text-center py-2 lg:py-4 px-4">
@@ -1341,6 +1366,7 @@ export default function CollectionReportPage() {
         </div>
       </div>
 
+      {/* Desktop Content Section: Sidebar navigation and main content */}
       <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
         <div className="lg:w-1/4 mb-6 lg:mb-0">
           <div className="space-y-2 bg-white p-3 rounded-lg shadow">
@@ -1358,13 +1384,14 @@ export default function CollectionReportPage() {
           {renderDesktopTabContent()}
         </div>
       </div>
+      {/* Mobile Content Section: Stacked content for mobile devices */}
       <div className="px-2 lg:px-6 pb-6 lg:hidden space-y-6">
         <MachineMetricsContent loading={false} />
         <LocationMetricsContent loading={false} />
         <SASMetricsCompareContent loading={false} />
       </div>
 
-      {/* Floating Refresh Button */}
+      {/* Floating Refresh Button Section: Animated refresh button for scroll */}
       <AnimatePresence>
         {showFloatingRefresh && (
           <motion.div
@@ -1389,5 +1416,13 @@ export default function CollectionReportPage() {
         )}
       </AnimatePresence>
     </PageLayout>
+  );
+}
+
+export default function CollectionReportPage() {
+  return (
+    <ProtectedRoute requiredPage="collection-report">
+      <CollectionReportPageContent />
+    </ProtectedRoute>
   );
 }

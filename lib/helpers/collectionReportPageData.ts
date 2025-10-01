@@ -72,7 +72,7 @@ export async function fetchCollectionReportsData(
 
     const response = await axios.get(
       `/api/collection-report?${params.toString()}`,
-      { timeout: 10000 } // 10 second timeout
+      { timeout: 60000 } // 60 second timeout to match database timeout
     );
     return response.data;
   } catch (error) {

@@ -1,4 +1,4 @@
-import type { MembersTab } from "@/lib/types/members";
+import type { MembersTab } from "@/shared/types/entities";
 
 /**
  * Configuration for members tabs
@@ -10,16 +10,12 @@ export const MEMBERS_TABS_CONFIG: MembersTab[] = [
     label: "Members List",
     icon: "users",
     description: "View and manage all members",
-    requiredRoles: ["admin", "manager"],
-    requiredPermissions: ["members:read"],
   },
   {
     id: "summary-report",
     label: "Summary Report",
     icon: "bar-chart",
     description: "Analytics and member insights",
-    requiredRoles: ["admin", "manager"],
-    requiredPermissions: ["members:read", "reports:read"],
   },
 ];
 

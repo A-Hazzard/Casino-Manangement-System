@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import type { CollectionView, CollectionTab } from "@/lib/types/collection";
+import { useUserStore } from "@/lib/store/userStore";
+import { hasTabAccess } from "@/lib/utils/permissions";
 
 type Props = {
   tabs: CollectionTab[];
@@ -16,11 +18,38 @@ export default function CollectionNavigation({
   onChange,
   isLoading = false,
 }: Props) {
+  const { user } = useUserStore();
+  const userRoles = user?.roles || [];
+
+  // Filter tabs based on user permissions
+  const accessibleTabs = tabs.filter((tab) => {
+    switch (tab.id) {
+      case "collection":
+        return true; // All users with collection-report access can see this
+      case "monthly":
+        return hasTabAccess(userRoles, "collection-reports", "monthly");
+      case "manager":
+        return hasTabAccess(
+          userRoles,
+          "collection-reports",
+          "manager-schedules"
+        );
+      case "collector":
+        return hasTabAccess(
+          userRoles,
+          "collection-reports",
+          "collector-schedules"
+        );
+      default:
+        return true;
+    }
+  });
+
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
       {/* Desktop - md: and above */}
       <nav className="hidden md:flex space-x-1 md:space-x-2 lg:justify-between lg:space-x-0 px-1 md:px-2 lg:px-6">
-        {tabs.map((tab) => (
+        {accessibleTabs.map((tab) => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
@@ -48,7 +77,7 @@ export default function CollectionNavigation({
           className="navigation-button w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive cursor-pointer"
           disabled={isLoading}
         >
-          {tabs.map((t) => (
+          {accessibleTabs.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

@@ -358,8 +358,61 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(response);
   } catch (err: unknown) {
     console.error("Error in reports locations route:", err);
+    
+    // Handle specific MongoDB connection errors
+    if (err instanceof Error) {
+      const errorMessage = err.message.toLowerCase();
+      
+      // MongoDB connection timeout
+      if (errorMessage.includes("mongonetworktimeouterror") || 
+          (errorMessage.includes("connection") && errorMessage.includes("timed out"))) {
+        return NextResponse.json(
+          { 
+            error: "Database connection timeout",
+            message: "The database is currently experiencing high load. Please try again in a few moments.",
+            type: "CONNECTION_TIMEOUT",
+            retryable: true
+          },
+          { status: 503 }
+        );
+      }
+      
+      // MongoDB server selection error
+      if (errorMessage.includes("mongoserverselectionerror") || 
+          errorMessage.includes("server selection")) {
+        return NextResponse.json(
+          { 
+            error: "Database server unavailable",
+            message: "Unable to connect to the database server. Please try again later.",
+            type: "SERVER_UNAVAILABLE",
+            retryable: true
+          },
+          { status: 503 }
+        );
+      }
+      
+      // Generic MongoDB connection error
+      if (errorMessage.includes("mongodb") || errorMessage.includes("connection")) {
+        return NextResponse.json(
+          { 
+            error: "Database connection failed",
+            message: "Unable to establish connection to the database. Please try again.",
+            type: "CONNECTION_ERROR",
+            retryable: true
+          },
+          { status: 503 }
+        );
+      }
+    }
+    
+    // Generic server error
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Server Error" },
+      { 
+        error: "Internal server error",
+        message: "An unexpected error occurred while processing your request.",
+        type: "INTERNAL_ERROR",
+        retryable: false
+      },
       { status: 500 }
     );
   }

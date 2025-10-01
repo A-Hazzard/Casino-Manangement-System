@@ -3,11 +3,10 @@ import { motion } from "framer-motion";
 
 type ExtendedStatusIndicatorProps = {
   isOnline: boolean;
-  // lastCommunication?: string | null; // Removed as unused
 };
 
 const StatusIndicator: React.FC<ExtendedStatusIndicatorProps> = ({
-  isOnline /*, lastCommunication*/,
+  isOnline,
 }) => {
   return (
     <motion.div

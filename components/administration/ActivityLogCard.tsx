@@ -37,44 +37,53 @@ interface ActivityLogCardProps {
   onDescriptionClick?: (log: ActivityLog) => void;
 }
 
-const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDescriptionClick }) => {
+const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
+  log,
+  searchMode,
+  onDescriptionClick,
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get action badge variant
-  const getActionBadgeVariant = (action: string) => {
-    switch (action) {
+  // Get action badge styling with enhanced colors
+  const getActionBadgeStyle = (action: string) => {
+    switch (action.toLowerCase()) {
       case "create":
-        return "default";
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold";
       case "update":
-        return "secondary";
+        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold";
       case "delete":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold";
       case "view":
-        return "outline";
+        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 font-semibold";
+      case "login":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 font-semibold";
+      case "logout":
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
     }
   };
 
-  // Get resource badge variant
-  const getResourceBadgeVariant = (resource: string) => {
-    switch (resource) {
+  // Get resource badge styling with enhanced colors
+  const getResourceBadgeStyle = (resource: string) => {
+    switch (resource.toLowerCase()) {
       case "user":
-        return "default";
+        return "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 font-medium";
       case "machine":
-        return "secondary";
+      case "cabinet":
+        return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 font-medium";
       case "location":
-        return "outline";
+        return "bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200 font-medium";
       case "collection":
-        return "destructive";
-      case "licensee":
-        return "default";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium";
       case "member":
-        return "secondary";
+        return "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium";
+      case "licensee":
+        return "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium";
       case "session":
-        return "outline";
+        return "bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-medium";
     }
   };
 
@@ -87,10 +96,10 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDe
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={getActionBadgeVariant(log.action)}>
+            <Badge className={getActionBadgeStyle(log.action)}>
               {log.action.toUpperCase()}
             </Badge>
-            <Badge variant={getResourceBadgeVariant(log.resource)}>
+            <Badge className={getResourceBadgeStyle(log.resource)}>
               {log.resource}
             </Badge>
           </div>
@@ -99,7 +108,19 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDe
               {formatDate(log.timestamp)}
             </div>
             <div className="text-xs text-gray-500 font-mono">
-              {log.ipAddress || "N/A"}
+              <div className="flex items-center gap-2">
+                <span>{log.ipAddress || "N/A"}</span>
+                {log.ipAddress && log.ipAddress.includes("(Local)") && (
+                  <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs">
+                    Local
+                  </span>
+                )}
+                {log.ipAddress && log.ipAddress.includes("(Public)") && (
+                  <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
+                    Public
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -111,18 +132,14 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDe
               <>
                 <div className="font-medium">{log.actor?.email || "N/A"}</div>
                 {log.username && (
-                  <div className="text-sm text-gray-500">
-                    {log.username}
-                  </div>
+                  <div className="text-sm text-gray-500">{log.username}</div>
                 )}
               </>
             ) : (
               <>
                 <div className="font-medium">{log.username}</div>
                 {log.actor?.email && (
-                  <div className="text-sm text-gray-500">
-                    {log.actor.email}
-                  </div>
+                  <div className="text-sm text-gray-500">{log.actor.email}</div>
                 )}
               </>
             )}
@@ -133,17 +150,22 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDe
         <div className="mb-3">
           <div className="text-sm text-gray-700">
             {isExpanded ? (
-              <div className="whitespace-pre-wrap break-words">{description}</div>
+              <div className="whitespace-pre-wrap break-words">
+                {description}
+              </div>
             ) : (
               <div className="overflow-hidden">
                 {isLongDescription ? (
                   <>
-                    <div className="break-words" style={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
+                    <div
+                      className="break-words"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
                       {description.substring(0, 100)}...
                     </div>
                     <div className="flex justify-end gap-2 mt-2">
@@ -177,7 +199,10 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({ log, searchMode, onDe
                         className="hover:text-blue-600 hover:underline cursor-pointer transition-colors text-left"
                         title="Click to view full description"
                       >
-                        {description}
+                        <span className="inline-flex items-center gap-1">
+                          {description}
+                          <span className="text-blue-500 text-xs">📋</span>
+                        </span>
                       </button>
                     ) : (
                       description

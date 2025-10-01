@@ -1,24 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { TimePeriod } from "@/app/api/lib/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import type { DashboardDateFiltersProps } from "@/lib/types/componentProps";
 import DateRangeIndicator from "@/components/ui/DateRangeIndicator";
 
 export default function DashboardDateFilters({
   disabled,
   onCustomRangeGo,
-  hideAllTime = false,
+  hideAllTime,
   mode = "auto",
 }: DashboardDateFiltersProps) {
   const {
@@ -34,22 +28,26 @@ export default function DashboardDateFilters({
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
-  const timeFilterButtons: { label: string; value: TimePeriod }[] = hideAllTime
-    ? [
-        { label: "Today", value: "Today" as TimePeriod },
-        { label: "Yesterday", value: "Yesterday" as TimePeriod },
-        { label: "Last 7 Days", value: "7d" as TimePeriod },
-        { label: "Last 30 Days", value: "30d" as TimePeriod },
-        { label: "Custom", value: "Custom" as TimePeriod },
-      ]
-    : [
-        { label: "Today", value: "Today" as TimePeriod },
-        { label: "Yesterday", value: "Yesterday" as TimePeriod },
-        { label: "Last 7 Days", value: "7d" as TimePeriod },
-        { label: "Last 30 Days", value: "30d" as TimePeriod },
-        { label: "All Time", value: "All Time" as TimePeriod },
-        { label: "Custom", value: "Custom" as TimePeriod },
-      ];
+  
+  const timeFilterButtons: { label: string; value: TimePeriod }[] = useMemo(() => 
+    hideAllTime
+      ? [
+          { label: "Today", value: "Today" as TimePeriod },
+          { label: "Yesterday", value: "Yesterday" as TimePeriod },
+          { label: "Last 7 Days", value: "7d" as TimePeriod },
+          { label: "Last 30 Days", value: "30d" as TimePeriod },
+          { label: "Custom", value: "Custom" as TimePeriod },
+        ]
+      : [
+          { label: "Today", value: "Today" as TimePeriod },
+          { label: "Yesterday", value: "Yesterday" as TimePeriod },
+          { label: "Last 7 Days", value: "7d" as TimePeriod },
+          { label: "Last 30 Days", value: "30d" as TimePeriod },
+          { label: "All Time", value: "All Time" as TimePeriod },
+          { label: "Custom", value: "Custom" as TimePeriod },
+        ],
+    [hideAllTime]
+  );
 
   // Check if any loading state is active
   const isLoading = loadingChartData || loadingTopPerforming || refreshing;
@@ -108,6 +106,10 @@ export default function DashboardDateFilters({
     }
   };
 
+  const handleSelectChange = (value: string) => {
+    handleFilterClick(value as TimePeriod);
+  };
+
   const showDesktopButtons = mode === "desktop" || mode === "auto";
 
   return (
@@ -119,36 +121,24 @@ export default function DashboardDateFilters({
       <div className="flex flex-wrap items-center gap-2 w-full">
         {/* Mobile and md: Select dropdown */}
         <div className={mode === "auto" ? "w-full lg:hidden" : "w-full"}>
-        <Select
-          value={activeMetricsFilter}
-          onValueChange={handleFilterClick as (v: string) => void}
-          disabled={isLoading}
-        >
-          <SelectTrigger
-            className={`bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors ${
+          <CustomSelect
+            value={activeMetricsFilter}
+            onValueChange={handleSelectChange}
+            options={timeFilterButtons.map((filter) => ({
+              value: filter.value as string,
+              label: filter.label,
+            }))}
+            placeholder="Select date range"
+            disabled={isLoading}
+            className={`${
               mode === "auto" ? "w-full" : "w-full"
             } ${
               isLoading ? "opacity-50 cursor-not-allowed" : ""
-            } min-h-[44px] text-base`}
-          >
-            <SelectValue
-              placeholder="Select date range"
-              className="text-gray-700"
-            />
-          </SelectTrigger>
-          <SelectContent className="text-gray-700">
-            {timeFilterButtons.map((filter) => (
-              <SelectItem
-                key={filter.value}
-                value={filter.value as string}
-                className="text-gray-700"
-              >
-                {filter.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            }`}
+            triggerClassName="bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base"
+            contentClassName="text-gray-700"
+          />
+        </div>
 
       {/* lg and above: Filter buttons */}
       {showDesktopButtons && (

@@ -50,3 +50,13 @@ export type ActivityLogQueryParams = {
   limit?: string;
   skip?: string;
 };
+
+export type LogActivityParams = {
+  action: string;
+  resource: string;
+  resourceId: string;
+  resourceName: string;
+  details: string;
+  previousData?: Record<string, unknown> | null;
+  newData?: Record<string, unknown> | null;
+};

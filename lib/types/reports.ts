@@ -1,4 +1,8 @@
-import type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse } from "@shared/types/reports";
+import type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+} from "@shared/types/reports";
 
 // Re-export shared types for convenience
 export type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse };
@@ -210,7 +214,16 @@ export type ChartDataPoint = {
 };
 
 // Report store types
-export type ReportType = "locationPerformance" | "machineRevenue" | "fullFinancials" | "customerActivity" | "dailyCounts" | "activeCustomers" | "locationStats" | "machinePerformance" | "terminalCounts";
+export type ReportType =
+  | "locationPerformance"
+  | "machineRevenue"
+  | "fullFinancials"
+  | "customerActivity"
+  | "dailyCounts"
+  | "activeCustomers"
+  | "locationStats"
+  | "machinePerformance"
+  | "terminalCounts";
 
 export type ReportStep = {
   id: string;
@@ -342,8 +355,6 @@ export type ReportTab = {
   label: string;
   icon?: string;
   description?: string;
-  requiredRoles?: string[];
-  requiredPermissions?: string[];
 };
 
 // Compliance types
@@ -435,11 +446,14 @@ export type PerformanceComparison = {
     period: string;
     metrics: Record<string, number>;
   };
-  changes: Record<string, {
-    value: number;
-    percentage: number;
-    trend: "up" | "down" | "neutral";
-  }>;
+  changes: Record<
+    string,
+    {
+      value: number;
+      percentage: number;
+      trend: "up" | "down" | "neutral";
+    }
+  >;
 };
 
 // Real-time metrics type
@@ -451,4 +465,4 @@ export type RealTimeMetrics = {
   currentPlayers: number;
   alerts: Alert[];
   lastUpdated: Date;
-}; 
+};

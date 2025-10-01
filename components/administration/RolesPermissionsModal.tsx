@@ -9,12 +9,13 @@ import { X } from "lucide-react";
 import gsap from "gsap";
 
 const ROLE_OPTIONS = [
+  { label: "Evolution Admin", value: "evolution admin" },
+  { label: "Administrator", value: "admin" },
+  { label: "Manager", value: "manager" },
+  { label: "Location Admin", value: "location admin" },
   { label: "Technician", value: "technician" },
   { label: "Collector", value: "collector" },
-  { label: "Collector Meters", value: "collectormeters" },
-  { label: "Location Admin", value: "locationadmin" },
-  { label: "Manager", value: "manager" },
-  { label: "Administrator", value: "admin" },
+  { label: "Collector Meters", value: "collector meters" },
 ];
 
 export type RolesPermissionsModalProps = {
@@ -197,7 +198,9 @@ export default function RolesPermissionsModal({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="block text-base font-medium">Confirm Password</label>
+            <label className="block text-base font-medium">
+              Confirm Password
+            </label>
             <Input
               type="password"
               value={confirmPassword}

@@ -1,11 +1,22 @@
 import axios from "axios";
-import { NewCabinetFormData, CabinetFormData } from "../types/cabinets";
+import type { GamingMachine } from "@/shared/types/entities";
+type NewCabinetFormData = Partial<GamingMachine>;
+type CabinetFormData = Partial<GamingMachine>;
 
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
 // Activity logging removed - handled via API calls
 
-import type { CabinetDetails, CabinetMetrics } from "@/lib/types/cabinets";
+import type { GamingMachine as CabinetDetails } from "@/shared/types/entities";
+type CabinetMetrics = {
+  moneyIn: number;
+  moneyOut: number;
+  jackpot: number;
+  cancelledCredits: number;
+  gross: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+};
 
 // Re-export frontend-specific types for convenience
 export type { CabinetDetails, CabinetMetrics };
@@ -154,8 +165,8 @@ export const createCabinet = async (
       }
     } else {
       apiData = data;
-      if (data.location) {
-        endpoint = `/api/locations/${data.location}/cabinets`;
+      if (data.locationId) {
+        endpoint = `/api/locations/${data.locationId}/cabinets`;
       } else {
         throw new Error("Location is required to create a cabinet");
       }
@@ -196,7 +207,7 @@ export const updateCabinet = async (
     // Activity logging removed - handled via API calls
 
     // Get the machine data with gamingLocation from the new endpoint
-    let cabinetUrl = `/api/machines/${data.id}`;
+    let cabinetUrl = `/api/machines/${data._id}`;
     if (timePeriod) {
       cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
     }
@@ -217,12 +228,12 @@ export const updateCabinet = async (
     const locationId = cabinet.gamingLocation;
     // console.log(
     //   "Sending PUT request to:",
-    //   `/api/locations/${locationId}/cabinets/${data.id}`
+    //   `/api/locations/${locationId}/cabinets/${data._id}`
     // );
     // console.log("Request payload:", JSON.stringify(data, null, 2));
 
     const response = await axios.put(
-      `/api/locations/${locationId}/cabinets/${data.id}`,
+      `/api/locations/${locationId}/cabinets/${data._id}`,
       data
     );
 
@@ -236,7 +247,7 @@ export const updateCabinet = async (
 
     throw new Error("Failed to update cabinet");
   } catch (error) {
-    console.error(`Error updating cabinet with ID ${data.id}:`, error);
+    console.error(`Error updating cabinet with ID ${data._id}:`, error);
     throw error;
   }
 };

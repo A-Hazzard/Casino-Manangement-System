@@ -78,11 +78,13 @@ export async function GET(request: NextRequest) {
       // The frontend sends dates that represent the start and end of the day in Trinidad time, already converted to UTC
       const customStart = new Date(customStartDate);
       let customEnd = new Date(customEndDate);
-      
+
       // The end date from frontend represents the start of the end day in Trinidad time
       // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
-      customEnd = new Date(customEnd.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
-      
+      customEnd = new Date(
+        customEnd.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000
+      );
+
       // Use the dates as-is since they're already in the correct UTC format
       startDate = customStart;
       endDate = customEnd;
@@ -270,7 +272,7 @@ export async function GET(request: NextRequest) {
       .collection("gaminglocations")
       .aggregate(aggregationPipeline, {
         allowDiskUse: true,
-        maxTimeMS: 30000,
+        maxTimeMS: 60000,
       })
       .toArray();
 

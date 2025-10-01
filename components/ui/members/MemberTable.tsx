@@ -12,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Member, MemberSortOption } from "@/lib/types/members";
+import type { CasinoMember as Member } from "@/shared/types/entities";
+// TODO: Move MemberSortOption to shared types
+type MemberSortOption = "name" | "playerId" | "points" | "sessions" | "totalHandle" | "totalWon" | "totalLost" | "lastSession" | "status" | "locationName" | "winLoss" | "lastLogin";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -169,7 +171,7 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   </div>
                 </TableCell>
                 <TableCell centered>
-                  {formatDate(member.createdAt)}
+                  {formatDate(typeof member.createdAt === 'string' ? member.createdAt : member.createdAt.toISOString())}
                 </TableCell>
                 <TableCell centered>
                   <div className="flex items-center justify-center gap-2">

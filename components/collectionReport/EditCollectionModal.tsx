@@ -29,6 +29,8 @@ import { useUserStore } from "@/lib/store/userStore";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
+import { formatMachineDisplayNameWithBold } from "@/lib/utils/machineDisplay";
+import { getUserDisplayName } from "@/lib/utils/userDisplay";
 import { SimpleDateTimePicker } from "@/components/ui/simple-date-time-picker";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { LocationSelect } from "@/components/ui/custom-select";
@@ -115,29 +117,6 @@ export default function EditCollectionModal({
 }: EditCollectionModalProps) {
   const user = useUserStore((state) => state.user);
   const userId = user?._id;
-
-  // Function to generate collector name from user profile
-  const getCollectorName = useCallback(() => {
-    if (!user) return "Unknown Collector";
-
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use email
-    return user.emailAddress || "Unknown Collector";
-  }, [user]);
 
   // State management with simpler approach
   const [reportData, setReportData] = useState<CollectionReportData | null>(
@@ -754,7 +733,7 @@ export default function EditCollectionModal({
           timestamp: currentCollectionTime,
           location: selectedLocationName,
           locationReportId: reportId,
-          collector: getCollectorName(),
+          collector: getUserDisplayName(user),
           isCompleted: false,
           softMetersIn: 0,
           softMetersOut: 0,
@@ -803,7 +782,7 @@ export default function EditCollectionModal({
             timestamp: currentCollectionTime,
             location: selectedLocationName,
             locationReportId: reportId,
-            collector: getCollectorName(),
+            collector: getUserDisplayName(user),
             isCompleted: false,
             softMetersIn: 0,
             softMetersOut: 0,
@@ -872,7 +851,7 @@ export default function EditCollectionModal({
     userId,
     reportId,
     selectedLocationName,
-    getCollectorName,
+    user,
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -1047,7 +1026,7 @@ export default function EditCollectionModal({
         }}
       >
         <DialogContent
-          className="max-w-5xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
+          className="max-w-6xl lg:max-w-7xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-4 md:p-6 pb-0">
@@ -1087,7 +1066,7 @@ export default function EditCollectionModal({
                             ? "default"
                             : "outline"
                         }
-                        className={`w-full justify-start text-left h-auto py-2 px-3 whitespace-normal ${
+                        className={`w-full justify-start text-left h-auto py-2 px-3 whitespace-normal break-words ${
                           collectedMachineEntries.find(
                             (e) => e.machineId === machine._id
                           )
@@ -1139,7 +1118,10 @@ export default function EditCollectionModal({
                             !editingEntryId)
                         }
                       >
-                        {machine.name} ({getSerialNumberIdentifier(machine)})
+                        {formatMachineDisplayNameWithBold({
+                          serialNumber: getSerialNumberIdentifier(machine),
+                          custom: { name: machine.name },
+                        })}
                         {collectedMachineEntries.find(
                           (e) => e.machineId === machine._id
                         ) &&
@@ -1182,14 +1164,13 @@ export default function EditCollectionModal({
                     variant="default"
                     className="w-full bg-lighterBlueHighlight text-primary-foreground"
                   >
-                    {machineForDataEntry ? (
-                      <>
-                        {machineForDataEntry.name} (
-                        {getSerialNumberIdentifier(machineForDataEntry)})
-                      </>
-                    ) : (
-                      "Select a machine to edit"
-                    )}
+                    {machineForDataEntry
+                      ? formatMachineDisplayNameWithBold({
+                          serialNumber:
+                            getSerialNumberIdentifier(machineForDataEntry),
+                          custom: { name: machineForDataEntry.name },
+                        })
+                      : "Select a machine to edit"}
                   </Button>
 
                   <div className="mb-4">
@@ -1379,6 +1360,14 @@ export default function EditCollectionModal({
                           // Clear RAM Clear meter fields when unchecked
                           setCurrentRamClearMetersIn("");
                           setCurrentRamClearMetersOut("");
+                        } else {
+                          // Auto-fill RAM Clear meters with previous values when checked
+                          if (prevIn !== null) {
+                            setCurrentRamClearMetersIn(prevIn.toString());
+                          }
+                          if (prevOut !== null) {
+                            setCurrentRamClearMetersOut(prevOut.toString());
+                          }
                         }
                       }}
                       className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
@@ -1765,11 +1754,12 @@ export default function EditCollectionModal({
                     key={entry._id}
                     className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
                   >
-                    <p className="font-semibold text-sm text-primary">
-                      {entry.serialNumber ||
-                        entry.machineName ||
-                        entry.machineCustomName ||
-                        entry.machineId}
+                    <p className="font-semibold text-sm text-primary break-words">
+                      {formatMachineDisplayNameWithBold({
+                        serialNumber: entry.serialNumber,
+                        assetNumber: entry.machineName,
+                        custom: { name: entry.machineCustomName },
+                      })}
                     </p>
                     <p className="text-xs text-gray-600">
                       Time: {formatDate(entry.timestamp)}

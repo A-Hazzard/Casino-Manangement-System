@@ -38,6 +38,7 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData, type ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from "@/lib/helpers/reportsPage";
+// Error handling imports removed - using wrapper component instead
 
 // Recharts imports for CasinoLocationCard charts - Commented out since Top 5 Locations section is hidden
 // import {

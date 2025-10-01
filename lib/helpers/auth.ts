@@ -1,11 +1,10 @@
 import { SignJWT } from "jose";
 import { getUserByEmail, getUserByUsername } from "./users";
 import { sendEmail } from "../../lib/utils/email";
-import type { UserAuthPayload } from "../types/auth";
+import type { UserAuthPayload } from "@/shared/types";
 import { comparePassword } from "../utils/password";
-import type { AuthResult } from "../types/auth";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
+import type { AuthResult } from "@/shared/types";
+import { getCurrentDbConnectionString, getJwtSecret } from "@/lib/utils/auth";
 
 /**
  * Validates user credentials and generates a JWT token on success.
@@ -38,31 +37,27 @@ export async function authenticateUser(
     permissions: userObject.permissions || [],
   };
 
-  const token = await new SignJWT(jwtPayload)
+  const token = await new SignJWT({
+    ...jwtPayload,
+    dbContext: {
+      connectionString: getCurrentDbConnectionString(),
+      timestamp: Date.now(),
+    },
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("48h")
-    .sign(new TextEncoder().encode(JWT_SECRET));
+    .sign(new TextEncoder().encode(getJwtSecret()));
 
   const userPayload: UserAuthPayload = {
     _id: userObject._id.toString(),
     emailAddress: userObject.emailAddress,
     username: String(userObject.username || ""),
     isEnabled: userObject.isEnabled,
-    roles: userObject.roles || [],
-    permissions: userObject.permissions || [],
-    resourcePermissions:
-      (userObject.resourcePermissions as {
-        [key: string]: {
-          entity: string;
-          resources: string[];
-        };
-      }) || {},
     profile: userObject.profile || undefined,
   };
 
   return { success: true, token, user: userPayload };
 }
-
 
 /**
  * Sends a password reset email with a short-lived token.
@@ -81,7 +76,7 @@ export async function sendResetPasswordEmail(
   const resetToken = await new SignJWT({ userId: user._id })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("15m")
-    .sign(new TextEncoder().encode(JWT_SECRET));
+    .sign(new TextEncoder().encode(getJwtSecret()));
 
   const resetUrl = `/reset-password?token=${resetToken}`;
 

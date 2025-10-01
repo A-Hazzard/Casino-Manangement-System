@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { itemVariants } from "@/lib/constants/animationVariants";
-import type { SmibConfig } from "@/lib/types/cabinets";
+import type { SmibConfig } from "@/shared/types/entities";
 
 type ExtendedAdvancedSettingsProps = {
   settings: { smibConfig?: Record<string, unknown> };

@@ -7,31 +7,8 @@ import {
   containerVariants,
   itemVariants,
 } from "@/lib/constants/animationVariants";
-// import { BillValidatorTableV2 } from "./BillValidatorTableV2"; // Removed - using UnifiedBillValidator instead
-
-// import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using UnifiedBillValidator instead
-// import { BillValidatorSection } from "@/components/collectionReport/BillValidatorSection"; // Removed - using UnifiedBillValidator instead
 import { UnifiedBillValidator } from "./UnifiedBillValidator";
 
-// Type for bill meters data from machine - unused but kept for reference
-// type MachineBillMetersData = {
-//   dollar1?: number;
-//   dollar2?: number;
-//   dollar5?: number;
-//   dollar10?: number;
-//   dollar20?: number;
-//   dollar50?: number;
-//   dollar100?: number;
-//   dollar200?: number;
-//   dollar500?: number;
-//   dollar1000?: number;
-//   dollar2000?: number;
-//   dollar5000?: number;
-//   dollarTotal?: number;
-//   dollarTotalUnknown?: number;
-// };
-
-// import { BillValidatorTableWithFilters } from "./BillValidatorTableWithFilters"; // Removed - using UnifiedBillValidator instead
 import ActivityLogSkeleton from "./ActivityLogSkeleton";
 import { ActivityLogTable } from "./ActivityLogTable";
 import { CollectionHistoryTable } from "./CollectionHistoryTable";
@@ -39,45 +16,12 @@ import CollectionHistorySkeleton from "./CollectionHistorySkeleton";
 import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import type { MachineEvent } from "./ActivityLogTable";
 import type { MachineDocument } from "@/shared/types/entities";
-import type { Cabinet } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 
-import type { TimePeriod as ApiTimePeriod } from "@/app/api/lib/types";
+import type { TimePeriod as ApiTimePeriod } from "@/shared/types/common";
 
 type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
 
-// Bill Meters data type - unused but kept for reference
-// type BillMetersData = {
-//   dollar1?: number;
-//   dollar2?: number;
-//   dollar5?: number;
-//   dollar10?: number;
-//   dollar20?: number;
-//   dollar50?: number;
-//   dollar100?: number;
-//   dollar500?: number;
-//   dollar1000?: number;
-//   dollar2000?: number;
-//   dollar5000?: number;
-//   dollarTotal?: number;
-//   dollarTotalUnknown?: number;
-// };
-
-// Bill Meters data type - moved to shared types
-// type BillMetersData = {
-//   dollar1?: number;
-//   dollar2?: number;
-//   dollar5?: number;
-//   dollar10?: number;
-//   dollar20?: number;
-//   dollar50?: number;
-//   dollar100?: number;
-//   dollar500?: number;
-//   dollar1000?: number;
-//   dollar2000?: number;
-//   dollar5000?: number;
-//   dollarTotal?: number;
-//   dollarTotalUnknown?: number;
-// };
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -423,8 +367,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     { startTime: string; endTime: string } | undefined
   >();
 
-
-
   // Note: convertBillMetersToBills function removed - now using UnifiedBillValidator with acceptedBills API
 
   // Debug logging for filter states
@@ -437,10 +379,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     billValidatorTimePeriod,
     billValidatorTimeRange,
   });
-  
+
   // Debug: Log when billValidatorTimePeriod changes
   useEffect(() => {
-    console.warn("[DEBUG] billValidatorTimePeriod changed to:", billValidatorTimePeriod);
+    console.warn(
+      "[DEBUG] billValidatorTimePeriod changed to:",
+      billValidatorTimePeriod
+    );
   }, [billValidatorTimePeriod]);
 
   useEffect(() => {
@@ -512,7 +457,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
               const params = new URLSearchParams();
               params.append("id", cabinet._id);
 
-
               // Add date range parameters if custom date range is selected
               if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
                 params.append(
@@ -527,7 +471,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 // Add time period parameter for predefined periods
                 params.append("timePeriod", activityLogTimePeriod);
               }
-              
+
               const eventsRes = await axios.get(
                 `/api/machines/by-id/events?${params.toString()}`
               );
@@ -556,7 +500,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
       }
     }
     loadData();
-
   }, [
     cabinet,
     activeMetricsTabContent,
@@ -942,10 +885,18 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       machineId={cabinet._id}
                       timePeriod={billValidatorTimePeriod}
                       onTimePeriodChange={(timePeriod: TimePeriod) => {
-                        console.warn("[DEBUG] onTimePeriodChange called with:", timePeriod);
-                        console.warn("[DEBUG] Current billValidatorTimePeriod:", billValidatorTimePeriod);
+                        console.warn(
+                          "[DEBUG] onTimePeriodChange called with:",
+                          timePeriod
+                        );
+                        console.warn(
+                          "[DEBUG] Current billValidatorTimePeriod:",
+                          billValidatorTimePeriod
+                        );
                         setBillValidatorTimePeriod(timePeriod);
-                        console.warn("[DEBUG] setBillValidatorTimePeriod called");
+                        console.warn(
+                          "[DEBUG] setBillValidatorTimePeriod called"
+                        );
                       }}
                     />
                   </motion.div>
@@ -962,14 +913,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     <div className="mb-6">
                       <ActivityLogDateFilter
                         onDateRangeChange={setActivityLogDateRange}
-                        onTimePeriodChange={(timePeriod: ApiTimePeriod) => setActivityLogTimePeriod(timePeriod)}
+                        onTimePeriodChange={(timePeriod: ApiTimePeriod) =>
+                          setActivityLogTimePeriod(timePeriod)
+                        }
                         disabled={activityLogLoading}
                       />
                     </div>
 
-
-
-                    
                     {/* Activity Log Content */}
                     {activityLogLoading ? (
                       <ActivityLogSkeleton />

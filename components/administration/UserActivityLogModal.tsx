@@ -28,14 +28,14 @@ const getActionIcon = (actionType: string) => {
   const action = actionType.toLowerCase();
   switch (action) {
     case "create":
-      return { icon: <UserPlus className="w-4 h-4" />, bg: "bg-blue-500" };
+      return { icon: <UserPlus className="w-4 h-4" />, bg: "bg-emerald-500" };
     case "update":
     case "edit":
-      return { icon: <Settings className="w-4 h-4" />, bg: "bg-green-500" };
+      return { icon: <Settings className="w-4 h-4" />, bg: "bg-amber-500" };
     case "delete":
       return { icon: <X className="w-4 h-4" />, bg: "bg-red-500" };
     case "view":
-      return { icon: <User className="w-4 h-4" />, bg: "bg-gray-500" };
+      return { icon: <User className="w-4 h-4" />, bg: "bg-slate-500" };
     default:
       return { icon: <Settings className="w-4 h-4" />, bg: "bg-gray-500" };
   }
@@ -130,20 +130,20 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
     // Safely parse the timestamp with validation
     const timestamp = activity.timestamp;
     let date: Date;
-    
+
     if (timestamp instanceof Date) {
       date = timestamp;
-    } else if (typeof timestamp === 'string') {
+    } else if (typeof timestamp === "string") {
       date = new Date(timestamp);
     } else {
       // Fallback to current date if timestamp is invalid
-      console.warn('Invalid timestamp for activity:', activity);
+      console.warn("Invalid timestamp for activity:", activity);
       date = new Date();
     }
 
     // Check if the date is valid
     if (isNaN(date.getTime())) {
-      console.warn('Invalid date for activity:', activity);
+      console.warn("Invalid date for activity:", activity);
       date = new Date(); // Fallback to current date
     }
 
@@ -171,12 +171,12 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
     entries: entries.map((log) => {
       const action = log.action || log.actionType || "unknown";
       const { icon, bg } = getActionIcon(action);
-      
+
       // Safely parse timestamp for time display
       let logDate: Date;
       if (log.timestamp instanceof Date) {
         logDate = log.timestamp;
-      } else if (typeof log.timestamp === 'string') {
+      } else if (typeof log.timestamp === "string") {
         logDate = new Date(log.timestamp);
       } else {
         logDate = new Date();
@@ -184,7 +184,7 @@ const groupActivitiesByDate = (activities: ActivityLog[]): ActivityGroup[] => {
 
       // Validate the date before formatting
       if (isNaN(logDate.getTime())) {
-        console.warn('Invalid timestamp for log entry:', log);
+        console.warn("Invalid timestamp for log entry:", log);
         logDate = new Date();
       }
 
@@ -215,7 +215,6 @@ export default function UserActivityLogModal({
 
   // Use dashboard store for date filtering
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
-
 
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -352,8 +351,6 @@ export default function UserActivityLogModal({
 
   const activityGroups = groupActivitiesByDate(activities);
 
-
-
   const handleActivityTypeChange = (type: string) => {
     setActivityType(type);
     setCurrentPage(1);
@@ -371,7 +368,7 @@ export default function UserActivityLogModal({
       <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black bg-opacity-50 p-2 md:p-4">
         <div
           ref={modalRef}
-          className="bg-gray-50 rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden"
+          className="bg-gray-50 rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="relative bg-white border-b border-gray-200 px-4 md:px-6 py-4 md:py-6">
@@ -600,11 +597,15 @@ export default function UserActivityLogModal({
                             aria-label="Page number"
                             disabled={loading}
                           />
-                          <span className="text-xs text-gray-600">of {totalPages}</span>
+                          <span className="text-xs text-gray-600">
+                            of {totalPages}
+                          </span>
                         </div>
                         <button
                           onClick={() =>
-                            setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                            setCurrentPage((prev) =>
+                              Math.min(totalPages, prev + 1)
+                            )
                           }
                           disabled={currentPage === totalPages || loading}
                           className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -657,11 +658,15 @@ export default function UserActivityLogModal({
                           aria-label="Page number"
                           disabled={loading}
                         />
-                        <span className="text-sm text-gray-600">of {totalPages}</span>
+                        <span className="text-sm text-gray-600">
+                          of {totalPages}
+                        </span>
                       </div>
                       <button
                         onClick={() =>
-                          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                          setCurrentPage((prev) =>
+                            Math.min(totalPages, prev + 1)
+                          )
                         }
                         disabled={currentPage === totalPages || loading}
                         className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -686,18 +691,18 @@ export default function UserActivityLogModal({
               </div>
             </div>
           </div>
-
-          {/* Activity Details Modal */}
-          <ActivityDetailsModal
-            open={isDetailsModalOpen}
-            onClose={() => {
-              setIsDetailsModalOpen(false);
-              setSelectedActivity(null);
-            }}
-            activity={selectedActivity}
-          />
         </div>
       </div>
+
+      {/* Activity Details Modal - Moved to top level for proper z-index */}
+      <ActivityDetailsModal
+        open={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedActivity(null);
+        }}
+        activity={selectedActivity}
+      />
     </>
   );
 }

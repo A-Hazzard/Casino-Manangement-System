@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, BarChart3 } from "lucide-react";
-import type { MembersView, MembersTab } from "@/lib/types/members";
+import type { MembersView, MembersTab } from "@/shared/types/entities";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
 

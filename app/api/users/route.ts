@@ -1,9 +1,7 @@
 import { NextRequest } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import {
-  validateEmail,
-  validatePassword,
-} from "@/app/api/lib/utils/validation";
+import { validateEmail } from "@/app/api/lib/utils/validation";
+import { validatePasswordStrength } from "@/lib/utils/validation";
 import {
   getAllUsers,
   createUser as createUserHelper,
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   try {
     await connectDB();
-    
+
     // Ensure getAllUsers function is available
     if (!getAllUsers) {
       console.error("getAllUsers function is not available");
@@ -60,11 +58,11 @@ export async function GET(request: NextRequest): Promise<Response> {
       context,
       `Successfully fetched ${result.length} users`
     );
-    return new Response(JSON.stringify({ success: true, users: result }), { 
+    return new Response(JSON.stringify({ success: true, users: result }), {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-      }
+        "Content-Type": "application/json",
+      },
     });
   } catch (error) {
     const errorMessage =
@@ -191,16 +189,37 @@ export async function POST(request: NextRequest): Promise<Response> {
         { status: 400 }
       );
     }
-    if (!password || !validatePassword(password)) {
+    if (!password) {
       apiLogger.logError(
         context,
         "User creation failed",
-        "Password must be at least 6 characters"
+        "Password is required"
       );
       return new Response(
         JSON.stringify({
           success: false,
-          message: "Password must be at least 6 characters",
+          message: "Password is required",
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Enhanced password validation
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      apiLogger.logError(
+        context,
+        "User creation failed",
+        `Password requirements not met: ${passwordValidation.feedback.join(
+          ", "
+        )}`
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Password requirements not met: ${passwordValidation.feedback.join(
+            ", "
+          )}`,
         }),
         { status: 400 }
       );

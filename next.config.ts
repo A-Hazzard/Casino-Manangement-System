@@ -61,8 +61,8 @@ const nextConfig: NextConfig = {
     // Ignore SendGrid modules that use Node.js APIs in client-side code
     config.externals = config.externals || [];
     config.externals.push({
-      '@sendgrid/helpers': 'commonjs @sendgrid/helpers',
-      '@sendgrid/mail': 'commonjs @sendgrid/mail',
+      "@sendgrid/helpers": "commonjs @sendgrid/helpers",
+      "@sendgrid/mail": "commonjs @sendgrid/mail",
     });
 
     return config;

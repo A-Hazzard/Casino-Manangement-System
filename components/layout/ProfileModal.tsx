@@ -8,9 +8,16 @@ import Image from "next/image";
 import { useUserStore } from "@/lib/store/userStore";
 import type { User } from "@/lib/types/administration";
 import { toast } from "sonner";
+import {
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
+} from "@/lib/utils/changeDetection";
 import defaultAvatar from "@/public/defaultAvatar.svg";
 import cameraIcon from "@/public/cameraIcon.svg";
 import CircleCropModal from "@/components/ui/image/CircleCropModal";
+import { fetchCountries } from "@/lib/helpers/countries";
+import type { Country } from "@/lib/helpers/countries";
 
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
@@ -18,7 +25,9 @@ async function fetchUserData(userId: string): Promise<User | null> {
     const { user } = response.data;
     return user;
   } catch (error) {
-    console.error("Failed to fetch user data", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to fetch user data", error);
+    }
     return null;
   }
 }
@@ -40,19 +49,60 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Countries state
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!authUser) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (authUser.profile?.firstName && authUser.profile?.lastName) {
+      return `${authUser.profile.firstName} ${authUser.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (authUser.profile?.firstName && !authUser.profile?.lastName) {
+      return authUser.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!authUser.profile?.firstName && authUser.profile?.lastName) {
+      return authUser.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (authUser.username && authUser.username.trim() !== "") {
+      return authUser.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (authUser.emailAddress && authUser.emailAddress.trim() !== "") {
+      return authUser.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null,
+    changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -60,17 +110,24 @@ export default function ProfileModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: authUser?._id || "unknown",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: changes || [], // Use provided changes or empty array
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to log activity:", response.statusText);
+        }
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error logging activity:", error);
+      }
     }
   };
 
@@ -94,7 +151,9 @@ export default function ProfileModal({
           }
         })
         .catch((error) => {
-          console.error("Error fetching user data:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error fetching user data:", error);
+          }
           toast.error("Failed to load user profile.");
           onClose();
         })
@@ -109,6 +168,36 @@ export default function ProfileModal({
       });
     }
   }, [open, authUser, onClose]);
+
+  // Load countries
+  useEffect(() => {
+    const loadCountries = async () => {
+      setCountriesLoading(true);
+      try {
+        const countriesData = await fetchCountries();
+
+        // Remove duplicates based on country name using Map for better performance
+        const uniqueCountriesMap = new Map();
+        countriesData.forEach((country) => {
+          if (!uniqueCountriesMap.has(country.name)) {
+            uniqueCountriesMap.set(country.name, country);
+          }
+        });
+        const uniqueCountries = Array.from(uniqueCountriesMap.values());
+
+        setCountries(uniqueCountries as unknown as Country[]);
+      } catch (error) {
+        console.error("Failed to fetch countries:", error);
+        toast.error("Failed to load countries");
+      } finally {
+        setCountriesLoading(false);
+      }
+    };
+
+    if (open) {
+      loadCountries();
+    }
+  }, [open]);
 
   const handleInputChange = (
     field: string,
@@ -193,20 +282,37 @@ export default function ProfileModal({
       return;
     }
 
-    try {
+    // Detect actual changes between old and new user data
+    const changes = detectChanges(userData, payload);
+    const meaningfulChanges = filterMeaningfulChanges(changes);
 
+    // Only proceed if there are actual changes
+    if (meaningfulChanges.length === 0) {
+      toast.info("No changes detected");
+      return;
+    }
+
+    try {
       await axios.put(`/api/users/${userData._id}`, payload);
 
-      // Log the profile update activity
+      // Log the profile update activity with proper change tracking
+      const changesSummary = getChangesSummary(meaningfulChanges);
       await logActivity(
         "update",
         "user",
         userData._id,
         userData.username,
-        `Updated profile for user: ${userData.username}`
+        `Updated profile: ${changesSummary}`,
+        userData, // Previous data
+        payload, // New data
+        meaningfulChanges.map((change) => ({
+          field: change.field,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+        }))
       );
 
-      toast.success("Profile updated successfully!");
+      toast.success(`Profile updated successfully: ${changesSummary}`);
       // Emit a browser event so the sidebar can update immediately
       if (typeof window !== "undefined") {
         window.dispatchEvent(
@@ -224,7 +330,9 @@ export default function ProfileModal({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update profile.";
       toast.error(errorMessage);
-      console.error(error);
+      if (process.env.NODE_ENV === "development") {
+        console.error(error);
+      }
     }
   };
 
@@ -237,539 +345,586 @@ export default function ProfileModal({
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={() => {
-      onClose();
-    }}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={() => {
+        onClose();
+      }}
+    >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[99998] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" style={{ display: open ? 'block' : 'none' }} />
-        <Dialog.Content className="fixed inset-0 z-[99999] flex flex-col w-full bg-background shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:grid sm:gap-4 sm:border sm:p-6 sm:overflow-visible data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]" style={{ display: open ? 'flex' : 'none' }}>
+        <Dialog.Overlay
+          className="fixed inset-0 z-[99998] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          style={{ display: open ? "block" : "none" }}
+        />
+        <Dialog.Content
+          className="fixed inset-0 z-[99999] flex flex-col w-full bg-background shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:grid sm:gap-4 sm:border sm:p-6 sm:overflow-visible data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
+          style={{ display: open ? "flex" : "none" }}
+        >
           <div className="p-4 space-y-4 sm:p-0 sm:space-y-0 sm:gap-4 sm:grid">
             <div className="flex justify-between items-center">
               <Dialog.Title className="text-2xl font-bold text-center">
                 My Profile
               </Dialog.Title>
-            {!isEditMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditMode(true)}
-                className="absolute top-4 right-16 text-gray-600 hover:text-gray-900"
-              >
-                <Pencil className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-          <Dialog.Close asChild>
-            <button
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-              aria-label="Close"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </Dialog.Close>
-
-          {isLoading ? (
-            <div className="max-h-[80vh] overflow-y-auto pr-4">
-              <div className="flex flex-col lg:flex-row gap-8 items-start">
-                {/* Left section skeleton */}
-                <div className="w-full lg:w-1/3 flex flex-col items-center">
-                  <Skeleton className="w-40 h-40 rounded-full" />
-                  <Skeleton className="h-6 w-32 mt-4" />
-                  <Skeleton className="h-4 w-48 mt-2" />
-                </div>
-
-                {/* Right section skeleton */}
-                <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <Skeleton className="h-6 w-48 mb-4" />
-                  </div>
-                  
-                  {/* Personal Information Fields */}
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Skeleton className="h-4 w-16 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address Section Skeleton */}
-              <div className="mt-8">
-                <Skeleton className="h-6 w-24 mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-16 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-18 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information Section Skeleton */}
-              <div className="mt-8">
-                <Skeleton className="h-6 w-36 mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Password Section Skeleton */}
-              <div className="mt-8">
-                <Skeleton className="h-6 w-32 mb-4" />
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Skeleton className="h-4 w-32 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-28 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-36 mb-2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
+              {!isEditMode && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsEditMode(true)}
+                  className="absolute top-4 right-16 text-gray-600 hover:text-gray-900"
+                >
+                  <Pencil className="h-5 w-5" />
+                </Button>
+              )}
             </div>
-          ) : (
-            userData && (
-              <div className="max-h-[80vh] overflow-y-auto pr-4 relative z-[100000]">
+            <Dialog.Close asChild>
+              <button
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                aria-label="Close"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </Dialog.Close>
+
+            {isLoading ? (
+              <div className="max-h-[80vh] overflow-y-auto pr-4">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                  {/* Left section */}
+                  {/* Left section skeleton */}
                   <div className="w-full lg:w-1/3 flex flex-col items-center">
-                    <div className="relative">
-                      <Image
-                        src={profilePicture || userData.profilePicture || defaultAvatar}
-                        alt="Avatar"
-                        width={160}
-                        height={160}
-                        className="rounded-full border-4 border-gray-200"
-                      />
-                      {isEditMode && (
-                        <>
-                          <button
-                            type="button"
-                            className="absolute bottom-2 right-2 rounded-full border-2 border-border bg-white p-1 shadow"
-                            onClick={handleEditProfilePicture}
-                            aria-label="Edit avatar"
-                          >
-                            <Image src={cameraIcon} alt="Edit" width={24} height={24} />
-                          </button>
-                          {(profilePicture || userData.profilePicture) && (
-                            <button
-                              type="button"
-                              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow"
-                              onClick={handleRemoveProfilePicture}
-                              aria-label="Remove avatar"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4"><path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm2 4h2v10h-2V7Zm-4 0h2v10H7V7Zm8 0h2v10h-2V7Z"/></svg>
-                            </button>
-                          )}
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                          />
-                        </>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-semibold mt-4">
-                      {userData.username}
-                    </h3>
-                    <p className="text-sm text-gray-500">{userData.email}</p>
+                    <Skeleton className="w-40 h-40 rounded-full" />
+                    <Skeleton className="h-6 w-32 mt-4" />
+                    <Skeleton className="h-4 w-48 mt-2" />
                   </div>
 
-                  {/* Right section */}
+                  {/* Right section skeleton */}
                   <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <h4 className="text-lg font-semibold mb-2 border-b pb-1">
-                        Personal Information
-                      </h4>
+                      <Skeleton className="h-6 w-48 mb-4" />
+                    </div>
+
+                    {/* Personal Information Fields */}
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        First Name
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.firstName || ""}
-                          onChange={(e) =>
-                            handleInputChange("firstName", e.target.value)
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">{formData?.firstName || "-"}</p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Last Name
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.lastName || ""}
-                          onChange={(e) =>
-                            handleInputChange("lastName", e.target.value)
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">{formData?.lastName || "-"}</p>
-                      )}
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Middle Name
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.middleName || ""}
-                          onChange={(e) =>
-                            handleInputChange("middleName", e.target.value)
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">{formData?.middleName || "-"}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Other Name
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.otherName || ""}
-                          onChange={(e) =>
-                            handleInputChange("otherName", e.target.value)
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">{formData?.otherName || "-"}</p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Gender
-                      </label>
-                      {isEditMode ? (
-                        <select
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.gender || ""}
-                          onChange={(e) =>
-                            handleInputChange("gender", e.target.value)
-                          }
-                        >
-                          <option value="">Select</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      ) : (
-                        <p className="p-2 capitalize">
-                          {formData?.gender || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                   </div>
                 </div>
 
-                {/* Address Section */}
+                {/* Address Section Skeleton */}
                 <div className="mt-8">
-                  <h4 className="text-lg font-semibold mb-2 border-b pb-1">
-                    Address
-                  </h4>
+                  <Skeleton className="h-6 w-24 mb-4" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Street
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.address?.street || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "street",
-                              e.target.value,
-                              "address"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.address?.street || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Town
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.address?.town || ""}
-                          onChange={(e) =>
-                            handleInputChange("town", e.target.value, "address")
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">{formData?.address?.town || "-"}</p>
-                      )}
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Region
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.address?.region || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "region",
-                              e.target.value,
-                              "address"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.address?.region || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Country
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.address?.country || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "country",
-                              e.target.value,
-                              "address"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.address?.country || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Postal Code
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.address?.postalCode || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "postalCode",
-                              e.target.value,
-                              "address"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.address?.postalCode || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-18 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                   </div>
                 </div>
 
-                {/* Identification Section */}
+                {/* Contact Information Section Skeleton */}
                 <div className="mt-8">
-                  <h4 className="text-lg font-semibold mb-2 border-b pb-1">
-                    Identification
-                  </h4>
+                  <Skeleton className="h-6 w-36 mb-4" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Date of Birth
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="date"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={
-                            formData?.identification?.dateOfBirth?.split(
-                              "T"
-                            )[0] || ""
-                          }
-                          onChange={(e) =>
-                            handleInputChange(
-                              "dateOfBirth",
-                              e.target.value,
-                              "identification"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.identification?.dateOfBirth
-                            ? new Date(
-                                formData.identification.dateOfBirth
-                              ).toLocaleDateString()
-                            : "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ID Type
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.identification?.idType || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "idType",
-                              e.target.value,
-                              "identification"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.identification?.idType || "-"}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ID Number
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-md p-2 bg-white border border-border"
-                          value={formData?.identification?.idNumber || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "idNumber",
-                              e.target.value,
-                              "identification"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.identification?.idNumber || "-"}
-                        </p>
-                      )}
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      {isEditMode ? (
-                        <textarea
-                          className="w-full rounded-md p-2 bg-white border border-border min-h-[80px]"
-                          value={formData?.identification?.notes || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "notes",
-                              e.target.value,
-                              "identification"
-                            )
-                          }
-                        />
-                      ) : (
-                        <p className="p-2">
-                          {formData?.identification?.notes || "-"}
-                        </p>
-                      )}
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
                   </div>
                 </div>
 
-                {isEditMode && (
-                  <div className="flex justify-end mt-8 gap-4">
-                    <Button
-                      onClick={handleCancelEdit}
-                      variant="outline"
-                      className="border-gray-400"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      className="bg-button hover:bg-buttonActive"
-                    >
-                      Save Changes
-                    </Button>
+                {/* Password Section Skeleton */}
+                <div className="mt-8">
+                  <Skeleton className="h-6 w-32 mb-4" />
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-28 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-36 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            )
-          )}
+            ) : (
+              userData && (
+                <div className="max-h-[80vh] overflow-y-auto pr-4 relative z-[100000]">
+                  <div className="flex flex-col lg:flex-row gap-8 items-start">
+                    {/* Left section */}
+                    <div className="w-full lg:w-1/3 flex flex-col items-center">
+                      <div className="relative">
+                        <Image
+                          src={
+                            profilePicture ||
+                            userData.profilePicture ||
+                            defaultAvatar
+                          }
+                          alt="Avatar"
+                          width={160}
+                          height={160}
+                          className="rounded-full border-4 border-gray-200"
+                        />
+                        {isEditMode && (
+                          <>
+                            <button
+                              type="button"
+                              className="absolute bottom-2 right-2 rounded-full border-2 border-border bg-white p-1 shadow"
+                              onClick={handleEditProfilePicture}
+                              aria-label="Edit avatar"
+                            >
+                              <Image
+                                src={cameraIcon}
+                                alt="Edit"
+                                width={24}
+                                height={24}
+                              />
+                            </button>
+                            {(profilePicture || userData.profilePicture) && (
+                              <button
+                                type="button"
+                                className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow"
+                                onClick={handleRemoveProfilePicture}
+                                aria-label="Remove avatar"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="white"
+                                  className="w-4 h-4"
+                                >
+                                  <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm2 4h2v10h-2V7Zm-4 0h2v10H7V7Zm8 0h2v10h-2V7Z" />
+                                </svg>
+                              </button>
+                            )}
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              accept="image/*"
+                              onChange={handleFileSelect}
+                              className="hidden"
+                            />
+                          </>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-semibold mt-4">
+                        {userData.username}
+                      </h3>
+                      <p className="text-sm text-gray-500">{userData.email}</p>
+                    </div>
+
+                    {/* Right section */}
+                    <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <h4 className="text-lg font-semibold mb-2 border-b pb-1">
+                          Personal Information
+                        </h4>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          First Name
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.firstName || ""}
+                            onChange={(e) =>
+                              handleInputChange("firstName", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">{formData?.firstName || "-"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Last Name
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.lastName || ""}
+                            onChange={(e) =>
+                              handleInputChange("lastName", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">{formData?.lastName || "-"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Middle Name
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.middleName || ""}
+                            onChange={(e) =>
+                              handleInputChange("middleName", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">{formData?.middleName || "-"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Other Name
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.otherName || ""}
+                            onChange={(e) =>
+                              handleInputChange("otherName", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">{formData?.otherName || "-"}</p>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Gender
+                        </label>
+                        {isEditMode ? (
+                          <select
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.gender || ""}
+                            onChange={(e) =>
+                              handleInputChange("gender", e.target.value)
+                            }
+                          >
+                            <option value="">Select</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        ) : (
+                          <p className="p-2 capitalize">
+                            {formData?.gender || "-"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address Section */}
+                  <div className="mt-8">
+                    <h4 className="text-lg font-semibold mb-2 border-b pb-1">
+                      Address
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Street
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.address?.street || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "street",
+                                e.target.value,
+                                "address"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.address?.street || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Town
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.address?.town || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "town",
+                                e.target.value,
+                                "address"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.address?.town || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Region
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.address?.region || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "region",
+                                e.target.value,
+                                "address"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.address?.region || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Country
+                        </label>
+                        {isEditMode ? (
+                          <select
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.address?.country || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "country",
+                                e.target.value,
+                                "address"
+                              )
+                            }
+                          >
+                            <option value="">Select Country</option>
+                            {countriesLoading ? (
+                              <option value="" disabled>
+                                Loading countries...
+                              </option>
+                            ) : (
+                              countries.map((country) => (
+                                <option key={country._id} value={country._id}>
+                                  {country.name}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        ) : (
+                          <p className="p-2">
+                            {countries.find(
+                              (c) => c._id === formData?.address?.country
+                            )?.name ||
+                              formData?.address?.country ||
+                              "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Postal Code
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.address?.postalCode || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "postalCode",
+                                e.target.value,
+                                "address"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.address?.postalCode || "-"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Identification Section */}
+                  <div className="mt-8">
+                    <h4 className="text-lg font-semibold mb-2 border-b pb-1">
+                      Identification
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Date of Birth
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="date"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={
+                              formData?.identification?.dateOfBirth?.split(
+                                "T"
+                              )[0] || ""
+                            }
+                            onChange={(e) =>
+                              handleInputChange(
+                                "dateOfBirth",
+                                e.target.value,
+                                "identification"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.identification?.dateOfBirth
+                              ? new Date(
+                                  formData.identification.dateOfBirth
+                                ).toLocaleDateString()
+                              : "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          ID Type
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.identification?.idType || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "idType",
+                                e.target.value,
+                                "identification"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.identification?.idType || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          ID Number
+                        </label>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            className="w-full rounded-md p-2 bg-white border border-border"
+                            value={formData?.identification?.idNumber || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "idNumber",
+                                e.target.value,
+                                "identification"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.identification?.idNumber || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Notes
+                        </label>
+                        {isEditMode ? (
+                          <textarea
+                            className="w-full rounded-md p-2 bg-white border border-border min-h-[80px]"
+                            value={formData?.identification?.notes || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "notes",
+                                e.target.value,
+                                "identification"
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="p-2">
+                            {formData?.identification?.notes || "-"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isEditMode && (
+                    <div className="flex justify-end mt-8 gap-4">
+                      <Button
+                        onClick={handleCancelEdit}
+                        variant="outline"
+                        className="border-gray-400"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        className="bg-button hover:bg-buttonActive"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

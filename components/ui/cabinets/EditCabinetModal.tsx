@@ -7,13 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { CabinetFormData } from "@/lib/types/cabinets";
+import type { GamingMachine } from "@/shared/types/entities";
+type CabinetFormData = Partial<GamingMachine>;
 import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useUserStore } from "@/lib/store/userStore";
+import {
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
+} from "@/lib/utils/changeDetection";
 import {
   Select,
   SelectContent,
@@ -56,13 +62,49 @@ export const EditCabinetModal = ({
   const [collectionMultiplierError, setCollectionMultiplierError] =
     useState<string>("");
 
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null,
+    changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
       const response = await fetch("/api/activity-logs", {
@@ -77,8 +119,11 @@ export const EditCabinetModal = ({
           resourceName,
           details,
           userId: user?._id || "unknown",
-          username: user?.emailAddress || "unknown",
-          userRole: user?.roles?.[0] || "user",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: changes || [], // Use provided changes or empty array
         }),
       });
 
@@ -118,11 +163,59 @@ export const EditCabinetModal = ({
   const validateSerialNumber = (value: string): string => {
     if (!value) return "";
 
-    if (value.length < 3) {
+    if (value.trim().length < 3) {
       return "Serial number must be at least 3 characters long";
     }
 
     return ""; // No error
+  };
+
+  // Helper function to get display serial number
+  const getDisplaySerialNumber = (cabinet: GamingMachine | null): string => {
+    if (!cabinet) return "Unknown";
+
+    // Check if serialNumber exists and is not just whitespace
+    if (cabinet.serialNumber && cabinet.serialNumber.trim() !== "") {
+      return cabinet.serialNumber;
+    }
+
+    // Check if custom.name exists and is not just whitespace
+    if (cabinet.custom?.name && cabinet.custom.name.trim() !== "") {
+      return cabinet.custom.name;
+    }
+
+    // Check if machineId exists and is not just whitespace
+    if (cabinet.machineId && cabinet.machineId.trim() !== "") {
+      return cabinet.machineId;
+    }
+
+    return "Unknown";
+  };
+
+  // Helper function to check if serial number is valid (not empty or just whitespace)
+  const hasValidSerialNumber = (cabinet: GamingMachine | null): boolean => {
+    if (!cabinet) return false;
+
+    return Boolean(cabinet.serialNumber && cabinet.serialNumber.trim() !== "");
+  };
+
+  // Helper function to format creation date
+  const formatCreationDate = (date: Date | string | undefined): string => {
+    if (!date) return "Unknown";
+
+    try {
+      const dateObj = typeof date === "string" ? new Date(date) : date;
+
+      return dateObj.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Unknown";
+    }
   };
 
   // Fetch locations data
@@ -165,13 +258,13 @@ export const EditCabinetModal = ({
   }, []);
 
   const [formData, setFormData] = useState<CabinetFormData>({
-    id: "",
+    _id: "",
     assetNumber: "",
     installedGame: "",
     gameType: "Slot",
     accountingDenomination: "1",
     collectionMultiplier: "1",
-    location: "",
+    locationId: "",
     smbId: "",
     status: "functional",
     isCronosMachine: false,
@@ -183,7 +276,7 @@ export const EditCabinetModal = ({
     if (selectedCabinet) {
       // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
       const initialFormData = {
-        id: selectedCabinet._id,
+        _id: selectedCabinet._id,
         assetNumber: selectedCabinet.assetNumber || "",
         installedGame: selectedCabinet.installedGame || "",
         gameType: selectedCabinet.gameType || "Slot",
@@ -191,11 +284,13 @@ export const EditCabinetModal = ({
           selectedCabinet.accountingDenomination || "1"
         ),
         collectionMultiplier: selectedCabinet.collectionMultiplier || "1",
-        location: selectedCabinet.locationId || "",
+        locationId: selectedCabinet.locationId || "",
         smbId: selectedCabinet.smbId || "",
         status: selectedCabinet.status || "functional",
         isCronosMachine: selectedCabinet.isCronosMachine || false,
         manufacturer: selectedCabinet.manufacturer || "",
+        custom: selectedCabinet.custom || { name: "" },
+        createdAt: selectedCabinet.createdAt,
       };
       // console.log("Initial form data gameType:", initialFormData.gameType);
       setFormData(initialFormData);
@@ -250,6 +345,7 @@ export const EditCabinetModal = ({
                   status: cabinetDetails.status || prevData.status,
                   isCronosMachine:
                     cabinetDetails.isCronosMachine || prevData.isCronosMachine,
+                  createdAt: cabinetDetails.createdAt || prevData.createdAt,
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -400,7 +496,7 @@ export const EditCabinetModal = ({
         setCollectionMultiplierError("Collection multiplier must be a number");
         errors.push("collectionMultiplierNaN");
       }
-      if (!formData.location || formData.location.trim().length === 0) {
+      if (!formData.locationId || formData.locationId.trim().length === 0) {
         setLocationError("Location is required");
         errors.push("location");
       }
@@ -417,10 +513,22 @@ export const EditCabinetModal = ({
       // console.log("Submitting form data:", JSON.stringify(formData, null, 2));
       // console.log("Sending to updateCabinet:", formData);
 
+      // Detect actual changes between old and new cabinet data
+      const changes = detectChanges(selectedCabinet, formData);
+      const meaningfulChanges = filterMeaningfulChanges(changes);
+
+      // Only proceed if there are actual changes
+      if (meaningfulChanges.length === 0) {
+        toast.info("No changes detected");
+        setLoading(false);
+        return;
+      }
+
       // Pass the entire formData object with id included
       const success = await updateCabinet(formData, activeMetricsFilter);
       if (success) {
-        // Log the cabinet update activity
+        // Log the cabinet update activity with proper change tracking
+        const changesSummary = getChangesSummary(meaningfulChanges);
         await logActivity(
           "update",
           "machine",
@@ -432,13 +540,14 @@ export const EditCabinetModal = ({
             getSerialNumberIdentifier(selectedCabinet) ||
             "Unknown"
           }`,
-          `Updated cabinet: ${
-            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
-          } (${
-            selectedCabinet.assetNumber ||
-            getSerialNumberIdentifier(selectedCabinet) ||
-            "Unknown"
-          })`
+          `Updated cabinet: ${changesSummary}`,
+          selectedCabinet, // Previous data
+          formData, // New data
+          meaningfulChanges.map((change) => ({
+            field: change.field,
+            oldValue: change.oldValue,
+            newValue: change.newValue,
+          }))
         );
 
         // Call the callback to refresh data
@@ -448,7 +557,7 @@ export const EditCabinetModal = ({
         setUserModifiedFields(new Set());
 
         // Show success feedback
-        toast.success("Cabinet updated successfully");
+        toast.success(`Cabinet updated successfully: ${changesSummary}`);
 
         // Close the modal
         handleClose();
@@ -485,7 +594,7 @@ export const EditCabinetModal = ({
         >
           <div className="p-3 sm:p-4 flex items-center border-b border-border">
             <h2 className="text-xl font-semibold text-center flex-1">
-              Edit Cabinet Details
+              Edit {getDisplaySerialNumber(selectedCabinet)} Details
             </h2>
             <Button
               onClick={handleClose}
@@ -502,6 +611,30 @@ export const EditCabinetModal = ({
           <div className="px-4 sm:px-8 pb-6 sm:pb-8 max-h-[calc(98vh-120px)] overflow-visible">
             <div className="space-y-4 max-h-[calc(98vh-180px)] overflow-y-auto">
               <div className="space-y-6">
+                {/* Creation Date Display */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Machine Created
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {formData.createdAt
+                          ? formatCreationDate(formData.createdAt)
+                          : "Unknown"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <h3 className="text-sm font-medium text-gray-700">
+                        Machine ID
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1 font-mono">
+                        {formData._id || "Unknown"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Serial Number & Installed Game */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -706,12 +839,12 @@ export const EditCabinetModal = ({
                       <Skeleton className="h-10 w-full" />
                     ) : (
                       <Select
-                        value={formData.location || undefined}
+                        value={formData.locationId || undefined}
                         onValueChange={(locationId) => {
                           setLocationError("");
                           setFormData((prev) => ({
                             ...prev,
-                            location: locationId,
+                            locationId: locationId,
                           }));
                         }}
                       >
@@ -802,6 +935,39 @@ export const EditCabinetModal = ({
                     </div>
                   )}
                 </div>
+
+                {/* Custom Name Field - Only show if no valid serial number */}
+                {!hasValidSerialNumber(selectedCabinet) && (
+                  <div>
+                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                      Custom Name <span className="text-red-500">*</span>
+                    </label>
+                    {cabinetDataLoading ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : (
+                      <Input
+                        id="customName"
+                        name="customName"
+                        value={formData.custom?.name || ""}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            custom: {
+                              ...prev.custom,
+                              name: e.target.value,
+                            },
+                          }));
+                        }}
+                        placeholder="Enter custom name for this machine"
+                        className="bg-container border-border"
+                      />
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Since this machine doesn&apos;t have a valid serial
+                      number, you can set a custom name to identify it.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

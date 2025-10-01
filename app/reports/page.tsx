@@ -5,11 +5,12 @@ import { Suspense } from "react";
 // Components
 import ReportsContent from "@/components/reports/ReportsContent";
 import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 /**
  * Reports Page
  * Main entry point for the reports section with comprehensive analytics and reporting
- * 
+ *
  * Features:
  * - Multi-tab interface (Dashboard, Locations, Machines, Meters)
  * - Role-based access control and permissions
@@ -19,8 +20,10 @@ import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons"
  */
 export default function ReportsPage() {
   return (
-    <Suspense fallback={<ReportsPageSkeleton />}>
-      <ReportsContent />
-    </Suspense>
+    <ProtectedRoute requiredPage="reports">
+      <Suspense fallback={<ReportsPageSkeleton />}>
+        <ReportsContent />
+      </Suspense>
+    </ProtectedRoute>
   );
 }

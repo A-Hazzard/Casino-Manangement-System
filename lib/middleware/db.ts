@@ -36,14 +36,37 @@ export async function connectDB() {
     mongooseCache.promise = mongoose
       .connect(MONGODB_URI, {
         bufferCommands: false,
-        connectTimeoutMS: 10000,
+        connectTimeoutMS: 60000,        // 30s connection timeout
+        serverSelectionTimeoutMS: 60000, // 30s server selection timeout
+        socketTimeoutMS: 45000,         // 45s socket timeout (longer than server selection)
+        maxPoolSize: 10,                // Maximum number of connections in pool
+        minPoolSize: 2,                 // Minimum number of connections in pool
+        maxIdleTimeMS: 60000,           // Close connections after 30s of inactivity
+        heartbeatFrequencyMS: 10000,     // Send heartbeat every 10s
+        retryWrites: true,              // Retry write operations
+        retryReads: true,               // Retry read operations
+        // Connection pool settings
+        maxConnecting: 2,               // Maximum number of connections being established
+        // Timeout settings
+        waitQueueTimeoutMS: 5000,       // Wait 5s for connection from pool
       })
       .then((mongooseInstance) => {
         return mongooseInstance.connection;
       })
       .catch((err) => {
         mongooseCache.promise = null;
-        console.error("MongoDB connection error:", err);
+        // Log connection errors but don't throw to prevent app crashes
+        if (err.name === "MongooseServerSelectionError") {
+          console.warn(
+            "🔧 MongoDB server selection timeout - database may be unavailable"
+          );
+        } else if (err.name === "MongooseTimeoutError") {
+          console.warn(
+            "⏰ MongoDB connection timeout - database may be slow or unavailable"
+          );
+        } else {
+          console.warn("⚠️ MongoDB connection error:", err.message);
+        }
         throw err;
       });
   }

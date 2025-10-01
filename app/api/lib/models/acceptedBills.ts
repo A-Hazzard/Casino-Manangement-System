@@ -1,10 +1,12 @@
-import { model, models, Schema, Types } from "mongoose";
+import { model, models, Schema } from "mongoose";
 
 const acceptedBillSchema = new Schema(
   {
+    _id: String,
     value: { type: Number, required: true },
-    machine: { type: Types.ObjectId, ref: "machines", required: true },
-    location: { type: Types.ObjectId, ref: "locations", required: true },
+    machine: { type: String, required: true },
+    location: { type: String, required: true },
+    member: { type: String, required: true, default: "ANONYMOUS" },
     movement: {
       dollar1: { type: Number, default: 0 },
       dollar2: { type: Number, default: 0 },
@@ -21,6 +23,8 @@ const acceptedBillSchema = new Schema(
       dollarTotalUnknown: { type: Number, default: 0 }
     },
     readAt: { type: Date, required: true },
+    createdAt: { type: Date }, // This will be set by timestamps, but explicitly included for clarity
+    updatedAt: { type: Date }, // This will be set by timestamps, but explicitly included for clarity
   },
   {
     timestamps: true,
@@ -28,7 +32,7 @@ const acceptedBillSchema = new Schema(
 );
 
 /**
- * Mongoose model for accepted bills, including value, machine, location, movement, and readAt.
+ * Mongoose model for accepted bills, including value, machine, location, member, movement, readAt, createdAt, and updatedAt.
  */
 export const AcceptedBill =
   models["acceptedbills"] ?? model("acceptedbills", acceptedBillSchema);

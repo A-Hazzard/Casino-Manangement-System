@@ -42,9 +42,11 @@ export default function PcLayout(props: PcLayoutProps) {
     const fetchAgg = async () => {
       // Only fetch if we have a valid activeMetricsFilter - no fallback
       if (!activeMetricsFilter) {
-        console.warn(
-          "⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch"
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch"
+          );
+        }
         setLocationAggregates([]);
         setAggLoading(false);
         return;
@@ -102,6 +104,7 @@ export default function PcLayout(props: PcLayoutProps) {
           <div className="flex flex-wrap items-center gap-2">
             <DashboardDateFilters
               disabled={props.loadingChartData || props.refreshing}
+              hideAllTime={true}
             />
           </div>
 

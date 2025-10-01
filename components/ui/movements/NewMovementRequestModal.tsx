@@ -23,7 +23,7 @@ import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { createMovementRequest } from "@/lib/helpers/movementRequests";
 import type { MovementRequest } from "@/lib/types/movementRequests";
-import type { Cabinet } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 import type { NewMovementModalProps } from "@/lib/types/components";
 import type { MachineMovementRecord } from "@/lib/types/reports";
 import { generateMongoId } from "@/lib/utils/id";

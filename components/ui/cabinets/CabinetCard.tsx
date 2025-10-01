@@ -9,6 +9,7 @@ import { CabinetCardProps } from "@/lib/types/cardProps";
 import { motion } from "framer-motion";
 import editIcon from "@/public/editIcon.svg";
 import deleteIcon from "@/public/deleteIcon.svg";
+import { formatMachineDisplayNameWithBold } from "@/lib/utils/machineDisplay";
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,13 @@ export default function CabinetCard(props: CabinetCardProps) {
           {props.locationName || "No Location"}
         </p>
         <p className="text-xs xs:text-xs sm:text-sm text-gray-600 truncate">
-          {props.serialNumber || props.assetNumber || "No S/N"}
+          {formatMachineDisplayNameWithBold({
+            serialNumber: props.serialNumber,
+            assetNumber: props.assetNumber,
+            custom: { name: undefined }, // CabinetCard doesn't have customName prop
+            game: props.game || props.installedGame,
+            installedGame: props.installedGame,
+          })}
         </p>
       </div>
 

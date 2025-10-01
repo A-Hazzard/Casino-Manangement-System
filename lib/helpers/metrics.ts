@@ -52,25 +52,32 @@ export async function getMetrics(
       url += `&licencee=${licencee}`;
     }
 
-    const { data } = await axios.get<Array<{
-      day: string;
-      time?: string;
-      drop: number;
-      totalCancelledCredits: number;
-      gross: number;
-      location?: string;
-      machine?: string;
-      geoCoords?: {
-        latitude?: number;
-        longitude?: number;
-        longtitude?: number;
-      };
-    }>>(url);
+    const { data } = await axios.get<
+      Array<{
+        day: string;
+        time?: string;
+        drop: number;
+        totalCancelledCredits: number;
+        gross: number;
+        location?: string;
+        machine?: string;
+        geoCoords?: {
+          latitude?: number;
+          longitude?: number;
+          longtitude?: number;
+        };
+      }>
+    >(url, {
+      timeout: 60000, // 30 second timeout
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+    });
     if (!Array.isArray(data) || data.length === 0) return [];
 
     // Determine if we should group by hour
     let groupByHour = timePeriod === "Today" || timePeriod === "Yesterday";
-    
+
     // For custom ranges, check if it spans only one day
     if (timePeriod === "Custom" && startDate && endDate) {
       const start = new Date(startDate);
@@ -133,11 +140,62 @@ export async function getMetrics(
     );
 
     return filledData;
-  } catch (error) {
-    // Log error for debugging in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("Failed to fetch metrics:", error);
+  } catch (error: unknown) {
+    // Enhanced error handling for metrics fetch
+    console.error("Failed to fetch metrics:", error);
+
+    // Handle specific error types
+    if (error && typeof error === "object" && "response" in error) {
+      const axiosError = error as {
+        response?: { status?: number; statusText?: string };
+      };
+      const status = axiosError.response?.status;
+      const statusText = axiosError.response?.statusText;
+
+      if (status === 503) {
+        console.warn(
+          "Metrics API temporarily unavailable (503). This may be due to server load."
+        );
+        // Return empty array for 503 errors to prevent UI blocking
+        return [];
+      }
+
+      if (status && status >= 500) {
+        console.error(`Server error (${status}): ${statusText}`);
+        return [];
+      }
+
+      if (status === 404) {
+        console.error("Metrics endpoint not found (404)");
+        return [];
+      }
     }
+
+    if (error && typeof error === "object" && "code" in error && error.code === "ECONNABORTED") {
+      console.error("Metrics API request timed out");
+      return [];
+    }
+
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "NETWORK_ERROR" ||
+      (error &&
+      typeof error === "object" &&
+      "message" in error &&
+      typeof error.message === "string" &&
+      error.message?.includes("Network Error"))
+    ) {
+      console.error("Network error while fetching metrics");
+      return [];
+    }
+
+    // Log the full error in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Full error details:", error);
+    }
+
     return [];
   }
 }
@@ -160,7 +218,7 @@ function fillMissingIntervals(
 
   // Determine if this should be an hourly chart
   let isHourly = timePeriod === "Today" || timePeriod === "Yesterday";
-  
+
   // For custom ranges, check if it spans only one day
   if (timePeriod === "Custom" && startDate && endDate) {
     const diffInMs = endDate.getTime() - startDate.getTime();
@@ -219,7 +277,7 @@ function fillMissingIntervals(
     const current = new Date(start);
     while (current <= end) {
       // Use the date directly as YYYY-MM-DD format to avoid timezone conversion issues
-      const dayKey = current.toISOString().split('T')[0];
+      const dayKey = current.toISOString().split("T")[0];
       const existingData = data.find((item) => item.day === dayKey);
 
       if (existingData) {

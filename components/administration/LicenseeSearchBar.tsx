@@ -1,18 +1,13 @@
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import activityLogIcon from "@/public/activityLogIcon.svg";
 
 type LicenseeSearchBarProps = {
   searchValue: string;
   setSearchValue: (value: string) => void;
-  onActivityLogClick: () => void;
 };
 
 export default function LicenseeSearchBar({
   searchValue,
   setSearchValue,
-  onActivityLogClick,
 }: LicenseeSearchBarProps) {
   return (
     <div className="mt-6 flex items-center gap-4 bg-buttonActive p-4 rounded-t-lg">
@@ -30,18 +25,6 @@ export default function LicenseeSearchBar({
           </span>
         </div>
       </div>
-      <Button
-        onClick={onActivityLogClick}
-        className="bg-button text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-buttonActive transition-colors"
-      >
-        <Image
-          src={activityLogIcon}
-          alt="Activity Log"
-          width={20}
-          height={20}
-        />
-        <span>Activity Log</span>
-      </Button>
     </div>
   );
 }

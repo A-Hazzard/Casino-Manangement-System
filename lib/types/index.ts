@@ -11,9 +11,21 @@ export type { ParamsType };
 export type { CustomDate };
 export type { TimePeriod };
 
-export * from "@/lib/types/movementRequests";
+export * from "@/shared/types/entities";
 
-export type { LoginRequestBody, AuthResult } from "./auth";
+export type { LoginRequestBody, AuthResult } from "@/shared/types/auth";
+
+// Collection Report types
+export type { 
+  UseCollectionReportDataProps, 
+  UseCollectionReportDataReturn 
+} from "./collectionReport";
+
+// Dashboard types
+export type { 
+  UseDashboardFiltersProps, 
+  UseDashboardFiltersReturn 
+} from "./dashboard";
 
 // Dashboard types
 export type dashboardData = {
@@ -47,8 +59,8 @@ export type ActiveFilters = {
 };
 export type ActiveTab = "locations" | "Cabinets";
 export type dateRange = { startDate: Date; endDate: Date };
-export type Location = { 
-  _id: string; 
+export type Location = {
+  _id: string;
   name: string;
   locationName?: string;
   geoCoords?: {
@@ -163,8 +175,6 @@ export type ReportTab = {
   label: string;
   icon?: string;
   description?: string;
-  requiredRoles?: string[];
-  requiredPermissions?: string[];
 };
 
 export type ReportField = {
@@ -176,4 +186,8 @@ export type ReportField = {
 
 export type ReportFieldCategory = string;
 
-export type ReportType = "locationPerformance" | "machineRevenue" | "fullFinancials" | "customerActivity";
+export type ReportType =
+  | "locationPerformance"
+  | "machineRevenue"
+  | "fullFinancials"
+  | "customerActivity";

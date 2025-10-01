@@ -28,7 +28,7 @@ export default function SessionsFilters({
     <div className="space-y-6">
       {/* Date Filters */}
       <div>
-        <DashboardDateFilters />
+        <DashboardDateFilters hideAllTime={false} />
       </div>
 
       {/* Search and Filter Controls */}

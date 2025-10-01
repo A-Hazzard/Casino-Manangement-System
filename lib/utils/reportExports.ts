@@ -253,27 +253,9 @@ export class ReportExportUtils {
 
   /**
    * Validate user permissions for export
+   * All authenticated users can export reports
    */
-  static validateExportPermissions(
-    userRoles: string[], 
-    requiredRoles: string[], 
-    reportType: string
-  ): { canExport: boolean; message?: string } {
-    // Admin can export all reports
-    if (userRoles.includes("admin")) {
-      return { canExport: true };
-    }
-
-    // Check if user has any of the required roles
-    const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
-    
-    if (!hasRequiredRole) {
-      return { 
-        canExport: false, 
-        message: `Insufficient permissions to export ${reportType}. Required roles: ${requiredRoles.join(", ")}` 
-      };
-    }
-
+  static validateExportPermissions(): { canExport: boolean; message?: string } {
     return { canExport: true };
   }
 } 

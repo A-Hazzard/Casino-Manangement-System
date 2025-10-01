@@ -267,5 +267,5 @@ components/collectionReport/mobile/
 ---
 
 **Author**: Aaron Hazzard - Senior Software Engineer  
-**Last Updated**: September 20th, 2025
+**Last Updated**: September 23rd, 2025
 

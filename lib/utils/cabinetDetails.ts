@@ -1,8 +1,8 @@
+import { GamingMachine } from "@/shared/types/entities";
 import { TimePeriod } from "../types/api";
-import { CabinetDetail } from "../types/cabinets";
 import { DebounceFunction } from "../types/utils";
 
-type ExtendedCabinetDetail = CabinetDetail & {
+type ExtendedCabinetDetail = GamingMachine & {
   lastCommunication?: string | Date;
 };
 

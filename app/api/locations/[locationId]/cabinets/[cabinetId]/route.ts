@@ -246,24 +246,23 @@ export async function PUT(
           updateFields
         );
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
-          },
-          "UPDATE",
-          "machine",
-          {
-            id: cabinetId,
-            name: originalCabinet.serialNumber || originalCabinet.game,
-          },
-          changes,
-          `Updated cabinet "${
+        await logActivity({
+          action: "UPDATE",
+          details: `Updated cabinet "${
             originalCabinet.serialNumber || originalCabinet.game
           }" in location "${location.name}"`,
-          getClientIP(request) || undefined
-        );
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: cabinetId,
+            resourceName: originalCabinet.serialNumber || originalCabinet.game,
+            changes: changes,
+          },
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -372,24 +371,23 @@ export async function PATCH(
           updateFields
         );
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
-          },
-          "UPDATE",
-          "machine",
-          {
-            id: cabinetId,
-            name: originalCabinet.serialNumber || originalCabinet.game,
-          },
-          changes,
-          `Updated collection settings for cabinet "${
+        await logActivity({
+          action: "UPDATE",
+          details: `Updated collection settings for cabinet "${
             originalCabinet.serialNumber || originalCabinet.game
           }" in location "${location.name}"`,
-          getClientIP(request) || undefined
-        );
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: cabinetId,
+            resourceName: originalCabinet.serialNumber || originalCabinet.game,
+            changes: changes,
+          },
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -483,24 +481,23 @@ export async function DELETE(
           },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
-          },
-          "DELETE",
-          "machine",
-          {
-            id: cabinetId,
-            name: cabinetToDelete.serialNumber || cabinetToDelete.game,
-          },
-          deleteChanges,
-          `Deleted cabinet "${
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted cabinet "${
             cabinetToDelete.serialNumber || cabinetToDelete.game
           }" from location "${location.name}"`,
-          getClientIP(request) || undefined
-        );
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: cabinetId,
+            resourceName: cabinetToDelete.serialNumber || cabinetToDelete.game,
+            changes: deleteChanges,
+          },
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

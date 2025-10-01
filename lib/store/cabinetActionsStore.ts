@@ -1,7 +1,17 @@
 import { create } from "zustand";
-import { CabinetActionsState } from "@/lib/types/cabinets";
+import type { GamingMachine } from "@/shared/types/entities";
 
-// Define a no-op version for SSR
+type CabinetActionsState = {
+  selectedCabinet: GamingMachine | null;
+  isEditModalOpen: boolean;
+  isDeleteModalOpen: boolean;
+  openEditModal: (cabinet: GamingMachine) => void;
+  openDeleteModal: (cabinet: GamingMachine) => void;
+  closeEditModal: () => void;
+  closeDeleteModal: () => void;
+};
+
+// Define a no-op ve`rsion for SSR
 const dummyState: CabinetActionsState = {
   selectedCabinet: null,
   isEditModalOpen: false,

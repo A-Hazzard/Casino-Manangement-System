@@ -1,30 +1,10 @@
 import axios from "axios";
 import { locations } from "@/lib/types";
-import { Cabinet } from "@/lib/types/cabinets";
+import { GamingMachine as Cabinet } from "@/shared/types/entities";
 import { LocationData, AggregatedLocation } from "../types/location";
 import { TimePeriod } from "../types/api";
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
-
-// Type-safe pagination interface
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  totalCount: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
-
-// Helper function to create default pagination
-const createDefaultPagination = (): PaginationInfo => ({
-  page: 1,
-  limit: 10,
-  totalCount: 0,
-  totalPages: 0,
-  hasNextPage: false,
-  hasPrevPage: false,
-});
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -42,9 +22,6 @@ export async function fetchLocationAndCabinets(
   try {
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
-      console.warn(
-        "⚠️ No timePeriod provided to fetchLocationAndCabinets, returning empty cabinets"
-      );
       return { name: "Location", cabinets: [] };
     }
 
@@ -423,10 +400,8 @@ export async function fetchAggregatedLocationsData(
   timePeriod: TimePeriod,
   licensee?: string,
   filterString?: string,
-  dateRange?: { from: Date; to: Date },
-  page: number = 1,
-  limit: number = 10
-): Promise<{ data: AggregatedLocation[]; pagination: PaginationInfo }> {
+  dateRange?: { from: Date; to: Date }
+): Promise<AggregatedLocation[]> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;
@@ -438,10 +413,6 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     if (filterString)
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
-
-    // Add pagination parameters
-    queryParams.push(`page=${page}`);
-    queryParams.push(`limit=${limit}`);
 
     // Always show all locations, even those with 0 meters (like cabinets page)
     queryParams.push(`showAllLocations=true`);
@@ -463,38 +434,25 @@ export async function fetchAggregatedLocationsData(
 
     if (response.status !== 200) {
       console.error(`❌ API error (${response.status}):`, response.data);
-      return { data: [], pagination: createDefaultPagination() };
+      return [];
     }
 
     // Handle paginated response structure
     const responseData = response.data;
     if (responseData && typeof responseData === 'object' && 'data' in responseData) {
       // Paginated response: { data: [...], pagination: {...} }
-      return {
-        data: responseData.data || [],
-        pagination: responseData.pagination || {}
-      };
+      return responseData.data || [];
     } else if (Array.isArray(responseData)) {
-      // Direct array response (fallback for backward compatibility)
-      return {
-        data: responseData,
-        pagination: { 
-          page: 1, 
-          limit: responseData.length, 
-          totalCount: responseData.length, 
-          totalPages: 1, 
-          hasNextPage: false, 
-          hasPrevPage: false 
-        }
-      };
+      // Direct array response
+      return responseData;
     } else {
       // Fallback for unexpected structure
       console.warn('Unexpected API response structure:', responseData);
-      return { data: [], pagination: createDefaultPagination() };
+      return [];
     }
   } catch (error) {
     console.error("Error fetching locations data:", error);
-    return { data: [], pagination: { page: 1, limit: 10, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
+    return [];
   }
 }
 

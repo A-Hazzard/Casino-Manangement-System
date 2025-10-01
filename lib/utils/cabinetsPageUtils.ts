@@ -1,5 +1,5 @@
 import { differenceInMinutes } from "date-fns";
-import type { CabinetDetail } from "@/lib/types/cabinets";
+import type { GamingMachine as CabinetDetail } from "@/shared/types/entities";
 
 /**
  * Check if cabinet is online based on last activity

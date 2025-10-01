@@ -1,4 +1,4 @@
-import { CustomDate, TimePeriod } from "@/app/api/lib/types";
+import { CustomDate, TimePeriod } from "@/shared/types/common";
 
 /**
  * Calculates the start and end dates for a specified time period based on a given timezone.

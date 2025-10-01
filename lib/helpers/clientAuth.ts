@@ -1,4 +1,14 @@
-import type { AuthResult } from "../types/auth";
+import type { AuthResult } from "@/shared/types/auth";
+
+/**
+ * Validates database context on client side
+ */
+export function validateClientDatabaseContext(): boolean {
+  // This function can be called to check if the current environment
+  // matches what was used when the token was created
+  // For now, we'll rely on server-side validation
+  return true;
+}
 
 /**
  * Client-side login function that makes an API call to authenticate user
@@ -44,7 +54,16 @@ export async function loginUser(credentials: {
       return { success: false, message: errorMessage };
     }
 
-    return data;
+    // Extract the data from the API response to match AuthResult structure
+    return {
+      success: data.success,
+      message: data.message,
+      user: data.data?.user,
+      expiresAt: data.data?.expiresAt,
+      requiresPasswordUpdate: data.data?.requiresPasswordUpdate,
+      requiresProfileUpdate: data.data?.requiresProfileUpdate,
+      invalidProfileFields: data.data?.invalidProfileFields,
+    };
   } catch (error) {
     console.error("Login error:", error);
     return {

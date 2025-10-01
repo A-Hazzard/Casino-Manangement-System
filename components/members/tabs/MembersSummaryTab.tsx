@@ -28,9 +28,9 @@ import axios from "axios";
 import type {
   MemberSummary,
   SummaryStats,
-  PaginationInfo,
   Location,
-} from "@/lib/types/members";
+} from "@/shared/types/entities";
+import type { PaginationInfo } from "@/shared/types/reports";
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -367,7 +367,7 @@ export default function MembersSummaryTab() {
     return (
       member.fullName.toLowerCase().includes(searchLower) ||
       member.phoneNumber.toLowerCase().includes(searchLower) ||
-      member.address.toLowerCase().includes(searchLower) ||
+      (member.address || "").toLowerCase().includes(searchLower) ||
       member.locationName.toLowerCase().includes(searchLower)
     );
   });
@@ -413,7 +413,7 @@ export default function MembersSummaryTab() {
             </Button>
             <Button
               onClick={handlePrevPage}
-              disabled={!pagination.hasPrevPage}
+              disabled={!pagination.hasPrev}
               variant="outline"
               size="sm"
               className="px-2 py-1 text-xs"
@@ -441,7 +441,7 @@ export default function MembersSummaryTab() {
             </div>
             <Button
               onClick={handleNextPage}
-              disabled={!pagination.hasNextPage}
+              disabled={!pagination.hasNext}
               variant="outline"
               size="sm"
               className="px-2 py-1 text-xs"
@@ -470,10 +470,10 @@ export default function MembersSummaryTab() {
               <span className="font-medium">
                 {Math.min(
                   currentPage * pagination.limit,
-                  pagination.totalCount
+                  pagination.total
                 )}
               </span>{" "}
-              of <span className="font-medium">{pagination.totalCount}</span>{" "}
+              of <span className="font-medium">{pagination.total}</span>{" "}
               results
             </p>
           </div>
@@ -493,7 +493,7 @@ export default function MembersSummaryTab() {
               </Button>
               <Button
                 onClick={handlePrevPage}
-                disabled={!pagination.hasPrevPage}
+                disabled={!pagination.hasPrev}
                 variant="outline"
                 size="sm"
                 className="relative inline-flex items-center px-2 py-2 text-gray-400 border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
@@ -539,7 +539,7 @@ export default function MembersSummaryTab() {
 
               <Button
                 onClick={handleNextPage}
-                disabled={!pagination.hasNextPage}
+                disabled={!pagination.hasNext}
                 variant="outline"
                 size="sm"
                 className="relative inline-flex items-center px-2 py-2 text-gray-400 border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
@@ -589,7 +589,7 @@ export default function MembersSummaryTab() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Locations</p>
               <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.totalLocations}
+                {locations.length}
               </p>
             </div>
           </div>
@@ -602,10 +602,10 @@ export default function MembersSummaryTab() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">
-                Recent Members
+                Active Members
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.recentMembers}
+                {summaryStats.activeMembers}
               </p>
             </div>
           </div>
@@ -916,7 +916,7 @@ export default function MembersSummaryTab() {
 
       {/* Date Filters */}
       <div className="mb-6">
-        <DashboardDateFilters />
+        <DashboardDateFilters hideAllTime={false} />
       </div>
 
       {/* Summary Cards */}
@@ -985,7 +985,7 @@ export default function MembersSummaryTab() {
           setIsModalOpen(false);
           setSelectedMember(null);
         }}
-        member={selectedMember}
+        member={selectedMember ? { ...selectedMember, gamingLocation: selectedMember._id, address: selectedMember.address || "" } : null}
       />
     </motion.div>
   );

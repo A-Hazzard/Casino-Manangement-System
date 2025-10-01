@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 import PageLayout from "@/components/layout/PageLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import NotFoundError from "@/components/ui/errors/NotFoundError";
-
 
 import PlayerHeader from "@/components/members/PlayerHeader";
 import PlayerTotalsCard from "@/components/members/PlayerTotalsCard";
@@ -21,9 +21,20 @@ import { ChevronLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type FilterType = "session" | "day" | "week" | "month";
-type SortOption = "time" | "sessionLength" | "moneyIn" | "moneyOut" | "jackpot" | "wonLess" | "points" | "gamesPlayed" | "gamesWon" | "coinIn" | "coinOut";
+type SortOption =
+  | "time"
+  | "sessionLength"
+  | "moneyIn"
+  | "moneyOut"
+  | "jackpot"
+  | "wonLess"
+  | "points"
+  | "gamesPlayed"
+  | "gamesWon"
+  | "coinIn"
+  | "coinOut";
 
-export default function MemberDetailsPage() {
+function MemberDetailsPageContent() {
   const params = useParams();
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
@@ -192,7 +203,9 @@ export default function MemberDetailsPage() {
         toast.success("Session data exported successfully!");
       }
     } catch (error) {
-      console.error("Export error:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Export error:", error);
+      }
       toast.error("Failed to export session data. Please try again.");
     } finally {
       setLoading(false);
@@ -224,7 +237,9 @@ export default function MemberDetailsPage() {
       return (
         <NotFoundError
           title="Member Not Found"
-          message={error || `The member with ID "${params.id}" could not be found.`}
+          message={
+            error || `The member with ID "${params.id}" could not be found.`
+          }
           resourceType="member"
           showRetry={false}
           customBackText="Back to Members"
@@ -238,6 +253,7 @@ export default function MemberDetailsPage() {
 
     return (
       <div className="space-y-6">
+        {/* Navigation Section: Back button to return to members list */}
         <div className="mb-4">
           <Link href="/members">
             <Button variant="outline" size="sm">
@@ -247,15 +263,17 @@ export default function MemberDetailsPage() {
           </Link>
         </div>
 
+        {/* Member Header Section: Member information and details */}
         <PlayerHeader member={member} />
 
+        {/* Member Totals Section: Financial summary and toggle controls */}
         <PlayerTotalsCard
           member={member}
           showTotals={showTotals}
           handleToggleTotals={handleToggleTotals}
         />
 
-        {/* Filter Controls and Export */}
+        {/* Filter Controls and Export Section: View filters and export functionality */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
@@ -295,6 +313,7 @@ export default function MemberDetailsPage() {
           </div>
         </div>
 
+        {/* Sessions Table Section: Member session data with pagination and sorting */}
         <PlayerSessionTable
           sessions={currentSessions}
           currentPage={currentPage}
@@ -310,7 +329,6 @@ export default function MemberDetailsPage() {
 
   return (
     <>
-
       <PageLayout
         headerProps={{
           selectedLicencee,
@@ -322,5 +340,13 @@ export default function MemberDetailsPage() {
         <div className="w-full mt-8">{renderContent()}</div>
       </PageLayout>
     </>
+  );
+}
+
+export default function MemberDetailsPage() {
+  return (
+    <ProtectedRoute requiredPage="member-details">
+      <MemberDetailsPageContent />
+    </ProtectedRoute>
   );
 }

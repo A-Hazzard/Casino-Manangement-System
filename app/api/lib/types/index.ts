@@ -12,4 +12,4 @@ export type { TimePeriod };
 
 export * from "@/lib/types/movementRequests";
 
-export type { LoginRequestBody, AuthResult } from "./auth";
+export type { LoginRequestBody, AuthResult } from "@/shared/types/auth";

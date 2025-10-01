@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
 import { Collections } from "@/app/api/lib/models/collections";
-import { NewMachineData, MachineUpdateData } from "@/lib/types/machines";
+import type { GamingMachine } from "@/shared/types/entities";
+// TODO: Move these to shared types or create new ones
+type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
+  collectionSettings?: {
+    lastCollectionTime?: string;
+    lastMetersIn?: string;
+    lastMetersOut?: string;
+  };
+};
+type MachineUpdateData = Partial<GamingMachine>;
 // TODO: Import date utilities when implementing date filtering
 // import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { Meters } from "../lib/models/meters";
@@ -55,7 +64,6 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
   return value.toLowerCase();
 }
 
-
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -66,7 +74,10 @@ export async function GET(request: NextRequest) {
     // Support both single machine fetch (id) and location-based fetch (locationId)
     if (!id && !locationId) {
       return NextResponse.json(
-        { success: false, error: "Either Cabinet ID or Location ID is required" },
+        {
+          success: false,
+          error: "Either Cabinet ID or Location ID is required",
+        },
         { status: 400 }
       );
     }
@@ -83,14 +94,19 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: machines.map(machine => convertResponseToTrinidadTime(machine.toObject())),
+        data: machines.map((machine) =>
+          convertResponseToTrinidadTime(machine.toObject())
+        ),
       });
     }
 
     // Original single machine fetch logic
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Cabinet ID is required for single machine fetch" },
+        {
+          success: false,
+          error: "Cabinet ID is required for single machine fetch",
+        },
         { status: 400 }
       );
     }
@@ -128,7 +144,7 @@ export async function GET(request: NextRequest) {
             now: "$$NOW",
           },
         },
-        
+
         // Stage 3: Calculate time boundaries for different periods (today, last 7 days, last 30 days)
         {
           $set: {
@@ -322,7 +338,7 @@ export async function GET(request: NextRequest) {
       meterData = await Meters.aggregate([
         // Stage 1: Filter meter records to only this specific machine
         { $match: { machine: id } },
-        
+
         // Stage 2: Aggregate all financial metrics across all time periods
         {
           $group: {
@@ -583,7 +599,6 @@ export async function POST(request: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const createChanges = [
-
           {
             field: "serialNumber",
             oldValue: null,
@@ -614,30 +629,52 @@ export async function POST(request: NextRequest) {
             newValue: data.accountingDenomination,
           },
 
-          { field: "serialNumber", oldValue: null, newValue: data.serialNumber },
+          {
+            field: "serialNumber",
+            oldValue: null,
+            newValue: data.serialNumber,
+          },
           { field: "game", oldValue: null, newValue: data.game },
-          { field: "gameType", oldValue: null, newValue: data.gameType || "slot" },
-          { field: "isCronosMachine", oldValue: null, newValue: data.isCronosMachine },
+          {
+            field: "gameType",
+            oldValue: null,
+            newValue: data.gameType || "slot",
+          },
+          {
+            field: "isCronosMachine",
+            oldValue: null,
+            newValue: data.isCronosMachine,
+          },
           { field: "cabinetType", oldValue: null, newValue: data.cabinetType },
           { field: "assetStatus", oldValue: null, newValue: data.assetStatus },
-          { field: "gamingLocation", oldValue: null, newValue: data.gamingLocation },
+          {
+            field: "gamingLocation",
+            oldValue: null,
+            newValue: data.gamingLocation,
+          },
           { field: "smibBoard", oldValue: null, newValue: data.smibBoard },
-          { field: "accountingDenomination", oldValue: null, newValue: data.accountingDenomination },
+          {
+            field: "accountingDenomination",
+            oldValue: null,
+            newValue: data.accountingDenomination,
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "CREATE",
+          details: `Created new machine "${data.serialNumber}" with game "${data.game}"`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: machineId,
+            resourceName: data.serialNumber,
+            changes: createChanges,
           },
-          "CREATE",
-          "machine",
-          { id: machineId, name: data.serialNumber },
-          createChanges,
-          `Created new machine "${data.serialNumber}" with game "${data.game}"`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -672,7 +709,6 @@ export async function PUT(request: NextRequest) {
 
     const data = (await request.json()) as MachineUpdateData;
 
-
     // Backend validations mirroring frontend (only when provided)
     if (data.serialNumber !== undefined) {
       const serialNumberError = validateSerialNumber(data.serialNumber);
@@ -696,8 +732,6 @@ export async function PUT(request: NextRequest) {
       data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? "";
     }
 
-
-    
     // Get original machine data for change tracking
     const originalMachine = await Machine.findById(id);
     if (!originalMachine) {
@@ -713,7 +747,11 @@ export async function PUT(request: NextRequest) {
     });
 
     // If serial number was updated, also update it in Collections
-    if (data.serialNumber !== undefined && data.serialNumber !== "" && data.serialNumber !== originalMachine.serialNumber) {
+    if (
+      data.serialNumber !== undefined &&
+      data.serialNumber !== "" &&
+      data.serialNumber !== originalMachine.serialNumber
+    ) {
       try {
         await Collections.updateMany(
           { machineId: id },
@@ -724,13 +762,20 @@ export async function PUT(request: NextRequest) {
           `Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`
         );
       } catch (collectionsError) {
-        console.error("Failed to update serial number in Collections:", collectionsError);
+        console.error(
+          "Failed to update serial number in Collections:",
+          collectionsError
+        );
         // Don't fail the entire operation if Collections update fails
       }
     }
 
     // If game name was updated, also update it in Collections
-    if (data.game !== undefined && data.game !== "" && data.game !== originalMachine.game) {
+    if (
+      data.game !== undefined &&
+      data.game !== "" &&
+      data.game !== originalMachine.game
+    ) {
       try {
         await Collections.updateMany(
           { machineId: id },
@@ -741,7 +786,10 @@ export async function PUT(request: NextRequest) {
           `Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`
         );
       } catch (collectionsError) {
-        console.error("Failed to update machine name in Collections:", collectionsError);
+        console.error(
+          "Failed to update machine name in Collections:",
+          collectionsError
+        );
         // Don't fail the entire operation if Collections update fails
       }
     }
@@ -752,19 +800,23 @@ export async function PUT(request: NextRequest) {
       try {
         const changes = calculateChanges(originalMachine.toObject(), data);
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "UPDATE",
+          details: `Updated machine "${
+            originalMachine.serialNumber || originalMachine.game
+          }"`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: id,
+            resourceName: originalMachine.serialNumber || originalMachine.game,
+            changes: changes,
           },
-          "UPDATE",
-          "machine",
-          { id, name: originalMachine.serialNumber || originalMachine.game },
-          changes,
-          `Updated machine "${originalMachine.serialNumber || originalMachine.game}"`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }
@@ -818,7 +870,6 @@ export async function DELETE(request: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
-
           {
             field: "serialNumber",
             oldValue: machineToDelete.serialNumber,
@@ -856,30 +907,61 @@ export async function DELETE(request: NextRequest) {
             newValue: null,
           },
 
-          { field: "serialNumber", oldValue: machineToDelete.serialNumber, newValue: null },
+          {
+            field: "serialNumber",
+            oldValue: machineToDelete.serialNumber,
+            newValue: null,
+          },
           { field: "game", oldValue: machineToDelete.game, newValue: null },
-          { field: "gameType", oldValue: machineToDelete.gameType, newValue: null },
-          { field: "isCronosMachine", oldValue: machineToDelete.isCronosMachine, newValue: null },
-          { field: "cabinetType", oldValue: machineToDelete.cabinetType, newValue: null },
-          { field: "assetStatus", oldValue: machineToDelete.assetStatus, newValue: null },
-          { field: "gamingLocation", oldValue: machineToDelete.gamingLocation, newValue: null },
-          { field: "smibBoard", oldValue: machineToDelete.smibBoard, newValue: null },
+          {
+            field: "gameType",
+            oldValue: machineToDelete.gameType,
+            newValue: null,
+          },
+          {
+            field: "isCronosMachine",
+            oldValue: machineToDelete.isCronosMachine,
+            newValue: null,
+          },
+          {
+            field: "cabinetType",
+            oldValue: machineToDelete.cabinetType,
+            newValue: null,
+          },
+          {
+            field: "assetStatus",
+            oldValue: machineToDelete.assetStatus,
+            newValue: null,
+          },
+          {
+            field: "gamingLocation",
+            oldValue: machineToDelete.gamingLocation,
+            newValue: null,
+          },
+          {
+            field: "smibBoard",
+            oldValue: machineToDelete.smibBoard,
+            newValue: null,
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DELETE",
+          details: `Deleted machine "${
+            machineToDelete.serialNumber || machineToDelete.game
+          }"`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "machine",
+            resourceId: id,
+            resourceName: machineToDelete.serialNumber || machineToDelete.game,
+            changes: deleteChanges,
           },
-          "DELETE",
-          "machine",
-          { id, name: machineToDelete.serialNumber || machineToDelete.game },
-          deleteChanges,
-
-          `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game}"`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

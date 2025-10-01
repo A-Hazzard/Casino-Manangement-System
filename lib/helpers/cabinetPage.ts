@@ -1,6 +1,12 @@
-import { Cabinet, CabinetProps, CabinetSortOption } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
+type CabinetProps = Partial<Cabinet> & {
+  _id: string;
+  onEdit: () => void;
+  onDelete: () => void;
+};
 import { fetchCabinetLocations, fetchCabinets } from "@/lib/helpers/cabinets";
-import { TimePeriod } from "@/app/api/lib/types";
+import { TimePeriod } from "@/shared/types/common";
 
 /**
  * Loads cabinet locations data

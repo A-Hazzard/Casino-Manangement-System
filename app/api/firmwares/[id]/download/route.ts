@@ -37,30 +37,29 @@ export async function GET(request: NextRequest) {
       // New format: file stored in GridFS
       const files = await bucket.find({ _id: firmware.fileId }).toArray();
       if (files.length === 0) {
-
         return NextResponse.json(
           { error: "File not found in GridFS" },
           { status: 404 }
         );
 
-        return NextResponse.json({ error: "File not found in GridFS" }, { status: 404 });
+        return NextResponse.json(
+          { error: "File not found in GridFS" },
+          { status: 404 }
+        );
       }
       const file = files[0];
       fileName = firmware.fileName || file.filename;
       fileSize = firmware.fileSize || file.length;
 
-
       // Create download stream from GridFS
       const downloadStream = bucket.openDownloadStream(firmware.fileId);
       const chunks: Buffer[] = [];
 
-      
       await new Promise<void>((resolve, reject) => {
         downloadStream.on("data", (chunk) => chunks.push(chunk));
         downloadStream.on("end", () => resolve());
         downloadStream.on("error", reject);
       });
-
 
       fileBuffer = Buffer.concat(chunks);
     } else if (firmware.file && typeof firmware.file === "object") {
@@ -86,7 +85,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-
     // Return the file as response
     const response = new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
@@ -101,24 +99,26 @@ export async function GET(request: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "DOWNLOAD",
+          details: `Downloaded firmware "${firmware.product} v${firmware.version}" (${fileName})`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "Firmware",
+            resourceId: id,
+            resourceName: `${firmware.product} v${firmware.version}`,
+            changes: [
+              { field: "fileName", oldValue: null, newValue: fileName },
+              { field: "fileSize", oldValue: null, newValue: fileSize },
+              { field: "product", oldValue: null, newValue: firmware.product },
+              { field: "version", oldValue: null, newValue: firmware.version },
+            ],
           },
-          "DOWNLOAD",
-          "Firmware",
-          { id, name: `${firmware.product} v${firmware.version}` },
-          [
-            { field: "fileName", oldValue: null, newValue: fileName },
-            { field: "fileSize", oldValue: null, newValue: fileSize },
-            { field: "product", oldValue: null, newValue: firmware.product },
-            { field: "version", oldValue: null, newValue: firmware.version },
-          ],
-          `Downloaded firmware "${firmware.product} v${firmware.version}" (${fileName})`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log download activity:", logError);
       }

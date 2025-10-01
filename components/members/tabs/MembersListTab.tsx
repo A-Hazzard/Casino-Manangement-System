@@ -5,7 +5,20 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 
 import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
-import { Member, MemberSortOption } from "@/lib/types/members";
+import type { CasinoMember as Member } from "@/shared/types/entities";
+type MemberSortOption =
+  | "name"
+  | "playerId"
+  | "points"
+  | "sessions"
+  | "totalHandle"
+  | "totalWon"
+  | "totalLost"
+  | "lastSession"
+  | "status"
+  | "locationName"
+  | "winLoss"
+  | "lastLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +32,9 @@ import { Plus } from "lucide-react";
 import { Toaster } from "sonner";
 import Image from "next/image";
 
+// Import SVG icons for pre-rendering
+import membersIcon from "@/public/membersIcon.svg";
+
 import MemberCard from "@/components/ui/members/MemberCard";
 import MemberTable from "@/components/ui/members/MemberTable";
 import MemberSkeleton from "@/components/ui/members/MemberSkeleton";
@@ -28,8 +44,6 @@ import DeleteMemberModal from "@/components/ui/members/DeleteMemberModal";
 import NewMemberModal from "@/components/ui/members/NewMemberModal";
 
 export default function MembersListTab() {
-
-
   const {
     selectedMember,
     isEditModalOpen,
@@ -72,8 +86,6 @@ export default function MembersListTab() {
           sortBy: sortBy,
           sortOrder: sortOrder,
         });
-
-
 
         const response = await axios.get(`/api/members?${params}`);
         const result = response.data;
@@ -128,8 +140,8 @@ export default function MembersListTab() {
           bValue = b._id;
           break;
         case "lastSession":
-          aValue = a.createdAt;
-          bValue = b.createdAt;
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
           break;
         case "locationName":
           aValue = (a.locationName || "").toLowerCase();
@@ -140,8 +152,8 @@ export default function MembersListTab() {
           bValue = b.winLoss || 0;
           break;
         case "lastLogin":
-          aValue = a.lastLogin || "";
-          bValue = b.lastLogin || "";
+          aValue = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+          bValue = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
           break;
         default:
           aValue = a._id;
@@ -221,7 +233,7 @@ export default function MembersListTab() {
             Members List
           </h1>
           <Image
-            src="/membersIcon.svg"
+            src={membersIcon}
             alt="Members Icon"
             width={32}
             height={32}
@@ -455,13 +467,13 @@ export default function MembersListTab() {
       <EditMemberModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
-        member={selectedMember._id ? selectedMember as Member : null}
+        member={selectedMember._id ? (selectedMember as Member) : null}
         onMemberUpdated={fetchMembers}
       />
       <DeleteMemberModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        member={selectedMember._id ? selectedMember as Member : null}
+        member={selectedMember._id ? (selectedMember as Member) : null}
         onDelete={fetchMembers}
       />
       <NewMemberModal

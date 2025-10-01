@@ -77,11 +77,6 @@ type ReportsActions = {
   setActiveView: (view: ReportView) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setUserPermissions: (permissions: {
-    roles: string[];
-    permissions: string[];
-    locationIds: string[];
-  } | null) => void;
 
   // Dashboard actions
   updateDashboardWidgets: (widgets: DashboardWidget[]) => void;
@@ -210,7 +205,6 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       setActiveView: (view) => set({ activeView: view }),
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
-      setUserPermissions: (permissions) => set({ userPermissions: permissions }),
 
       // Dashboard actions
       updateDashboardWidgets: (widgets) => set({ dashboardWidgets: widgets }),

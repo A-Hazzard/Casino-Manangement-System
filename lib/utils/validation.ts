@@ -1,4 +1,4 @@
-import { UserDocument } from "@/app/api/lib/types/auth";
+import { UserDocument } from "@/shared/types/auth";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 
 /**
@@ -14,13 +14,168 @@ export function validateEmail(
 }
 
 /**
- * Validates if a password is at least 6 characters.
+ * Validates if a password meets strength requirements.
  *
  * @param password - The password to validate.
  * @returns True if valid, false otherwise.
  */
 export function validatePassword(password: UserDocument["password"]): boolean {
-  return password.length >= 6;
+  // Minimum 8 characters, at least one uppercase, one lowercase, one number
+  const strongPasswordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+  return strongPasswordRegex.test(password);
+}
+
+/**
+ * Validates password strength and returns detailed feedback.
+ *
+ * @param password - The password to validate.
+ * @returns Object with validation result and feedback.
+ */
+export function validatePasswordStrength(password: string): {
+  isValid: boolean;
+  score: number; // 0-4 scale
+  feedback: string[];
+  requirements: {
+    length: boolean;
+    uppercase: boolean;
+    lowercase: boolean;
+    number: boolean;
+    special: boolean;
+  };
+} {
+  const feedback: string[] = [];
+  const requirements = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[@$!%*?&]/.test(password),
+  };
+
+  let score = 0;
+
+  if (requirements.length) {
+    score++;
+  } else {
+    feedback.push("Password must be at least 8 characters long");
+  }
+
+  if (requirements.uppercase) {
+    score++;
+  } else {
+    feedback.push("Password must contain at least one uppercase letter");
+  }
+
+  if (requirements.lowercase) {
+    score++;
+  } else {
+    feedback.push("Password must contain at least one lowercase letter");
+  }
+
+  if (requirements.number) {
+    score++;
+  } else {
+    feedback.push("Password must contain at least one number");
+  }
+
+  if (requirements.special) {
+    score++;
+  } else {
+    feedback.push(
+      "Password should contain at least one special character (@$!%*?&)"
+    );
+  }
+
+  const isValid = score >= 4; // Require at least 4 out of 5 criteria
+
+  return {
+    isValid,
+    score,
+    feedback,
+    requirements,
+  };
+}
+
+/**
+ * Gets password strength label based on score.
+ *
+ * @param score - Password strength score (0-4).
+ * @returns String label for password strength.
+ */
+export function getPasswordStrengthLabel(score: number): string {
+  switch (score) {
+    case 0:
+    case 1:
+      return "Very Weak";
+    case 2:
+      return "Weak";
+    case 3:
+      return "Good";
+    case 4:
+    case 5:
+      return "Strong";
+    default:
+      return "Unknown";
+  }
+}
+
+/**
+ * Validates if a string contains special characters that are not allowed in usernames, firstnames, or lastnames.
+ * Also checks for phone number patterns.
+ *
+ * @param value - The string to validate.
+ * @returns True if valid (no special characters or phone patterns), false otherwise.
+ */
+export function validateProfileField(value: string): boolean {
+  // Allow letters, numbers, spaces, hyphens, and apostrophes
+  const allowedPattern = /^[a-zA-Z0-9\s\-']+$/;
+
+  // Check for phone number patterns
+  const phonePattern =
+    /^[\+]?[1-9][\d]{0,15}$|^[\+]?[(]?[\d\s\-\(\)]{7,}$|^[\+]?[1-9][\d\s\-\(\)]{6,}$/;
+
+  return allowedPattern.test(value) && !phonePattern.test(value.trim());
+}
+
+/**
+ * Validates if a string contains only letters and spaces (for names).
+ * Also checks for phone number patterns.
+ *
+ * @param value - The string to validate.
+ * @returns True if valid (only letters and spaces, no phone patterns), false otherwise.
+ */
+export function validateNameField(value: string): boolean {
+  // Allow only letters and spaces
+  const allowedPattern = /^[a-zA-Z\s]+$/;
+
+  // Check for phone number patterns
+  const phonePattern =
+    /^[\+]?[1-9][\d]{0,15}$|^[\+]?[(]?[\d\s\-\(\)]{7,}$|^[\+]?[1-9][\d\s\-\(\)]{6,}$/;
+
+  return allowedPattern.test(value) && !phonePattern.test(value.trim());
+}
+
+/**
+ * Checks if a string contains phone number patterns.
+ *
+ * @param value - The string to check.
+ * @returns True if contains phone number patterns, false otherwise.
+ */
+export function containsPhonePattern(value: string): boolean {
+  // Various phone number patterns
+  const phonePatterns = [
+    /^[\+]?[1-9][\d]{0,15}$/, // International format: +1234567890
+    /^[\+]?[(]?[\d\s\-\(\)]{7,}$/, // With parentheses: (123) 456-7890
+    /^[\+]?[1-9][\d\s\-\(\)]{6,}$/, // With dashes: 123-456-7890
+    /^\d{3}[\s\-]?\d{3}[\s\-]?\d{4}$/, // US format: 123-456-7890 or 123 456 7890
+    /^\(\d{3}\)\s?\d{3}[\s\-]?\d{4}$/, // US format with parentheses: (123) 456-7890
+    /^\d{10}$/, // 10 digits: 1234567890
+    /^\d{11}$/, // 11 digits: 11234567890
+  ];
+
+  const trimmedValue = value.trim();
+  return phonePatterns.some((pattern) => pattern.test(trimmedValue));
 }
 
 /**

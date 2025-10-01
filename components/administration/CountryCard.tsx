@@ -1,6 +1,10 @@
 import type { Country } from "@/lib/types/country";
 import Image from "next/image";
 
+// Import SVG icons for pre-rendering
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
+
 type CountryCardProps = {
   country: Country;
   onEdit: (country: Country) => void;
@@ -36,7 +40,7 @@ export default function CountryCard({
         </div>
         <div className="flex justify-end gap-3 items-center">
           <Image
-            src="/editIcon.svg"
+            src={editIcon}
             alt="Edit"
             width={22}
             height={22}
@@ -44,7 +48,7 @@ export default function CountryCard({
             onClick={() => onEdit(country)}
           />
           <Image
-            src="/deleteIcon.svg"
+            src={deleteIcon}
             alt="Delete"
             width={22}
             height={22}

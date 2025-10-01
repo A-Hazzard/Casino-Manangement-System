@@ -5,11 +5,12 @@ import { Suspense } from "react";
 // Components
 import MembersContent from "@/components/members/MembersContent";
 import { MembersPageSkeleton } from "@/components/ui/skeletons/MembersSkeletons";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 /**
  * Members Page
  * Main entry point for member management and analytics
- * 
+ *
  * Features:
  * - Member listing and management
  * - Member session analytics and summaries
@@ -19,8 +20,10 @@ import { MembersPageSkeleton } from "@/components/ui/skeletons/MembersSkeletons"
  */
 export default function MembersPage() {
   return (
-    <Suspense fallback={<MembersPageSkeleton />}>
-      <MembersContent />
-    </Suspense>
+    <ProtectedRoute requiredPage="members">
+      <Suspense fallback={<MembersPageSkeleton />}>
+        <MembersContent />
+      </Suspense>
+    </ProtectedRoute>
   );
 }

@@ -10,19 +10,6 @@ All contributors should adhere to the following rules, which are enforced throug
 
 ---
 
-## 1. Package Management & Build Integrity
-
-- **Use `pnpm` exclusively** for all package management tasks (install, update, remove).
-- After any code or dependency change, always run `pnpm build`.
-- If a build error occurs, fix the error, then re-run `pnpm build`.
-- Repeat this process recursively until the project builds cleanly with zero errors or warnings.
-- For development, use `pnpm dev` to start the local development server.
-
-**Reference:**  
-- `package.json` - Project dependencies and scripts
-
----
-
 ## 2. TypeScript Discipline & Types Organization
 
 - **All type definitions must reside in the appropriate types directories:**

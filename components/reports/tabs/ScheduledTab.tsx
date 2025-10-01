@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// Removed unused import
 import {
   Select,
   SelectContent,
@@ -102,9 +101,6 @@ export default function ScheduledTab() {
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("scheduled");
-  // Commented out unused variables
-  // const [selectedReport, setSelectedReport] = useState<ScheduledReport | null>(null);
-  // const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Form state for creating/editing scheduled reports
   const [formData, setFormData] = useState({

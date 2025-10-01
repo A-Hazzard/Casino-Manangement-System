@@ -1,0 +1,156 @@
+[{
+  "_id": "45e0eb97b683f374b1ce70a7",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T17:57:23.813Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T17:57:23.813Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "c87e0a48341e05f6edf9b491",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T17:56:29.364Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T17:56:29.364Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "f85a9bfec1cece26f82a1d62",
+  "value": 10,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T15:25:56.160Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T15:25:56.160Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "3bc4dede5c9f4aae9bdc90be",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T15:11:13.095Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T15:11:13.095Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "20eaf7b2bf94760eec2765eb",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T14:28:09.220Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T14:28:09.220Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "203a1a9b74f6a82e588b7533",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T14:10:55.528Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T14:10:55.528Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "310907d989b03190f8954d75",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T14:08:33.887Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T14:08:33.887Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "efc34bdb508894ede5d6d543",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T13:50:23.039Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T13:50:23.039Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "91f7f3de15a21e48de8a9bfc",
+  "value": 100,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T13:33:35.751Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T13:33:35.751Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "f95d1b6115044cf043a7c0b6",
+  "value": 5,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T13:27:45.706Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T13:27:45.706Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "c26f9c3d9a87abf2daf46b06",
+  "value": 5,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T13:27:42.469Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T13:27:42.469Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "16ba551bfd93cb1fa012dac7",
+  "value": 20,
+  "machine": "9432aaddbd1239a79e7ead93",
+  "member": "ANONYMOUS",
+  "createdAt": {
+    "$date": "2025-09-25T12:39:00.366Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T12:39:00.366Z"
+  },
+  "__v": 0
+}]

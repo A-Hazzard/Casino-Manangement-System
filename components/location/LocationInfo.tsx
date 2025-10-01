@@ -6,11 +6,10 @@ import type { LocationData as LocationDataType } from "@/lib/types/location";
 
 type ExtendedLocationInfoProps = {
   location: LocationDataType | null;
-  // loading: boolean; // Removed as unused
 };
 
 const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
-  location /*, loading*/,
+  location,
 }) => {
   // Format address object into a string
   const formatAddress = (address?: LocationData["address"]) => {

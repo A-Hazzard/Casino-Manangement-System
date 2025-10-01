@@ -1,7 +1,8 @@
 // UI-related utility functions
 
 import { gsap } from "gsap";
-import { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
 import { RefObject } from "react";
 
 /**

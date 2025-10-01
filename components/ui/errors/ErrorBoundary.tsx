@@ -1,138 +1,164 @@
 "use client";
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
-import { motion } from "framer-motion";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface Props {
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: ErrorInfo;
+}
+
+export interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-}
-
-interface State {
-  hasError: boolean;
-  error?: Error;
+  resetOnPropsChange?: boolean;
+  resetKeys?: Array<string | number>;
 }
 
 /**
- * Error Boundary Component
- * Catches JavaScript errors anywhere in the child component tree
+ * ErrorBoundary component to catch and handle React errors gracefully
+ * 
+ * @param children - React components to wrap
+ * @param fallback - Custom fallback UI to show when error occurs
+ * @param onError - Callback function called when error occurs
+ * @param resetOnPropsChange - Whether to reset error state when props change
+ * @param resetKeys - Array of keys to watch for changes to reset error state
  */
-export default class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  private resetTimeoutId: number | null = null;
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      error,
+    };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    // Log error to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("ErrorBoundary caught an error:", error, errorInfo);
+    }
+
+    // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);
+
+    this.setState({
+      error,
+      errorInfo,
+    });
   }
 
-  handleRetry = () => {
-    this.setState({ hasError: false, error: undefined });
-  };
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    const { resetKeys, resetOnPropsChange } = this.props;
+    const { hasError } = this.state;
 
-  handleGoHome = () => {
-    window.location.href = "/";
+    if (hasError && prevProps.resetKeys !== resetKeys) {
+      if (resetKeys && prevProps.resetKeys && resetKeys.length === prevProps.resetKeys.length) {
+        const hasResetKeyChanged = resetKeys.some((key, index) => key !== prevProps.resetKeys?.[index]);
+        if (hasResetKeyChanged) {
+          this.resetErrorBoundary();
+        }
+      }
+    }
+
+    if (hasError && resetOnPropsChange && prevProps.children !== this.props.children) {
+      this.resetErrorBoundary();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.resetTimeoutId) {
+      clearTimeout(this.resetTimeoutId);
+    }
+  }
+
+  resetErrorBoundary = () => {
+    if (this.resetTimeoutId) {
+      clearTimeout(this.resetTimeoutId);
+    }
+
+    this.resetTimeoutId = window.setTimeout(() => {
+      this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    }, 100);
   };
 
   render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
+    const { hasError, error } = this.state;
+    const { children, fallback } = this.props;
+
+    if (hasError) {
+      if (fallback) {
+        return fallback;
       }
 
       return (
-        <div className="min-h-[60vh] flex items-center justify-center p-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center max-w-md mx-auto"
-          >
-            {/* Icon */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-6"
-            >
-              <div className="w-24 h-24 mx-auto bg-red-50 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-12 h-12 text-red-500" />
+        <Card className="border-red-200 bg-red-50 max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-2">
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+            </div>
+            <CardTitle className="text-red-800">Something went wrong</CardTitle>
+            <CardDescription className="text-red-700">
+              An unexpected error occurred while loading this component.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            {error && (
+              <div className="text-sm text-red-600 bg-red-100 p-3 rounded-md">
+                <strong>Error:</strong> {error.message}
               </div>
-            </motion.div>
-
-            {/* Title */}
-            <motion.h1
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-2xl font-bold text-gray-900 mb-3"
-            >
-              Something went wrong
-            </motion.h1>
-
-            {/* Message */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-gray-600 mb-8 leading-relaxed"
-            >
-              An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
-            </motion.p>
-
-            {/* Error Details (in development) */}
-            {process.env.NODE_ENV === "development" && this.state.error && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.45 }}
-                className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-left"
-              >
-                <p className="text-sm font-medium text-gray-700 mb-2">Error Details:</p>
-                <p className="text-xs text-red-600 font-mono break-all">
-                  {this.state.error.message}
-                </p>
-              </motion.div>
             )}
-
-            {/* Action Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="flex flex-col sm:flex-row gap-3 justify-center"
+            
+            <Button
+              onClick={this.resetErrorBoundary}
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-100"
             >
-              <Button
-                onClick={this.handleGoHome}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Home className="w-4 h-4" />
-                Go to Dashboard
-              </Button>
-              
-              <Button
-                onClick={this.handleRetry}
-                className="flex items-center gap-2 bg-button hover:bg-buttonActive"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Try Again
-              </Button>
-            </motion.div>
-          </motion.div>
-        </div>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            
+            <div className="text-xs text-red-600">
+              <p>If this problem persists, please refresh the page or contact support.</p>
+            </div>
+          </CardContent>
+        </Card>
       );
     }
 
-    return this.props.children;
+    return children;
   }
+}
+
+/**
+ * Hook version of ErrorBoundary for functional components
+ */
+export function useErrorHandler() {
+  const [error, setError] = React.useState<Error | null>(null);
+
+  const resetError = React.useCallback(() => {
+    setError(null);
+  }, []);
+
+  const captureError = React.useCallback((error: Error) => {
+    setError(error);
+  }, []);
+
+  React.useEffect(() => {
+    if (error) {
+      throw error;
+    }
+  }, [error]);
+
+  return { captureError, resetError };
 }

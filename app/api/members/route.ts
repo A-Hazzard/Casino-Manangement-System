@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
-    
+
     // Date filters
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    
+
     // Win/Loss filter
     const winLossFilter = searchParams.get("winLossFilter"); // "positive", "negative", "all"
-    
+
     // Location filter
     const locationFilter = searchParams.get("locationFilter");
 
@@ -152,7 +152,10 @@ export async function GET(request: NextRequest) {
               $add: [
                 "$$value",
                 {
-                  $ifNull: [{ $toDouble: "$$this.endMeters.movement.coinIn" }, 0],
+                  $ifNull: [
+                    { $toDouble: "$$this.endMeters.movement.coinIn" },
+                    0,
+                  ],
                 },
               ],
             },
@@ -333,26 +336,48 @@ export async function POST(request: NextRequest) {
       try {
         const createChanges = [
           { field: "username", oldValue: null, newValue: body.username },
-          { field: "firstName", oldValue: null, newValue: body.profile.firstName },
-          { field: "lastName", oldValue: null, newValue: body.profile.lastName },
-          { field: "email", oldValue: null, newValue: body.profile.email || "" },
-          { field: "phoneNumber", oldValue: null, newValue: body.phoneNumber || "" },
-          { field: "gamingLocation", oldValue: null, newValue: body.gamingLocation || "default" },
+          {
+            field: "firstName",
+            oldValue: null,
+            newValue: body.profile.firstName,
+          },
+          {
+            field: "lastName",
+            oldValue: null,
+            newValue: body.profile.lastName,
+          },
+          {
+            field: "email",
+            oldValue: null,
+            newValue: body.profile.email || "",
+          },
+          {
+            field: "phoneNumber",
+            oldValue: null,
+            newValue: body.phoneNumber || "",
+          },
+          {
+            field: "gamingLocation",
+            oldValue: null,
+            newValue: body.gamingLocation || "default",
+          },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
+        await logActivity({
+          action: "CREATE",
+          details: `Created new member "${body.profile.firstName} ${body.profile.lastName}" with username "${body.username}"`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "member",
+            resourceId: newMember._id,
+            resourceName: `${body.profile.firstName} ${body.profile.lastName}`,
+            changes: createChanges,
           },
-          "CREATE",
-          "member",
-          { id: newMember._id, name: `${body.profile.firstName} ${body.profile.lastName}` },
-          createChanges,
-          `Created new member "${body.profile.firstName} ${body.profile.lastName}" with username "${body.username}"`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

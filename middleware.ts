@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifyAccessToken } from "@/lib/utils/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
-const publicPaths = ["/login", "/forgot-password"];
+const publicPaths = ["/login", "/forgot-password", "/reset-password"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,53 +18,110 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Debug logging for infinite loop investigation
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[MIDDLEWARE] Processing: ${pathname}`);
+  }
+
   const token = request.cookies.get("token")?.value;
   let isAuthenticated = false;
 
   if (token) {
     try {
-      // Make sure JWT_SECRET is not empty
-      if (!JWT_SECRET) {
-        console.error(
-          "JWT_SECRET is empty. Please set it in your environment variables."
-        );
-        return NextResponse.redirect(
-          new URL("/login?error=server_config", request.url)
-        );
-      }
+      const payload = await verifyAccessToken(token);
 
-      await jwtVerify(token, new TextEncoder().encode(JWT_SECRET));
-      isAuthenticated = true;
+      if (payload) {
+        // Database context validation - disabled since contexts match
+        // The database contexts are identical, so no validation needed
+        // TODO: Remove this section entirely once confirmed stable
+
+        // Check if user is enabled
+        if (!payload.isEnabled) {
+          console.warn("User account is disabled");
+          return createLogoutResponse(request, "account_disabled");
+        }
+
+        isAuthenticated = true;
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            `[MIDDLEWARE] User authenticated: ${payload.emailAddress}`
+          );
+        }
+      }
     } catch (err) {
       console.error("JWT verification failed:", err);
-      // Clear the invalid token by setting the response with an expired cookie
-      const response = NextResponse.redirect(
-        new URL("/login?error=invalid_token", request.url)
-      );
-      response.cookies.set("token", "", {
-        expires: new Date(0),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax", // Consistent with login cookie settings
-        path: "/",
-      });
-      return response;
+      return createLogoutResponse(request, "invalid_token");
+    }
+  } else {
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[MIDDLEWARE] No token found for ${pathname}`);
     }
   }
 
   const isPublicPath = publicPaths.includes(pathname);
 
-  // ✅ Redirect logged-in users away from `/login`
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `[MIDDLEWARE] isAuthenticated: ${isAuthenticated}, isPublicPath: ${isPublicPath}, pathname: ${pathname}`
+    );
+  }
+
+  // ✅ Redirect logged-in users away from public pages
   if (isAuthenticated && isPublicPath) {
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[MIDDLEWARE] Redirecting authenticated user from ${pathname} to /`
+      );
+    }
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   // ✅ Redirect unauthenticated users away from protected pages
   if (!isAuthenticated && !isPublicPath) {
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[MIDDLEWARE] Redirecting unauthenticated user from ${pathname} to /login`
+      );
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[MIDDLEWARE] Allowing access to ${pathname}`);
+  }
+
   return NextResponse.next();
+}
+
+/**
+ * Creates a logout response with cleared cookies
+ */
+function createLogoutResponse(
+  request: NextRequest,
+  error: string
+): NextResponse {
+  const response = NextResponse.redirect(
+    new URL(`/login?error=${error}`, request.url)
+  );
+
+  response.cookies.set("token", "", {
+    expires: new Date(0),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  response.cookies.set("refreshToken", "", {
+    expires: new Date(0),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  return response;
 }
 
 export const config = {

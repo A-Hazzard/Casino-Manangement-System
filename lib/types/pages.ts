@@ -1,8 +1,8 @@
-import type { CabinetDetail } from "./cabinets";
+import { GamingMachine } from "@/shared/types/entities";
 import type { ResourcePermissions } from "./administration";
 
 // Location page types
-export type ExtendedCabinetDetail = CabinetDetail & {
+export type ExtendedCabinetDetail = GamingMachine & {
   serialNumber: string;
   isOnline?: boolean;
   lastCommunication?: string | Date;

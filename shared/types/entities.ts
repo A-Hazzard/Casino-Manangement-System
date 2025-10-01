@@ -104,94 +104,59 @@ export type TopLocation = {
   holdPercentage: number;
 };
 
-// Machine types
-export type Machine = {
+// Unified Gaming Machine type - consolidates Machine and Cabinet types
+export type GamingMachine = {
   _id: string;
+  // Core identification fields
   serialNumber: string;
+  origSerialNumber?: string; // Original serial number from system
+  assetNumber?: string;
+  machineId?: string;
+  relayId: string;
+  smbId?: string; // Alias for smibBoard for UI convenience
+  smibBoard?: string;
+  custom: { name: string }; // Custom name for machines - required field
+  
+  // Game information
   game: string;
+  installedGame?: string; // Alias for game for UI convenience
   gameType: string;
   isCronosMachine: boolean;
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    [key: string]: unknown;
-  };
+  gameNumber?: string;
+  
+  // Physical characteristics
   cabinetType: string;
   assetStatus: string;
+  status?: string; // Alias for assetStatus for UI convenience
+  manufacturer?: string;
+  manuf?: string; // Alternative manufacturer field
+  
+  // Location and configuration
   gamingLocation: string;
-  relayId: string;
-  collectionTime?: string;
-  collectionMeters?: {
-    metersIn: number;
-    metersOut: number;
-  };
-  billValidator?: BillValidatorData;
-  lastActivity?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date;
-  collectionMetersHistory?: CollectionMetersHistoryEntry[];
-};
-
-export type MachineDocument = {
-  _id: Types.ObjectId | string;
-  machineId?: string;
-  gamingLocation?: Types.ObjectId | string;
-  serialNumber?: string;
-  relayId?: string;
-  smibBoard?: string;
-  game?: string;
-  cabinetType?: string;
-  assetStatus?: string;
-  lastActivity?: Date;
-  sasMeters?: SasMeters;
-  billValidator?: BillValidatorData;
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    maxBet?: string;
-    payTableId?: string;
-  };
-  smibVersion?: {
-    firmware?: string;
-    version?: string;
-  };
-  collectionMeters?: {
-    metersIn?: number;
-    metersOut?: number;
-  };
-  collectionMetersHistory?: unknown[];
-  deletedAt?: Date | null;
-  [key: string]: unknown;
-};
-
-// Cabinet types
-export type Cabinet = {
-  _id: string;
-  assetNumber?: string;
-  serialNumber?: string;
-  smbId?: string;
-  relayId?: string;
-  smibBoard?: string;
-  lastActivity?: string | Date;
-  lastOnline?: string | Date;
-  game?: string;
-  installedGame?: string;
-  cabinetType?: string;
-  assetStatus?: string;
-  status?: string;
-  gamingLocation?: string | Record<string, unknown>;
-  accountingDenomination?: string | number;
+  gamingBoard?: string;
+  accountingDenomination: number | string;
   collectionMultiplier?: string;
-  gameType?: string;
-  isCronosMachine?: boolean;
+  
+  // Activity and status
+  lastActivity?: Date | string;
+  lastOnline?: string | Date;
+  loggedIn?: boolean;
+  online?: boolean;
+  
+  // Financial metrics (from aggregation)
   moneyIn?: number;
   moneyOut?: number;
   jackpot?: number;
   cancelledCredits?: number;
   gross?: number;
+  coinIn?: number;
+  coinOut?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  handle?: number; // Same as coinIn for betting activity
+  
+  // SAS and meter data
   sasMeters?: SasMeters;
-  online?: boolean;
   meterData?: MeterData | null;
   calculatedMetrics?: {
     moneyIn: number;
@@ -201,32 +166,135 @@ export type Cabinet = {
     gamesPlayed: number;
     gamesWon: number;
   };
+  
+  // Configuration objects
   gameConfig?: {
     accountingDenomination?: number;
     theoreticalRtp?: number;
     maxBet?: string;
     payTableId?: string;
+    additionalId?: string;
+    gameOptions?: string;
+    progressiveGroup?: string;
   };
+  
   smibVersion?: {
     firmware?: string;
     version?: string;
   };
+  
   smibConfig?: SmibConfig;
+  
+  // Collection and bill validator data
   collectionMeters?: {
-    metersIn?: number;
-    metersOut?: number;
+    metersIn: number;
+    metersOut: number;
   };
   collectionTime?: string | Date;
-  collectionMetersHistory?: Array<{
-    metersIn?: number;
-    metersOut?: number;
-    timestamp?: string;
-    _id?: string;
+  previousCollectionTime?: Date;
+  collectorDenomination?: number;
+  collectionMetersHistory?: CollectionMetersHistoryEntry[];
+  
+  billValidator?: BillValidatorData;
+  billMeters?: {
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+  };
+  
+  // Machine settings and features
+  machineMembershipSettings?: {
+    isPointsAllowed: boolean;
+    isFreePlayAllowed: boolean;
+    pointsAwardMethod: string;
+    freePlayAmount: number;
+    freePlayCreditsTimeout: number;
+  };
+  
+  // Credits and balances
+  nonRestricted?: number;
+  restricted?: number;
+  uaccount?: number; // User account balance
+  playableBalance?: number;
+  
+  // SAS protocol and protocols
+  sasVersion?: string;
+  isSasMachine?: boolean;
+  protocols?: Array<{ protocol: string; version: string }>;
+  
+  // Game management
+  numberOfEnabledGames?: number;
+  enabledGameNumbers?: string[];
+  noOfGames?: number;
+  
+  // Maintenance and history
+  machineType?: string;
+  machineStatus?: string;
+  lastMaintenanceDate?: Date;
+  nextMaintenanceDate?: Date;
+  maintenanceHistory?: Array<{
+    date: Date;
+    description: string;
+    performedBy: string;
   }>;
-  deletedAt?: string | Date | null;
+  
+  sessionHistory?: Array<{
+    gamingLocation: string;
+    date: Date;
+    reason: string;
+    performedBy: string;
+    _id: string;
+  }>;
+  currentSession?: string;
+  
+  // Viewing account denomination
+  viewingAccountDenomination?: Array<{
+    asOf: Date;
+    denomination: number;
+    meters: string[];
+    user: { role: string };
+  }>;
+  viewingAccountDenominationHistory?: Array<{
+    asOf: Date;
+    denomination: number;
+    meters: string[];
+    user: { role: string };
+  }>;
+  selectedDenomination?: {
+    drop: number;
+    totalCancelledCredits: number;
+  };
+  
+  // Additional fields
+  isSunBoxDevice?: boolean;
+  lastBillMeterAt?: Date;
+  lastSasMeterAt?: Date;
+  operationsWhileIdle?: { extendedMeters: Date };
+  
+  // Timestamps
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  deletedAt?: Date | string | null;
+  
+  // Frontend-specific fields
   locationId?: string;
   locationName?: string;
 };
+
+// Legacy type aliases for backward compatibility
+export type Machine = GamingMachine;
+export type Cabinet = GamingMachine;
+export type MachineDocument = GamingMachine;
 
 export type SmibConfig = {
   net?: {
@@ -253,13 +321,15 @@ export type SmibConfig = {
   };
 };
 
-// User types
+// Unified User types - consolidates User from models and UserDocument from API types
 export type User = {
   _id: string;
   name: string;
   username: string;
   email: string;
+  emailAddress: string; // Added for API compatibility
   enabled: boolean;
+  isEnabled: boolean; // Added for API compatibility
   roles: string[];
   profilePicture: string | null;
   resourcePermissions?: ResourcePermissions;
@@ -283,6 +353,91 @@ export type User = {
       idNumber?: string;
       notes?: string;
     };
+  };
+  // Additional fields from UserDocument
+  isLocked?: boolean;
+  lockedUntil?: Date | string;
+  failedLoginAttempts?: number;
+  lastLoginAt?: Date | string;
+  loginCount?: number;
+  deletedAt?: Date | string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
+
+// Casino Member type - extends User for casino-specific functionality
+export type CasinoMember = {
+  _id: string;
+  memberId: string;
+  username: string;
+  user: string; // Reference to User _id
+  gamingLocation: string;
+  locationName?: string;
+  accountLocked: boolean;
+  areaCode?: string;
+  authType: number;
+  createdAt: Date | string;
+  currentSession: string;
+  deletedAt: Date | string | null;
+  endBillMeters?: BillMetersData;
+  endMeters?: MetersData;
+  endTime?: Date | string | null;
+  freePlayAwardId: number;
+  gameName: string;
+  gamesPlayed: number;
+  gamesWon: number;
+  intermediateMeters?: MetersData;
+  lastLogin?: Date | string;
+  lastPwUpdatedAt?: Date | string | null;
+  lastfplAwardAt?: Date | string;
+  locationMembershipSettings?: LocationMembershipSettings;
+  loggedIn: boolean;
+  machineId: string;
+  machineSerialNumber: string;
+  nonRestricted: number;
+  numFailedLoginAttempts: number;
+  phoneNumber?: string;
+  pin: string;
+  points: number;
+  profile: {
+    indentification: {
+      number: string;
+      type: string;
+    };
+    firstName: string;
+    lastName: string;
+    gender: string;
+    dob: string;
+    email?: string;
+    address: string;
+    occupation: string;
+  };
+  relayId: string;
+  restricted: number;
+  smsCode?: number;
+  smsCodeTime?: Date | string | null;
+  startBillMeters?: BillMetersData;
+  startMeters?: MetersData;
+  startTime?: Date | string | null;
+  status: string;
+  uaccount: number; // Account balance
+  ucardId: string;
+  ulock: number;
+  upassFull: number;
+  updatedAt: Date | string;
+  utype: number;
+  uvalid: number;
+  // Calculated fields for frontend
+  winLoss?: number;
+  totalMoneyIn?: number;
+  totalMoneyOut?: number;
+  sessions?: MemberSession[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalSessions: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
   };
 };
 
@@ -378,3 +533,161 @@ export type MovementRequestStatus =
   | "approved"
   | "rejected"
   | "in progress";
+
+// Supporting types for CasinoMember and GamingMachine
+export type MetersData = {
+  _id?: string;
+  machine?: string;
+  location?: string;
+  movement?: {
+    coinIn?: number;
+    coinOut?: number;
+    jackpot?: number;
+    totalHandPaidCancelledCredits?: number;
+    totalCancelledCredits?: number;
+    gamesPlayed?: number;
+    gamesWon?: number;
+    currentCredits?: number;
+    totalWonCredits?: number;
+    drop?: number;
+  };
+  coinIn?: number;
+  coinOut?: number;
+  jackpot?: number;
+  totalHandPaidCancelledCredits?: number;
+  totalCancelledCredits?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  currentCredits?: number;
+  totalWonCredits?: number;
+  drop?: number;
+  readAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
+
+export type BillMetersData = {
+  _id?: string;
+  machineSession?: string;
+  machine?: string;
+  location?: string;
+  movement?: {
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+  };
+  dollar1?: number;
+  dollar2?: number;
+  dollar5?: number;
+  dollar10?: number;
+  dollar20?: number;
+  dollar50?: number;
+  dollar100?: number;
+  dollar500?: number;
+  dollar1000?: number;
+  dollar2000?: number;
+  dollar5000?: number;
+  dollarTotal?: number;
+  readAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
+
+export type LocationMembershipSettings = {
+  locationLimit?: number;
+  freePlayAmount?: number;
+  enablePoints?: boolean;
+  enableFreePlays?: boolean;
+  pointsRatioMethod?: string;
+  pointMethodValue?: number;
+  gamesPlayedRatio?: number;
+  pointsMethodGameTypes?: string[];
+  freePlayGameTypes?: string[];
+  freePlayCreditsTimeout?: number;
+};
+
+export type MemberSession = {
+  _id: string;
+  sessionId?: string;
+  machineId?: string;
+  time?: string;
+  sessionLength?: string;
+  handle?: number;
+  moneyIn?: number; // Physical cash inserted (movement.drop)
+  moneyOut?: number; // Manual payouts (movement.totalCancelledCredits)
+  cancelledCredits?: number; // Legacy field - use moneyOut instead
+  jackpot?: number;
+  won?: number;
+  bet?: number;
+  wonLess?: number;
+  points?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  coinIn?: number;
+  coinOut?: number;
+  duration?: number;
+};
+
+// Members UI types
+export type MembersView = "members" | "summary-report";
+
+export type MembersTab = {
+  id: MembersView;
+  label: string;
+  icon: string;
+  description: string;
+};
+
+export type MemberSummary = {
+  _id: string;
+  fullName: string;
+  address?: string;
+  phoneNumber: string;
+  lastLogin: string;
+  createdAt: string;
+  locationName: string;
+  winLoss?: number;
+};
+
+export type SummaryStats = {
+  totalMembers: number;
+  activeMembers: number;
+  totalSessions: number;
+  averageSessionDuration: number;
+  topPerformers: unknown[];
+};
+
+
+export type SmibLocation = {
+  id: string;
+  name: string;
+};
+
+// Form data types for cabinet creation/editing
+export type NewCabinetFormData = {
+  serialNumber: string;
+  game: string;
+  gameType: string;
+  isCronosMachine: boolean;
+  accountingDenomination: string;
+  cabinetType: string;
+  assetStatus: string;
+  gamingLocation: string;
+  smibBoard: string;
+  manufacturer: string;
+  collectionSettings: {
+    multiplier: string;
+    lastCollectionTime: string;
+    lastMetersIn: string;
+    lastMetersOut: string;
+  };
+};

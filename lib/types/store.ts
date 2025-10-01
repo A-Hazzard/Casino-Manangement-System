@@ -8,8 +8,8 @@ import {
   TopPerformingData,
 } from "@/lib/types/index";
 import type { UserAuthPayload } from "@/shared/types/auth";
-import { TimePeriod } from "@/app/api/lib/types";
-import type { Firmware } from "./firmware";
+import { TimePeriod } from "@/shared/types/common";
+import type { Firmware } from "@/shared/types/entities";
 
 export type DashBoardStore = {
   initialLoading: boolean;

@@ -10,8 +10,10 @@ import {
 import { switchFilter } from "@/lib/utils/metrics";
 import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
 import getAllGamingLocations from "@/lib/helpers/locations";
-import { TimePeriod } from "@/app/api/lib/types";
+import { TimePeriod } from "@/shared/types/common";
 import axios from "axios";
+import { classifyError } from "@/lib/utils/errorHandling";
+import { showErrorNotification } from "@/lib/utils/errorNotifications";
 
 /**
  * Calculates pie chart label position data for rendering
@@ -40,10 +42,21 @@ export const loadGamingLocations = async (
 
     setGamingLocations(locationsData);
   } catch (error) {
-    console.error("Error loading gaming locations:", error);
+    const apiError = classifyError(error);
+    showErrorNotification(apiError, "Gaming Locations");
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error loading gaming locations:", error);
+    }
+    
     // Fallback to original method
-    const locationsData = await getAllGamingLocations(selectedLicencee);
-    setGamingLocations(locationsData);
+    try {
+      const locationsData = await getAllGamingLocations(selectedLicencee);
+      setGamingLocations(locationsData);
+    } catch (fallbackError) {
+      const fallbackApiError = classifyError(fallbackError);
+      showErrorNotification(fallbackApiError, "Gaming Locations Fallback");
+    }
   }
 };
 
@@ -77,7 +90,13 @@ export const fetchDashboardTotals = async (
       gross: totals.gross || 0,
     });
   } catch (error) {
-    console.error("Error fetching dashboard totals:", error);
+    const apiError = classifyError(error);
+    showErrorNotification(apiError, "Dashboard Totals");
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error fetching dashboard totals:", error);
+    }
+    
     setTotals(null);
   }
 };
@@ -148,7 +167,12 @@ export const fetchTopPerformingDataHelper = async (
     const data = await fetchTopPerformingData(activeTab, activePieChartFilter);
     setTopPerformingData(data);
   } catch (error) {
-    console.error("Error fetching top-performing data:", error);
+    const apiError = classifyError(error);
+    showErrorNotification(apiError, "Top Performing Data");
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error fetching top-performing data:", error);
+    }
   } finally {
     setLoadingTopPerforming(false);
   }
@@ -200,7 +224,12 @@ export const handleDashboardRefresh = async (
     ]);
     setTopPerformingData(topPerformingDataResult);
   } catch (error) {
-    console.error("Error refreshing data:", error);
+    const apiError = classifyError(error);
+    showErrorNotification(apiError, "Dashboard Refresh");
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error refreshing data:", error);
+    }
   } finally {
     setRefreshing(false);
     setLoadingChartData(false);

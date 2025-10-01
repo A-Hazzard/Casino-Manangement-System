@@ -24,47 +24,82 @@ export async function GET(req: NextRequest) {
 
     // If ?locationsOnly is present, return locations with machines
     if (searchParams.get("locationsWithMachines")) {
-      // Fetch all locations
-      const locations = await GamingLocations.find(
+      console.warn("🔄 Fetching locations with machines...");
+      const startTime = Date.now();
+      
+      // Use aggregation pipeline for better performance
+      const locationsWithMachines = await GamingLocations.aggregate([
         {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date("2020-01-01") } },
-          ],
+          $match: {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date("2020-01-01") } },
+            ],
+          },
         },
-        "_id name previousCollectionTime profitShare"
-      ).lean();
-      // For each location, fetch its machines
-      const locationsWithMachines = await Promise.all(
-        locations.map(async (loc) => {
-          const machines = await Machine.find(
-            {
-              gamingLocation: loc._id,
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date("1970-01-01") } },
-              ],
-            },
-            "_id serialNumber custom.name collectionMeters collectionTime"
-          ).lean();
-          return {
-            _id: loc._id,
-            name: loc.name,
-            previousCollectionTime: loc.previousCollectionTime,
-            profitShare: loc.profitShare,
-            machines: machines.map((m) => ({
-              _id: m._id,
-              serialNumber: m.serialNumber,
-              name: m.custom?.name || m.serialNumber || "Unnamed Machine",
-              collectionMeters: m.collectionMeters || {
-                metersIn: 0,
-                metersOut: 0,
+        {
+          $lookup: {
+            from: "machines",
+            localField: "_id",
+            foreignField: "gamingLocation",
+            as: "machines",
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date("1970-01-01") } },
+                  ],
+                },
               },
-              collectionTime: m.collectionTime,
-            })),
-          };
-        })
-      );
+              {
+                $project: {
+                  _id: 1,
+                  serialNumber: 1,
+                  "custom.name": 1,
+                  collectionMeters: 1,
+                  collectionTime: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            previousCollectionTime: 1,
+            profitShare: 1,
+            machines: {
+              $map: {
+                input: "$machines",
+                as: "machine",
+                in: {
+                  _id: "$$machine._id",
+                  serialNumber: "$$machine.serialNumber",
+                  name: {
+                    $ifNull: [
+                      "$$machine.custom.name",
+                      {
+                        $ifNull: ["$$machine.serialNumber", "Unnamed Machine"],
+                      },
+                    ],
+                  },
+                  collectionMeters: {
+                    $ifNull: [
+                      "$$machine.collectionMeters",
+                      { metersIn: 0, metersOut: 0 },
+                    ],
+                  },
+                  collectionTime: "$$machine.collectionTime",
+                },
+              },
+            },
+          },
+        },
+      ]);
+      
+      console.warn(`✅ Locations with machines fetched in ${Date.now() - startTime}ms`);
       return NextResponse.json({ locations: locationsWithMachines });
     }
 
@@ -111,11 +146,16 @@ export async function GET(req: NextRequest) {
       endDate = new Date(endDateStr);
     }
 
+    console.warn("🔄 Fetching collection reports...");
+    const startTime = Date.now();
+    
     const reports = await getAllCollectionReportsWithMachineCounts(
       licencee,
       startDate,
       endDate
     );
+    
+    console.warn(`✅ Collection reports fetched in ${Date.now() - startTime}ms (${reports.length} reports)`);
     return NextResponse.json(reports);
   } catch (error) {
     console.error("❌ Error in collectionReport GET endpoint:", error);
@@ -312,26 +352,25 @@ export async function POST(req: NextRequest) {
           },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || "user",
-          },
-          "CREATE",
-          "collection",
-          {
-            id: created._id.toString(),
-            name: `${body.locationName} - ${body.collectorName}`,
-          },
-          createChanges,
-          `Created collection report for ${body.locationName} by ${
+        await logActivity({
+          action: "CREATE",
+          details: `Created collection report for ${body.locationName} by ${
             body.collectorName
           } (${body.machines?.length || 0} machines, $${
             body.amountCollected
           } collected)`,
-          getClientIP(req) || undefined
-        );
+          ipAddress: getClientIP(req) || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "collection",
+            resourceId: created._id.toString(),
+            resourceName: `${body.locationName} - ${body.collectorName}`,
+            changes: createChanges,
+          },
+        });
       } catch (logError) {
         console.error("Failed to log activity:", logError);
       }

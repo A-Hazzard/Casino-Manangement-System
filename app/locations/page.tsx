@@ -1,16 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PageErrorBoundary from "@/components/ui/errors/PageErrorBoundary";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import {
-  fetchAggregatedLocationsData,
-  searchAllLocations,
-} from "@/lib/helpers/locations";
-import { AggregatedLocation } from "@/lib/types/location";
-import { LocationFilter, LocationSortOption } from "@/lib/types/location";
-import { TimePeriod } from "@/lib/types/api";
+import { LocationFilter } from "@/lib/types/location";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -18,14 +13,14 @@ import {
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
 import RefreshButton from "@/components/ui/RefreshButton";
-import { motion, AnimatePresence } from "framer-motion";
+import { FloatingRefreshButton } from "@/components/ui/FloatingRefreshButton";
 
 import PageLayout from "@/components/layout/PageLayout";
 
@@ -40,15 +35,22 @@ import Image from "next/image";
 import ClientOnly from "@/components/ui/common/ClientOnly";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import { IMAGES } from "@/lib/constants/images";
-import { useDebounce } from "@/lib/utils/hooks";
-import { fetchMachineStats } from "@/lib/helpers/machineStats";
+import { calculateLocationFinancialTotals } from "@/lib/utils/financial";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { NetworkError } from "@/components/ui/errors";
-import axios from "axios";
-import { getAuthHeaders } from "@/lib/utils/auth";
+import {
+  useLocationData,
+  useLocationSorting,
+  useLocationMachineStats,
+  useLocationModals,
+  useLocationPagination,
+} from "@/lib/hooks/data";
+import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
 
-export default function LocationsPage() {
+function LocationsPageContent() {
+  const { handleApiCallWithRetry: _handleApiCallWithRetry } =
+    useGlobalErrorHandler();
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -56,93 +58,65 @@ export default function LocationsPage() {
     customDateRange,
   } = useDashBoardStore();
 
-  const { openEditModal, openDeleteModal } = useLocationActionsStore();
+  const { openEditModal } = useLocationActionsStore();
 
-  const [currentPage, setCurrentPage] = useState(0);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [sortOption, setSortOption] = useState<LocationSortOption>("moneyIn");
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    totalCount: 0,
-    totalPages: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Custom hooks for data management
+  const { locationData, loading, searchLoading, error, fetchData } =
+    useLocationData({
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      searchTerm,
+      selectedFilters,
+    });
+
+  const {
+    sortedData,
+    sortOrder,
+    sortOption,
+    handleColumnSort,
+    totalPages,
+    currentItems,
+  } = useLocationSorting({
+    locationData,
+    selectedFilters,
   });
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
-  const router = useRouter();
+  // Custom hooks for additional functionality
+  const { machineStats, machineStatsLoading } = useLocationMachineStats();
 
-  // Debounce search term to reduce API calls
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const {
+    isNewLocationModalOpen,
+    openNewLocationModal,
+    closeNewLocationModal,
+    handleLocationClick,
+    handleTableAction,
+  } = useLocationModals();
+
+  const {
+    currentPage,
+    setCurrentPage,
+    handleFirstPage,
+    handleLastPage,
+    handlePrevPage,
+    handleNextPage,
+  } = useLocationPagination({ totalPages });
 
   // Handler for refresh button
   const handleRefresh = async () => {
-    console.warn("Refresh button clicked");
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-    console.warn("Refresh completed");
   };
 
-  // Machine stats state for online/offline counts (like dashboard)
-  const [machineStats, setMachineStats] = useState<{
-    totalMachines: number;
-    onlineMachines: number;
-    offlineMachines: number;
-  } | null>(null);
-  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
+  // Note: Machine stats and modal state are now managed by custom hooks
 
-  // Add isOpen state for NewLocationModal
-  const [isNewLocationModalOpen, setIsNewLocationModalOpen] = useState(false);
-
-  // Financial totals state for overall totals (not just current page)
-  const [financialTotals, setFinancialTotals] = useState<{
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-  } | null>(null);
-
-  // Replace openLocationModal with our local state handler
-  const openLocationModalLocal = () => setIsNewLocationModalOpen(true);
-  const closeLocationModal = () => setIsNewLocationModalOpen(false);
-
-  // Fetch overall financial totals (not just current page)
-  const fetchOverallTotals = useCallback(async () => {
-    try {
-      let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter || "Today"}`;
-      
-      if (activeMetricsFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
-        url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
-      }
-      
-      if (selectedLicencee && selectedLicencee !== "all") {
-        url += `&licencee=${selectedLicencee}`;
-      }
-
-      const response = await axios.get(url, {
-        headers: getAuthHeaders(),
-      });
-
-      if (response.status === 200) {
-        setFinancialTotals({
-          moneyIn: response.data.moneyIn || 0,
-          moneyOut: response.data.moneyOut || 0,
-          gross: response.data.gross || 0,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching overall financial totals:", error);
-      setFinancialTotals(null);
-    }
-  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
+  // Calculate financial totals from location data
+  const financialTotals = calculateLocationFinancialTotals(locationData);
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -151,193 +125,16 @@ export default function LocationsPage() {
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
-  // Fetch machine stats (like dashboard) for online/offline counts
-  useEffect(() => {
-    let aborted = false;
-    const loadMachineStats = async () => {
-      setMachineStatsLoading(true);
-      try {
-        const stats = await fetchMachineStats("all");
-        if (!aborted) {
-          setMachineStats(stats);
-        }
-      } catch {
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-          });
-        }
-      } finally {
-        if (!aborted) setMachineStatsLoading(false);
-      }
-    };
-    loadMachineStats();
-    return () => {
-      aborted = true;
-    };
-  }, []);
-
-  // Optimized data fetching with server-side pagination
-  const fetchData = useCallback(async () => {
-    console.warn("fetchData called - locations page");
-    setLoading(true);
-    setError(null);
-    try {
-      // If there's a search term, use the search function to get ALL locations
-      if (debouncedSearchTerm.trim()) {
-        setSearchLoading(true);
-        const effectiveLicencee = selectedLicencee || "";
-        const searchData = await searchAllLocations(
-          debouncedSearchTerm,
-          effectiveLicencee
-        );
-        setLocationData(searchData);
-        setSearchLoading(false);
-        return;
-      }
-
-      // Otherwise, use the normal fetchLocationsData for metrics-based data with pagination
-      const filterString = selectedFilters.length
-        ? selectedFilters.join(",")
-        : "";
-
-      let dateRangeForFetch = undefined;
-      const effectiveFilter = activeMetricsFilter || "Today";
-      if (effectiveFilter === "Custom" && customDateRange?.startDate && customDateRange?.endDate) {
-        dateRangeForFetch = {
-          from: customDateRange.startDate,
-          to: customDateRange.endDate,
-        };
-      }
-      // For "Today", "Yesterday", "7d", "30d", and "All Time", let the API handle the date logic
-      // by passing the timePeriod directly without a custom dateRange
-
-      // Use empty string as fallback if selectedLicencee is empty
-      const effectiveLicencee = selectedLicencee || "";
-
-      const result = await fetchAggregatedLocationsData(
-        (activeMetricsFilter || "Today") as TimePeriod,
-        effectiveLicencee,
-        filterString,
-        dateRangeForFetch,
-        currentPage + 1, // API uses 1-based pagination
-        10 // items per page
-      );
-
-      setLocationData(result.data);
-      setPagination(result.pagination || {
-        page: currentPage + 1,
-        limit: 10,
-        totalCount: result.data.length,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPrevPage: false,
-      });
-    } catch (err) {
-      setLocationData([]); // Set empty array on error
-      setError(err instanceof Error ? err.message : "Failed to load locations");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    selectedFilters,
-    customDateRange,
-    debouncedSearchTerm, // Use debounced search term
-    currentPage, // Add currentPage to dependencies for server-side pagination
-  ]);
-
-  // Fetch data when dependencies change
-  useEffect(() => {
-    fetchData();
-    fetchOverallTotals(); // Fetch overall financial totals
-  }, [fetchData, fetchOverallTotals]);
-
-  // Refresh data when user returns to the page (e.g., after updating a machine elsewhere)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Refresh data when the page becomes visible again (user navigated back)
-      if (!document.hidden) {
-        // Add a small delay to ensure the page is fully loaded
-        setTimeout(() => {
-          fetchData();
-        }, 100);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchData]);
+  // Note: Machine stats fetching is now handled by useLocationMachineStats hook
 
   // Reset page when search changes
   useEffect(() => {
     setCurrentPage(0);
-  }, [debouncedSearchTerm, selectedFilters]);
+  }, [searchTerm, selectedFilters, setCurrentPage]);
 
-  const handleSortToggle = () => {
-    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
-  };
+  // Note: Scroll handling is now managed by custom hooks
 
-  const handleColumnSort = (column: LocationSortOption) => {
-    if (sortOption === column) {
-      handleSortToggle();
-    } else {
-      setSortOption(column);
-      setSortOrder("desc");
-    }
-  };
-
-  // For server-side pagination, we use the data directly from the API
-  // No need for client-side filtering or sorting since the API handles this
-  const currentItems = locationData;
-  const totalPages = pagination.totalPages;
-  const totalCount = pagination.totalCount;
-
-  // Handle scroll to show/hide floating refresh button
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-      setShowFloatingRefresh(scrollTop > 200);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleFirstPage = () => setCurrentPage(0);
-  const handleLastPage = () => setCurrentPage(totalPages - 1);
-  const handlePrevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  };
-  const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const handleLocationClick = (locationId: string): void => {
-    router.push(`/locations/${locationId}`);
-  };
-
-  const handleTableAction = (
-    action: "edit" | "delete",
-    location: AggregatedLocation
-  ) => {
-    if (action === "edit") {
-      openEditModal(location);
-    } else if (action === "delete") {
-      openDeleteModal(location);
-    }
-  };
+  // Note: Pagination and action handlers are now managed by custom hooks
 
   // Show loading state for search
   const isLoading = loading || searchLoading;
@@ -352,7 +149,7 @@ export default function LocationsPage() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* Title Row */}
+        {/* Header Section: Title, refresh button, and new location button */}
         <div className="flex items-center justify-between mt-4 w-full max-w-full">
           <div className="flex items-center gap-3 w-full">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -376,7 +173,7 @@ export default function LocationsPage() {
           {/* Desktop: New Location button */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             <Button
-              onClick={openLocationModalLocal}
+              onClick={openNewLocationModal}
               className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
             >
               <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
@@ -390,7 +187,7 @@ export default function LocationsPage() {
         {/* Mobile: New Location button below title */}
         <div className="md:hidden mt-4 w-full">
           <Button
-            onClick={openLocationModalLocal}
+            onClick={openNewLocationModal}
             className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
           >
             <Plus size={20} />
@@ -398,7 +195,7 @@ export default function LocationsPage() {
           </Button>
         </div>
 
-        {/* Financial Metrics Cards */}
+        {/* Financial Metrics Section: Total financial overview cards */}
         <div className="mt-6">
           <FinancialMetricsCards
             totals={financialTotals}
@@ -407,10 +204,11 @@ export default function LocationsPage() {
           />
         </div>
 
-        {/* Date Filters Row - Desktop and md */}
+        {/* Date Filters Section: Desktop layout with date filters and machine status */}
         <div className="hidden md:flex items-center justify-between mt-4 mb-0 gap-4">
           <div className="flex-1 min-w-0">
-            <DashboardDateFilters 
+            <DashboardDateFilters
+              hideAllTime={true}
               onCustomRangeGo={fetchData}
               disabled={isLoading}
             />
@@ -424,10 +222,11 @@ export default function LocationsPage() {
           </div>
         </div>
 
-        {/* Mobile/Tablet: Date Filters and Machine Status stacked */}
+        {/* Mobile/Tablet: Date Filters and Machine Status stacked layout */}
         <div className="md:hidden flex flex-col gap-4 mt-4">
           <div className="w-full">
-            <DashboardDateFilters 
+            <DashboardDateFilters
+              hideAllTime={true}
               onCustomRangeGo={fetchData}
               disabled={isLoading}
             />
@@ -526,7 +325,7 @@ export default function LocationsPage() {
           </div>
         </div>
 
-        {/* Search Row - Purple box for md and lg */}
+        {/* Search and Filter Section: Desktop search bar with SMIB filters */}
         <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
           <div className="relative flex-1 min-w-0">
             <Input
@@ -615,7 +414,7 @@ export default function LocationsPage() {
           </div>
         </div>
 
-        {/* Content Section */}
+        {/* Content Section: Main data display with responsive layouts */}
         <div className="flex-1 w-full">
           {error ? (
             <NetworkError
@@ -705,14 +504,17 @@ export default function LocationsPage() {
                   formatCurrency={formatCurrency}
                 />
               </div>
+            </>
+          )}
+        </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <>
-                  {/* Mobile Pagination */}
-                  <div className="flex flex-col space-y-3 mt-6 sm:hidden">
+        {/* Pagination Section: Navigation controls for data pages */}
+        {totalPages > 1 && (
+          <>
+            {/* Mobile Pagination */}
+            <div className="flex flex-col space-y-3 mt-4 sm:hidden">
               <div className="text-xs text-gray-600 text-center">
-                Page {currentPage + 1} of {totalPages} ({totalCount}{" "}
+                Page {currentPage + 1} of {totalPages} ({sortedData.length}{" "}
                 locations)
               </div>
               <div className="flex items-center justify-center space-x-2">
@@ -774,7 +576,7 @@ export default function LocationsPage() {
               </div>
             </div>
             {/* Desktop Pagination */}
-            <div className="hidden sm:flex justify-center items-center space-x-2 mt-6">
+            <div className="hidden sm:flex justify-center items-center space-x-2 mt-4">
               <Button
                 onClick={handleFirstPage}
                 disabled={currentPage === 0}
@@ -822,45 +624,34 @@ export default function LocationsPage() {
               >
                 <DoubleArrowRightIcon />
               </Button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </PageLayout>
       <EditLocationModal onLocationUpdated={fetchData} />
       <DeleteLocationModal onDelete={fetchData} />
       <NewLocationModal
         isOpen={isNewLocationModalOpen}
-        onClose={closeLocationModal}
+        onClose={closeNewLocationModal}
         onCreated={fetchData}
       />
 
       {/* Floating Refresh Button */}
-      <AnimatePresence>
-        {showFloatingRefresh && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="fixed bottom-6 right-6 z-50"
-          >
-            <motion.button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <RefreshCw
-                className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
-              />
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <FloatingRefreshButton
+        show={false}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      />
     </>
+  );
+}
+
+export default function LocationsPage() {
+  return (
+    <ProtectedRoute requiredPage="locations">
+      <PageErrorBoundary>
+        <LocationsPageContent />
+      </PageErrorBoundary>
+    </ProtectedRoute>
   );
 }

@@ -1,4 +1,5 @@
-import { Cabinet } from "./cabinets";
+import { GamingMachine } from "@/shared/types/entities";
+import type { CabinetSortOption } from "@/lib/hooks/data";
 
 /**
  * Types for cabinet details functionality
@@ -13,7 +14,7 @@ export type MetricsTabContent = {
 };
 
 export type CabinetDetailsProps = {
-  cabinet: Cabinet | null;
+  cabinet: GamingMachine | null;
   loading: boolean;
   error: string | null;
   metricsLoading: boolean;
@@ -55,7 +56,7 @@ export type BackButtonProps = {
 };
 
 export type CabinetInfoHeaderProps = {
-  cabinet: Cabinet;
+  cabinet: GamingMachine;
   locationName: string;
   openEditModal: (cabinetId: string) => void;
 };
@@ -65,13 +66,38 @@ export type StatusIndicatorProps = {
 };
 
 export type SmibConfigurationProps = {
-  cabinet: Cabinet;
+  cabinet: GamingMachine;
 };
 
 // Props for AccountingDetails component
 export type AccountingDetailsProps = {
-  cabinet: Cabinet;
+  cabinet: GamingMachine;
   loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
+};
+
+// Props for CabinetSearchFilters component
+export type CabinetSearchFiltersProps = {
+  // Search state
+  searchTerm: string;
+  onSearchChange: (searchTerm: string) => void;
+
+  // Location filter state
+  selectedLocation: string;
+  locations: { _id: string; name: string }[];
+  onLocationChange: (locationId: string) => void;
+
+  // Game type filter state
+  selectedGameType: string;
+  gameTypes: string[];
+  onGameTypeChange: (gameType: string) => void;
+
+  // Sort state
+  sortOption: CabinetSortOption;
+  sortOrder: "asc" | "desc";
+  onSortChange: (option: CabinetSortOption, order: "asc" | "desc") => void;
+
+  // Visibility
+  activeSection: string;
 };

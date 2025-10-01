@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
 
+// Import SVG icons for pre-rendering
+import editIcon from "@/public/editIcon.svg";
+
 const MOCK_SMIBS = [
   { id: "a1", label: "afscdw67ge" },
   { id: "b2", label: "Dev Lab" },
@@ -191,7 +194,7 @@ export default function SMIBManagement() {
                 Network / WIFI
               </h3>
               <Image
-                src="/editIcon.svg"
+                src={editIcon}
                 alt="Edit"
                 width={20}
                 height={20}
@@ -225,7 +228,7 @@ export default function SMIBManagement() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg text-gray-700">Coms</h3>
               <Image
-                src="/editIcon.svg"
+                src={editIcon}
                 alt="Edit"
                 width={20}
                 height={20}

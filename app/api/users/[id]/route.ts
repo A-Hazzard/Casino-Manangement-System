@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
-import { updateUser as updateUserHelper, getUserById } from "@/app/api/lib/helpers/users";
+import {
+  updateUser as updateUserHelper,
+  getUserById,
+} from "@/app/api/lib/helpers/users";
 import { apiLogger } from "@/app/api/lib/utils/logger";
 
 export async function GET(
@@ -8,7 +11,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   const resolvedParams = await params;
-  const context = apiLogger.createContext(request, `/api/users/${resolvedParams.id}`);
+  const context = apiLogger.createContext(
+    request,
+    `/api/users/${resolvedParams.id}`
+  );
   apiLogger.startLogging();
 
   try {
@@ -40,7 +46,8 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        message: errorMsg === "User not found" ? errorMsg : "Failed to fetch user",
+        message:
+          errorMsg === "User not found" ? errorMsg : "Failed to fetch user",
         error: errorMsg,
       },
       { status: errorMsg === "User not found" ? 404 : 500 }
@@ -53,7 +60,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   const resolvedParams = await params;
-  const context = apiLogger.createContext(request, `/api/users/${resolvedParams.id}`);
+  const context = apiLogger.createContext(
+    request,
+    `/api/users/${resolvedParams.id}`
+  );
   apiLogger.startLogging();
 
   try {

@@ -59,7 +59,24 @@ export type { AggregatedLocation };
 // Export entities types
 export * from "./entities";
 
-export type { LoginRequestBody, AuthResult, LoginFormProps } from "./auth";
+export type {
+  LoginRequestBody,
+  AuthResult,
+  LoginFormProps,
+  UserAuthPayload,
+  JwtPayload,
+  RefreshTokenPayload,
+  SessionData,
+} from "./auth";
 
 // Export reports types
 export * from "./reports";
+
+// Export API types
+export * from "./api";
+
+// Export activity log types
+export * from "./activityLog";
+
+// Export component types
+export * from "./components";

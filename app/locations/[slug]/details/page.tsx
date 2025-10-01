@@ -32,7 +32,8 @@ import RefreshButton from "@/components/ui/RefreshButton";
 import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { fetchLocationDetailsById } from "@/lib/helpers/locations";
-import { CabinetSortOption } from "@/lib/types/cabinets";
+// import type { GamingMachine } from "@/shared/types/entities";
+type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
 import { mapToCabinetProps } from "@/lib/utils/cabinet";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 
@@ -117,10 +118,7 @@ export default function LocationDetailsPage() {
 
   // Transform cabinet for table props
   const transformCabinet = (cabinet: ExtendedCabinetDetail) => {
-    return mapToCabinetProps(cabinet, {
-      onEdit: () => handleEdit(cabinet),
-      onDelete: () => handleDelete(cabinet),
-    });
+    return mapToCabinetProps(cabinet);
   };
 
   // Effect to handle licensee changes - refetch locations and update selection
@@ -443,26 +441,29 @@ export default function LocationDetailsPage() {
             <>
               {/* Desktop Table View with green header and border styling */}
               <div className="hidden md:block">
-                <CabinetTable
-                  cabinets={paginatedCabinets.map(transformCabinet)}
-                  sortOption={sortOption}
-                  sortOrder={sortOrder}
-                  onColumnSort={handleColumnSort}
-                  onEdit={(cabinetProps) => {
-                    // Find the original cabinet
-                    const cabinet = paginatedCabinets.find(
-                      (c) => c._id === cabinetProps._id
-                    );
-                    if (cabinet) handleEdit(cabinet);
-                  }}
-                  onDelete={(cabinetProps) => {
-                    // Find the original cabinet
-                    const cabinet = paginatedCabinets.find(
-                      (c) => c._id === cabinetProps._id
-                    );
-                    if (cabinet) handleDelete(cabinet);
-                  }}
-                />
+                
+                 <CabinetTable
+                    data={paginatedCabinets.map(transformCabinet)}
+                    loading={metricsLoading}
+                    sortOption={sortOption}
+                    sortOrder={sortOrder}
+                    onSort={(column) => handleColumnSort(column as CabinetSortOption)}
+                    onPageChange={setCurrentPage}
+                    onEdit={(cabinetProps) => {
+                      // Find the original cabinet
+                      const cabinet = paginatedCabinets.find(
+                        (c) => c._id === cabinetProps._id
+                      );
+                      if (cabinet) handleEdit(cabinet);
+                    }}
+                    onDelete={(cabinetProps) => {
+                      // Find the original cabinet
+                      const cabinet = paginatedCabinets.find(
+                        (c) => c._id === cabinetProps._id
+                      );
+                      if (cabinet) handleDelete(cabinet);
+                    }}
+                  />
               </div>
 
               {/* Mobile Card View - Only show on small screens */}

@@ -12,8 +12,8 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useReportsStore } from "@/lib/store/reportsStore";
 
 // Hooks
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useReportsNavigation } from "@/lib/hooks/useReportsNavigation";
+import { useReportsNavigation } from "@/lib/hooks/navigation";
+import { useReportsTabContent } from "@/lib/hooks/data";
 
 // Components
 import ReportsDateFilters from "@/components/reports/common/ReportsDateFilters";
@@ -28,7 +28,7 @@ import { IMAGES } from "@/lib/constants/images";
 
 // Tab components
 import DashboardTab from "@/components/reports/tabs/DashboardTab";
-import LocationsTab from "@/components/reports/tabs/LocationsTab";
+import LocationsTabWithErrorHandling from "@/components/reports/tabs/LocationsTabWithErrorHandling";
 import MachinesTab from "@/components/reports/tabs/MachinesTab";
 import MetersTab from "@/components/reports/tabs/MetersTab";
 
@@ -46,37 +46,38 @@ import type { ReportView } from "@/lib/types/reports";
  * Handles layout, navigation, and tab rendering
  */
 export default function ReportsContent() {
-
   const { selectedLicencee } = useDashBoardStore();
-  const { isLoading: authLoading } = useAuth();
   const { realTimeMetrics } = useReportsStore();
 
-  const { activeView, availableTabs, isLoading, handleTabChange } =
-    useReportsNavigation(REPORTS_TABS_CONFIG);
+  // All authenticated users have access to reports
+  const hasAccess = true;
+  const availableTabs = REPORTS_TABS_CONFIG;
+  const isLoading = false;
+
+  const { activeView, handleTabChange } = useReportsNavigation(REPORTS_TABS_CONFIG);
+
+  // Tab content rendering
+  const tabComponents: Record<ReportView, ReactElement> = {
+    dashboard: <DashboardTab />,
+    locations: <LocationsTabWithErrorHandling />,
+    machines: <MachinesTab />,
+    meters: <MetersTab />,
+  };
+
+  const { getTabAnimationProps, currentTabComponent } = useReportsTabContent({
+    activeView,
+    animations: REPORTS_ANIMATIONS,
+    tabComponents,
+  });
 
   /**
    * Render the content for the active tab
    */
   const renderTabContent = (): ReactElement => {
-    const tabComponents: Record<ReportView, ReactElement> = {
-      dashboard: <DashboardTab />,
-      locations: <LocationsTab />,
-      machines: <MachinesTab />,
-      meters: <MetersTab />,
-    };
-
     return (
       <AnimatePresence mode="wait">
-        <motion.div
-          key={activeView}
-          variants={REPORTS_ANIMATIONS.tabVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.2 }}
-          className="w-full h-full"
-        >
-          {tabComponents[activeView] || <DashboardTab />}
+        <motion.div {...getTabAnimationProps()}>
+          {currentTabComponent}
         </motion.div>
       </AnimatePresence>
     );
@@ -85,12 +86,12 @@ export default function ReportsContent() {
 
 
   // Show loading state while authentication is loading
-  if (authLoading) {
+  if (isLoading) {
     return <AuthLoadingState />;
   }
 
   // Show access denied if user has no available tabs
-  if (availableTabs.length === 0) {
+  if (!hasAccess) {
     return <AccessDeniedState />;
   }
 

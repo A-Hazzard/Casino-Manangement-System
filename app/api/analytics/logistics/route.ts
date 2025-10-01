@@ -1,33 +1,73 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { LogisticsEntry } from "@/lib/types/reports";
+import { MovementRequest } from "@/app/api/lib/models/movementrequests";
+import { MovementRequestStatus } from "@/lib/types/movementRequests";
+import { connectDB } from "@/app/api/lib/middleware/db";
 
-export async function GET(_request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // const { searchParams } = new URL(request.url);
-    // const searchTerm = searchParams.get("searchTerm")?.toLowerCase() || "";
-    // const statusFilter = searchParams.get("statusFilter");
+    await connectDB();
 
-    // TODO: Implement actual MongoDB query to fetch logistics data
-    // This should query the movement-requests collection or similar
-    // const logisticsData = await db.collection('movement-requests').find({
-    //   ...(searchTerm && {
-    //     $or: [
-    //       { machineName: { $regex: searchTerm, $options: 'i' } },
-    //       { fromLocationName: { $regex: searchTerm, $options: 'i' } },
-    //       { toLocationName: { $regex: searchTerm, $options: 'i' } },
-    //       { movedBy: { $regex: searchTerm, $options: 'i' } }
-    //     ]
-    //   }),
-    //   ...(statusFilter && statusFilter !== "all" && { status: statusFilter })
-    // }).toArray();
+    const { searchParams } = new URL(request.url);
+    const searchTerm = searchParams.get("searchTerm")?.toLowerCase() || "";
+    const statusFilter = searchParams.get("statusFilter");
 
-    // For now, return empty array until MongoDB implementation is complete
-    const responseData: LogisticsEntry[] = [];
+    // Build query filters
+    const filters: Record<string, unknown> = {};
+
+    if (searchTerm) {
+      filters.$or = [
+        { cabinetIn: { $regex: searchTerm, $options: "i" } },
+        { locationFrom: { $regex: searchTerm, $options: "i" } },
+        { locationTo: { $regex: searchTerm, $options: "i" } },
+        { movedBy: { $regex: searchTerm, $options: "i" } },
+      ];
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      filters.status = statusFilter;
+    }
+
+    // Query actual data using MovementRequest model
+    const logisticsData = await MovementRequest.find(filters)
+      .sort({ createdAt: -1 })
+      .limit(100) // Limit results for performance
+      .lean();
+
+    // Transform data to match LogisticsEntry interface
+    const responseData: LogisticsEntry[] = logisticsData.map((item) => ({
+      id: item._id,
+      machineId: item.cabinetIn || item._id, // Use cabinetIn as machineId or fallback to _id
+      machineName: item.cabinetIn || "Unknown Machine",
+      fromLocationName: item.locationFrom,
+      toLocationName: item.locationTo,
+      moveDate: item.createdAt?.toISOString() || new Date().toISOString(),
+      status: mapMovementStatusToLogisticsStatus(item.status),
+      movedBy: item.createdBy || "Unknown",
+      reason: item.reason || "Movement request",
+    }));
+
+    // Helper function to map MovementRequestStatus to LogisticsEntry status
+    function mapMovementStatusToLogisticsStatus(
+      status: MovementRequestStatus
+    ): "pending" | "completed" | "in-progress" | "cancelled" {
+      switch (status) {
+        case "approved":
+          return "completed";
+        case "rejected":
+          return "cancelled";
+        case "in progress":
+          return "in-progress";
+        case "pending":
+        default:
+          return "pending";
+      }
+    }
 
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: "Logistics data endpoint - MongoDB implementation pending"
+      message: "Logistics data fetched successfully",
     });
   } catch (error) {
     return NextResponse.json(

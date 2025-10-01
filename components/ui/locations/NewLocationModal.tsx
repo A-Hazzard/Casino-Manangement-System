@@ -203,7 +203,18 @@ export default function NewLocationModal({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Special handling for profit share to only allow numbers
+    if (name === "profitShare") {
+      // Only allow digits and empty string
+      const numericValue = value.replace(/[^0-9]/g, "");
+      // Ensure value is between 0 and 100
+      const numValue = parseInt(numericValue) || 0;
+      const clampedValue = Math.min(Math.max(numValue, 0), 100);
+      setFormData((prev) => ({ ...prev, [name]: clampedValue.toString() }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -265,7 +276,7 @@ export default function NewLocationModal({
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 300000, // 5 minutes
+        maximumAge: 600000, // 5 minutes
       }
     );
   };
@@ -429,11 +440,26 @@ export default function NewLocationModal({
               </label>
               <Input
                 name="profitShare"
-                type="number"
-                min="0"
-                max="100"
+                type="text"
                 value={formData.profitShare}
                 onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  // Prevent non-numeric characters except backspace, delete, tab, escape, enter
+                  if (
+                    !/[0-9]/.test(e.key) &&
+                    ![
+                      "Backspace",
+                      "Delete",
+                      "Tab",
+                      "Escape",
+                      "Enter",
+                      "ArrowLeft",
+                      "ArrowRight",
+                    ].includes(e.key)
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
                 placeholder="50"
                 className="w-full h-12 bg-container border-border text-base"
               />

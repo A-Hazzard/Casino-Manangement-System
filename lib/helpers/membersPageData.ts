@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Member } from "@/lib/types/members";
+import type { CasinoMember as Member } from "@/shared/types/entities";
 // Activity logging removed - handled via API calls
 
 export type MembersQueryOptions = {

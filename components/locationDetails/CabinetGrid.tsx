@@ -1,8 +1,13 @@
 import React from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
+
+// Import SVG icons for pre-rendering
+import editIcon from "@/public/editIcon.svg";
+import deleteIcon from "@/public/deleteIcon.svg";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import type { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+import type { CabinetSortOption } from "@/lib/hooks/data";
 import type { ExtendedCabinetDetail } from "@/lib/types/pages";
 import type { CabinetGridProps } from "@/lib/types/components";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
@@ -70,7 +75,7 @@ function CabinetCardMobile({
               title="Edit"
             >
               <Image
-                src="/editIcon.svg"
+                src={editIcon}
                 alt="Edit"
                 width={16}
                 height={16}
@@ -86,7 +91,7 @@ function CabinetCardMobile({
               title="Delete"
             >
               <Image
-                src="/deleteIcon.svg"
+                src={deleteIcon}
                 alt="Delete"
                 width={16}
                 height={16}
@@ -163,16 +168,18 @@ export default function CabinetGrid({
       {/* Table view for lg screens and above */}
       <div className="hidden lg:block">
         <CabinetTable
-          cabinets={filteredCabinets
+          data={filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet) => ({
               ...(cabinet as Cabinet),
               onEdit: () => handleEdit(cabinet),
               onDelete: () => handleDelete(cabinet),
             }))}
+          loading={false}
           sortOption={sortOption}
           sortOrder={sortOrder}
-          onColumnSort={handleColumnSort}
+          onSort={(column) => handleColumnSort(column as CabinetSortOption)}
+          onPageChange={() => {}}
           onEdit={(cabinet) => handleEdit(cabinet as ExtendedCabinetDetail)}
           onDelete={(cabinet) => handleDelete(cabinet as ExtendedCabinetDetail)}
         />

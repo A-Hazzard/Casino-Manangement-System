@@ -10,44 +10,74 @@ type UserCardProps = {
   onDelete?: (user: User) => void;
 };
 
-export default function UserCard({
-  user,
-  onEdit,
-  onDelete,
-}: UserCardProps) {
+export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="bg-blue-500 text-white p-3 flex items-center gap-2">
         <Image
-          src={user.profilePicture && !user.profilePicture.startsWith("blob:") ? user.profilePicture : defaultAvatar}
-          alt={`${user.username} avatar`}
+          src={
+            user.profilePicture && !user.profilePicture.startsWith("blob:")
+              ? user.profilePicture
+              : defaultAvatar
+          }
+          alt={`${user.username || "user"} avatar`}
           width={24}
           height={24}
           className="rounded-full bg-gray-300 flex-shrink-0"
         />
         <div className="flex gap-1 overflow-x-auto no-scrollbar min-w-0 flex-1">
-          {user.roles.map((role) => (
-            <span
-              key={role}
-              className="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded whitespace-nowrap flex-shrink-0"
-            >
-              {role.toUpperCase()}
+          {user.roles && user.roles.length > 0 ? (
+            user.roles.map((role) => (
+              <span
+                key={role}
+                className="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded whitespace-nowrap flex-shrink-0"
+              >
+                {role.toUpperCase()}
+              </span>
+            ))
+          ) : (
+            <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-1 rounded whitespace-nowrap flex-shrink-0">
+              NO ROLES
             </span>
-          ))}
+          )}
         </div>
       </div>
       <div className="p-3">
         <div className="text-sm text-gray-700 mb-1">
-          <span className="font-semibold">Username:</span> {user.username}
+          <span className="font-semibold">Username:</span>{" "}
+          {user.username ? (
+            user.username
+          ) : (
+            <span className="text-red-500 italic">No username provided</span>
+          )}
         </div>
-        {user.name && (
-          <div className="text-sm text-gray-700 mb-1">
-            <span className="font-semibold">Name:</span> {user.name}
-          </div>
-        )}
-        <div className="text-sm text-gray-700 mb-1">Email: {user.email}</div>
+        <div className="text-sm text-gray-700 mb-1">
+          <span className="font-semibold">Name:</span>{" "}
+          {user.name ? (
+            user.name
+          ) : (
+            <span className="text-red-500 italic">No name provided</span>
+          )}
+        </div>
+        <div className="text-sm text-gray-700 mb-1">
+          <span className="font-semibold">Email:</span>{" "}
+          {user.email ? (
+            user.email
+          ) : (
+            <span className="text-red-500 italic">No email provided</span>
+          )}
+        </div>
         <div className="text-sm text-gray-700 mb-3">
-          Enabled: {user.enabled ? "True" : "False"}
+          <span className="font-semibold">Enabled:</span>{" "}
+          {user.enabled !== undefined ? (
+            user.enabled ? (
+              "True"
+            ) : (
+              "False"
+            )
+          ) : (
+            <span className="text-red-500 italic">Status unknown</span>
+          )}
         </div>
         <div className="flex justify-end gap-3 items-center">
           <Image

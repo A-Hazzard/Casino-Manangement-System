@@ -1,4 +1,6 @@
-import type { Member, MemberSortOption } from "@/lib/types/members";
+import type { CasinoMember as Member } from "@/shared/types/entities";
+// TODO: Move MemberSortOption to shared types
+type MemberSortOption = "name" | "playerId" | "points" | "sessions" | "totalHandle" | "totalWon" | "totalLost" | "lastSession" | "status" | "locationName" | "winLoss" | "lastLogin";
 
 /**
  * Sort members based on sort option and order
@@ -22,8 +24,8 @@ export function sortMembers(
         bValue = b._id;
         break;
       case "lastSession":
-        aValue = a.createdAt;
-        bValue = b.createdAt;
+        aValue = new Date(a.createdAt).getTime();
+        bValue = new Date(b.createdAt).getTime();
         break;
       default:
         aValue = a._id;

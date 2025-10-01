@@ -23,12 +23,12 @@ type MonthlyDatePickerProps = {
 
 /**
  * Monthly Date Picker Component
- * 
+ *
  * Constrains date selection to full months only (month/year picker)
  * Automatically sets the range to cover the entire selected month
- * 
+ *
  * Author: Aaron Hazzard - Senior Software Engineer
- * Last Updated: August 29th, 2025
+ * Last Updated: September 23rd, 2025
  */
 export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   value,
@@ -45,7 +45,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
     if (value?.from && value?.to) {
       const fromMonth = format(value.from, "MMMM yyyy");
       const toMonth = format(value.to, "MMMM yyyy");
-      
+
       if (fromMonth === toMonth) {
         return fromMonth;
       }
@@ -66,12 +66,12 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
     // Set the range to cover the entire month
     const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
     const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    
+
     const newRange: RDPDateRange = {
       from: startOfMonth,
       to: endOfMonth,
     };
-    
+
     onChange(newRange);
     setIsOpen(false);
   };
@@ -80,14 +80,22 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   const handleLastMonth = () => {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-    const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-    
+    const startOfLastMonth = new Date(
+      lastMonth.getFullYear(),
+      lastMonth.getMonth(),
+      1
+    );
+    const endOfLastMonth = new Date(
+      lastMonth.getFullYear(),
+      lastMonth.getMonth() + 1,
+      0
+    );
+
     const lastMonthRange: RDPDateRange = {
       from: startOfLastMonth,
       to: endOfLastMonth,
     };
-    
+
     onChange(lastMonthRange);
     onSetLastMonth();
   };
@@ -101,7 +109,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
       >
         Last Month
       </Button>
-      
+
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -119,7 +127,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
             selected={value?.from}
             onSelect={handleDateSelect}
             disabled={[
-              { after: new Date() } // Disable future months
+              { after: new Date() }, // Disable future months
             ]}
             initialFocus
             showOutsideDays
@@ -134,7 +142,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
           />
         </PopoverContent>
       </Popover>
-      
+
       <Button
         className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
         onClick={onGo}
@@ -142,7 +150,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
       >
         Go
       </Button>
-      
+
       <Button
         className="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-600"
         onClick={onCancel}

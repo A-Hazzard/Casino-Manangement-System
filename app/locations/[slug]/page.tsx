@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
-import { Cabinet, CabinetSortOption } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
 import { useParams, useRouter } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
@@ -66,15 +67,6 @@ export default function LocationPage() {
   // Detect when date filter is properly initialized
   useEffect(() => {
     if (activeMetricsFilter && !dateFilterInitialized) {
-      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
-      setDateFilterInitialized(true);
-    }
-  }, [activeMetricsFilter, dateFilterInitialized]);
-
-  // Detect when date filter is properly initialized
-  useEffect(() => {
-    if (activeMetricsFilter && !dateFilterInitialized) {
-      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
       setDateFilterInitialized(true);
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
@@ -138,13 +130,6 @@ export default function LocationPage() {
       try {
         // Only proceed if we have a valid activeMetricsFilter and it's been properly initialized
         if (!activeMetricsFilter || !dateFilterInitialized) {
-
-          console.warn(
-            "⚠️ No activeMetricsFilter or not initialized, skipping data fetch",
-            { activeMetricsFilter, dateFilterInitialized }
-          );
-
-          console.warn("⚠️ No activeMetricsFilter or not initialized, skipping data fetch", { activeMetricsFilter, dateFilterInitialized });
           setAllCabinets([]);
           setError("No time period filter selected");
           setLoading(false);
@@ -204,18 +189,10 @@ export default function LocationPage() {
         try {
           // Only fetch if we have a valid activeMetricsFilter - no fallback
           if (!activeMetricsFilter) {
-
-            console.warn(
-              "⚠️ No activeMetricsFilter available, skipping cabinet fetch"
-            );
-
-            console.warn("⚠️ No activeMetricsFilter available, skipping cabinet fetch");
             setAllCabinets([]);
             setError("No time period filter selected");
             return;
           }
-
-          console.warn(`🔍 Using timePeriod: ${activeMetricsFilter}`);
 
           const cabinetsData = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
@@ -227,13 +204,13 @@ export default function LocationPage() {
               ? { from: customDateRange.startDate, to: customDateRange.endDate }
               : undefined // Only pass customDateRange when filter is "Custom"
           );
-          console.warn(
-            `✅ Cabinets data received: ${JSON.stringify(cabinetsData)}`
-          );
           setAllCabinets(cabinetsData);
           setError(null); // Clear any previous errors on successful fetch
         } catch (error) {
-          console.error("Error fetching cabinets:", error);
+          // Error handling for cabinet data fetch
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error fetching cabinets:", error);
+          }
           setAllCabinets([]);
           setError("Failed to fetch cabinets data.");
         }
@@ -331,13 +308,6 @@ export default function LocationPage() {
       try {
         // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
         if (!activeMetricsFilter || !dateFilterInitialized) {
-
-          console.warn(
-            "⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch",
-            { activeMetricsFilter, dateFilterInitialized }
-          );
-
-          console.warn("⚠️ No activeMetricsFilter or not initialized during refresh, skipping cabinet fetch", { activeMetricsFilter, dateFilterInitialized });
           setAllCabinets([]);
           setError("No time period filter selected");
           return;
@@ -399,7 +369,7 @@ export default function LocationPage() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* Title Row - Responsive Layout */}
+        {/* Header Section: Title, back button, and action buttons */}
         <div className="mt-4 w-full max-w-full">
           {/* Mobile Layout (below sm) */}
           <div className="sm:hidden space-y-3">
@@ -474,7 +444,7 @@ export default function LocationPage() {
           </div>
         </div>
 
-        {/* Financial Metrics Cards */}
+        {/* Financial Metrics Section: Location-specific financial overview */}
         <div className="mt-6">
           <FinancialMetricsCards
             totals={financialTotals}
@@ -483,15 +453,15 @@ export default function LocationPage() {
           />
         </div>
 
-        {/* Date Filters and Machine Status Row - Responsive */}
+        {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
         <div className="mt-4">
           {/* Desktop and md: Side by side layout */}
           <div className="hidden md:flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
-                hideAllTime={false}
                 onCustomRangeGo={handleRefresh}
+                hideAllTime={false}
               />
             </div>
             <div className="flex-shrink-0 ml-4 w-auto">
@@ -508,8 +478,8 @@ export default function LocationPage() {
             <div className="w-full">
               <DashboardDateFilters
                 disabled={loading || cabinetsLoading || refreshing}
-                hideAllTime={false}
                 onCustomRangeGo={handleRefresh}
+                hideAllTime={false}
               />
             </div>
             <div className="w-full">
@@ -522,7 +492,7 @@ export default function LocationPage() {
           </div>
         </div>
 
-        {/* Search Row - Purple box for md and lg */}
+        {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
         <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
           <div className="relative flex-1 max-w-md min-w-0">
             <Input
@@ -599,7 +569,7 @@ export default function LocationPage() {
           </div>
         </div>
 
-        {/* Mobile: Search and Location Dropdown */}
+        {/* Mobile: Search and Location Selection Section */}
         <div className="md:hidden flex flex-col gap-4 mt-4">
           <div className="relative w-full">
             <Input
@@ -677,7 +647,7 @@ export default function LocationPage() {
           </div>
         </div>
 
-        {/* Sort by dropdown with refresh button on mobile view */}
+        {/* Mobile Sort and Filter Section: Sort dropdown and filter controls */}
         <div className="mt-4 flex flex-col md:hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center rounded-md bg-buttonActive px-4 py-2">
@@ -713,7 +683,7 @@ export default function LocationPage() {
           </div>
         </div>
 
-        {/* Filter Radio Buttons - Matching image */}
+        {/* Mobile Filter Radio Buttons: Status filter controls */}
         <div className="flex md:hidden mt-4 gap-4 justify-start">
           <label className="flex items-center space-x-2 cursor-pointer">
             <div
@@ -764,7 +734,7 @@ export default function LocationPage() {
           </label>
         </div>
 
-        {/* Sort and Filter buttons */}
+        {/* Mobile Sort and Filter Buttons: Action controls for mobile users */}
         <div className="flex md:hidden justify-between mt-4">
           <Button
             variant="default"
@@ -814,7 +784,7 @@ export default function LocationPage() {
           )}
         </div>
 
-        {/* Content Section */}
+        {/* Content Section: Main cabinet data display with responsive layouts */}
         <div className="flex-1 w-full">
           {loading || cabinetsLoading ? (
             <>

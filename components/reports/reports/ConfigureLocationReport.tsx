@@ -15,7 +15,7 @@ import {
 } from "@/lib/constants/reportBuilder";
 import { subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { useGenerateReport } from "@/lib/hooks/useGenerateCustomReport";
+import { useGenerateCustomReport } from "@/lib/hooks/reports";
 
 export default function ConfigureLocationReport() {
   const {
@@ -27,7 +27,7 @@ export default function ConfigureLocationReport() {
     setAvailableMachines,
   } = useReportStore();
 
-  const { generateReport } = useGenerateReport();
+  const { generateReport } = useGenerateCustomReport();
   const { isGenerating: isLoading } = useReportStore();
 
   const { locations, machines } = useAnalyticsDataStore();

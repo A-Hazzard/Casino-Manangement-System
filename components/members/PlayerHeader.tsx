@@ -1,5 +1,5 @@
 import React from "react";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 import { User } from "lucide-react";
 
 type PlayerHeaderProps = {
@@ -10,7 +10,7 @@ export default function PlayerHeader({ member }: PlayerHeaderProps) {
   const fullName =
     member.profile?.firstName && member.profile?.lastName
       ? `${member.profile.firstName} ${member.profile.lastName}`
-      : member.name || member.memberId;
+      : member.memberId;
 
   const occupation = member.profile?.occupation || "";
 

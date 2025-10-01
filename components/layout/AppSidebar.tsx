@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { SidebarContainer, useSidebar } from "@/components/ui/sidebar";
 import {
   BarChart3,
@@ -11,6 +9,7 @@ import {
   Users,
   MapPin,
   Clock,
+  Receipt,
 } from "lucide-react";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +20,9 @@ import ProfileModal from "@/components/layout/ProfileModal";
 import { logoutUser } from "@/lib/helpers/clientAuth";
 import { fetchUserId } from "@/lib/helpers/user";
 import { ClientOnly } from "@/components/ui/ClientOnly";
-
+import { shouldShowNavigationLinkDb } from "@/lib/utils/permissionsDb";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 const DEFAULT_AVATAR = "/defaultAvatar.svg";
 
 type Item = {
@@ -31,24 +32,52 @@ type Item = {
 };
 
 const items: Item[] = [
-  { label: "Dashboard", href: "/", icon: BarChart3 },
-  { label: "Locations", href: "/locations", icon: MapPin },
-  { label: "Cabinets", href: "/cabinets", icon: MonitorSpeaker },
+  {
+    label: "Dashboard",
+    href: "/",
+    icon: BarChart3,
+  },
+  {
+    label: "Locations",
+    href: "/locations",
+    icon: MapPin,
+  },
+  {
+    label: "Cabinets",
+    href: "/cabinets",
+    icon: MonitorSpeaker,
+  },
   {
     label: "Collection Report",
     href: "/collection-report",
+    icon: Receipt,
+  },
+  {
+    label: "Sessions",
+    href: "/sessions",
+    icon: Clock,
+  },
+  {
+    label: "Members",
+    href: "/members",
+    icon: Users,
+  },
+  {
+    label: "Reports",
+    href: "/reports",
     icon: FileText,
   },
-  { label: "Sessions", href: "/sessions", icon: Clock },
-  { label: "Members", href: "/members", icon: Users },
-  { label: "Reports", href: "/reports", icon: FileText },
-  { label: "Administration", href: "/administration", icon: UserCog },
+  {
+    label: "Administration",
+    href: "/administration",
+    icon: UserCog,
+  },
 ];
 
 export default function AppSidebar() {
-  const pathname = usePathname();
   const { collapsed, toggleCollapsed, setIsOpen } = useSidebar();
-  const { user } = useUserStore();
+  const { user, clearUser } = useUserStore();
+  const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -67,12 +96,74 @@ export default function AppSidebar() {
     left: number;
   } | null>(null);
 
+  // Navigation permissions state
+  const [navigationPermissions, setNavigationPermissions] = useState<
+    Record<string, boolean>
+  >({});
+  const [navigationLoading, setNavigationLoading] = useState(true);
+
   useEffect(() => {
     // Seed with store info
     const seedEmail = user?.emailAddress || "";
     setEmail(seedEmail);
     setDisplayName(seedEmail ? seedEmail.split("@")[0] : "User");
   }, [user?.emailAddress]);
+
+  // Load navigation permissions when user changes
+  useEffect(() => {
+    if (!user) {
+      setNavigationLoading(false);
+      return;
+    }
+
+    const loadNavigationPermissions = async () => {
+      try {
+        const permissions: Record<string, boolean> = {};
+
+        // Check permissions for all navigation items
+        const permissionPromises = items.map(async (item) => {
+          let pageName = item.href === "/" ? "dashboard" : item.href.slice(1);
+          // Map cabinets to machines for permission checking
+          if (pageName === "cabinets") {
+            pageName = "machines";
+          }
+          const hasAccess = await shouldShowNavigationLinkDb(
+            pageName as
+              | "dashboard"
+              | "machines"
+              | "locations"
+              | "members"
+              | "collection-report"
+              | "reports"
+              | "sessions"
+              | "administration"
+          );
+          return { href: item.href, hasAccess };
+        });
+
+        const results = await Promise.all(permissionPromises);
+
+        // Update permissions state
+        results.forEach(({ href, hasAccess }) => {
+          permissions[href] = hasAccess;
+        });
+
+        setNavigationPermissions(permissions);
+      } catch (error) {
+        console.error("Error loading navigation permissions:", error);
+        // Set all to false on error
+        const permissions: Record<string, boolean> = {};
+        items.forEach((item) => {
+          permissions[item.href] = false;
+        });
+        setNavigationPermissions(permissions);
+      } finally {
+        setNavigationLoading(false);
+      }
+    };
+
+    loadNavigationPermissions();
+  }, [user]);
 
   useEffect(() => {
     // Try to fetch full user doc to get profilePicture and username
@@ -106,9 +197,11 @@ export default function AppSidebar() {
             credentials: "include",
           });
           if (!res.ok) {
-            console.warn(
-              `Failed to fetch user data: ${res.status} ${res.statusText}`
-            );
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                `Failed to fetch user data: ${res.status} ${res.statusText}`
+              );
+            }
             // If API call fails but user exists in store, use store data
             if (user?.emailAddress) {
               setEmail(user.emailAddress);
@@ -124,7 +217,9 @@ export default function AppSidebar() {
             if (u.email) setEmail(u.email as string);
           }
         } catch (fetchError) {
-          console.warn("Error fetching user data:", fetchError);
+          if (process.env.NODE_ENV === "development") {
+            console.warn("Error fetching user data:", fetchError);
+          }
           // If any error occurs but user exists in store, use store data
           if (user?.emailAddress) {
             setEmail(user.emailAddress);
@@ -137,7 +232,9 @@ export default function AppSidebar() {
           setEmail(user.emailAddress);
           setDisplayName(user.emailAddress.split("@")[0] || "User");
         }
-        console.warn("Failed to fetch user profile data:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("Failed to fetch user profile data:", error);
+        }
       }
     })();
     // Listen for profile updates from the modal to refresh avatar immediately
@@ -196,7 +293,9 @@ export default function AppSidebar() {
       fallback={<div className="w-64 h-screen bg-gray-100 animate-pulse" />}
     >
       <SidebarContainer>
+        {/* Sidebar Container: Main sidebar layout and structure */}
         <div className="relative flex h-full w-full flex-col">
+          {/* Sidebar Header Section: Logo, title, and collapse controls */}
           <div className="px-3 py-5 border-b border-border/50 flex items-center gap-3">
             {/* Mobile: close sidebar; Desktop: collapse/expand */}
             <button
@@ -227,48 +326,84 @@ export default function AppSidebar() {
               </div>
             )}
           </div>
-          <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1 relative">
-            {items.map((item) => {
-              const Icon = item.icon;
-              const active =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <div key={item.href} className="relative">
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative",
-                      active
-                        ? "bg-buttonActive text-white font-medium"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white"
-                    )}
-                    onMouseEnter={(e) => {
-                      if (collapsed) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltipPosition({
-                          top: rect.top + rect.height / 2,
-                          left: rect.right + 8,
-                        });
-                        setHoveredItem(item.href);
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredItem(null);
-                      setTooltipPosition(null);
-                    }}
+          {/* Navigation Section: Main navigation menu with permission-based filtering */}
+          <nav className="flex-1 overflow-hidden px-2 py-4 space-y-1 relative">
+            {navigationLoading
+              ? // Show loading skeleton for all items
+                items.map((item) => (
+                  <div
+                    key={item.href}
+                    className="h-9 flex items-center gap-3 rounded-md px-3 py-2"
                   >
-                    <Icon className={collapsed ? "h-7 w-7" : "h-5 w-5"} />
-                    {/* Show text on mobile when sidebar is open, hide on desktop when collapsed */}
-                    <span
-                      className={cn("truncate", collapsed ? "md:hidden" : "")}
-                    >
-                      {item.label}
-                    </span>
-                  </Link>
-                </div>
-              );
-            })}
+                    <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ))
+              : // Render items based on pre-loaded permissions
+                items
+                  .filter((item) => navigationPermissions[item.href])
+                  .map((item) => {
+                    const Icon = item.icon;
+                    const active =
+                      pathname === item.href ||
+                      pathname.startsWith(item.href + "/");
+
+                    return (
+                      <div key={item.href} className="relative">
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative",
+                            active
+                              ? "bg-buttonActive text-white font-medium"
+                              : "text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white"
+                          )}
+                          onMouseEnter={(e) => {
+                            if (collapsed) {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              setTooltipPosition({
+                                top: rect.top + rect.height / 2,
+                                left: rect.right + 8,
+                              });
+                              setHoveredItem(item.href);
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredItem(null);
+                            setTooltipPosition(null);
+                          }}
+                        >
+                          <Icon className={collapsed ? "h-7 w-7" : "h-5 w-5"} />
+                          <span
+                            className={cn(
+                              "truncate",
+                              collapsed ? "md:hidden" : ""
+                            )}
+                          >
+                            {item.label}
+                          </span>
+                        </Link>
+
+                        {/* Tooltip for collapsed sidebar */}
+                        {collapsed &&
+                          hoveredItem === item.href &&
+                          tooltipPosition && (
+                            <div
+                              className="absolute z-50 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg pointer-events-none"
+                              style={{
+                                top: tooltipPosition.top,
+                                left: tooltipPosition.left,
+                              }}
+                            >
+                              {item.label}
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })}
           </nav>
+          {/* User Profile Section: User information and profile controls */}
           <div className="mt-auto px-3 py-3 border-t border-border/50 relative">
             <button
               ref={triggerRef}
@@ -369,9 +504,11 @@ export default function AppSidebar() {
                   </button>
                   <button
                     className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    onClick={() => {
+                    onClick={async () => {
                       setMenuOpen(false);
-                      logoutUser();
+                      await logoutUser();
+                      clearUser();
+                      window.location.href = "/login";
                     }}
                   >
                     Log out
@@ -388,7 +525,7 @@ export default function AppSidebar() {
         </div>
       </SidebarContainer>
 
-      {/* Tooltip for collapsed sidebar - positioned outside sidebar */}
+      {/* Tooltip Section: Hover tooltips for collapsed sidebar navigation */}
       {collapsed && hoveredItem && tooltipPosition && (
         <div
           className="fixed px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl z-[99999] whitespace-nowrap pointer-events-none border border-gray-700 -translate-y-1/2"
@@ -402,7 +539,7 @@ export default function AppSidebar() {
         </div>
       )}
 
-      {/* Custom Profile dropdown for collapsed sidebar - positioned outside sidebar on desktop only */}
+      {/* Profile Dropdown Section: User profile dropdown for collapsed sidebar */}
       {collapsed &&
         menuOpen &&
         dropdownPosition &&
@@ -447,9 +584,11 @@ export default function AppSidebar() {
             </button>
             <button
               className="w-full text-left cursor-pointer rounded-sm px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              onClick={() => {
+              onClick={async () => {
                 setMenuOpen(false);
-                logoutUser();
+                await logoutUser();
+                clearUser();
+                window.location.href = "/login";
               }}
             >
               Log out

@@ -1,11 +1,11 @@
 /**
  * RAM Clear (Rollover) Validation Utilities
- * 
+ *
  * Handles validation logic for machine meter rollover scenarios
  * where meters reset to zero after reaching maximum value.
- * 
+ *
  * @author Aaron Hazzard - Senior Software Engineer
- * @lastUpdated August 29th, 2025
+ * @lastUpdated September 23rd, 2025
  */
 
 export type RamClearValidationResult = {
@@ -28,11 +28,13 @@ export type RamClearValidationParams = {
 
 /**
  * Validates meter values based on RAM Clear status
- * 
+ *
  * @param params - Validation parameters
  * @returns Validation result with warnings and errors
  */
-export function validateRamClearMeters(params: RamClearValidationParams): RamClearValidationResult {
+export function validateRamClearMeters(
+  params: RamClearValidationParams
+): RamClearValidationResult {
   const {
     currentMetersIn,
     currentMetersOut,
@@ -42,7 +44,7 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
     ramClearCoinIn,
     ramClearCoinOut,
     ramClearMetersIn,
-    ramClearMetersOut
+    ramClearMetersOut,
   } = params;
 
   const warnings: string[] = [];
@@ -65,14 +67,14 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
     if (currentMetersIn <= prevIn) {
       warnings.push(
         "Meters In should be higher than previous reading when RAM Clear is unchecked. " +
-        `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
+          `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
       );
     }
 
     if (currentMetersOut <= prevOut) {
       warnings.push(
         "Meters Out should be higher than previous reading when RAM Clear is unchecked. " +
-        `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
+          `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
       );
     }
   }
@@ -84,14 +86,14 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
     if (currentMetersIn >= prevIn) {
       warnings.push(
         "Meters In should be lower than previous reading when RAM Clear is checked. " +
-        `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
+          `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
       );
     }
 
     if (currentMetersOut >= prevOut) {
       warnings.push(
         "Meters Out should be lower than previous reading when RAM Clear is checked. " +
-        `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
+          `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
       );
     }
 
@@ -101,14 +103,14 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
       if (ramClearCoinIn < prevIn) {
         warnings.push(
           "RAM Clear Coin In is usually higher than previous reading. " +
-          `RAM Clear Coin: ${ramClearCoinIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
+            `RAM Clear Coin: ${ramClearCoinIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
         );
       }
 
       if (ramClearCoinOut < prevOut) {
         warnings.push(
           "RAM Clear Coin Out is usually higher than previous reading. " +
-          `RAM Clear Coin: ${ramClearCoinOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
+            `RAM Clear Coin: ${ramClearCoinOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
         );
       }
     }
@@ -119,14 +121,14 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
       if (ramClearMetersIn < prevIn) {
         warnings.push(
           "RAM Clear Meters In should be higher than or equal to previous reading. " +
-          `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
+            `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
         );
       }
 
       if (ramClearMetersOut < prevOut) {
         warnings.push(
           "RAM Clear Meters Out should be higher than or equal to previous reading. " +
-          `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
+            `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
         );
       }
 
@@ -134,14 +136,14 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
       if (ramClearMetersIn < currentMetersIn) {
         warnings.push(
           "RAM Clear Meters In should be higher than current meters. " +
-          `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Current: ${currentMetersIn.toLocaleString()}`
+            `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Current: ${currentMetersIn.toLocaleString()}`
         );
       }
 
       if (ramClearMetersOut < currentMetersOut) {
         warnings.push(
           "RAM Clear Meters Out should be higher than current meters. " +
-          `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Current: ${currentMetersOut.toLocaleString()}`
+            `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Current: ${currentMetersOut.toLocaleString()}`
         );
       }
     }
@@ -159,13 +161,13 @@ export function validateRamClearMeters(params: RamClearValidationParams): RamCle
   return {
     isValid: errors.length === 0,
     warnings,
-    errors
+    errors,
   };
 }
 
 /**
  * Calculates movement values based on RAM Clear status
- * 
+ *
  * @param params - Calculation parameters
  * @returns Movement calculation result
  */
@@ -173,7 +175,7 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
   movementIn: number;
   movementOut: number;
   gross: number;
-  calculationMethod: 'standard' | 'ramClear';
+  calculationMethod: "standard" | "ramClear";
 } {
   const {
     currentMetersIn,
@@ -182,30 +184,30 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
     prevOut,
     ramClear,
     ramClearCoinIn,
-    ramClearCoinOut
+    ramClearCoinOut,
   } = params;
 
   let movementIn: number;
   let movementOut: number;
-  let calculationMethod: 'standard' | 'ramClear';
+  let calculationMethod: "standard" | "ramClear";
 
   if (!ramClear) {
     // Standard calculation: current - previous
     movementIn = currentMetersIn - prevIn;
     movementOut = currentMetersOut - prevOut;
-    calculationMethod = 'standard';
+    calculationMethod = "standard";
   } else {
     // RAM Clear calculation
     if (ramClearCoinIn !== undefined && ramClearCoinOut !== undefined) {
       // Use RAM Clear coin values for calculation
-      movementIn = (ramClearCoinIn - prevIn) + (currentMetersIn - 0);
-      movementOut = (ramClearCoinOut - prevOut) + (currentMetersOut - 0);
+      movementIn = ramClearCoinIn - prevIn + (currentMetersIn - 0);
+      movementOut = ramClearCoinOut - prevOut + (currentMetersOut - 0);
     } else {
       // Use current values directly (meters reset to 0)
       movementIn = currentMetersIn;
       movementOut = currentMetersOut;
     }
-    calculationMethod = 'ramClear';
+    calculationMethod = "ramClear";
   }
 
   const gross = movementOut - movementIn;
@@ -214,31 +216,33 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
     movementIn,
     movementOut,
     gross,
-    calculationMethod
+    calculationMethod,
   };
 }
 
 /**
  * Gets validation message for display in UI
- * 
+ *
  * @param result - Validation result
  * @returns Formatted message for user display
  */
-export function getRamClearValidationMessage(result: RamClearValidationResult): string {
+export function getRamClearValidationMessage(
+  result: RamClearValidationResult
+): string {
   if (result.errors.length > 0) {
-    return result.errors.join('\n');
+    return result.errors.join("\n");
   }
-  
+
   if (result.warnings.length > 0) {
-    return result.warnings.join('\n');
+    return result.warnings.join("\n");
   }
-  
-  return '';
+
+  return "";
 }
 
 /**
  * Determines if RAM Clear should be automatically detected
- * 
+ *
  * @param currentMetersIn - Current meters in value
  * @param currentMetersOut - Current meters out value
  * @param prevIn - Previous meters in value
@@ -254,9 +258,12 @@ export function detectRamClear(
   // RAM Clear is likely if current meters are significantly lower than previous
   // This is a heuristic - actual detection may need more sophisticated logic
   const significantDropThreshold = 0.5; // 50% drop suggests rollover
-  
+
   const inDropRatio = currentMetersIn / prevIn;
   const outDropRatio = currentMetersOut / prevOut;
-  
-  return inDropRatio < significantDropThreshold || outDropRatio < significantDropThreshold;
+
+  return (
+    inDropRatio < significantDropThreshold ||
+    outDropRatio < significantDropThreshold
+  );
 }

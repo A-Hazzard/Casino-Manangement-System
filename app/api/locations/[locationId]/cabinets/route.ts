@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { NewMachineData } from "@/lib/types/machines";
+import type { GamingMachine } from "@/shared/types/entities";
+type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
+  collectionSettings?: {
+    lastCollectionTime?: string;
+    lastMetersIn?: string;
+    lastMetersOut?: string;
+  };
+};
 import { generateMongoId } from "@/lib/utils/id";
 
 /**

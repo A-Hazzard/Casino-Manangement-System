@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
+import { useUserStore } from "@/lib/store/userStore";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -14,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Member } from "@/lib/types/members";
+import { CasinoMember as Member } from "@/shared/types/entities";
 
 type DeleteMemberModalProps = {
   isOpen: boolean;
@@ -29,22 +30,59 @@ export default function DeleteMemberModal({
 }: DeleteMemberModalProps) {
   const { isDeleteModalOpen, selectedMember, closeDeleteModal } =
     useMemberActionsStore();
+  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // Helper function to get proper user display name for activity logging
+  const getUserDisplayName = () => {
+    if (!user) return "Unknown User";
+
+    // Check if user has profile with firstName and lastName
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // If only firstName exists, use it
+    if (user.profile?.firstName && !user.profile?.lastName) {
+      return user.profile.firstName;
+    }
+
+    // If only lastName exists, use it
+    if (!user.profile?.firstName && user.profile?.lastName) {
+      return user.profile.lastName;
+    }
+
+    // If neither firstName nor lastName exist, use username
+    if (user.username && user.username.trim() !== "") {
+      return user.username;
+    }
+
+    // If username doesn't exist or is blank, use email
+    if (user.emailAddress && user.emailAddress.trim() !== "") {
+      return user.emailAddress;
+    }
+
+    // Fallback
+    return "Unknown User";
+  };
+
   // Activity logging is now handled via API calls
   const logActivity = async (
     action: string,
     resource: string,
     resourceId: string,
     resourceName: string,
-    details: string
+    details: string,
+    previousData?: Record<string, unknown> | null,
+    newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
+      const response = await fetch("/api/activity-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           action,
@@ -52,17 +90,20 @@ export default function DeleteMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: 'current-user', // This should be replaced with actual user ID
-          username: 'current-user', // This should be replaced with actual username
-          userRole: 'user', // This should be replaced with actual user role
+          userId: user?._id || "unknown",
+          username: getUserDisplayName(),
+          userRole: "user",
+          previousData: previousData || null,
+          newData: newData || null,
+          changes: [], // Will be calculated by the API
         }),
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
+        console.error("Failed to log activity:", response.statusText);
       }
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   };
 
@@ -124,8 +165,14 @@ export default function DeleteMemberModal({
           "delete",
           "member",
           selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`,
-          `Deleted member: ${selectedMember.profile?.firstName || "Unknown"} ${selectedMember.profile?.lastName || "Member"}`
+          `${selectedMember.profile?.firstName || "Unknown"} ${
+            selectedMember.profile?.lastName || "Member"
+          }`,
+          `Deleted member: ${selectedMember.profile?.firstName || "Unknown"} ${
+            selectedMember.profile?.lastName || "Member"
+          }`,
+          selectedMember, // Previous data (the deleted member)
+          null // No new data for deletion
         );
 
         toast.success("Member deleted successfully");

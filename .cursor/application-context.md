@@ -2,9 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 
-**Last Updated:** September 15, 2025
-
-**Last Updated:** January 2025
+**Last Updated:** September 23rd, 2025
 
 ## System Overview
 
@@ -13,12 +11,14 @@ The Evolution One Casino Management System (CMS) is a comprehensive casino manag
 ## Core Architecture
 
 ### Technology Stack
-- **Frontend:** Next.js 14+ with TypeScript, React, Tailwind CSS
+- **Frontend:** Next.js 15.3.0 with TypeScript, React, Tailwind CSS
 - **Backend:** Next.js API Routes with MongoDB
 - **Database:** MongoDB with Mongoose ODM
 - **State Management:** Zustand for global state, React Context for local state
-- **UI Components:** Radix UI, Lucide React icons, Framer Motion animations
+- **UI Components:** Radix UI (Shadcn), Lucide React icons, Framer Motion animations
+- **Authentication:** JWT with `jose` library, HTTP-only cookies
 - **Build Tool:** pnpm for package management
+- **Type System:** Comprehensive TypeScript with centralized shared types
 
 ### Project Structure
 ```
@@ -128,9 +128,11 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 
 ### TypeScript Discipline
 - All types in `shared/types/`, `lib/types/`, or `types/` directories
-- Prefer `type` over `interface`
-- No `any` types allowed (temporary exceptions with ESLint disable comments for placeholder data)
+- **Single Source of Truth**: Types consolidated in `shared/types/` to eliminate duplication
+- Prefer `type` over `interface` for consistency
+- No `any` types allowed - use proper type definitions
 - Always check dependencies before deleting code
+- **Type Consolidation**: Systematic reduction of duplicate type files across frontend/backend
 
 ### Code Organization
 - Keep page components lean, offload logic to helpers
@@ -158,10 +160,14 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 5. **Mobile-Specific Requirements:** Every page and section must have mobile-specific loaders that match mobile layouts
 
 ### Security
-- JWT tokens with `jose` library
+- JWT tokens with `jose` library and HTTP-only cookies
 - OWASP standards compliance
 - Never expose sensitive data client-side
 - Validate and sanitize all user input
+- **Role-Based Access Control**: Comprehensive permission system with casino hierarchy
+- **Session Management**: Secure token handling with automatic logout
+- **Activity Logging**: Complete audit trail for all user actions
+- **Account Security**: Failed login tracking and account locking
 
 ## Key Features
 
@@ -336,13 +342,44 @@ export default function Component() {
 - Enhanced security features
 
 ### Technical Debt
-- Migrate remaining JavaScript to TypeScript
-- Optimize database queries
-- Improve error handling consistency
-- Enhance test coverage
+- ✅ **Type System Consolidation**: In progress - reducing 25+ type files to 8-10 core files
+- ✅ **Authentication System**: Complete implementation with RBAC
+- ✅ **Build Optimization**: Clean TypeScript compilation and ESLint
+- **Database Query Optimization**: Continue optimizing MongoDB queries
+- **Error Handling Consistency**: Standardize error responses across all APIs
+- **Test Coverage**: Enhance automated testing coverage
 
 
 ## Recent System Updates (September 2025)
+
+### Authentication & Authorization System - Complete Implementation
+- **JWT-Based Authentication**: Secure token-based authentication with access and refresh tokens
+- **Role-Based Access Control (RBAC)**: Comprehensive permission system with casino hierarchy
+  - **Super Admin**: Full system access and management capabilities
+  - **Admin**: User management, system configuration, and reporting
+  - **Manager**: Location and machine management, collection oversight
+  - **Collector**: Collection operations and basic reporting
+  - **Viewer**: Read-only access to reports and analytics
+- **Protected Routes**: All main pages wrapped with `ProtectedRoute` HOC for access control
+- **Permission-Based UI**: Components show/hide based on user permissions
+- **Session Management**: Secure session handling with automatic logout on token expiration
+- **Activity Logging**: Comprehensive audit trail for all authentication events
+- **Account Security**: Failed login attempt tracking, account locking, and security monitoring
+
+### Type System Consolidation - In Progress
+- **Centralized Types**: All authentication types consolidated in `shared/types/auth.ts`
+- **Eliminated Duplicates**: Removed duplicate type definitions across frontend/backend
+- **Standardized Imports**: Consistent type imports from shared locations
+- **Type Safety**: Comprehensive TypeScript coverage across all components
+- **API Response Standardization**: Unified response formats across all endpoints
+- **Build Optimization**: Reduced bundle size and improved compilation performance
+
+### API & Data Management Enhancements
+- **Real MongoDB Integration**: All APIs now use actual database queries instead of mock data
+- **Activity Logging**: Comprehensive `logActivity` function with standardized parameters
+- **Error Handling**: Consistent error response formats across all endpoints
+- **Data Validation**: Server-side validation for all API operations
+- **Performance Optimization**: Efficient database queries with proper indexing
 
 ### Collection Report System - Complete Implementation
 - **Multi-Platform Collection Interface**: Desktop and mobile-optimized collection report creation
@@ -401,19 +438,43 @@ export default function Component() {
 - **Error Boundaries**: Graceful error handling throughout the application
 - **Activity Logging**: Complete audit trail for all user actions
 
-## Current Issues and Debugging
+## Current System Status
 
-### Manufacturers API Issue (September 2025)
-- **Problem**: `/api/manufacturers` endpoint returning empty array `[]`
-- **Impact**: Manufacturer dropdown not populated in create/edit cabinet modals
-- **Expected**: Should return unique manufacturer names from machines collection
-- **Files Affected**: 
-  - `app/api/manufacturers/route.ts` - API endpoint
-  - `lib/helpers/manufacturers.ts` - Frontend helper
-  - `components/ui/cabinets/NewCabinetModal.tsx` - Create modal
-  - `components/ui/cabinets/EditCabinetModal.tsx` - Edit modal
-- **Debugging Needed**: Check MongoDB aggregation query, verify manufacturer data exists in machines collection
-- **Documentation**: See `.cursor/manufacturers-api-issue.md` for detailed debugging steps
+### Type System Consolidation - Active
+- **Status**: In progress with comprehensive analysis completed
+- **Target**: Reduce 25+ type files to 8-10 core files
+- **Progress**: Authentication types consolidated, API types standardized
+- **Next Steps**: Entity type consolidation and component type optimization
+- **Documentation**: See `TYPE_CONSOLIDATION_ANALYSIS.md` and `TYPE_SYSTEM_INVENTORY.md`
+
+### Build System Status
+- **TypeScript Compilation**: ✅ Clean (no errors)
+- **ESLint**: ✅ Clean (no warnings)
+- **Build Process**: ✅ Optimized production builds working
+- **Type Safety**: ✅ Comprehensive coverage across all components
+
+### Authentication System Status
+- **JWT Implementation**: ✅ Complete with secure token handling
+- **Role-Based Access**: ✅ All pages protected with proper permissions
+- **Session Management**: ✅ Automatic logout and token refresh
+- **Security Monitoring**: ✅ Activity logging and account locking
+
+## Current Development Priorities
+
+### High Priority
+1. **Type System Consolidation**: Complete the systematic reduction of duplicate type files
+2. **API Response Standardization**: Ensure all endpoints use consistent response formats
+3. **Component Type Optimization**: Create generic component types for reusability
+
+### Medium Priority
+1. **Database Query Optimization**: Improve performance of MongoDB queries
+2. **Error Handling Enhancement**: Standardize error responses across all APIs
+3. **Documentation Updates**: Keep all documentation current with system changes
+
+### Low Priority
+1. **Test Coverage Enhancement**: Increase automated testing coverage
+2. **Performance Monitoring**: Implement comprehensive performance tracking
+3. **Mobile App Development**: Plan for future mobile application
 
 ## Recent System Updates (January 2025)
 

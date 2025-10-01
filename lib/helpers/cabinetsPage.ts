@@ -3,7 +3,7 @@
  */
 
 import type { CabinetSection } from "@/lib/constants/cabinets";
-import type { Cabinet } from "@/lib/types/cabinets";
+import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 /**

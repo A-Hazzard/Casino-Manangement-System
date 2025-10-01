@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -83,8 +83,16 @@ export function CustomSelect({
     }
   }, [isOpen, searchable]);
 
+  const handleSelect = useCallback((selectedValue: string) => {
+    onValueChange?.(selectedValue);
+    setIsOpen(false);
+    setSearchTerm("");
+    setFocusedIndex(-1);
+    triggerRef.current?.focus();
+  }, [onValueChange]);
+
   // Handle keyboard navigation
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (!isOpen) {
       if (
         event.key === "Enter" ||
@@ -128,24 +136,16 @@ export function CustomSelect({
         }
         break;
     }
-  };
+  }, [isOpen, filteredOptions, focusedIndex, handleSelect]);
 
-  const handleSelect = (selectedValue: string) => {
-    onValueChange?.(selectedValue);
-    setIsOpen(false);
-    setSearchTerm("");
-    setFocusedIndex(-1);
-    triggerRef.current?.focus();
-  };
-
-  const handleTriggerClick = () => {
+  const handleTriggerClick = useCallback(() => {
     if (!disabled) {
       setIsOpen(!isOpen);
       if (!isOpen) {
         setFocusedIndex(0);
       }
     }
-  };
+  }, [disabled, isOpen]);
 
   return (
     <div className={cn("relative", className)}>

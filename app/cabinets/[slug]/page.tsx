@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import { Button } from "@/components/ui/button";
-import { CabinetDetail } from "@/lib/types/cabinets";
-import { fetchCabinetById } from "@/lib/helpers/cabinets";
+import { useCabinetDetailsData, useSmibConfiguration } from "@/lib/hooks/data";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
@@ -17,23 +17,23 @@ import {
   ChevronDownIcon,
   Pencil2Icon,
 } from "@radix-ui/react-icons";
-import { differenceInMinutes } from "date-fns";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import { toast } from "sonner";
 import gsap from "gsap";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { RefreshCw } from "lucide-react";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
 import { NotFoundError, NetworkError } from "@/components/ui/errors";
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Extracted skeleton and error components
-import {
-  CabinetDetailsLoadingState,
-} from "@/components/ui/skeletons/CabinetDetailSkeletons";
+import { CabinetDetailsLoadingState } from "@/components/ui/skeletons/CabinetDetailSkeletons";
 
 // Animation variants
 const configContentVariants: Variants = {
@@ -61,7 +61,7 @@ function useHasMounted() {
   return hasMounted;
 }
 
-export default function CabinetDetailPage() {
+function CabinetDetailPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,11 +69,11 @@ export default function CabinetDetailPage() {
   const [isClient, setIsClient] = useState(false);
   const hasMounted = useHasMounted();
 
-  const { 
-    selectedLicencee, 
+  const {
+    selectedLicencee,
     setSelectedLicencee,
     activeMetricsFilter,
-    customDateRange
+    customDateRange,
   } = useDashBoardStore();
 
   // State for tracking date filter initialization
@@ -82,20 +82,39 @@ export default function CabinetDetailPage() {
   // Detect when date filter is properly initialized
   useEffect(() => {
     if (activeMetricsFilter && !dateFilterInitialized) {
-      console.warn("[DEBUG] Date filter initialized:", activeMetricsFilter);
       setDateFilterInitialized(true);
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
 
   const { openEditModal } = useCabinetActionsStore();
 
-  const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
-  const [locationName, setLocationName] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<"not-found" | "network" | "unknown">("unknown");
-  const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
-  const [isOnline, setIsOnline] = useState(false);
-  
+  // Custom hooks for data management
+  const {
+    cabinet,
+    locationName,
+    error,
+    errorType,
+    metricsLoading,
+    isOnline,
+    fetchCabinetDetailsData,
+    handleCabinetUpdated,
+  } = useCabinetDetailsData({
+    slug,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    dateFilterInitialized,
+  });
+
+  const {
+    smibConfigExpanded,
+    communicationMode,
+    firmwareVersion,
+    toggleSmibConfig,
+    setCommunicationModeFromData,
+    setFirmwareVersionFromData,
+  } = useSmibConfiguration();
+
   // Initialize activeMetricsTabContent from URL on first load
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState<string>(() => {
@@ -109,120 +128,31 @@ export default function CabinetDetailPage() {
       return "Range Metrics"; // default
     });
 
-  // Communication mode and firmware selection states
-  const [communicationMode, setCommunicationMode] = useState<string>("sas");
-  const [firmwareVersion, setFirmwareVersion] =
-    useState<string>("Cloudy v1.0.4");
-
-
   // Refs for animation
   const configSectionRef = useRef<HTMLDivElement>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
-  const [metricsLoading, setMetricsLoading] = useState(false);
 
-  const fetchCabinetDetailsData = useCallback(async () => {
-    setError(null);
-    setErrorType("unknown");
-    setMetricsLoading(true);
-
-    try {
-      // Fetch cabinet data with current date filter - no default fallback
-      if (!activeMetricsFilter) {
-        console.warn("[DEBUG] No active date filter set, skipping fetch");
-        setMetricsLoading(false);
-        return;
-      }
-      
-      console.warn("[DEBUG] Fetching cabinet data with:", { slug, timePeriod: activeMetricsFilter, customDateRange });
-      const cabinetData = await fetchCabinetById(
-        slug, 
-        activeMetricsFilter, 
-        activeMetricsFilter === "Custom" && customDateRange ? { from: customDateRange.startDate, to: customDateRange.endDate } : undefined
-      );
-      
-      // Check if cabinet was not found
-      if (!cabinetData) {
-        setError("Cabinet not found");
-        setErrorType("not-found");
-        setCabinet(null);
-        return;
-      }
-
-      setCabinet(cabinetData);
-
-      // Use location name directly from cabinet data
-      if (cabinetData?.locationName) {
-        setLocationName(cabinetData.locationName);
-      } else if (cabinetData?.locationId) {
-        setLocationName("Location Not Found");
-      } else {
-        setLocationName("No Location Assigned");
-      }
-
-      if (cabinetData?.lastActivity) {
-        const lastActive = new Date(cabinetData.lastActivity);
-        setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
-      }
-      setCommunicationModeFromData(cabinetData);
-      setFirmwareVersionFromData(cabinetData);
-    } catch (err) {
-      setCabinet(null);
-      
-      // Determine error type based on the error
-      if (err instanceof Error) {
-        if (err.message.includes("404") || err.message.includes("not found")) {
-          setError("Cabinet not found");
-          setErrorType("not-found");
-        } else if (err.message.includes("network") || err.message.includes("fetch")) {
-          setError("Network error");
-          setErrorType("network");
-        } else {
-          setError("Failed to fetch cabinet details");
-          setErrorType("unknown");
-        }
-      } else {
-        setError("Failed to fetch cabinet details");
-        setErrorType("unknown");
-      }
-      
-      toast.error("Failed to fetch cabinet details");
-    } finally {
-      setMetricsLoading(false);
-    }
-  }, [slug, activeMetricsFilter, customDateRange]);
-
-  // Callback function to refresh cabinet data after updates
-  const handleCabinetUpdated = useCallback(() => {
-    fetchCabinetDetailsData();
-  }, [fetchCabinetDetailsData]);
-
-
+  // Update SMIB configuration when cabinet data changes
   useEffect(() => {
-    console.warn("[DEBUG] useEffect (initial fetch) running with slug:", slug, "activeMetricsFilter:", activeMetricsFilter, "dateFilterInitialized:", dateFilterInitialized);
-    // Only fetch if we have a valid date filter and it's been properly initialized
-    if (activeMetricsFilter && dateFilterInitialized) {
-      fetchCabinetDetailsData();
+    if (cabinet) {
+      setCommunicationModeFromData(cabinet);
+      setFirmwareVersionFromData(cabinet);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, activeMetricsFilter, dateFilterInitialized]); // Include dateFilterInitialized to ensure proper initialization
+  }, [cabinet, setCommunicationModeFromData, setFirmwareVersionFromData]);
 
   // Note: Date filter changes are now handled by the main useEffect above
 
   // Don't show loading state on initial load
   useEffect(() => {
     if (cabinet && !refreshing) {
-      setMetricsLoading(false);
+      // Loading state is managed by the hook
     }
   }, [cabinet, refreshing]);
 
   const handleBackToCabinets = () => {
     router.push(`/cabinets`);
-  };
-
-  const toggleSmibConfig = () => {
-    setSmibConfigExpanded(!smibConfigExpanded);
   };
 
   // Set isClient to true once component mounts in the browser
@@ -233,17 +163,35 @@ export default function CabinetDetailPage() {
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
     const section = searchParams?.get("section");
-    if (section === "live-metrics" && activeMetricsTabContent !== "Live Metrics") {
+    if (
+      section === "live-metrics" &&
+      activeMetricsTabContent !== "Live Metrics"
+    ) {
       setActiveMetricsTabContent("Live Metrics");
-    } else if (section === "bill-validator" && activeMetricsTabContent !== "Bill Validator") {
+    } else if (
+      section === "bill-validator" &&
+      activeMetricsTabContent !== "Bill Validator"
+    ) {
       setActiveMetricsTabContent("Bill Validator");
-    } else if (section === "activity-log" && activeMetricsTabContent !== "Activity Log") {
+    } else if (
+      section === "activity-log" &&
+      activeMetricsTabContent !== "Activity Log"
+    ) {
       setActiveMetricsTabContent("Activity Log");
-    } else if (section === "collection-history" && activeMetricsTabContent !== "Collection History") {
+    } else if (
+      section === "collection-history" &&
+      activeMetricsTabContent !== "Collection History"
+    ) {
       setActiveMetricsTabContent("Collection History");
-    } else if (section === "collection-settings" && activeMetricsTabContent !== "Collection Settings") {
+    } else if (
+      section === "collection-settings" &&
+      activeMetricsTabContent !== "Collection Settings"
+    ) {
       setActiveMetricsTabContent("Collection Settings");
-    } else if (section === "configurations" && activeMetricsTabContent !== "Configurations") {
+    } else if (
+      section === "configurations" &&
+      activeMetricsTabContent !== "Configurations"
+    ) {
       setActiveMetricsTabContent("Configurations");
     } else if (!section && activeMetricsTabContent !== "Range Metrics") {
       setActiveMetricsTabContent("Range Metrics");
@@ -262,18 +210,18 @@ export default function CabinetDetailPage() {
       "Activity Log": "activity-log",
       "Collection History": "collection-history",
       "Collection Settings": "collection-settings",
-      "Configurations": "configurations",
+      Configurations: "configurations",
     };
 
     const params = new URLSearchParams(searchParams?.toString() || "");
     const sectionValue = sectionMap[tab];
-    
+
     if (sectionValue) {
       params.set("section", sectionValue);
     } else {
       params.delete("section");
     }
-    
+
     const newUrl = `${pathname}?${params.toString()}`;
     router.push(newUrl, { scroll: false });
   };
@@ -339,46 +287,6 @@ export default function CabinetDetailPage() {
       await fetchCabinetDetailsData();
     } finally {
       setRefreshing(false);
-    }
-  };
-
-
-  // Add helper functions to set communication mode and firmware version
-  const setCommunicationModeFromData = (data: CabinetDetail) => {
-    if (
-      typeof data === "object" &&
-      data !== null &&
-      data.smibConfig &&
-      typeof data.smibConfig === "object" &&
-      "coms" in data.smibConfig
-    ) {
-      const mode = data.smibConfig.coms?.comsMode;
-      if (mode !== undefined) {
-        setCommunicationMode(
-          mode === 0 ? "sas" : mode === 1 ? "non sas" : "IGT"
-        );
-      }
-    }
-  };
-
-  const setFirmwareVersionFromData = (data: CabinetDetail) => {
-    if (
-      typeof data === "object" &&
-      data !== null &&
-      data.smibVersion &&
-      typeof data.smibVersion === "object" &&
-      "firmware" in data.smibVersion
-    ) {
-      const firmware = data.smibVersion.firmware;
-      if (typeof firmware === "string") {
-        if (firmware.includes("v1-0-4-1")) {
-          setFirmwareVersion("Cloudy v1.0.4.1");
-        } else if (firmware.includes("v1-0-4")) {
-          setFirmwareVersion("Cloudy v1.0.4");
-        } else {
-          setFirmwareVersion("Cloudy v1.0");
-        }
-      }
     }
   };
 
@@ -510,8 +418,7 @@ export default function CabinetDetailPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between">
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold flex items-center">
-                  Name:{" "}
-                  {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
+                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
                   <motion.button
                     className="ml-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
                     whileHover={{ scale: 1.1 }}
@@ -526,15 +433,16 @@ export default function CabinetDetailPage() {
                   </motion.button>
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
-                {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
-                  <div className="mt-2 mb-2">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-                      <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
-                      DELETED -{" "}
-                      {new Date(cabinet.deletedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
+                {cabinet?.deletedAt &&
+                  new Date(cabinet.deletedAt).getFullYear() > 2020 && (
+                    <div className="mt-2 mb-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
+                        <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        DELETED -{" "}
+                        {new Date(cabinet.deletedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
                 <p className="text-grayHighlight mt-2">
                   Manufacturer:{" "}
                   {cabinet?.gameConfig?.theoreticalRtp
@@ -617,19 +525,19 @@ export default function CabinetDetailPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between">
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold flex items-center">
-                  Name:{" "}
-                  {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
+                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
-                {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
-                  <div className="mt-2 mb-2">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-                      <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
-                      DELETED -{" "}
-                      {new Date(cabinet.deletedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
+                {cabinet?.deletedAt &&
+                  new Date(cabinet.deletedAt).getFullYear() > 2020 && (
+                    <div className="mt-2 mb-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
+                        <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        DELETED -{" "}
+                        {new Date(cabinet.deletedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
                 <p className="text-grayHighlight mt-2">
                   Manufacturer:{" "}
                   {cabinet?.gameConfig?.theoreticalRtp
@@ -745,347 +653,343 @@ export default function CabinetDetailPage() {
                   animate="visible"
                   exit="hidden"
                 >
-
                   <TooltipProvider delayDuration={100}>
+                    {/* Communication Mode */}
+                    <motion.div variants={itemVariants}>
+                      <h3 className="font-medium mb-2 text-foreground">
+                        Communication Mode
+                      </h3>
+                      <div className="flex">
+                        <Tooltip delayDuration={50}>
+                          <TooltipTrigger asChild>
+                            <div className="relative">
+                              <select
+                                className="w-60 border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+                                value={communicationMode}
+                                disabled
+                              >
+                                <option value="sas">sas</option>
+                                <option value="non sas">non sas</option>
+                                <option value="IGT">IGT</option>
+                              </select>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Under maintenance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={50}>
+                          <TooltipTrigger asChild>
+                            <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <Button
+                                className="bg-gray-400 text-gray-600 cursor-not-allowed"
+                                disabled
+                              >
+                                UPDATE
+                              </Button>
+                            </motion.div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Under maintenance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </motion.div>
 
-                  {/* Communication Mode */}
-                  <motion.div variants={itemVariants}>
-                    <h3 className="font-medium mb-2 text-foreground">
-                      Communication Mode
-                    </h3>
-                    <div className="flex">
+                    {/* Firmware Update */}
+                    <motion.div variants={itemVariants}>
+                      <h3 className="font-medium mb-2 text-foreground">
+                        Firmware Update
+                      </h3>
+                      <div className="flex">
+                        <Tooltip delayDuration={50}>
+                          <TooltipTrigger asChild>
+                            <div className="relative">
+                              <select
+                                className="w-full border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+                                value={firmwareVersion}
+                                disabled
+                              >
+                                <option value="Cloudy v1.0">Cloudy v1.0</option>
+                                <option value="Cloudy v1.0.4">
+                                  Cloudy v1.0.4
+                                </option>
+                                <option value="Cloudy v1.0.4.1">
+                                  Cloudy v1.0.4.1
+                                </option>
+                              </select>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Under maintenance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={50}>
+                          <TooltipTrigger asChild>
+                            <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <Button
+                                className="ml-auto bg-gray-400 text-gray-600 cursor-not-allowed border border-gray-300"
+                                disabled
+                              >
+                                ⟳
+                              </Button>
+                            </motion.div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Under maintenance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={50}>
+                          <TooltipTrigger asChild>
+                            <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <Button
+                                className="ml-2 bg-gray-400 text-gray-600 cursor-not-allowed"
+                                disabled
+                              >
+                                UPDATE
+                              </Button>
+                            </motion.div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Under maintenance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </motion.div>
 
+                    {/* Machine Control Buttons - Responsive */}
+                    <motion.div
+                      variants={itemVariants}
+                      className="flex flex-wrap gap-2 md:gap-4"
+                    >
+                      <Tooltip delayDuration={50}>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <Button
+                              variant="outline"
+                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
+                              disabled
+                            >
+                              RESTART
+                            </Button>
+                          </motion.div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Under maintenance</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip delayDuration={50}>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <Button
+                              variant="outline"
+                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
+                              disabled
+                            >
+                              UNLOCK MACHINE
+                            </Button>
+                          </motion.div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Under maintenance</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip delayDuration={50}>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <Button
+                              variant="outline"
+                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
+                              disabled
+                            >
+                              LOCK MACHINE
+                            </Button>
+                          </motion.div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Under maintenance</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </motion.div>
+
+                    {/* Apply to all checkbox */}
+                    <motion.div
+                      variants={itemVariants}
+                      className="flex items-center"
+                    >
                       <Tooltip delayDuration={50}>
                         <TooltipTrigger asChild>
                           <div className="relative">
-                            <select
-                              className="w-60 border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-                              value={communicationMode}
+                            <input
+                              type="checkbox"
+                              id="applyToAll"
+                              className="mr-2 cursor-not-allowed opacity-50"
                               disabled
-                            >
-                              <option value="sas">sas</option>
-                              <option value="non sas">non sas</option>
-                              <option value="IGT">IGT</option>
-                            </select>
+                            />
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>Under maintenance</p>
                         </TooltipContent>
                       </Tooltip>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button 
-                              className="bg-gray-400 text-gray-600 cursor-not-allowed"
-                              disabled
-                            >
-                              UPDATE
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <input type="checkbox" id="applyToAll" className="mr-2" />
+                      <label htmlFor="applyToAll" className="text-sm">
+                        Apply to all SMIBs at this location (
+                        {cabinet?.locationName || "Unknown Location"})
+                      </label>
+                    </motion.div>
 
-                    </div>
-                  </motion.div>
-
-                  {/* Firmware Update */}
-                  <motion.div variants={itemVariants}>
-                    <h3 className="font-medium mb-2 text-foreground">
-                      Firmware Update
-                    </h3>
-                    <div className="flex">
-
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <div className="relative">
-                            <select
-                              className="w-full border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-                              value={firmwareVersion}
-                              disabled
-                            >
-                              <option value="Cloudy v1.0">Cloudy v1.0</option>
-                              <option value="Cloudy v1.0.4">Cloudy v1.0.4</option>
-                              <option value="Cloudy v1.0.4.1">Cloudy v1.0.4.1</option>
-                            </select>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button 
-                              className="ml-auto bg-gray-400 text-gray-600 cursor-not-allowed border border-gray-300"
-                              disabled
-                            >
-                              ⟳
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button 
-                              className="ml-2 bg-gray-400 text-gray-600 cursor-not-allowed"
-                              disabled
-                            >
-                              UPDATE
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                    </div>
-                  </motion.div>
-
-                  {/* Machine Control Buttons - Responsive */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="flex flex-wrap gap-2 md:gap-4"
-                  >
-
-                    <Tooltip delayDuration={50}>
-                      <TooltipTrigger asChild>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                            disabled
-                          >
-                            RESTART
-                          </Button>
-                        </motion.div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Under maintenance</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip delayDuration={50}>
-                      <TooltipTrigger asChild>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                            disabled
-                          >
-                            UNLOCK MACHINE
-                          </Button>
-                        </motion.div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Under maintenance</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip delayDuration={50}>
-                      <TooltipTrigger asChild>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                            disabled
-                          >
-                            LOCK MACHINE
-                          </Button>
-                        </motion.div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Under maintenance</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                  </motion.div>
-
-                  {/* Apply to all checkbox */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="flex items-center"
-                  >
-
-                    <Tooltip delayDuration={50}>
-                      <TooltipTrigger asChild>
-                        <div className="relative">
-                          <input 
-                            type="checkbox" 
-                            id="applyToAll" 
-                            className="mr-2 cursor-not-allowed opacity-50" 
-                            disabled 
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Under maintenance</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <input type="checkbox" id="applyToAll" className="mr-2" />
-                    <label htmlFor="applyToAll" className="text-sm">
-                      Apply to all SMIBs at this location (
-                      {cabinet?.locationName || "Unknown Location"})
-                    </label>
-                  </motion.div>
-
-                  {/* Network/WiFi Section - Responsive */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="border-t border-border pt-6"
-                  >
-                    <h3 className="font-medium mb-4 text-foreground">
-                      Network/WiFi
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-                      {" "}
-                      {/* Responsive grid */}
-                      <div className="flex">
-                        <span className="text-sm font-medium text-grayHighlight w-24">
-                          Name:
-                        </span>
-                        <span className="text-sm truncate">
-                          {" "}
-                          {/* Added truncate */}
-                          {cabinet?.smibConfig?.net?.netStaSSID ||
-                            "Dynamic 1 - Staff Wifi"}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-sm font-medium text-grayHighlight w-24">
-                          Password:
-                        </span>
-                        <span className="text-sm">
-                          {cabinet?.smibConfig?.net?.netStaPwd || "wordsapp!23"}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-sm font-medium text-grayHighlight w-24">
-                          Channel:
-                        </span>
-                        <span className="text-sm">
-                          {cabinet?.smibConfig?.net?.netStaChan || "1"}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  {/* MQTT Section - Responsive */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="border-t border-border pt-6"
-                  >
-                    <h3 className="font-medium mb-4 text-foreground">MQTT</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {" "}
-                      {/* Responsive grid */}
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">Connection</h4>
-                        <div className="space-y-1">
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Host:
-                            </span>
-                            <span className="text-sm"></span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Port:
-                            </span>
-                            <span className="text-sm"></span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Use TLS:
-                            </span>
-                            <span className="text-sm">No</span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Idle Timeout:
-                            </span>
-                            <span className="text-sm">30 seconds</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">
-                          Authentication
-                        </h4>
-                        <div className="space-y-1">
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Username:
-                            </span>
-                            <span className="text-sm"></span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Password:
-                            </span>
-                            <span className="text-sm"></span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium mb-2">Topics</h4>
-                      <div className="space-y-1">
+                    {/* Network/WiFi Section - Responsive */}
+                    <motion.div
+                      variants={itemVariants}
+                      className="border-t border-border pt-6"
+                    >
+                      <h3 className="font-medium mb-4 text-foreground">
+                        Network/WiFi
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+                        {" "}
+                        {/* Responsive grid */}
                         <div className="flex">
-                          <span className="text-sm text-grayHighlight w-24">
-                            Server:
+                          <span className="text-sm font-medium text-grayHighlight w-24">
+                            Name:
                           </span>
-                          <span className="text-sm">sas/gy/server</span>
-                        </div>
-                        <div className="flex">
-                          <span className="text-sm text-grayHighlight w-24">
-                            Configuration:
+                          <span className="text-sm truncate">
+                            {" "}
+                            {/* Added truncate */}
+                            {cabinet?.smibConfig?.net?.netStaSSID ||
+                              "Dynamic 1 - Staff Wifi"}
                           </span>
-                          <span className="text-sm">smib/config</span>
                         </div>
                         <div className="flex">
-                          <span className="text-sm text-grayHighlight w-24">
-                            SMIB:
+                          <span className="text-sm font-medium text-grayHighlight w-24">
+                            Password:
                           </span>
                           <span className="text-sm">
-                            sas/relay/
-                            {cabinet?.relayId ||
-                              cabinet?.smibBoard ||
-                              "e831cdfa8464"}
+                            {cabinet?.smibConfig?.net?.netStaPwd ||
+                              "wordsapp!23"}
+                          </span>
+                        </div>
+                        <div className="flex">
+                          <span className="text-sm font-medium text-grayHighlight w-24">
+                            Channel:
+                          </span>
+                          <span className="text-sm">
+                            {cabinet?.smibConfig?.net?.netStaChan || "1"}
                           </span>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
 
+                    {/* MQTT Section - Responsive */}
+                    <motion.div
+                      variants={itemVariants}
+                      className="border-t border-border pt-6"
+                    >
+                      <h3 className="font-medium mb-4 text-foreground">MQTT</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {" "}
+                        {/* Responsive grid */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">
+                            Connection
+                          </h4>
+                          <div className="space-y-1">
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Host:
+                              </span>
+                              <span className="text-sm"></span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Port:
+                              </span>
+                              <span className="text-sm"></span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Use TLS:
+                              </span>
+                              <span className="text-sm">No</span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Idle Timeout:
+                              </span>
+                              <span className="text-sm">30 seconds</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">
+                            Authentication
+                          </h4>
+                          <div className="space-y-1">
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Username:
+                              </span>
+                              <span className="text-sm"></span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-sm text-grayHighlight w-24">
+                                Password:
+                              </span>
+                              <span className="text-sm"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium mb-2">Topics</h4>
+                        <div className="space-y-1">
+                          <div className="flex">
+                            <span className="text-sm text-grayHighlight w-24">
+                              Server:
+                            </span>
+                            <span className="text-sm">sas/gy/server</span>
+                          </div>
+                          <div className="flex">
+                            <span className="text-sm text-grayHighlight w-24">
+                              Configuration:
+                            </span>
+                            <span className="text-sm">smib/config</span>
+                          </div>
+                          <div className="flex">
+                            <span className="text-sm text-grayHighlight w-24">
+                              SMIB:
+                            </span>
+                            <span className="text-sm">
+                              sas/relay/
+                              {cabinet?.relayId ||
+                                cabinet?.smibBoard ||
+                                "e831cdfa8464"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
                   </TooltipProvider>
-
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1141,11 +1045,17 @@ export default function CabinetDetailPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <DashboardDateFilters onCustomRangeGo={fetchCabinetDetailsData} />
+            <DashboardDateFilters
+              hideAllTime={false}
+              onCustomRangeGo={fetchCabinetDetailsData}
+            />
           </motion.div>
         ) : (
           <div className="mt-4 mb-4">
-            <DashboardDateFilters onCustomRangeGo={fetchCabinetDetailsData} />
+            <DashboardDateFilters
+              hideAllTime={false}
+              onCustomRangeGo={fetchCabinetDetailsData}
+            />
           </div>
         )}
 
@@ -1169,9 +1079,7 @@ export default function CabinetDetailPage() {
                     : "bg-muted text-grayHighlight"
                 }`}
                 onClick={() =>
-                  handleTabChange(
-                    tab === "Metrics" ? "Range Metrics" : tab
-                  )
+                  handleTabChange(tab === "Metrics" ? "Range Metrics" : tab)
                 }
               >
                 {tab}
@@ -1216,5 +1124,13 @@ export default function CabinetDetailPage() {
         </AnimatePresence>
       </PageLayout>
     </>
+  );
+}
+
+export default function CabinetDetailPage() {
+  return (
+    <ProtectedRoute requiredPage="machines">
+      <CabinetDetailPageContent />
+    </ProtectedRoute>
   );
 }

@@ -1,3 +1,6 @@
+import type { Licensee } from "@/lib/types/licensee";
+import type { ActivityLogData } from "@/lib/types/hooks";
+
 export type GamingLocationsResource = {
   entity: "gaming-locations";
   resources: string[];
@@ -70,4 +73,31 @@ export type UserDetailsModalProps = {
     notes?: string;
     profilePicture?: string | null;
   }) => void;
+};
+
+// Hook types for useAdministrationData
+export type UseAdministrationDataProps = {
+  selectedLicencee: string;
+  activeSection: string;
+};
+
+export type UseAdministrationDataReturn = {
+  // Data states
+  users: User[];
+  licensees: Licensee[];
+  activityLogs: ActivityLogData[];
+  
+  // Loading states
+  loadingUsers: boolean;
+  loadingLicensees: boolean;
+  loadingActivityLogs: boolean;
+  
+  // Error states
+  error: string | null;
+  
+  // Actions
+  refreshUsers: () => Promise<void>;
+  refreshLicensees: () => Promise<void>;
+  refreshActivityLogs: () => Promise<void>;
+  refreshAllData: () => Promise<void>;
 };
