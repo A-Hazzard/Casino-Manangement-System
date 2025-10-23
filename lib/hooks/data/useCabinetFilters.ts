@@ -4,25 +4,10 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-
-interface UseCabinetFiltersProps {
-  onFiltersChange?: (
-    searchTerm: string,
-    selectedLocation: string,
-    selectedGameType: string
-  ) => void;
-}
-
-interface UseCabinetFiltersReturn {
-  searchTerm: string;
-  selectedLocation: string;
-  selectedGameType: string;
-  setSearchTerm: (term: string) => void;
-  setSelectedLocation: (location: string) => void;
-  setSelectedGameType: (gameType: string) => void;
-  clearFilters: () => void;
-  hasActiveFilters: boolean;
-}
+import type {
+  UseCabinetFiltersProps,
+  UseCabinetFiltersReturn,
+} from "@/lib/types/cabinetFilters";
 
 export function useCabinetFilters({
   onFiltersChange,
@@ -31,19 +16,22 @@ export function useCabinetFilters({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [selectedGameType, setSelectedGameType] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
 
   // Clear all filters
   const clearFilters = useCallback(() => {
     setSearchTerm("");
     setSelectedLocation("all");
     setSelectedGameType("all");
+    setSelectedStatus("All");
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters =
     searchTerm.trim() !== "" ||
     selectedLocation !== "all" ||
-    selectedGameType !== "all";
+    selectedGameType !== "all" ||
+    selectedStatus !== "All";
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -60,20 +48,38 @@ export function useCabinetFilters({
     setSelectedGameType(gameType);
   }, []);
 
+  // Handle status filter changes
+  const handleStatusChange = useCallback((status: string) => {
+    setSelectedStatus(status);
+  }, []);
+
   // Notify parent of filter changes
   useEffect(() => {
     if (onFiltersChange) {
-      onFiltersChange(searchTerm, selectedLocation, selectedGameType);
+      onFiltersChange(
+        searchTerm,
+        selectedLocation,
+        selectedGameType,
+        selectedStatus
+      );
     }
-  }, [searchTerm, selectedLocation, selectedGameType, onFiltersChange]);
+  }, [
+    searchTerm,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
+    onFiltersChange,
+  ]);
 
   return {
     searchTerm,
     selectedLocation,
     selectedGameType,
+    selectedStatus,
     setSearchTerm: handleSearchTermChange,
     setSelectedLocation: handleLocationChange,
     setSelectedGameType: handleGameTypeChange,
+    setSelectedStatus: handleStatusChange,
     clearFilters,
     hasActiveFilters,
   };

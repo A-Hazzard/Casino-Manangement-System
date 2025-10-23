@@ -91,7 +91,7 @@ export function SimpleDateTimePicker({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+        <div className="absolute top-full left-0 z-[70] mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
           <DatePicker
             selected={tempDate || date || new Date()}
             onChange={handleDateChange}
@@ -120,7 +120,6 @@ export function SimpleDateTimePicker({
               Go
             </Button>
           </div>
-
         </div>
       )}
     </div>

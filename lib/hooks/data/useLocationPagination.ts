@@ -4,23 +4,10 @@
  */
 
 import { useState, useCallback } from "react";
-
-interface UseLocationPaginationProps {
-  totalPages: number;
-  initialPage?: number;
-}
-
-interface UseLocationPaginationReturn {
-  currentPage: number;
-  setCurrentPage: (page: number) => void;
-  handleFirstPage: () => void;
-  handleLastPage: () => void;
-  handlePrevPage: () => void;
-  handleNextPage: () => void;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-  resetToFirstPage: () => void;
-}
+import type {
+  UseLocationPaginationProps,
+  UseLocationPaginationReturn,
+} from "@/lib/types/locationPagination";
 
 export function useLocationPagination({
   totalPages,

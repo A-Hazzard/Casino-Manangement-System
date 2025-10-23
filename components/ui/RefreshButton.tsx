@@ -32,18 +32,13 @@ export const SyncButton = ({
         className={cn("w-4 h-4", isSyncing ? "animate-spin" : "")}
         aria-hidden="true"
       />
-      <span className={iconOnly ? "hidden" : "hidden lg:inline"}>{label}</span>
+      <span className={iconOnly ? "hidden" : ""}>{label}</span>
     </Button>
   );
 };
 
 export const RefreshButton = (props: Omit<Props, "variant">) => {
-  return (
-    <SyncButton
-      {...props}
-      variant="refresh"
-    />
-  );
+  return <SyncButton {...props} variant="refresh" />;
 };
 
 export default SyncButton;

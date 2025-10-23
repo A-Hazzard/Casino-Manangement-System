@@ -93,6 +93,10 @@ export type CabinetSearchFiltersProps = {
   gameTypes: string[];
   onGameTypeChange: (gameType: string) => void;
 
+  // Status filter state
+  selectedStatus: string;
+  onStatusChange: (status: string) => void;
+
   // Sort state
   sortOption: CabinetSortOption;
   sortOrder: "asc" | "desc";

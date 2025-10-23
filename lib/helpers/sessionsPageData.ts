@@ -70,7 +70,7 @@ export async function fetchSessionEvents(
       throw new Error("Invalid response format");
     }
   } catch (error) {
-    console.error("❌ Error fetching session events:", error);
+    console.error(" Error fetching session events:", error);
     throw error;
   }
 }
@@ -78,12 +78,14 @@ export async function fetchSessionEvents(
 /**
  * Fetch session details
  */
-export async function fetchSessionDetails(sessionId: string): Promise<Record<string, unknown>> {
+export async function fetchSessionDetails(
+  sessionId: string
+): Promise<Record<string, unknown>> {
   try {
     const response = await axios.get(`/api/sessions/${sessionId}`);
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching session details:", error);
+    console.error(" Error fetching session details:", error);
     throw error;
   }
 }
@@ -91,12 +93,14 @@ export async function fetchSessionDetails(sessionId: string): Promise<Record<str
 /**
  * Fetch machine details
  */
-export async function fetchMachineDetails(machineId: string): Promise<Record<string, unknown>> {
+export async function fetchMachineDetails(
+  machineId: string
+): Promise<Record<string, unknown>> {
   try {
     const response = await axios.get(`/api/machines/${machineId}`);
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching machine details:", error);
+    console.error(" Error fetching machine details:", error);
     throw error;
   }
 }
@@ -114,7 +118,7 @@ export async function fetchSessionEventsFilters(
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching session events filters:", error);
+    console.error(" Error fetching session events filters:", error);
     return {
       eventTypes: [],
       events: [],
@@ -156,7 +160,7 @@ export async function exportSessionEvents(
 
     return response.data;
   } catch (error) {
-    console.error("❌ Error exporting session events:", error);
+    console.error(" Error exporting session events:", error);
     throw error;
   }
 }

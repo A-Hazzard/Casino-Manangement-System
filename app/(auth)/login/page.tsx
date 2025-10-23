@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { loginUser } from "@/lib/helpers/clientAuth";
-import { validatePassword } from "@/lib/utils/validation";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { useUserStore } from "@/lib/store/userStore";
+import { getDefaultRedirectPathFromRoles } from "@/lib/utils/roleBasedRedirect";
+import { checkForDatabaseMismatch } from "@/lib/utils/databaseMismatch";
 import LiquidGradient from "@/components/ui/LiquidGradient";
 import LoginForm from "@/components/auth/LoginForm";
 import { LoginPageSkeleton } from "@/components/ui/skeletons/LoginSkeletons";
@@ -17,11 +19,14 @@ import EOSLogo from "/public/EOS_Logo.png";
 import SlotMachineImage from "/public/slotMachine.png";
 
 export default function LoginPage() {
-  const { user, setUser } = useUserStore();
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+  const { setUser, clearUser } = useUserStore();
   const [isMounted, setIsMounted] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{
     identifier?: string;
     password?: string;
@@ -32,6 +37,7 @@ export default function LoginPage() {
   >(undefined);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
   const [showPasswordUpdateModal, setShowPasswordUpdateModal] = useState(false);
   const [showProfileValidationModal, setShowProfileValidationModal] =
     useState(false);
@@ -49,32 +55,91 @@ export default function LoginPage() {
     firstName: "",
     lastName: "",
   });
-  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
 
-    // Handle database mismatch error from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get("error");
+    // Load saved identifier if "Remember Me" was checked
+    const savedIdentifier = localStorage.getItem("rememberedIdentifier");
+    const wasRemembered = localStorage.getItem("rememberMe") === "true";
 
-    if (error === "database_mismatch") {
-      setMessage(
-        "Database environment has changed. Please login again to continue."
-      );
-      setMessageType("info");
+    if (savedIdentifier && wasRemembered) {
+      setIdentifier(savedIdentifier);
+      setRememberMe(true);
     }
+
+    // Check for database mismatch and handle it
+    const handleMismatch = async () => {
+      const hasMismatch = await checkForDatabaseMismatch();
+      if (hasMismatch) {
+        setMessage(
+          "Database environment has changed. Please login again to continue."
+        );
+        setMessageType("info");
+
+        // Clear any existing form data
+        setIdentifier("");
+        setPassword("");
+        setRememberMe(false);
+      }
+    };
+
+    handleMismatch();
   }, []);
 
   // Redirect if user is already logged in
-  // Remove duplicate redirect - handled in handleLogin
-  // This was causing the redirecting state to stay stuck
   useEffect(() => {
-    // Only redirect if user is already logged in when page loads
-    if (user && !loading && !redirecting) {
-      router.push("/");
+    // Skip this auto-redirect if we're in the middle of a manual login process
+    if (redirecting) {
+      console.warn(
+        "⏭️ Skipping useEffect redirect - manual redirect in progress"
+      );
+      return;
     }
-  }, [user, router, loading, redirecting]);
+
+    console.warn("🔄 Login page redirect check (useEffect):", {
+      user: user
+        ? { _id: user._id, email: user.emailAddress, roles: user.roles }
+        : null,
+      loading,
+      redirecting,
+      authLoading,
+      hasRedirected,
+      shouldRedirect:
+        user && !loading && !redirecting && !authLoading && !hasRedirected,
+    });
+
+    // Only redirect if user is already logged in when page loads and auth is not loading
+    // and we haven't already redirected to prevent infinite loops
+    if (user && !loading && !redirecting && !authLoading && !hasRedirected) {
+      const redirectPath = getDefaultRedirectPathFromRoles(user.roles || []);
+
+      // Prevent redirecting to login page (infinite loop protection)
+      if (
+        redirectPath === "/login" ||
+        redirectPath === "/login/" ||
+        redirectPath === "/"
+      ) {
+        console.warn(
+          "🚨 Redirect path is login page or root, skipping redirect to prevent infinite loop"
+        );
+        setHasRedirected(true); // Mark as redirected to prevent further attempts
+        return;
+      }
+
+      console.warn(
+        "🔄 User already logged in (useEffect), redirecting to:",
+        redirectPath
+      );
+      setHasRedirected(true); // Prevent infinite redirects
+
+      // Use a small delay to ensure state is updated
+      setTimeout(() => {
+        console.warn("⏰ Executing useEffect redirect now...");
+        router.replace(redirectPath);
+      }, 100);
+    }
+  }, [user, loading, redirecting, authLoading, hasRedirected, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent form submission and page refresh
@@ -90,18 +155,42 @@ export default function LoginPage() {
       }));
       valid = false;
     }
-    if (!validatePassword(password)) {
-      setErrors((prev) => ({
-        ...prev,
-        password: "Password must be at least 6 characters.",
-      }));
-      valid = false;
-    }
     if (!valid) return;
 
     setLoading(true);
+
+    // Clear any existing auth state before attempting login
+    // This ensures we start fresh if there was a database change
+    clearUser();
+
     try {
+      // Save or clear identifier based on "Remember Me" checkbox
+      if (rememberMe) {
+        localStorage.setItem("rememberedIdentifier", identifier);
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberedIdentifier");
+        localStorage.removeItem("rememberMe");
+      }
+
       const response = await loginUser({ identifier, password });
+
+      // Debug: Log the full response
+      console.warn("🔍 Login API Response:", {
+        success: response.success,
+        hasUser: !!response.user,
+        hasToken: !!response.token,
+        hasRefreshToken: !!response.refreshToken,
+        message: response.message,
+        user: response.user
+          ? {
+              _id: response.user._id,
+              email: response.user.emailAddress,
+              roles: response.user.roles,
+            }
+          : null,
+      });
+
       if (response.success) {
         // Check if password update is required
         if (response.requiresPasswordUpdate) {
@@ -123,21 +212,125 @@ export default function LoginPage() {
           return;
         }
 
-        // Store user data in the Zustand store
-        if (response.user) {
-          setUser(response.user);
-          setMessage("Login successful. Redirecting...");
-          setMessageType("success");
-          setRedirecting(true);
-
-          // Add a small delay to ensure user store is updated before redirect
-          setTimeout(() => {
-            router.push("/");
-          }, 100);
-        } else {
-          setMessage("Login failed - no user data received");
+        // Verify we have user data from the API response
+        if (!response.user) {
+          setMessage("Login failed - no user data received from server");
           setMessageType("error");
+          setLoading(false);
+          return;
         }
+
+        console.warn(
+          "📝 Credentials validated, now verifying token and setting user store..."
+        );
+
+        // Set redirecting FIRST to prevent the useEffect redirect from interfering
+        setRedirecting(true);
+
+        // Verify that cookies are actually set by making a test request
+        try {
+          // Suppress console errors for this expected request
+          const originalError = console.error;
+          console.error = () => {}; // Temporarily disable console.error
+
+          const testResponse = await fetch("/api/test-current-user");
+          const testData = await testResponse.json();
+
+          // Restore console.error
+          console.error = originalError;
+
+          // Debug: Log cookie verification result
+          console.warn("🍪 Cookie Verification Result:", {
+            status: testResponse.status,
+            success: testData.success,
+            userId: testData.userId,
+            cookies: document.cookie,
+          });
+
+          if (!testData.success || !testData.userId) {
+            console.error(
+              "❌ Token verification failed - cookies not set properly"
+            );
+            setMessage(
+              "Login failed - session could not be established. Please try again."
+            );
+            setMessageType("error");
+            setRedirecting(false);
+            clearUser();
+            setLoading(false);
+            return;
+          }
+
+          console.warn(
+            "✅ Token verified successfully, userId from cookie:",
+            testData.userId
+          );
+        } catch (error) {
+          console.error("❌ Token verification request failed:", error);
+          setMessage(
+            "Login failed - unable to verify session. Please try again."
+          );
+          setMessageType("error");
+          setRedirecting(false);
+          clearUser();
+          setLoading(false);
+          return;
+        }
+
+        // Now store user data in the Zustand store (after token verification)
+        setUser(response.user);
+
+        // Wait a moment to ensure the store is updated
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify that the user was actually set in the store
+        const storeUser = useUserStore.getState().user;
+        if (!storeUser) {
+          console.error("❌ Failed to set user in store");
+          setMessage("Login failed - unable to set user session");
+          setMessageType("error");
+          setRedirecting(false);
+          setLoading(false);
+          return;
+        }
+
+        console.warn("✅ User store updated successfully:", {
+          userId: storeUser._id,
+          email: storeUser.emailAddress,
+        });
+
+        // Only show success message after everything is verified
+        setMessage("Login successful. Redirecting...");
+        setMessageType("success");
+
+        // Get redirect path based on user roles
+        const redirectPath = getDefaultRedirectPathFromRoles(
+          response.user?.roles || []
+        );
+
+        console.warn("🚀 Login fully verified, redirecting to:", redirectPath);
+
+        // Mark that we've handled the redirect
+        setHasRedirected(true);
+
+        // First, clean the URL by removing error parameters
+        // This ensures we don't keep the database_mismatch parameter in history
+        if (window.location.search) {
+          console.warn("🧹 Cleaning URL parameters before redirect...");
+          window.history.replaceState({}, "", "/login");
+        }
+
+        // Use window.location.href for a hard redirect
+        // This ensures clean navigation and clears any lingering state
+        setTimeout(() => {
+          console.warn("⏰ Executing redirect now to:", redirectPath);
+          console.warn("🔐 Final state check before redirect:", {
+            userInStore: !!useUserStore.getState().user,
+            cookies: document.cookie.includes("token"),
+            redirectPath,
+          });
+          window.location.href = redirectPath;
+        }, 800);
       } else {
         const backendMsg =
           response.message || "Invalid email or password. Please try again.";
@@ -162,7 +355,14 @@ export default function LoginPage() {
     setMessage("Password updated successfully. Redirecting...");
     setMessageType("success");
     setRedirecting(true);
-    router.push("/");
+    const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+
+    console.warn("🔑 Password updated, redirecting to:", redirectPath);
+
+    // Use router.push for redirects
+    setTimeout(() => {
+      router.push(redirectPath);
+    }, 1000); // Small delay to show success message
   };
 
   const handleProfileUpdate = async (data: {
@@ -178,10 +378,17 @@ export default function LoginPage() {
     setMessage("Profile updated successfully. Redirecting...");
     setMessageType("success");
     setRedirecting(true);
-    router.push("/");
+    const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+
+    console.warn("👤 Profile updated, redirecting to:", redirectPath);
+
+    // Use router.push for redirects
+    setTimeout(() => {
+      router.push(redirectPath);
+    }, 1000); // Small delay to show success message
   };
 
-  if (!isMounted) {
+  if (!isMounted || authLoading) {
     return <LoginPageSkeleton />;
   }
 
@@ -210,6 +417,8 @@ export default function LoginPage() {
                   setPassword={setPassword}
                   showPassword={showPassword}
                   setShowPassword={setShowPassword}
+                  rememberMe={rememberMe}
+                  setRememberMe={setRememberMe}
                   errors={errors}
                   message={message}
                   messageType={messageType}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 import axios from "axios";
 import { AccountingDetailsProps } from "@/lib/types/cabinetDetails";
 import {
@@ -17,6 +18,7 @@ import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
 import type { MachineEvent } from "./ActivityLogTable";
 import type { MachineDocument } from "@/shared/types/entities";
 import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+import { useCabinetUIStore } from "@/lib/store/cabinetUIStore";
 
 import type { TimePeriod as ApiTimePeriod } from "@/shared/types/common";
 
@@ -337,6 +339,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   activeMetricsTabContent,
   setActiveMetricsTabContent,
 }: AccountingDetailsProps) => {
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
   );
@@ -350,6 +354,108 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     string | null
   >(null);
   const [activityLogError, setActivityLogError] = useState<string | null>(null);
+  
+  // Collection history fix functionality
+  const [isFixingCollectionHistory, setIsFixingCollectionHistory] = useState(false);
+  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] = useState(false);
+  const [isCheckingIssues, setIsCheckingIssues] = useState(false);
+
+  // Function to handle fixing collection history issues
+  const handleFixCollectionHistory = React.useCallback(async (isAutomatic: boolean = false) => {
+    if (!cabinet?._id) return;
+    
+    setIsFixingCollectionHistory(true);
+    try {
+      // Fix the issues using the existing fix-report endpoint
+      const fixResponse = await fetch('/api/collection-reports/fix-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          machineId: cabinet._id,
+          reportId: null // Fix for specific machine, not a report
+        }),
+        // Add timeout
+        signal: AbortSignal.timeout(60000) // 60 second timeout for fix operation
+      });
+      
+      if (!fixResponse.ok) {
+        throw new Error(`Fix API failed: ${fixResponse.status} ${fixResponse.statusText}`);
+      }
+      
+      const fixData = await fixResponse.json();
+      console.warn('🔧 Fix API response:', fixData);
+      
+      if (fixData.success) {
+        if (!isAutomatic) {
+          toast.success(`Fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`);
+          // Reload the page to get updated data
+          window.location.reload();
+        } else {
+          console.warn(`✅ Automatically fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`);
+          setHasCollectionHistoryIssues(false);
+        }
+      } else {
+        if (!isAutomatic) {
+          toast.error(fixData.message || 'Failed to fix collection history issues');
+        } else {
+          console.error('Failed to automatically fix collection history issues:', fixData.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error fixing collection history:', error);
+      toast.error('Failed to fix collection history issues');
+    } finally {
+      setIsFixingCollectionHistory(false);
+    }
+  }, [cabinet._id]);
+
+  // Function to check for collection history issues
+  const checkForCollectionHistoryIssues = React.useCallback(async () => {
+    if (!cabinet?._id) return;
+    
+    setIsCheckingIssues(true);
+    try {
+      const checkResponse = await fetch(
+        `/api/collection-reports/check-all-issues?machineId=${cabinet._id}`,
+        { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(60000) // 60 second timeout
+        }
+      );
+      
+      if (!checkResponse.ok) {
+        throw new Error(`Check API failed: ${checkResponse.status} ${checkResponse.statusText}`);
+      }
+      
+      const checkData = await checkResponse.json();
+      console.warn('🔍 Check API response:', checkData);
+      
+      setHasCollectionHistoryIssues(checkData.success && checkData.totalIssues > 0);
+      
+      if (checkData.success && checkData.totalIssues > 0) {
+        console.warn(`🔧 Found ${checkData.totalIssues} issues - automatically fixing...`);
+        // Automatically fix the issues when detected
+        await handleFixCollectionHistory(true);
+      } else {
+        console.warn('✅ No issues found');
+      }
+    } catch (error) {
+      console.error('Error checking collection history issues:', error);
+      setHasCollectionHistoryIssues(false);
+    } finally {
+      setIsCheckingIssues(false);
+    }
+  }, [cabinet._id, handleFixCollectionHistory]);
+
+  // Check for issues when component loads or cabinet changes
+  React.useEffect(() => {
+    if (cabinet?._id) {
+      checkForCollectionHistoryIssues();
+    }
+  }, [cabinet?._id, checkForCollectionHistoryIssues]);
 
   // Separate date filter states for Activity Log and Bill Validator
 
@@ -358,14 +464,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   >();
   const [activityLogTimePeriod, setActivityLogTimePeriod] =
     useState<ApiTimePeriod>("7d");
-  const [billValidatorDateRange, _setBillValidatorDateRange] = useState<
-    { from: Date; to: Date } | undefined
-  >();
-  const [billValidatorTimePeriod, setBillValidatorTimePeriod] =
-    useState<TimePeriod>("7d");
-  const [billValidatorTimeRange, _setBillValidatorTimeRange] = useState<
-    { startTime: string; endTime: string } | undefined
-  >();
+
+  // Use Zustand store for Bill Validator state (persists across page navigation)
+  const { getBillValidatorState, setBillValidatorTimePeriod } =
+    useCabinetUIStore();
+  const billValidatorState = getBillValidatorState(cabinet._id);
+  const billValidatorTimePeriod = billValidatorState.timePeriod;
+  const billValidatorDateRange = billValidatorState.customDateRange;
 
   // Note: convertBillMetersToBills function removed - now using UnifiedBillValidator with acceptedBills API
 
@@ -377,7 +482,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   console.warn("Bill Validator Filters:", {
     billValidatorDateRange,
     billValidatorTimePeriod,
-    billValidatorTimeRange,
   });
 
   // Debug: Log when billValidatorTimePeriod changes
@@ -404,9 +508,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
             // Collection history should show ALL historical data, not filtered by current time periods
             const collectionHistoryData = cabinet.collectionMetersHistory;
 
-            // Transform the data to match the expected format
-            const transformedHistory = collectionHistoryData.map(
-              (entry: Record<string, unknown>) => {
+            // Transform the data to match the expected format and sort by timestamp
+            const transformedHistory = collectionHistoryData
+              .map((entry: Record<string, unknown>) => {
                 const id = entry._id;
                 const timestamp = entry.timestamp;
 
@@ -438,10 +542,18 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                   prevOut: (entry.prevMetersOut as number) || 0,
                   locationReportId: (entry.locationReportId as string) || "",
                 };
-              }
-            );
+              })
+              .sort((a, b) => {
+                // Sort by timestamp in descending order (most recent first)
+                const timestampA = new Date(a.timestamp).getTime();
+                const timestampB = new Date(b.timestamp).getTime();
+                return timestampB - timestampA;
+              });
 
             setCollectionHistory(transformedHistory);
+            
+            // Don't automatically check for issues on every load - only when user requests it
+            // This prevents performance issues when loading collection history
             setCollectionHistoryError(null);
           } else {
             setCollectionHistory([]);
@@ -523,12 +635,6 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
           initial="hidden"
           animate="visible"
         >
-          <motion.div
-            className="bg-buttonActive text-container py-2 px-4 rounded-t-md md:rounded-md"
-            variants={itemVariants}
-          >
-            <span>Meters</span>
-          </motion.div>
           {[
             "Metrics",
             "Live Metrics",
@@ -608,13 +714,21 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.moneyIn ??
-                                  cabinet?.sasMeters?.drop ??
-                                  0
-                              )
-                            )}
+                            {shouldShowCurrency()
+                              ? formatAmount(
+                                  Number(
+                                    cabinet?.moneyIn ??
+                                      cabinet?.sasMeters?.drop ??
+                                      0
+                                  )
+                                )
+                              : formatCurrency(
+                                  Number(
+                                    cabinet?.moneyIn ??
+                                      cabinet?.sasMeters?.drop ??
+                                      0
+                                  )
+                                )}
                           </p>
                         </div>
                       </motion.div>
@@ -635,13 +749,23 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.moneyOut ??
-                                  cabinet?.sasMeters?.totalCancelledCredits ??
-                                  0
-                              )
-                            )}
+                            {shouldShowCurrency()
+                              ? formatAmount(
+                                  Number(
+                                    cabinet?.moneyOut ??
+                                      cabinet?.sasMeters
+                                        ?.totalCancelledCredits ??
+                                      0
+                                  )
+                                )
+                              : formatCurrency(
+                                  Number(
+                                    cabinet?.moneyOut ??
+                                      cabinet?.sasMeters
+                                        ?.totalCancelledCredits ??
+                                      0
+                                  )
+                                )}
                           </p>
                         </div>
                       </motion.div>
@@ -662,13 +786,21 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.gross ??
-                                  Number(cabinet?.moneyIn ?? 0) -
-                                    Number(cabinet?.moneyOut ?? 0)
-                              )
-                            )}
+                            {shouldShowCurrency()
+                              ? formatAmount(
+                                  Number(
+                                    cabinet?.gross ??
+                                      Number(cabinet?.moneyIn ?? 0) -
+                                        Number(cabinet?.moneyOut ?? 0)
+                                  )
+                                )
+                              : formatCurrency(
+                                  Number(
+                                    cabinet?.gross ??
+                                      Number(cabinet?.moneyIn ?? 0) -
+                                        Number(cabinet?.moneyOut ?? 0)
+                                  )
+                                )}
                           </p>
                         </div>
                       </motion.div>
@@ -893,11 +1025,12 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           "[DEBUG] Current billValidatorTimePeriod:",
                           billValidatorTimePeriod
                         );
-                        setBillValidatorTimePeriod(timePeriod);
+                        setBillValidatorTimePeriod(cabinet._id, timePeriod);
                         console.warn(
                           "[DEBUG] setBillValidatorTimePeriod called"
                         );
                       }}
+                      gameDayOffset={cabinet.gameDayOffset}
                     />
                   </motion.div>
                 ) : activeMetricsTabContent === "Activity Log" ? (
@@ -970,7 +1103,14 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <CollectionHistoryTable data={collectionHistory} />
+                      <CollectionHistoryTable 
+                        data={collectionHistory} 
+                        machineId={cabinet._id}
+                        onFixHistory={() => handleFixCollectionHistory(false)}
+                        isFixing={isFixingCollectionHistory}
+                        hasIssues={hasCollectionHistoryIssues}
+                        isCheckingIssues={isCheckingIssues}
+                      />
                     </motion.div>
                   ) : (
                     <motion.div

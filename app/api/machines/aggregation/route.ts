@@ -1,10 +1,10 @@
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { Machine } from "@/app/api/lib/models/machines";
+import { Meters } from "@/app/api/lib/models/meters";
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
 import { connectDB } from "../../lib/middleware/db";
-import { TimePeriod } from "@shared/types";
-import { getDateRangeForTimePeriodAlt, DateRangeAlt } from "@/app/api/lib/utils/dateUtils";
-import { MachineMatchStage, MachineAggregationMatchStage } from "@/shared/types/mongo";
+import { MachineAggregationMatchStage } from "@/shared/types/mongo";
+import { getGamingDayRangesForLocations } from "@/lib/utils/gamingDayRange";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,35 +28,18 @@ export async function GET(req: NextRequest) {
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
-    // Log the query parameters for debugging
+    // We'll calculate gaming day ranges per location instead of using a single range
+    let timePeriodForGamingDay: string;
+    let customStartDateForGamingDay: Date | undefined;
+    let customEndDateForGamingDay: Date | undefined;
 
-    // Get date range for time period filtering
-    let dateRange: DateRangeAlt;
-    if (startDateParam && endDateParam) {
-      // For custom date ranges, the frontend sends dates that represent
-      // the start and end of the day in Trinidad time, already converted to UTC
-      const customStartDate = new Date(startDateParam);
-      let customEndDate = new Date(endDateParam);
-      
-      // The end date from frontend represents the start of the end day in Trinidad time
-      // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
-      customEndDate = new Date(customEndDate.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
-      
-      dateRange = {
-        start: customStartDate,
-        end: customEndDate,
-      };
-      
-      console.warn("🔍 API - Custom date range debug (machines aggregation):");
-      console.warn("🔍 API - Original start date:", startDateParam);
-      console.warn("🔍 API - Original end date:", endDateParam);
-      console.warn("🔍 API - Extended end date (UTC):", dateRange.end.toISOString());
-      console.warn("🔍 API - Parsed start date (UTC):", dateRange.start.toISOString());
+    if (timePeriod === "Custom" && startDateParam && endDateParam) {
+      timePeriodForGamingDay = "Custom";
+      customStartDateForGamingDay = new Date(startDateParam);
+      customEndDateForGamingDay = new Date(endDateParam);
     } else {
-      dateRange = getDateRangeForTimePeriodAlt(timePeriod as TimePeriod);
+      timePeriodForGamingDay = timePeriod;
     }
-
-    const { start, end } = dateRange;
 
     // We only want "active" locations
     const matchStage: MachineAggregationMatchStage = {
@@ -66,167 +49,14 @@ export async function GET(req: NextRequest) {
       ],
     };
     if (locationId) {
-      matchStage._id = locationId; // locationId is a string, not ObjectId
+      matchStage._id = locationId;
     }
 
     if (licensee) {
       matchStage["rel.licencee"] = licensee;
-    } else {
     }
 
-    const pipeline: mongoose.PipelineStage[] = [
-      // Stage 1: Filter gaming locations by criteria (locationId, licensee, active status)
-      { $match: matchStage },
-
-      // Stage 2: Join locations with their machines
-      {
-        $lookup: {
-          from: "machines",
-          localField: "_id",
-          foreignField: "gamingLocation",
-          as: "machines",
-        },
-      },
-      
-      // Stage 3: Flatten machines array (each location-machine pair becomes a document)
-      { $unwind: { path: "$machines", preserveNullAndEmptyArrays: false } },
-      
-      // Stage 4: Filter out deleted machines (keep only active machines)
-      {
-        $match: {
-          $or: [
-            { "machines.deletedAt": null },
-            { "machines.deletedAt": { $lt: new Date("2020-01-01") } },
-          ],
-        },
-      },
-    ];
-
-    // Stage 5: Apply search filter if user provided search term
-    if (searchTerm) {
-      pipeline.push({
-        $match: {
-          $or: [
-            // match machine's serialNumber
-            { "machines.serialNumber": { $regex: searchTerm, $options: "i" } },
-            // match machine's relayId (SMIB)
-            { "machines.relayId": { $regex: searchTerm, $options: "i" } },
-            // match location name
-            { name: { $regex: searchTerm, $options: "i" } },
-          ] as MachineMatchStage[],
-        },
-      });
-    }
-
-    // Stage 6: Sort by machine last activity (most recent first)
-    pipeline.push({
-      $sort: {
-        "machines.lastActivity": -1,
-      },
-    });
-
-    // Stage 7: Aggregate meter data for each machine within the time period
-    pipeline.push(
-      {
-        $lookup: {
-          from: "meters",
-          let: { machineId: "$machines._id" },
-          pipeline: [
-            // Stage 7a: Filter meters by machine and date range
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    // match meter.machine == $$machineId
-                    { $eq: ["$machine", "$$machineId"] },
-                    // filter by readAt date within the selected time period
-                    { $gte: ["$readAt", start] },
-                    { $lte: ["$readAt", end] },
-                  ],
-                },
-              },
-            },
-            // Stage 7b: Aggregate financial and gaming metrics for this machine
-            {
-              $group: {
-                _id: null,
-                sumDrop: { $sum: "$movement.drop" },
-                sumMoneyOut: { $sum: "$movement.totalCancelledCredits" },
-                sumJackpot: { $sum: "$movement.jackpot" },
-                sumCoinIn: { $sum: "$movement.coinIn" },
-                sumCoinOut: { $sum: "$movement.coinOut" },
-                sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
-                sumGamesWon: { $sum: "$movement.gamesWon" },
-              },
-            },
-          ],
-          as: "meterAgg",
-        },
-      },
-      
-      // Stage 8: Flatten the meter aggregation results
-      {
-        $unwind: {
-          path: "$meterAgg",
-          preserveNullAndEmptyArrays: true,
-        },
-      }
-    );
-
-    // Stage 9: Project final machine data with financial metrics
-    pipeline.push({
-      $project: {
-        _id: "$machines._id",
-        locationId: "$_id",
-        locationName: { $ifNull: ["$name", "(No Location)"] },
-        assetNumber: { $ifNull: ["$machines.serialNumber", ""] },
-        serialNumber: { $ifNull: ["$machines.serialNumber", ""] },
-        smbId: { $ifNull: ["$machines.relayId", ""] },
-        relayId: { $ifNull: ["$machines.relayId", ""] },
-        installedGame: { $ifNull: ["$machines.game", ""] },
-        game: { $ifNull: ["$machines.game", ""] },
-        manufacturer: { $ifNull: ["$machines.manufacturer", "$machines.manuf", "Unknown Manufacturer"] },
-        status: { $ifNull: ["$machines.assetStatus", ""] },
-        assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
-        cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
-        accountingDenomination: {
-          $ifNull: ["$machines.gameConfig.accountingDenomination", "1"],
-        },
-        collectionMultiplier: { $literal: "1" }, // Default value
-        isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
-        lastOnline: "$machines.lastActivity",
-        lastActivity: "$machines.lastActivity",
-        createdAt: "$machines.createdAt",
-        // Financial metrics from meter aggregation
-        moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
-        moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
-        cancelledCredits: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
-        jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
-        gross: {
-          $subtract: [
-            { $ifNull: ["$meterAgg.sumDrop", 0] },
-            { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
-          ],
-        },
-        // Additional metrics for comprehensive financial tracking
-        coinIn: { $ifNull: ["$meterAgg.sumCoinIn", 0] },
-        coinOut: { $ifNull: ["$meterAgg.sumCoinOut", 0] },
-        gamesPlayed: { $ifNull: ["$meterAgg.sumGamesPlayed", 0] },
-        gamesWon: { $ifNull: ["$meterAgg.sumGamesWon", 0] },
-        timePeriod: { $literal: timePeriod },
-      },
-    });
-
-    const result = await GamingLocations.aggregate(pipeline).exec();
-
-    // Log a sample of the results if they exist
-    if (result.length > 0) {
-      return NextResponse.json(
-        { success: true, data: result },
-        { status: 200 }
-      );
-    } else {
-      // Check if there are any gaming locations matching the filter
+    // Get all locations with their gameDayOffset
       const locations = await GamingLocations.find({
         ...matchStage,
         $or: [
@@ -235,125 +65,204 @@ export async function GET(req: NextRequest) {
         ],
       }).lean();
 
-      if (locations.length > 0) {
-        // Check if these locations have machines
-        const locationsWithMachines = await GamingLocations.aggregate([
-          { $match: matchStage },
-          {
-            $lookup: {
-              from: "machines",
-              localField: "_id",
-              foreignField: "gamingLocation",
-              as: "machines",
-            },
-          },
-          // Unwind the machines array to create a document for each machine
-          { $unwind: { path: "$machines", preserveNullAndEmptyArrays: true } },
-          // Only keep locations with machines
-          { $match: { "machines._id": { $exists: true } } },
-          // Filter out deleted machines (same as main pipeline)
-          {
-            $match: {
-              $or: [
-                { "machines.deletedAt": null },
-                { "machines.deletedAt": { $lt: new Date("2020-01-01") } },
-              ],
-            },
-          },
-          // Look up meters for each machine with time period filter
-          {
-            $lookup: {
-              from: "meters",
-              let: { machineId: "$machines._id" },
-              pipeline: [
-                {
-                  $match: {
-                    $expr: {
-                      $and: [
-                        { $eq: ["$machine", "$$machineId"] },
-                        // filter by readAt date within the selected time period
-                        { $gte: ["$readAt", start] },
-                        { $lte: ["$readAt", end] },
-                      ],
-                    },
-                  },
-                },
-                {
-                  $group: {
-                    _id: null,
-                    sumDrop: { $sum: "$movement.drop" },
-                    sumMoneyOut: { $sum: "$movement.totalCancelledCredits" },
-                    sumJackpot: { $sum: "$movement.jackpot" },
-                    sumCoinIn: { $sum: "$movement.coinIn" },
-                    sumCoinOut: { $sum: "$movement.coinOut" },
-                    sumGamesPlayed: { $sum: "$movement.gamesPlayed" },
-                    sumGamesWon: { $sum: "$movement.gamesWon" },
-                  },
-                },
-              ],
-              as: "meterAgg",
-            },
-          },
-          { $unwind: { path: "$meterAgg", preserveNullAndEmptyArrays: true } },
-          // Project the same fields as the main pipeline
-          {
-            $project: {
-              _id: "$machines._id",
-              locationId: "$_id",
-              locationName: { $ifNull: ["$name", "(No Location)"] },
-              assetNumber: { $ifNull: ["$machines.serialNumber", ""] },
-              serialNumber: { $ifNull: ["$machines.serialNumber", ""] },
-              smbId: { $ifNull: ["$machines.relayId", ""] },
-              relayId: { $ifNull: ["$machines.relayId", ""] },
-              installedGame: { $ifNull: ["$machines.game", ""] },
-              game: { $ifNull: ["$machines.game", ""] },
-              status: { $ifNull: ["$machines.assetStatus", ""] },
-              assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
-              cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
-              accountingDenomination: {
-                $ifNull: ["$machines.gameConfig.accountingDenomination", "1"],
-              },
-              collectionMultiplier: { $literal: "1" }, // Default value
-              isCronosMachine: { $literal: false }, // Default value since field doesn't exist in DB
-              lastOnline: "$machines.lastActivity",
-              lastActivity: "$machines.lastActivity",
-              createdAt: "$machines.createdAt",
-              // Financial metrics from meter aggregation
-              moneyIn: { $ifNull: ["$meterAgg.sumDrop", 0] },
-              moneyOut: { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
-              cancelledCredits: {
-                $ifNull: ["$meterAgg.sumMoneyOut", 0],
-              },
-              jackpot: { $ifNull: ["$meterAgg.sumJackpot", 0] },
-              gross: {
-                $subtract: [
-                  { $ifNull: ["$meterAgg.sumDrop", 0] },
-                  { $ifNull: ["$meterAgg.sumMoneyOut", 0] },
-                ],
-              },
-              // Additional metrics for comprehensive financial tracking
-              coinIn: { $ifNull: ["$meterAgg.sumCoinIn", 0] },
-              coinOut: { $ifNull: ["$meterAgg.sumCoinOut", 0] },
-              gamesPlayed: { $ifNull: ["$meterAgg.sumGamesPlayed", 0] },
-              gamesWon: { $ifNull: ["$meterAgg.sumGamesWon", 0] },
-              timePeriod: { $literal: timePeriod },
-            },
-          },
-        ]);
+    if (locations.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
+    }
 
-        if (locationsWithMachines.length > 0) {
-          return NextResponse.json(
-            { success: true, data: locationsWithMachines },
-            { status: 200 }
-          );
-        }
+    // Calculate gaming day ranges for each location
+    let gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>;
+
+    if (
+      timePeriod === "Custom" &&
+      customStartDateForGamingDay &&
+      customEndDateForGamingDay
+    ) {
+      // For custom dates, use the exact user-specified times without gaming day offset
+      // The Date constructor already handles the local time to UTC conversion
+      const customStartUTC = customStartDateForGamingDay;
+      const customEndUTC = customEndDateForGamingDay;
+
+      // Apply the same custom date range to all locations
+      gamingDayRanges = new Map();
+      for (const location of locations) {
+        const locationIdStr = (
+          location._id as { toString: () => string }
+        ).toString();
+        gamingDayRanges.set(locationIdStr, {
+          rangeStart: customStartUTC,
+          rangeEnd: customEndUTC,
+        });
+      }
+    } else {
+      // For predefined periods, use gaming day offset logic
+      gamingDayRanges = getGamingDayRangesForLocations(
+        locations.map((loc: Record<string, unknown>) => ({
+          _id: (loc._id as { toString: () => string }).toString(),
+          gameDayOffset: (loc.gameDayOffset as number) || 0,
+        })),
+        timePeriodForGamingDay,
+        customStartDateForGamingDay,
+        customEndDateForGamingDay
+      );
+    }
+
+    // Get all machines for these locations
+    const allMachines = [];
+
+    for (const location of locations) {
+      const locationIdStr = (
+        location._id as { toString: () => string }
+      ).toString();
+      const gameDayRange = gamingDayRanges.get(locationIdStr);
+
+      if (!gameDayRange) continue;
+
+      // Get machines for this location (without any metrics - we'll add those next)
+      const locationMachines = await Machine.find({
+        gamingLocation: location._id,
+              $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      }).lean();
+
+      // PERFORMANCE OPTIMIZATION: Batch fetch all metrics for machines in this location
+      // Instead of N+1 queries, use a single aggregation pipeline for all machines
+      const machineIds = locationMachines.map(machine => 
+        (machine._id as { toString: () => string }).toString()
+      );
+
+      if (machineIds.length === 0) continue;
+
+      // Build a single aggregation pipeline for all machines in this location
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batchPipeline: any[] = [];
+
+      // Match stage with machine IDs and date filtering
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batchMatchStage: any = { 
+        machine: { $in: machineIds } 
+      };
+
+      // For "All Time", don't apply date filtering
+      if (timePeriod !== "All Time") {
+        batchMatchStage.readAt = {
+          $gte: gameDayRange.rangeStart,
+          $lte: gameDayRange.rangeEnd,
+        };
       }
 
-      // If we got here, no data matched our criteria
-      return NextResponse.json({ success: true, data: [] }, { status: 200 });
+      batchPipeline.push({ $match: batchMatchStage });
+
+      // Group by machine to calculate metrics for each machine
+      batchPipeline.push({
+        $group: {
+          _id: "$machine",
+          moneyIn: { $sum: "$movement.drop" },
+          moneyOut: { $sum: "$movement.totalCancelledCredits" },
+          jackpot: { $sum: "$movement.jackpot" },
+          coinIn: { $last: "$coinIn" },
+          coinOut: { $last: "$coinOut" },
+          gamesPlayed: { $last: "$gamesPlayed" },
+          gamesWon: { $last: "$gamesWon" },
+          handPaidCancelledCredits: { $last: "$handPaidCancelledCredits" },
+          meterCount: { $sum: 1 },
+        },
+      });
+
+      const batchMetricsAggregation = await Meters.aggregate(batchPipeline);
+
+      // Create a map for O(1) lookup of metrics by machine ID
+      const metricsMap = new Map();
+      batchMetricsAggregation.forEach((metrics) => {
+        metricsMap.set(metrics._id, metrics);
+      });
+
+      // Build machine objects with their metrics
+      for (const machine of locationMachines) {
+        const machineId = (
+          machine._id as { toString: () => string }
+        ).toString();
+
+        const metrics = metricsMap.get(machineId) || {
+          moneyIn: 0,
+          moneyOut: 0,
+          jackpot: 0,
+          coinIn: 0,
+          coinOut: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          handPaidCancelledCredits: 0,
+          meterCount: 0,
+        };
+
+        const moneyIn = metrics.moneyIn || 0;
+        const moneyOut = metrics.moneyOut || 0;
+        const jackpot = metrics.jackpot || 0;
+        const coinIn = metrics.coinIn || 0;
+        const coinOut = metrics.coinOut || 0;
+        const gamesPlayed = metrics.gamesPlayed || 0;
+        const gamesWon = metrics.gamesWon || 0;
+
+        const gross = moneyIn - moneyOut;
+
+        // Build machine object with calculated metrics
+        const machineData = {
+          _id: machineId,
+          locationId: locationIdStr,
+          locationName: (location.name as string) || "(No Location)",
+          assetNumber: machine.serialNumber || "",
+          serialNumber: machine.serialNumber || "",
+          smbId: machine.relayId || "",
+          relayId: machine.relayId || "",
+          installedGame: machine.game || "",
+          game: machine.game || "",
+          manufacturer:
+            machine.manufacturer || machine.manuf || "Unknown Manufacturer",
+          status: machine.assetStatus || "",
+          assetStatus: machine.assetStatus || "",
+          cabinetType: machine.cabinetType || "",
+          accountingDenomination:
+            machine.gameConfig?.accountingDenomination || "1",
+          collectionMultiplier: "1",
+          isCronosMachine: false,
+          lastOnline: machine.lastActivity,
+          lastActivity: machine.lastActivity,
+          createdAt: machine.createdAt,
+          timePeriod: timePeriod,
+          // Financial metrics from Meters collection (same as individual API)
+          moneyIn,
+          moneyOut,
+          cancelledCredits: moneyOut,
+          jackpot,
+          gross,
+          coinIn,
+          coinOut,
+          gamesPlayed,
+          gamesWon,
+        };
+
+        allMachines.push(machineData);
+      }
     }
+
+    // Apply search filter if provided (search by serial number, relay ID, smib ID, or machine _id)
+    let filteredMachines = allMachines;
+    if (searchTerm) {
+      filteredMachines = allMachines.filter(
+        (machine) =>
+          machine.serialNumber
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          machine.relayId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine.smbId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine._id === searchTerm // Exact match for _id
+      );
+    }
+
+    return NextResponse.json({ success: true, data: filteredMachines });
   } catch (error) {
-    console.error("❌ Error in machineAggregation route:", error);
+    console.error("Error in machineAggregation route:", error);
     return NextResponse.json(
       { success: false, error: "Aggregation failed", details: String(error) },
       { status: 500 }

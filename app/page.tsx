@@ -9,6 +9,7 @@ import PageErrorBoundary from "@/components/ui/errors/PageErrorBoundary";
 import { useCallback, useEffect, useRef } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { TimePeriod } from "@/shared/types/common";
+import { useCurrency } from "@/lib/contexts/CurrencyContext";
 import { FloatingRefreshButton } from "@/components/ui/FloatingRefreshButton";
 import { PieChartLabelRenderer } from "@/components/ui/PieChartLabelRenderer";
 
@@ -49,6 +50,7 @@ export default function Home() {
  */
 function DashboardContent() {
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
+  const { displayCurrency } = useCurrency();
 
   // Create a stable reference to prevent infinite loops
   const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
@@ -98,6 +100,7 @@ function DashboardContent() {
     activePieChartFilter,
     customDateRange,
     activeTab,
+    displayCurrency, // ✅ ADDED: Pass currency to refresh hook
   });
 
   // Initialize selected licensee on component mount - removed to prevent infinite loop
@@ -124,7 +127,8 @@ function DashboardContent() {
               setTotals,
               setChartData,
               setActiveFilters,
-              setShowDatePicker
+              setShowDatePicker,
+              displayCurrency
             ),
           "Dashboard Metrics"
         );
@@ -138,6 +142,7 @@ function DashboardContent() {
     activeMetricsFilter,
     selectedLicencee,
     customDateRange,
+    displayCurrency, // ✅ ADDED: Re-fetch when currency changes
     stableHandleApiCallWithRetry,
   ]);
 
@@ -175,7 +180,8 @@ function DashboardContent() {
               setTotals,
               setChartData,
               setActiveFilters,
-              setShowDatePicker
+              setShowDatePicker,
+              displayCurrency
             ),
           "Dashboard Custom Metrics"
         );
@@ -189,6 +195,7 @@ function DashboardContent() {
     customDateRange,
     activeMetricsFilter,
     selectedLicencee,
+    displayCurrency, // ✅ ADDED: Re-fetch when currency changes
     stableHandleApiCallWithRetry,
   ]);
 

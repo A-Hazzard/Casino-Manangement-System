@@ -4,15 +4,14 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
-
-interface NetworkErrorProps {
+type NetworkErrorProps = {
   title?: string;
   message?: string;
   onRetry?: () => void;
   showRetry?: boolean;
   isRetrying?: boolean;
   errorDetails?: string;
-}
+};
 
 /**
  * Network Error Component
@@ -77,7 +76,9 @@ export default function NetworkError({
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-700 mb-1">Error Details:</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Error Details:
+                </p>
                 <p className="text-xs text-gray-600 font-mono break-all">
                   {errorDetails}
                 </p>
@@ -98,7 +99,9 @@ export default function NetworkError({
               disabled={isRetrying}
               className="flex items-center gap-2 bg-button hover:bg-buttonActive disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`}
+              />
               {isRetrying ? "Retrying..." : "Try Again"}
             </Button>
           </motion.div>

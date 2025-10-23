@@ -6,36 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { formatDate } from "@/lib/utils/formatting";
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
-interface ActivityLog {
-  _id: string;
-  timestamp: string;
-  userId: string;
-  username: string;
-  action: string;
-  resource: string;
-  resourceId: string;
-  resourceName?: string;
-  details?: string;
-  description?: string;
-  actor?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-  ipAddress?: string;
-  changes?: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-}
-
-interface ActivityLogCardProps {
+type ActivityLogCardProps = {
   log: ActivityLog;
   searchMode: "username" | "email" | "description";
   onDescriptionClick?: (log: ActivityLog) => void;
-}
+};
 
 const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
   log,
@@ -43,6 +20,11 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
   onDescriptionClick,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Handle undefined _id
+  if (!log._id) {
+    return null;
+  }
 
   // Get action badge styling with enhanced colors
   const getActionBadgeStyle = (action: string) => {
@@ -96,11 +78,11 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className={getActionBadgeStyle(log.action)}>
-              {log.action.toUpperCase()}
+            <Badge className={getActionBadgeStyle(log.action || "unknown")}>
+              {(log.action || "unknown").toUpperCase()}
             </Badge>
-            <Badge className={getResourceBadgeStyle(log.resource)}>
-              {log.resource}
+            <Badge className={getResourceBadgeStyle(log.resource || "unknown")}>
+              {log.resource || "unknown"}
             </Badge>
           </div>
           <div className="text-left sm:text-right">

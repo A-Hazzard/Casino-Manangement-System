@@ -27,34 +27,11 @@ import ActivityLogCard from "./ActivityLogCard";
 import ActivityLogCardSkeleton from "./ActivityLogCardSkeleton";
 import ActivityLogDescriptionDialog from "./ActivityLogDescriptionDialog";
 import { DatePicker } from "@/components/ui/date-picker";
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
-interface ActivityLog {
-  _id: string;
-  timestamp: string;
-  userId: string;
-  username: string;
-  action: string;
-  resource: string;
-  resourceId: string;
-  resourceName?: string;
-  details?: string;
-  description?: string;
-  actor?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-  ipAddress?: string;
-  changes?: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-}
-
-interface ActivityLogsTableProps {
+type ActivityLogsTableProps = {
   className?: string;
-}
+};
 
 const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -397,15 +374,21 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                             </div>
                           </TableCell>
                           <TableCell centered>
-                            <Badge className={getActionBadgeStyle(log.action)}>
-                              {log.action.toUpperCase()}
+                            <Badge
+                              className={getActionBadgeStyle(
+                                log.action || "unknown"
+                              )}
+                            >
+                              {(log.action || "unknown").toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell centered>
                             <Badge
-                              className={getResourceBadgeStyle(log.resource)}
+                              className={getResourceBadgeStyle(
+                                log.resource || "unknown"
+                              )}
                             >
-                              {log.resource}
+                              {log.resource || "unknown"}
                             </Badge>
                           </TableCell>
                           <TableCell className="min-w-0 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">

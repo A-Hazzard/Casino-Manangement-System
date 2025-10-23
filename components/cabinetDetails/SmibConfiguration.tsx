@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import axios from "axios";
-import type { GamingMachine as CabinetDetail, SmibConfig } from "@/shared/types/entities";
+import type {
+  GamingMachine as CabinetDetail,
+  SmibConfig,
+} from "@/shared/types/entities";
 import {
   configContentVariants,
   itemVariants,
@@ -66,7 +69,16 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
         },
       };
 
-      await axios.post(`/api/cabinets/${cabinet._id}/smib-config`, payload);
+      const response = await axios.put(
+        `/api/cabinets/${cabinet._id}/smib-config`,
+        payload
+      );
+
+      if (!response.data.success) {
+        throw new Error(
+          response.data.message || "Failed to update SMIB configuration"
+        );
+      }
       toast.success("SMIB configuration updated successfully!");
       setCurrentSmibConfig((prevConfig) => ({
         ...prevConfig,
@@ -91,6 +103,11 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
   const toggleSmibConfig = () => {
     setSmibConfigExpanded(!smibConfigExpanded);
   };
+
+  // Don't render anything if there's no SMIB configuration data
+  if (!cabinet?.smibConfig && !cabinet?.relayId && !cabinet?.smibBoard) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -122,11 +139,11 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
           <div>
             <p className="text-sm text-grayHighlight">
               SMIB ID:{" "}
-              {cabinet?.relayId || cabinet?.smibBoard || "e831cdfa8464"}
+              {cabinet?.relayId || cabinet?.smibBoard || "Not configured"}
             </p>
             <p className="text-sm text-grayHighlight mt-1 md:mt-0">
               Connected to WiFi network{" "}
-              {cabinet?.smibConfig?.net?.netStaSSID || "Dynamic 1 - Staff Wifi"}
+              {cabinet?.smibConfig?.net?.netStaSSID || "Not configured"}
             </p>
           </div>
           <div className="md:text-right">
@@ -138,11 +155,11 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
                   : cabinet?.smibConfig?.coms?.comsMode === 1
                   ? "non sas"
                   : "IGT"
-                : "undefined"}
+                : "Not configured"}
             </p>
             <p className="text-sm text-grayHighlight mt-1 md:mt-0">
               Running firmware{" "}
-              {cabinet?.smibVersion?.firmware || "FAC_v1-0-4(v1-0-4)"}
+              {cabinet?.smibVersion?.firmware || "Not configured"}
             </p>
           </div>
         </div>

@@ -6,25 +6,31 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-interface UseSessionsNavigationReturn {
+type UseSessionsNavigationReturn = {
   navigateToSessionEvents: (sessionId: string, machineId: string) => void;
   navigateToSessionDetails: (sessionId: string) => void;
   navigateBack: () => void;
   canNavigateBack: boolean;
-}
+};
 
 export function useSessionsNavigation(): UseSessionsNavigationReturn {
   const router = useRouter();
 
   // Navigate to session events page
-  const navigateToSessionEvents = useCallback((sessionId: string, machineId: string) => {
-    router.push(`/sessions/${sessionId}/${machineId}/events`);
-  }, [router]);
+  const navigateToSessionEvents = useCallback(
+    (sessionId: string, machineId: string) => {
+      router.push(`/sessions/${sessionId}/${machineId}/events`);
+    },
+    [router]
+  );
 
   // Navigate to session details page
-  const navigateToSessionDetails = useCallback((sessionId: string) => {
-    router.push(`/sessions/${sessionId}`);
-  }, [router]);
+  const navigateToSessionDetails = useCallback(
+    (sessionId: string) => {
+      router.push(`/sessions/${sessionId}`);
+    },
+    [router]
+  );
 
   // Navigate back to previous page
   const navigateBack = useCallback(() => {

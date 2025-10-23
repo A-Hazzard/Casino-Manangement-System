@@ -24,6 +24,11 @@ export async function getAllCollectionReportsWithMachineCounts(
   startDate?: Date,
   endDate?: Date
 ): Promise<CollectionReportRow[]> {
+  console.warn(`[COLLECTION REPORTS BACKEND] Function called with:`);
+  console.warn(`  - licenceeId: ${licenceeId}`);
+  console.warn(`  - startDate: ${startDate?.toISOString()}`);
+  console.warn(`  - endDate: ${endDate?.toISOString()}`);
+  
   let rawReports;
 
   // Build base match criteria
@@ -65,14 +70,31 @@ export async function getAllCollectionReportsWithMachineCounts(
       },
       { $sort: { timestamp: -1 } },
     ];
-    rawReports = await CollectionReport.aggregate(aggregationPipeline);
+    
+    console.warn(`[COLLECTION REPORTS] Running aggregation with licensee: ${licenceeId}`);
+    console.warn(`[COLLECTION REPORTS] Match criteria:`, JSON.stringify(matchCriteria, null, 2));
+    console.warn(`[COLLECTION REPORTS] Aggregation pipeline:`, JSON.stringify(aggregationPipeline, null, 2));
+    
+    try {
+      rawReports = await CollectionReport.aggregate(aggregationPipeline);
+      console.warn(`[COLLECTION REPORTS] Raw reports found: ${rawReports.length}`);
+    } catch (error) {
+      console.error(`[COLLECTION REPORTS] Error in aggregation:`, error);
+      throw error;
+    }
   }
 
+  console.warn(`[COLLECTION REPORTS] Starting enrichment process for ${rawReports.length} raw reports`);
+  
   // Map to CollectionReportRow and enrich with machine counts
-  const enrichedReports = await Promise.all(
-    rawReports.map(async (doc: Record<string, unknown>) => {
+  let enrichedReports;
+  try {
+    enrichedReports = await Promise.all(
+      rawReports.map(async (doc: Record<string, unknown>) => {
       const locationReportId = (doc.locationReportId as string) || "";
       const locationName = (doc.locationName as string) || "";
+
+      console.warn(`[COLLECTION REPORTS] Processing report: ${locationName} (${locationReportId})`);
 
       // Fetch machine count from collections and total machines per location
       let collectedMachines = 0;
@@ -170,20 +192,39 @@ export async function getAllCollectionReportsWithMachineCounts(
           0
         );
 
-        // Calculate SAS gross from collections
-        const calculatedSasGross = collections.reduce(
-          (sum, col) => sum + (col.sasMeters?.gross || 0),
-          0
-        );
+        // Calculate SAS gross by querying meters directly for each collection's SAS time period
+        // Use the same calculation method as calculateSasGrossFromMeters: sum all movement fields
+        let calculatedSasGross = 0;
+        for (const col of collections) {
+          if (col.sasMeters?.sasStartTime && col.sasMeters?.sasEndTime) {
+            const { Meters } = await import("@/app/api/lib/models/meters");
+
+            const meters = await Meters.find({
+              machine: col.machineId,
+              readAt: {
+                $gte: new Date(col.sasMeters.sasStartTime),
+                $lte: new Date(col.sasMeters.sasEndTime),
+              },
+            })
+              .sort({ readAt: 1 })
+              .lean();
+
+            // Sum all movement fields (daily deltas) within the SAS time period
+            // This is the correct approach when machines only have movement data, not cumulative data
+            const totalDrop = meters.reduce((sum, meter) => sum + (meter.movement?.drop || 0), 0);
+            const totalCancelled = meters.reduce((sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0), 0);
+            calculatedSasGross += totalDrop - totalCancelled;
+          }
+        }
 
         // Calculate variation (same as details page: metersGross - sasGross)
         // Check if any collections have SAS data - if none do, show "No SAS Data"
+        // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
         const hasSasData = collections.some(
           (col) =>
             col.sasMeters &&
             col.sasMeters.gross !== undefined &&
-            col.sasMeters.gross !== null &&
-            col.sasMeters.gross !== 0
+            col.sasMeters.gross !== null
         );
         calculatedVariation = hasSasData
           ? calculatedGross - calculatedSasGross
@@ -260,18 +301,17 @@ export async function getAllCollectionReportsWithMachineCounts(
         isLocalServer: (doc.isLocalServer as boolean) || false,
       };
 
-      // Debug logging for the specific report we're seeing in the UI
-      // if (locationReportId === "fb04dd8f-943d-423f-8059-7bcbccc6d459") {
-      //   console.log("🔍 DEBUG: Raw document data for report fb04dd8f-943d-423f-8059-7bcbccc6d459:", doc);
-      //   console.log("🔍 DEBUG: Processed result:", result);
-      //   console.log("🔍 DEBUG: totalGross value:", doc.totalGross);
-      //   console.log("🔍 DEBUG: amountCollected value:", doc.amountCollected);
-      //   console.log("🔍 DEBUG: partnerProfit value:", doc.partnerProfit);
-      // }
+      console.warn(`[COLLECTION REPORTS] Completed processing report: ${locationName} - Machines: ${collectedMachines}/${totalMachines}`);
 
       return result;
     })
-  );
-
+    );
+    
+    console.warn(`[COLLECTION REPORTS] Enrichment complete. Returning ${enrichedReports.length} enriched reports`);
+  } catch (error) {
+    console.error(`[COLLECTION REPORTS] Error in enrichment process:`, error);
+    throw error;
+  }
+  
   return enrichedReports;
 }

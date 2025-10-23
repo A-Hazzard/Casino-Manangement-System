@@ -19,14 +19,24 @@ import {
 } from "@/components/ui/select";
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
+// Helper function to format large numbers compactly
+const formatLargeNumber = (num: number): string => {
+  if (num === 0) return '0';
+  if (num < 1000) return num.toLocaleString();
+  if (num < 1000000) return `${(num / 1000).toFixed(1)}K`;
+  if (num < 1000000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num < 1000000000000) return `${(num / 1000000000).toFixed(1)}B`;
+  return `${(num / 1000000000000).toFixed(1)}T`;
+};
+
 // Type for collection data from machine's embedded collectionMetersHistory
 type CollectionData = {
   _id: string;
   timestamp: string | Date;
   metersIn: number;
   metersOut: number;
-  prevIn: number; // This maps to prevMetersIn from the embedded data
-  prevOut: number; // This maps to prevMetersOut from the embedded data
+  prevIn: number;
+  prevOut: number;
   locationReportId: string;
 };
 
@@ -34,7 +44,23 @@ type SortField = "timestamp" | "metersIn" | "metersOut" | "prevIn" | "prevOut";
 type SortDirection = "asc" | "desc" | null;
 type TimeFilter = "all" | "today" | "yesterday" | "7d" | "30d" | "90d" | "1y";
 
-export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
+type CollectionHistoryTableProps = {
+  data: CollectionData[];
+  machineId?: string;
+  onFixHistory?: () => void;
+  isFixing?: boolean;
+  hasIssues?: boolean;
+  isCheckingIssues?: boolean;
+};
+
+export function CollectionHistoryTable({ 
+  data, 
+  machineId, 
+  onFixHistory, 
+  isFixing = false,
+  hasIssues = false,
+  isCheckingIssues = false
+}: CollectionHistoryTableProps) {
   const router = useRouter();
 
   // State for filtering and sorting
@@ -110,14 +136,30 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
 
     // Apply sorting
     if (sortField && sortDirection) {
-      console.warn("Applying sort:", sortField, sortDirection, "on", filtered.length, "items");
+      console.warn(
+        "Applying sort:",
+        sortField,
+        sortDirection,
+        "on",
+        filtered.length,
+        "items"
+      );
       filtered.sort((a, b) => {
-        let aValue: string | number | Date = a[sortField as keyof CollectionData];
-        let bValue: string | number | Date = b[sortField as keyof CollectionData];
+        let aValue: string | number | Date =
+          a[sortField as keyof CollectionData];
+        let bValue: string | number | Date =
+          b[sortField as keyof CollectionData];
 
         // Debug logging
-        if (filtered.length <= 3) { // Only log for small datasets to avoid spam
-          console.warn("Sorting values:", { field: sortField, aValue, bValue, a, b });
+        if (filtered.length <= 3) {
+          // Only log for small datasets to avoid spam
+          console.warn("Sorting values:", {
+            field: sortField,
+            aValue,
+            bValue,
+            a,
+            b,
+          });
         }
 
         // Handle undefined/null values
@@ -170,8 +212,14 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
 
   // Handle column sorting
   const handleSort = (field: SortField) => {
-    console.warn("Sorting by field:", field, "Current sort:", sortField, sortDirection);
-    
+    console.warn(
+      "Sorting by field:",
+      field,
+      "Current sort:",
+      sortField,
+      sortDirection
+    );
+
     if (sortField === field) {
       // Cycle through: desc -> asc -> null (no sort)
       if (sortDirection === "desc") {
@@ -241,18 +289,46 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
             </SelectContent>
           </Select>
         </div>
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredAndSortedData.length} of {data.length} entries
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredAndSortedData.length} of {data.length} entries
+          </div>
+          {machineId && onFixHistory && hasIssues && (
+            <Button
+              onClick={onFixHistory}
+              disabled={isFixing || isCheckingIssues}
+              variant="destructive"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {isCheckingIssues ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Checking...
+                </>
+              ) : isFixing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Fixing...
+                </>
+              ) : (
+                <>
+                  🔧 Check & Fix History
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden lg:block w-full">
-        <Table>
+      {/* Desktop Table View - Show on md and larger screens */}
+      <div className="hidden md:block w-full overflow-x-auto">
+        <div className="min-w-max">
+          <Table className="w-full">
           <TableHeader>
             <TableRow>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
+                className="cursor-pointer hover:bg-muted/50 select-none w-40"
                 onClick={() => handleSort("timestamp")}
               >
                 <div className="flex items-center gap-2">
@@ -261,7 +337,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
+                className="cursor-pointer hover:bg-muted/50 select-none w-28"
                 onClick={() => handleSort("metersIn")}
               >
                 <div className="flex items-center gap-2">
@@ -270,7 +346,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
+                className="cursor-pointer hover:bg-muted/50 select-none w-28"
                 onClick={() => handleSort("metersOut")}
               >
                 <div className="flex items-center gap-2">
@@ -279,7 +355,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
+                className="cursor-pointer hover:bg-muted/50 select-none w-28"
                 onClick={() => handleSort("prevIn")}
               >
                 <div className="flex items-center gap-2">
@@ -288,7 +364,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
+                className="cursor-pointer hover:bg-muted/50 select-none w-28"
                 onClick={() => handleSort("prevOut")}
               >
                 <div className="flex items-center gap-2">
@@ -296,13 +372,15 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                   {getSortIcon("prevOut")}
                 </div>
               </TableHead>
-              <TableHead>Collection Report</TableHead>
+              <TableHead className="w-32">Collection Report</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paged.map((row) => (
-              <TableRow key={row._id}>
-                <TableCell>
+            {paged.map((row, index) => (
+              <TableRow
+                key={`${row.locationReportId}-${row.timestamp}-${index}`}
+              >
+                <TableCell className="truncate">
                   {new Date(row.timestamp).toLocaleString("en-US", {
                     year: "numeric",
                     month: "short",
@@ -313,15 +391,24 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                     hour12: true,
                   })}
                 </TableCell>
-                <TableCell>{row.metersIn?.toLocaleString()}</TableCell>
-                <TableCell>{row.metersOut?.toLocaleString()}</TableCell>
-                <TableCell>{row.prevIn?.toLocaleString()}</TableCell>
-                <TableCell>{row.prevOut?.toLocaleString()}</TableCell>
-                <TableCell>
+                <TableCell className="truncate text-right">
+                  {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                </TableCell>
+                <TableCell className="truncate text-right">
+                  {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                </TableCell>
+                <TableCell className="truncate text-right">
+                  {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                </TableCell>
+                <TableCell className="truncate text-right">
+                  {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                </TableCell>
+                <TableCell className="truncate">
                   {row.locationReportId && (
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-xs px-2 py-1"
                       onClick={() => {
                         console.warn(
                           "Navigating to collection report:",
@@ -340,12 +427,13 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Mobile Cards View */}
       <div className="lg:hidden space-y-4 w-full">
-        {paged.map((row) => (
-          <Card key={row._id}>
+        {paged.map((row, index) => (
+          <Card key={`${row.locationReportId}-${row.timestamp}-${index}`}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span>Collection Entry</span>
@@ -365,7 +453,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                     Meters In:
                   </span>
                   <span className="font-medium">
-                    {row.metersIn?.toLocaleString()}
+                    {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -373,7 +461,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                     Meters Out:
                   </span>
                   <span className="font-medium">
-                    {row.metersOut?.toLocaleString()}
+                    {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -381,7 +469,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                     Prev. In:
                   </span>
                   <span className="font-medium">
-                    {row.prevIn?.toLocaleString()}
+                    {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -389,7 +477,7 @@ export function CollectionHistoryTable({ data }: { data: CollectionData[] }) {
                     Prev. Out:
                   </span>
                   <span className="font-medium">
-                    {row.prevOut?.toLocaleString()}
+                    {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
                   </span>
                 </div>
               </div>

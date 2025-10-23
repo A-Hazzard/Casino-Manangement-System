@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
 import { TimePeriod } from "@/app/api/lib/types";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
 import { Db, Document } from "mongodb";
 // Removed auto-index creation to avoid conflicts and extra latency
 
@@ -25,6 +28,7 @@ export async function GET(req: NextRequest) {
     const onlineStatus = searchParams.get("onlineStatus") || "all"; // New parameter for online/offline filtering
     const searchTerm = searchParams.get("search"); // Extract search parameter
     const locationId = searchParams.get("locationId"); // Extract locationId parameter
+    const displayCurrency = (searchParams.get("currency") as CurrencyCode) || "USD";
 
     // Pagination parameters for overview
     const page = parseInt(searchParams.get("page") || "1");
@@ -145,7 +149,9 @@ export async function GET(req: NextRequest) {
           machineMatchStage,
           locationMatchStage,
           startDate,
-          endDate
+          endDate,
+          licencee,
+          displayCurrency
         );
       case "overview":
         return await getOverviewMachines(
@@ -203,7 +209,9 @@ const getMachineStats = async (
   machineMatchStage: Record<string, unknown>,
   locationMatchStage: Record<string, unknown>,
   startDate: Date | undefined,
-  endDate: Date | undefined
+  endDate: Date | undefined,
+  licencee: string | undefined,
+  displayCurrency: CurrencyCode
 ) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -354,13 +362,31 @@ const getMachineStats = async (
     totalCancelledCredits: 0,
   };
 
+  // Apply currency conversion if needed
+  let convertedTotals = totals;
+  
+  if (shouldApplyCurrencyConversion(licencee)) {
+    console.warn("🔍 REPORTS MACHINES - Applying currency conversion for All Licensee mode");
+    // Convert financial fields from USD to display currency
+    const financialFields = ['totalGross', 'totalDrop', 'totalCancelledCredits', 'netWin', 'drop'];
+    convertedTotals = { ...totals };
+    
+    financialFields.forEach(field => {
+      if (typeof totals[field] === 'number') {
+        (convertedTotals as Record<string, unknown>)[field] = convertFromUSD(totals[field], displayCurrency);
+      }
+    });
+  }
+
   return NextResponse.json({
     onlineCount,
     offlineCount: totalCount - onlineCount,
     totalCount,
-    totalGross: totals.totalGross || 0,
-    totalDrop: totals.totalDrop || 0,
-    totalCancelledCredits: totals.totalCancelledCredits || 0,
+    totalGross: convertedTotals.totalGross || 0,
+    totalDrop: convertedTotals.totalDrop || 0,
+    totalCancelledCredits: convertedTotals.totalCancelledCredits || 0,
+    currency: displayCurrency,
+    converted: shouldApplyCurrencyConversion(licencee)
   });
 };
 

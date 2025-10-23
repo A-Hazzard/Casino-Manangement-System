@@ -2,28 +2,14 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AxiosResponse } from "axios";
-import {
-  classifyError,
-  isRetryableError,
-  type ApiError,
-} from "@/lib/utils/errorHandling";
+import { classifyError, isRetryableError } from "@/lib/utils/errorHandling";
+import type { ApiError } from "@/lib/types/errors";
+import type {
+  UseApiWithRetryOptions,
+  UseApiWithRetryReturn,
+} from "@/lib/types/apiHooks";
 
-export interface UseApiWithRetryOptions {
-  maxRetries?: number;
-  baseDelay?: number;
-  timeout?: number;
-  onError?: (error: ApiError) => void;
-  onRetry?: (attempt: number, error: ApiError) => void;
-}
-
-export interface UseApiWithRetryReturn<T> {
-  data: T | null;
-  error: ApiError | null;
-  loading: boolean;
-  retryCount: number;
-  execute: (...args: unknown[]) => Promise<T | null>;
-  reset: () => void;
-}
+// Types moved to lib/types/apiHooks.ts
 
 /**
  * Custom hook for making API calls with automatic retry logic
@@ -39,7 +25,7 @@ export function useApiWithRetry<T>(
   const {
     maxRetries = 3,
     baseDelay = 1000,
-    timeout = 60000,
+    timeout = 300000,
     onError,
     onRetry,
   } = options;

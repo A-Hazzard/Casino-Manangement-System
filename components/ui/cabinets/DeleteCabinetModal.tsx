@@ -166,7 +166,10 @@ export const DeleteCabinetModal = ({
             </p>
             <p>
               <strong>SMIB ID:</strong>{" "}
-              {selectedCabinet.smbId || selectedCabinet.smibBoard || "N/A"}
+              {selectedCabinet.relayId ||
+                selectedCabinet.smbId ||
+                selectedCabinet.smibBoard ||
+                "N/A"}
             </p>
           </div>
         </div>

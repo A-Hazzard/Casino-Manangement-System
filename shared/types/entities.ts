@@ -1,8 +1,6 @@
 // Shared entity types used across frontend and backend
 import { Types } from "mongoose";
-import type {
-  SasMeters,
-} from "./common";
+import type { SasMeters } from "./common";
 import type {
   MeterData,
   BillValidatorData,
@@ -116,33 +114,33 @@ export type GamingMachine = {
   smbId?: string; // Alias for smibBoard for UI convenience
   smibBoard?: string;
   custom: { name: string }; // Custom name for machines - required field
-  
+
   // Game information
   game: string;
   installedGame?: string; // Alias for game for UI convenience
   gameType: string;
   isCronosMachine: boolean;
   gameNumber?: string;
-  
+
   // Physical characteristics
   cabinetType: string;
   assetStatus: string;
   status?: string; // Alias for assetStatus for UI convenience
   manufacturer?: string;
   manuf?: string; // Alternative manufacturer field
-  
+
   // Location and configuration
   gamingLocation: string;
   gamingBoard?: string;
   accountingDenomination: number | string;
   collectionMultiplier?: string;
-  
+
   // Activity and status
   lastActivity?: Date | string;
   lastOnline?: string | Date;
   loggedIn?: boolean;
   online?: boolean;
-  
+
   // Financial metrics (from aggregation)
   moneyIn?: number;
   moneyOut?: number;
@@ -154,7 +152,7 @@ export type GamingMachine = {
   gamesPlayed?: number;
   gamesWon?: number;
   handle?: number; // Same as coinIn for betting activity
-  
+
   // SAS and meter data
   sasMeters?: SasMeters;
   meterData?: MeterData | null;
@@ -166,7 +164,7 @@ export type GamingMachine = {
     gamesPlayed: number;
     gamesWon: number;
   };
-  
+
   // Configuration objects
   gameConfig?: {
     accountingDenomination?: number;
@@ -177,14 +175,14 @@ export type GamingMachine = {
     gameOptions?: string;
     progressiveGroup?: string;
   };
-  
+
   smibVersion?: {
     firmware?: string;
     version?: string;
   };
-  
+
   smibConfig?: SmibConfig;
-  
+
   // Collection and bill validator data
   collectionMeters?: {
     metersIn: number;
@@ -194,7 +192,7 @@ export type GamingMachine = {
   previousCollectionTime?: Date;
   collectorDenomination?: number;
   collectionMetersHistory?: CollectionMetersHistoryEntry[];
-  
+
   billValidator?: BillValidatorData;
   billMeters?: {
     dollar1?: number;
@@ -211,7 +209,7 @@ export type GamingMachine = {
     dollarTotal?: number;
     dollarTotalUnknown?: number;
   };
-  
+
   // Machine settings and features
   machineMembershipSettings?: {
     isPointsAllowed: boolean;
@@ -220,23 +218,23 @@ export type GamingMachine = {
     freePlayAmount: number;
     freePlayCreditsTimeout: number;
   };
-  
+
   // Credits and balances
   nonRestricted?: number;
   restricted?: number;
   uaccount?: number; // User account balance
   playableBalance?: number;
-  
+
   // SAS protocol and protocols
   sasVersion?: string;
   isSasMachine?: boolean;
   protocols?: Array<{ protocol: string; version: string }>;
-  
+
   // Game management
   numberOfEnabledGames?: number;
   enabledGameNumbers?: string[];
   noOfGames?: number;
-  
+
   // Maintenance and history
   machineType?: string;
   machineStatus?: string;
@@ -247,7 +245,7 @@ export type GamingMachine = {
     description: string;
     performedBy: string;
   }>;
-  
+
   sessionHistory?: Array<{
     gamingLocation: string;
     date: Date;
@@ -256,7 +254,7 @@ export type GamingMachine = {
     _id: string;
   }>;
   currentSession?: string;
-  
+
   // Viewing account denomination
   viewingAccountDenomination?: Array<{
     asOf: Date;
@@ -274,21 +272,22 @@ export type GamingMachine = {
     drop: number;
     totalCancelledCredits: number;
   };
-  
+
   // Additional fields
   isSunBoxDevice?: boolean;
   lastBillMeterAt?: Date;
   lastSasMeterAt?: Date;
   operationsWhileIdle?: { extendedMeters: Date };
-  
+
   // Timestamps
   createdAt: Date | string;
   updatedAt: Date | string;
   deletedAt?: Date | string | null;
-  
+
   // Frontend-specific fields
   locationId?: string;
   locationName?: string;
+  gameDayOffset?: number;
 };
 
 // Legacy type aliases for backward compatibility
@@ -311,6 +310,8 @@ export type SmibConfig = {
     mqttPubTopic?: string;
     mqttCfgTopic?: string;
     mqttIdleTimeS?: number;
+    mqttUsername?: string;
+    mqttPassword?: string;
   };
   coms?: {
     comsAddr?: number;
@@ -666,7 +667,6 @@ export type SummaryStats = {
   topPerformers: unknown[];
 };
 
-
 export type SmibLocation = {
   id: string;
   name: string;
@@ -682,12 +682,38 @@ export type NewCabinetFormData = {
   cabinetType: string;
   assetStatus: string;
   gamingLocation: string;
-  smibBoard: string;
+  relayId: string;
   manufacturer: string;
   collectionSettings: {
     multiplier: string;
     lastCollectionTime: string;
     lastMetersIn: string;
     lastMetersOut: string;
+  };
+};
+
+// Collection Issue types for enhanced Fix SAS Times system
+export type CollectionIssue = {
+  collectionId: string;
+  machineName: string;
+  issueType:
+    | "inverted_times"
+    | "prev_meters_mismatch"
+    | "sas_time_wrong"
+    | "history_mismatch"
+    | "machine_time_mismatch";
+  details: {
+    current: any;
+    expected: any;
+    explanation: string;
+  };
+};
+
+export type CollectionIssueDetails = {
+  issues: CollectionIssue[];
+  summary: {
+    totalIssues: number;
+    affectedMachines: number;
+    affectedReports: number;
   };
 };

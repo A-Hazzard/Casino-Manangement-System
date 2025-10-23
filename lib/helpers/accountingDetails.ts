@@ -8,6 +8,60 @@ import type {
 import type { GamingMachine as _MachineType } from "@/shared/types/entities";
 import { CollectionReportData } from "@/lib/types/api";
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import { Meters } from "@/app/api/lib/models/meters";
+
+/**
+ * Calculate SAS gross by querying meters directly for a specific time period
+ * This matches the calculation method used in cabinet details page
+ */
+async function calculateSasGrossFromMeters(
+  machineId: string,
+  sasStartTime: Date,
+  sasEndTime: Date
+): Promise<number> {
+  try {
+    const meters = await Meters.find({
+      machine: machineId,
+      readAt: { $gte: sasStartTime, $lte: sasEndTime },
+    })
+      .sort({ readAt: 1 })
+      .lean();
+
+    if (meters.length === 0) {
+      // No meters found
+      return 0;
+    }
+
+    // Sum all movement fields (daily deltas) within the SAS time period
+    // This is the correct approach when machines only have movement data, not cumulative data
+    const totalDrop = meters.reduce(
+      (sum, meter) => sum + (meter.movement?.drop || 0),
+      0
+    );
+    const totalCancelled = meters.reduce(
+      (sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0),
+      0
+    );
+
+    const sasGross = totalDrop - totalCancelled;
+
+    console.warn(`🔍 SAS Gross calculation for machine ${machineId}:`);
+    console.warn(
+      `  Time period: ${sasStartTime.toISOString()} to ${sasEndTime.toISOString()}`
+    );
+    console.warn(`  Meters found: ${meters.length}`);
+    console.warn(`  Total drop (sum of movement.drop): ${totalDrop}`);
+    console.warn(
+      `  Total cancelled (sum of movement.totalCancelledCredits): ${totalCancelled}`
+    );
+    console.warn(`  SAS Gross: ${sasGross}`);
+
+    return sasGross;
+  } catch (error) {
+    console.error("Error calculating SAS gross from meters:", error);
+    return 0;
+  }
+}
 
 /**
  * Formats a number with smart decimal handling
@@ -21,7 +75,9 @@ const formatSmartDecimal = (value: number): string => {
 };
 import { Collections } from "@/app/api/lib/models/collections";
 import type { GamingMachine } from "@/shared/types/entities";
-type CollectionMetersHistoryEntry = NonNullable<GamingMachine["collectionMetersHistory"]>[0];
+type CollectionMetersHistoryEntry = NonNullable<
+  GamingMachine["collectionMetersHistory"]
+>[0];
 import { getDatesForTimePeriod } from "../utils/dates";
 import type { TimePeriod } from "@/shared/types/common";
 
@@ -367,55 +423,73 @@ export async function getCollectionReportById(
     reportId: report.locationReportId,
     locationName: report.locationName,
     collectionDate: report.timestamp
-      ? new Date(report.timestamp).toLocaleString()
+      ? new Date(report.timestamp).toISOString()
       : "-",
-    machineMetrics: collections.map((collection, idx: number) => {
-      // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
-      // Use a helper function to check for valid non-empty strings
-      const isValidString = (str: string | undefined | null): string | null => {
-        return str && typeof str === "string" && str.trim() !== ""
-          ? str.trim()
-          : null;
-      };
+    machineMetrics: await Promise.all(
+      collections.map(async (collection, idx: number) => {
+        // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
+        // Use a helper function to check for valid non-empty strings
+        const isValidString = (
+          str: string | undefined | null
+        ): string | null => {
+          return str && typeof str === "string" && str.trim() !== ""
+            ? str.trim()
+            : null;
+        };
 
-      const machineDisplayName =
-        isValidString(collection.serialNumber) ||
-        isValidString(collection.machineName) ||
-        isValidString(collection.machineCustomName) ||
-        isValidString(collection.machineId) ||
-        isValidString(collection.sasMeters?.machine) ||
-        `Machine ${idx + 1}`;
+        const machineDisplayName =
+          isValidString(collection.serialNumber) ||
+          isValidString(collection.machineName) ||
+          isValidString(collection.machineCustomName) ||
+          isValidString(collection.machineId) ||
+          isValidString(collection.sasMeters?.machine) ||
+          `Machine ${idx + 1}`;
 
-      // Calculate drop/cancelled from the difference between current and previous meters
-      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
-      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
-      const meterGross = collection.movement?.gross || 0;
-      const sasGross = collection.sasMeters?.gross || 0;
-      // Check if SAS data exists - if not, show "No SAS Data"
-       const variation =
-         !collection.sasMeters ||
-         collection.sasMeters.gross === undefined ||
-         collection.sasMeters.gross === null ||
-         collection.sasMeters.gross === 0
-           ? "No SAS Data"
-           : meterGross - sasGross;
+        // Calculate drop/cancelled from the difference between current and previous meters
+        const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
+        const cancelled =
+          (collection.metersOut || 0) - (collection.prevOut || 0);
+        const meterGross = collection.movement?.gross || 0;
 
-      return {
-        id: String(idx + 1),
-        machineId: machineDisplayName,
-        actualMachineId: collection.machineId, // The actual machine ID for navigation
-        dropCancelled: `${drop} / ${cancelled}`,
-        metersGross: meterGross,
-        sasGross: formatSmartDecimal(sasGross),
-        variation:
-          typeof variation === "string"
-            ? variation
-            : formatSmartDecimal(variation),
-        sasStartTime: collection.sasMeters?.sasStartTime || "-",
-        sasEndTime: collection.sasMeters?.sasEndTime || "-",
-        hasIssue: false,
-      };
-    }),
+        // Calculate SAS gross by querying meters directly for the SAS time period
+        let sasGross = 0;
+        if (
+          collection.sasMeters?.sasStartTime &&
+          collection.sasMeters?.sasEndTime
+        ) {
+          sasGross = await calculateSasGrossFromMeters(
+            collection.machineId,
+            new Date(collection.sasMeters.sasStartTime),
+            new Date(collection.sasMeters.sasEndTime)
+          );
+        }
+
+        // Check if SAS data exists - if not, show "No SAS Data"
+        // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
+        const variation =
+          !collection.sasMeters ||
+          collection.sasMeters.sasStartTime === undefined ||
+          collection.sasMeters.sasEndTime === undefined
+            ? "No SAS Data"
+            : meterGross - sasGross;
+
+        return {
+          id: String(idx + 1),
+          machineId: machineDisplayName,
+          actualMachineId: collection.machineId, // The actual machine ID for navigation
+          dropCancelled: `${drop} / ${cancelled}`,
+          metersGross: meterGross,
+          sasGross: formatSmartDecimal(sasGross),
+          variation:
+            typeof variation === "string"
+              ? variation
+              : formatSmartDecimal(variation),
+          sasStartTime: collection.sasMeters?.sasStartTime || "-",
+          sasEndTime: collection.sasMeters?.sasEndTime || "-",
+          hasIssue: false,
+        };
+      })
+    ),
     locationMetrics,
     sasMetrics,
   };

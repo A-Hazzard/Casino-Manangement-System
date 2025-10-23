@@ -19,6 +19,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Download } from "lucide-react";
 import { toast } from "sonner";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
 
 type FilterType = "session" | "day" | "week" | "month";
 type SortOption =
@@ -41,7 +42,7 @@ function MemberDetailsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [showTotals, setShowTotals] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [selectedLicencee, setSelectedLicencee] = useState("All Licensees");
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const [filter, setFilter] = useState<FilterType>("session");
   const [sortOption, setSortOption] = useState<SortOption>("time");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");

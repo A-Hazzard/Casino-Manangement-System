@@ -8,7 +8,6 @@ import {
   generateRefreshToken,
   getCurrentDbConnectionString,
   loginRateLimiter,
-  validatePasswordStrength,
 } from "@/lib/utils/auth";
 import { logActivity } from "./activityLogger";
 
@@ -159,72 +158,10 @@ export async function authenticateUser(
     // Clear rate limiting for successful login
     loginRateLimiter.clearAttempts(ipAddress);
 
-    // Now check password strength after successful authentication
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.isValid) {
-      console.warn("Weak password detected:", passwordValidation.errors);
-      // Return success but with a flag to prompt password update
-      const userObject = user.toObject({ getters: true });
-      
-      const sessionId = userObject._id.toString();
-      const accessToken = await generateAccessToken({
-        _id: userObject._id.toString(),
-        emailAddress: userObject.emailAddress,
-        username: String(userObject.username || ""),
-        isEnabled: userObject.isEnabled,
-        sessionId: sessionId,
-        dbContext: {
-          connectionString: getCurrentDbConnectionString(),
-          timestamp: Date.now(),
-        },
-      });
-
-      const refreshToken = await generateRefreshToken(
-        userObject._id.toString(),
-        userObject._id.toString()
-      );
-
-      const userPayload: UserAuthPayload = {
-        _id: userObject._id.toString(),
-        emailAddress: userObject.emailAddress,
-        username: String(userObject.username || ""),
-        isEnabled: userObject.isEnabled,
-        profile: userObject.profile || undefined,
-        lastLoginAt: new Date(),
-        loginCount: (Number(userObject.loginCount) || 0) + 1,
-        isLocked: false,
-        lockedUntil: undefined,
-        failedLoginAttempts: 0,
-        requiresPasswordUpdate: true, // Flag to indicate weak password
-      };
-
-      // Log successful login
-      await logActivity({
-        action: "login_success",
-        details: `Successful login with weak password: ${identifier}`,
-        ipAddress,
-        userAgent,
-        userId: user._id,
-        username: user.emailAddress,
-      });
-
-      const expiresAt = new Date(
-        Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)
-      ).toISOString();
-
-      return {
-        success: true,
-        token: accessToken,
-        refreshToken,
-        user: userPayload,
-        expiresAt,
-        requiresPasswordUpdate: true,
-      };
-    }
-
-
     // Check for invalid profile fields (special characters)
-    const { validateProfileField, validateNameField } = await import("@/lib/utils/validation");
+    const { validateProfileField, validateNameField } = await import(
+      "@/lib/utils/validation"
+    );
     const invalidFields = {
       username: !validateProfileField(user.username || ""),
       firstName: !validateNameField(user.profile?.firstName || ""),
@@ -235,7 +172,7 @@ export async function authenticateUser(
     if (hasInvalidFields) {
       // Return success but with a flag to prompt profile update
       const userObject = user.toObject({ getters: true });
-      
+
       const sessionId = userObject._id.toString();
       const accessToken = await generateAccessToken({
         _id: userObject._id.toString(),
@@ -259,6 +196,7 @@ export async function authenticateUser(
         emailAddress: userObject.emailAddress,
         username: String(userObject.username || ""),
         isEnabled: userObject.isEnabled,
+        roles: userObject.roles || [],
         profile: userObject.profile || undefined,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -280,7 +218,8 @@ export async function authenticateUser(
       });
 
       const expiresAt = new Date(
-        Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)
+        Date.now() +
+          (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
       ).toISOString();
 
       return {
@@ -294,9 +233,7 @@ export async function authenticateUser(
       };
     }
 
-
     const userObject = user.toObject({ getters: true });
-
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
@@ -322,6 +259,7 @@ export async function authenticateUser(
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ""),
       isEnabled: userObject.isEnabled,
+      roles: userObject.roles || [],
       profile: userObject.profile || undefined,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -341,7 +279,8 @@ export async function authenticateUser(
     });
 
     const expiresAt = new Date(
-      Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)
+      Date.now() +
+        (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
     ).toISOString();
 
     return {

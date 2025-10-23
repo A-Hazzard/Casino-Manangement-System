@@ -31,16 +31,16 @@ import {
   Download,
 } from "lucide-react";
 import axios from "axios";
-interface AuthMetrics {
+type AuthMetrics = {
   totalLogins: number;
   successfulLogins: number;
   failedLogins: number;
   activeSessions: number;
   lockedAccounts: number;
   suspiciousActivities: number;
-}
+};
 
-interface AuthEvent {
+type AuthEvent = {
   _id: string;
   action: string;
   details: string;
@@ -51,11 +51,11 @@ interface AuthEvent {
   userAgent: string;
   timestamp: string;
   metadata?: Record<string, unknown>;
-}
+};
 
-interface AuthMonitoringDashboardProps {
+type AuthMonitoringDashboardProps = {
   userRole: string;
-}
+};
 
 export function AuthMonitoringDashboard({
   userRole: _userRole,

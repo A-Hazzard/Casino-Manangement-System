@@ -4,30 +4,29 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { fetchLocationDetails, fetchCabinets, fetchAllGamingLocations } from "@/lib/helpers/locations";
+import {
+  fetchLocationDetails,
+  fetchCabinets,
+  fetchAllGamingLocations,
+} from "@/lib/helpers/locations";
 import { toast } from "sonner";
 import type { LocationInfo } from "@/lib/types/pages";
 import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 import type { DateRange } from "react-day-picker";
 
-interface UseLocationDetailsProps {
+type UseLocationDetailsProps = {
   locationSlug: string;
   selectedLicencee: string;
   activeMetricsFilter: string;
   customDateRange?: DateRange;
-}
+};
 
-interface UseLocationDetailsReturn {
-  // Data states
+type UseLocationDetailsReturn = {
   locationInfo: LocationInfo | null;
   cabinets: Cabinet[];
   allLocations: { _id: string; name: string }[];
-  
-  // Loading states
   loading: boolean;
   error: string | null;
-  
-  // Pagination
   pagination: {
     page: number;
     limit: number;
@@ -36,8 +35,6 @@ interface UseLocationDetailsReturn {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
-  
-  // Actions
   loadLocationDetails: () => Promise<void>;
   loadCabinets: () => Promise<void>;
   refreshLocationDetails: () => Promise<void>;
@@ -50,7 +47,7 @@ interface UseLocationDetailsReturn {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   }) => void;
-}
+};
 
 export const useLocationDetails = ({
   locationSlug,
@@ -58,11 +55,12 @@ export const useLocationDetails = ({
   activeMetricsFilter,
   customDateRange,
 }: UseLocationDetailsProps): UseLocationDetailsReturn => {
-  
   // State management
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
-  const [allLocations, setAllLocations] = useState<{ _id: string; name: string }[]>([]);
+  const [allLocations, setAllLocations] = useState<
+    { _id: string; name: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -81,15 +79,16 @@ export const useLocationDetails = ({
       console.warn("Loading with filters:", {
         selectedLicencee,
         activeMetricsFilter,
-        customDateRange: customDateRange ? {
-          from: customDateRange.from?.toISOString(),
-          to: customDateRange.to?.toISOString()
-        } : undefined
+        customDateRange: customDateRange
+          ? {
+              from: customDateRange.from?.toISOString(),
+              to: customDateRange.to?.toISOString(),
+            }
+          : undefined,
       });
 
       setLoading(true);
       setError(null);
-
 
       const locationData = await fetchLocationDetails(
         locationSlug,
@@ -105,13 +104,17 @@ export const useLocationDetails = ({
       console.warn("Successfully loaded location details:", {
         locationId: locationData._id,
         locationName: locationData.name,
-        totalCabinets: locationData.cabinets?.length || 0
+        totalCabinets: locationData.cabinets?.length || 0,
       });
 
       setLocationInfo(locationData);
     } catch (error) {
       console.error("Error loading location details:", error);
-      setError(error instanceof Error ? error.message : "Failed to load location details");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load location details"
+      );
     } finally {
       setLoading(false);
     }
@@ -121,12 +124,8 @@ export const useLocationDetails = ({
   const loadCabinets = useCallback(async () => {
     try {
       console.warn("Loading cabinets for location:", locationSlug);
-      
 
-      const cabinetsData = await fetchCabinets(
-        locationSlug,
-        selectedLicencee
-      );
+      const cabinetsData = await fetchCabinets(locationSlug, selectedLicencee);
 
       if (!Array.isArray(cabinetsData)) {
         console.error("Cabinets data is not an array:", cabinetsData);
@@ -136,9 +135,9 @@ export const useLocationDetails = ({
 
       console.warn("Successfully loaded cabinets:", cabinetsData.length);
       setCabinets(cabinetsData);
-      
+
       // Update pagination
-      setPagination(prev => ({
+      setPagination((prev) => ({
         ...prev,
         totalCount: cabinetsData.length,
         totalPages: Math.ceil(cabinetsData.length / prev.limit),
@@ -156,13 +155,15 @@ export const useLocationDetails = ({
     try {
       console.warn("Loading all locations for navigation");
       const locationsData = await fetchAllGamingLocations();
-      
+
       if (Array.isArray(locationsData)) {
         // Map the data to match the expected type structure
-        const mappedLocations = locationsData.map((location: { id: string; name: string }) => ({
-          _id: location.id,
-          name: location.name
-        }));
+        const mappedLocations = locationsData.map(
+          (location: { id: string; name: string }) => ({
+            _id: location.id,
+            name: location.name,
+          })
+        );
         setAllLocations(mappedLocations);
         console.warn("Successfully loaded locations:", locationsData.length);
       } else {
@@ -181,7 +182,7 @@ export const useLocationDetails = ({
     await Promise.all([
       loadLocationDetails(),
       loadCabinets(),
-      loadAllLocations()
+      loadAllLocations(),
     ]);
     toast.success("Location details refreshed successfully");
   }, [loadLocationDetails, loadCabinets, loadAllLocations, locationSlug]);
@@ -200,14 +201,14 @@ export const useLocationDetails = ({
     locationInfo,
     cabinets,
     allLocations,
-    
+
     // Loading states
     loading,
     error,
-    
+
     // Pagination
     pagination,
-    
+
     // Actions
     loadLocationDetails,
     loadCabinets,

@@ -2,32 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { AcceptedBill } from "@/app/api/lib/models/acceptedBills";
 import { Machine } from "@/app/api/lib/models/machines";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
+import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
 import type { TimePeriod } from "@/app/api/lib/types";
 import { connectDB } from "@/app/api/lib/middleware/db";
-
-/**
- * Calculate gaming day range for custom date filtering
- * Uses the same logic as the meter report for consistency
- *
- * @param selectedDate - The date selected by the user
- * @param gameDayStartHour - The hour when gaming day starts (0-23)
- * @returns Object with rangeStart and rangeEnd dates in UTC
- */
-function getGamingDayRange(selectedDate: Date, gameDayStartHour: number = 0) {
-  // Gaming day runs from gameDayStartHour to gameDayStartHour next day
-
-  // Gaming day start on the selected date (e.g., Aug 23rd at 11:00 AM Trinidad time)
-  const rangeStart = new Date(selectedDate);
-  rangeStart.setUTCHours(gameDayStartHour + 4, 0, 0, 0); // Convert Trinidad time to UTC
-
-  // Gaming day end on the selected date (e.g., Aug 21st at 11:00 AM Trinidad time)
-  const rangeEnd = new Date(selectedDate);
-  rangeEnd.setDate(rangeEnd.getDate() + 1); // Move to next day for gaming day end
-  rangeEnd.setUTCHours(gameDayStartHour + 4, 0, 0, 0); // Convert Trinidad time to UTC
-
-  return { rangeStart, rangeEnd };
-}
 
 type BillDocument = {
   toObject?: () => Record<string, unknown>;
@@ -74,8 +51,19 @@ export async function GET(req: NextRequest) {
 
     // First try to get location from machine
     const machine = await Machine.findById(machineId);
+    console.warn(`[BILL VALIDATOR] Machine lookup:`, {
+      machineId,
+      machineFound: !!machine,
+      locationId: machine?.locationId,
+    });
+
     if (machine?.locationId) {
       gamingLocation = await GamingLocations.findById(machine.locationId);
+      console.warn(`[BILL VALIDATOR] Location lookup:`, {
+        locationId: machine.locationId,
+        locationFound: !!gamingLocation,
+        gameDayOffset: gamingLocation?.gameDayOffset,
+      });
     }
 
     // If no location found via machine, we'll get it from bills data later
@@ -84,72 +72,145 @@ export async function GET(req: NextRequest) {
     // Calculate date range with gaming day support
     let dateFilter: Record<string, unknown> = {};
     if (startDate && endDate) {
-      // Custom date range - apply gaming day logic
+      // Custom date range - use the exact dates provided by the user without gaming day offset
+      // The Date constructor already handles the local time to UTC conversion
       const customStart = new Date(startDate);
       const customEnd = new Date(endDate);
 
-      // Check if this is a single date selection (same start and end date)
-      const isSingleDate =
-        customStart.toDateString() === customEnd.toDateString();
+      dateFilter = {
+        createdAt: { $gte: customStart, $lte: customEnd },
+      };
 
-      if (isSingleDate && gameDayOffset !== 0) {
-        // Apply gaming day range calculation for single date
-        const { rangeStart, rangeEnd } = getGamingDayRange(
-          customStart,
-          gameDayOffset
-        );
-        dateFilter = {
-          createdAt: { $gte: rangeStart, $lte: rangeEnd },
-        };
-      } else {
-        // Multi-day range or no gaming day offset - use standard day boundaries
-        customStart.setUTCHours(0, 0, 0, 0);
-        customEnd.setUTCHours(23, 59, 59, 999);
-
-        dateFilter = {
-          createdAt: { $gte: customStart, $lte: customEnd },
-        };
-      }
+      console.warn(`[BILL VALIDATOR] Custom date range (V1):`, {
+        startDate,
+        endDate,
+        customStart: customStart.toISOString(),
+        customEnd: customEnd.toISOString(),
+      });
     } else if (timePeriod && timePeriod !== "All Time") {
-      // Predefined time period
-      const { startDate: periodStart, endDate: periodEnd } =
-        getDatesForTimePeriod(timePeriod);
-      if (periodStart && periodEnd) {
-        // Check if this is a single day period (Today, Yesterday) and apply gaming day logic
-        const isSingleDay =
-          timePeriod === "Today" || timePeriod === "Yesterday";
-
-        if (isSingleDay && gameDayOffset !== 0) {
-          // Apply gaming day range calculation for single day periods
-          const { rangeStart, rangeEnd } = getGamingDayRange(
-            periodStart,
-            gameDayOffset
-          );
-          dateFilter = {
-            createdAt: { $gte: rangeStart, $lte: rangeEnd },
-          };
-        } else {
-          // Multi-day periods or no gaming day offset - use standard day boundaries
-          dateFilter = {
-            createdAt: { $gte: periodStart, $lte: periodEnd },
-          };
-        }
-      }
+      // Predefined time period - use gaming day range utilities
+      const gamingDayRange = getGamingDayRangeForPeriod(
+        timePeriod,
+        gameDayOffset
+      );
+      dateFilter = {
+        createdAt: {
+          $gte: gamingDayRange.rangeStart,
+          $lte: gamingDayRange.rangeEnd,
+        },
+      };
     }
 
     // Query accepted bills for the machine
-    const bills = await AcceptedBill.find({
-      machine: machineId,
-      ...dateFilter,
-    }).sort({ createdAt: -1 });
+    let bills;
+    let v2DateFilter: Record<string, unknown> = {};
+
+    // First, check if we have V1 or V2 data by looking at one bill
+    const sampleBill = await AcceptedBill.findOne({ machine: machineId });
+    if (sampleBill) {
+      const sampleBillObj = sampleBill.toObject
+        ? sampleBill.toObject()
+        : sampleBill;
+      const isV2 =
+        sampleBillObj.movement &&
+        typeof sampleBillObj.movement === "object" &&
+        sampleBillObj.value === undefined;
+
+      if (isV2) {
+        // V2: Use readAt field for filtering
+        if (startDate && endDate) {
+          // Custom date range - use the exact dates provided by the user without gaming day offset
+          // The Date constructor already handles the local time to UTC conversion
+          const customStart = new Date(startDate);
+          const customEnd = new Date(endDate);
+
+          v2DateFilter = {
+            readAt: { $gte: customStart, $lte: customEnd },
+          };
+
+          console.warn(`[BILL VALIDATOR] Custom date range (V2):`, {
+            startDate,
+            endDate,
+            customStart: customStart.toISOString(),
+            customEnd: customEnd.toISOString(),
+          });
+        } else if (timePeriod && timePeriod !== "All Time") {
+          // Predefined time period - use gaming day range utilities
+          const gamingDayRange = getGamingDayRangeForPeriod(
+            timePeriod,
+            gameDayOffset
+          );
+          v2DateFilter = {
+            readAt: {
+              $gte: gamingDayRange.rangeStart,
+              $lte: gamingDayRange.rangeEnd,
+            },
+          };
+
+          console.warn(`[BILL VALIDATOR] V2 gaming day range:`, {
+            timePeriod,
+            gameDayOffset,
+            rangeStart: gamingDayRange.rangeStart.toISOString(),
+            rangeEnd: gamingDayRange.rangeEnd.toISOString(),
+          });
+        }
+
+        bills = await AcceptedBill.find({
+          machine: machineId,
+          ...v2DateFilter,
+        }).sort({ readAt: -1 });
+
+        console.warn(`[BILL VALIDATOR] Using V2 filtering (readAt field)`);
+        console.warn(
+          `[BILL VALIDATOR] V2 Date filter:`,
+          JSON.stringify(v2DateFilter, null, 2)
+        );
+      } else {
+        // V1: Use createdAt field for filtering
+        bills = await AcceptedBill.find({
+          machine: machineId,
+          ...dateFilter,
+        }).sort({ createdAt: -1 });
+
+        console.warn(`[BILL VALIDATOR] Using V1 filtering (createdAt field)`);
+      }
+    } else {
+      bills = [];
+    }
 
     console.warn(
       `[BILL VALIDATOR] Found ${bills.length} bills for machine ${machineId}`
     );
-    console.warn(
-      `[BILL VALIDATOR] Date filter:`,
-      JSON.stringify(dateFilter, null, 2)
-    );
+
+    // Log the date filter that was actually used
+    if (bills.length > 0) {
+      const sampleBill = bills[0];
+      const sampleBillObj = sampleBill.toObject
+        ? sampleBill.toObject()
+        : sampleBill;
+      const isV2 =
+        sampleBillObj.movement &&
+        typeof sampleBillObj.movement === "object" &&
+        sampleBillObj.value === undefined;
+
+      if (isV2) {
+        console.warn(
+          `[BILL VALIDATOR] V2 Date filter used:`,
+          JSON.stringify(v2DateFilter, null, 2)
+        );
+      } else {
+        console.warn(
+          `[BILL VALIDATOR] V1 Date filter used:`,
+          JSON.stringify(dateFilter, null, 2)
+        );
+      }
+    } else {
+      console.warn(
+        `[BILL VALIDATOR] No bills found, date filter:`,
+        JSON.stringify(dateFilter, null, 2)
+      );
+    }
+
     console.warn(`[BILL VALIDATOR] Time period:`, timePeriod);
     console.warn(`[BILL VALIDATOR] Game day offset:`, gameDayOffset);
 
@@ -307,9 +368,9 @@ function processV1Data(
 
       if (isEnabled) {
         denominationTotals[value]++;
-        // console.warn(`[BILL VALIDATOR] ✅ ADDED V1 bill value ${value} (${denominationKey} enabled)`);
+        // console.warn(`[BILL VALIDATOR] ADDED V1 bill value ${value} (${denominationKey} enabled)`);
       } else {
-        // console.warn(`[BILL VALIDATOR] ❌ FILTERED OUT V1 bill value ${value} (${denominationKey} disabled) - showing as 0`);
+        // console.warn(`[BILL VALIDATOR] FILTERED OUT V1 bill value ${value} (${denominationKey} disabled) - showing as 0`);
       }
     }
   });
@@ -407,7 +468,7 @@ function processV2Data(
           if (isEnabled) {
             denominationTotals[key].quantity += quantity;
             denominationTotals[key].subtotal += quantity * value;
-            // console.warn(`[BILL VALIDATOR] ✅ ADDED ${key}: ${quantity} bills (${optionKey} enabled)`);
+            // console.warn(`[BILL VALIDATOR]  ADDED ${key}: ${quantity} bills (${optionKey} enabled)`);
           } else {
             // console.warn(`[BILL VALIDATOR] ❌ FILTERED OUT ${key}: ${quantity} bills (${optionKey} disabled) - showing as 0`);
           }
@@ -454,13 +515,42 @@ function processV2Data(
     0
   );
 
-  // Calculate total known and unknown amounts from movement objects
+  // Calculate total known and unknown amounts from movement objects, respecting billValidatorOptions
   const totalKnownAmount = bills.reduce((sum: number, bill: BillDocument) => {
     const billObj = bill.toObject ? bill.toObject() : bill;
     const movement = billObj.movement as
       | (Record<string, number> & { dollarTotal?: number })
       | undefined;
-    return sum + (movement?.dollarTotal || 0);
+
+    if (!movement) return sum;
+
+    // Only include amounts for enabled denominations
+    const denominationMap = [
+      { key: "dollar1", optionKey: "denom1" },
+      { key: "dollar2", optionKey: "denom2" },
+      { key: "dollar5", optionKey: "denom5" },
+      { key: "dollar10", optionKey: "denom10" },
+      { key: "dollar20", optionKey: "denom20" },
+      { key: "dollar50", optionKey: "denom50" },
+      { key: "dollar100", optionKey: "denom100" },
+      { key: "dollar200", optionKey: "denom200" },
+      { key: "dollar500", optionKey: "denom500" },
+      { key: "dollar1000", optionKey: "denom1000" },
+      { key: "dollar2000", optionKey: "denom2000" },
+      { key: "dollar5000", optionKey: "denom5000" },
+      { key: "dollar10000", optionKey: "denom10000" },
+    ];
+
+    let billKnownAmount = 0;
+    denominationMap.forEach(({ key, optionKey }) => {
+      const quantity = movement[key] || 0;
+      const denominationValue = parseInt(key.replace("dollar", ""));
+      if (quantity > 0 && billValidatorOptions[optionKey] === true) {
+        billKnownAmount += quantity * denominationValue;
+      }
+    });
+
+    return sum + billKnownAmount;
   }, 0);
 
   const totalUnknownAmount = bills.reduce((sum: number, bill: BillDocument) => {

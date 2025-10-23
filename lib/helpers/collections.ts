@@ -26,10 +26,16 @@ export async function updateCollection(
   updateData: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   try {
-    console.warn("📡 updateCollection called with:", { collectionId, updateDataKeys: Object.keys(updateData) });
-    
-    const { data } = await axios.patch(`/api/collections/${collectionId}`, updateData);
-    
+    console.warn("📡 updateCollection called with:", {
+      collectionId,
+      updateDataKeys: Object.keys(updateData),
+    });
+
+    const { data } = await axios.patch(
+      `/api/collections/${collectionId}`,
+      updateData
+    );
+
     console.warn("📡 updateCollection response:", data);
 
     // The API returns { success: true, data: updatedCollection }
@@ -37,11 +43,11 @@ export async function updateCollection(
     if (data.success && data.data) {
       return data.data as CollectionDocument;
     }
-    
+
     // Fallback: if the response structure is different, return the data directly
     return data as CollectionDocument;
   } catch (error) {
-    console.error("❌ updateCollection error:", error);
+    console.error(" updateCollection error:", error);
     throw error;
   }
 }
@@ -53,7 +59,7 @@ export async function updateCollection(
  * 2. Removes collectionMetersHistory entries for the report
  * 3. Deletes all collections with the locationReportId
  * 4. Deletes the collection report itself
- * 
+ *
  * @param locationReportId - The location report ID to delete collections for.
  * @returns Promise resolving to deletion results.
  */
@@ -66,12 +72,15 @@ export async function deleteCollectionsByReportId(
   updatedMachines: number;
 }> {
   try {
-    console.warn("🗑️ deleteCollectionsByReportId called with:", locationReportId);
-    
+    console.warn(
+      "🗑️ deleteCollectionsByReportId called with:",
+      locationReportId
+    );
+
     const { data } = await axios.delete("/api/collections/delete-by-report", {
-      data: { locationReportId }
+      data: { locationReportId },
     });
-    
+
     console.warn("🗑️ deleteCollectionsByReportId response:", data);
 
     return {
@@ -81,7 +90,7 @@ export async function deleteCollectionsByReportId(
       updatedMachines: data.updatedMachines,
     };
   } catch (error) {
-    console.error("❌ deleteCollectionsByReportId error:", error);
+    console.error(" deleteCollectionsByReportId error:", error);
     throw error;
   }
 }

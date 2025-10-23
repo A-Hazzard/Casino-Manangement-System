@@ -18,7 +18,7 @@
 The Sessions page provides comprehensive session management and monitoring for the casino system, including session tracking, performance analytics, and machine event monitoring. This page serves as the central hub for managing gaming sessions and analyzing player behavior.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 6th, 2025  
+**Last Updated:** October 6th, 2025  
 **Version:** 2.0.0
 
 ### File Information

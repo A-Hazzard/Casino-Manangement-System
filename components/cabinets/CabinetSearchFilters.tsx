@@ -18,6 +18,8 @@ export const CabinetSearchFilters = ({
   selectedGameType,
   gameTypes,
   onGameTypeChange,
+  selectedStatus,
+  onStatusChange,
   sortOption,
   sortOrder,
   onSortChange,
@@ -88,10 +90,10 @@ export const CabinetSearchFilters = ({
 
   return (
     <>
-      {/* Mobile: Search, Location Filter, and Sort stacked */}
-      <div className="md:hidden flex flex-col gap-4 mt-4">
-        {/* Search Input */}
-        <div className="relative w-full">
+      {/* Mobile: Compact filter layout - 2 rows of 2 filters each + search */}
+      <div className="md:hidden mt-4">
+        {/* Search Input - Full width */}
+        <div className="relative w-full mb-3">
           <Input
             type="text"
             placeholder="Search machines..."
@@ -102,46 +104,64 @@ export const CabinetSearchFilters = ({
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
 
-        {/* Location Filter */}
-        <div className="relative w-full">
-          <CustomSelect
-            value={selectedLocation}
-            onValueChange={handleLocationChange}
-            options={locationOptions}
-            placeholder="All Locations"
-            className="w-full"
-            triggerClassName="h-11 bg-white border border-gray-300 rounded-full px-4 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
-            searchable={true}
-            emptyMessage="No locations found"
-          />
+        {/* Filters Row 1: Location and Game Type */}
+        <div className="flex gap-2 mb-2">
+          <div className="flex-1">
+            <CustomSelect
+              value={selectedLocation}
+              onValueChange={handleLocationChange}
+              options={locationOptions}
+              placeholder="All Locations"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No locations found"
+            />
+          </div>
+          <div className="flex-1">
+            <CustomSelect
+              value={selectedGameType}
+              onValueChange={handleGameTypeChange}
+              options={gameTypeOptions}
+              placeholder="All Games"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No game types found"
+            />
+          </div>
         </div>
 
-        {/* Game Type Filter */}
-        <div className="relative w-full">
-          <CustomSelect
-            value={selectedGameType}
-            onValueChange={handleGameTypeChange}
-            options={gameTypeOptions}
-            placeholder="All Game Types"
-            className="w-full"
-            triggerClassName="h-11 bg-white border border-gray-300 rounded-full px-4 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
-            searchable={true}
-            emptyMessage="No game types found"
-          />
-        </div>
-
-        {/* Sort Options */}
-        <div className="relative w-full">
-          <CustomSelect
-            value={`${sortOption}-${sortOrder}`}
-            onValueChange={handleSortChange}
-            options={sortOptions}
-            placeholder="Sort by"
-            className="w-full"
-            triggerClassName="h-11 bg-white border border-gray-300 rounded-full px-4 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
-            searchable={true}
-            emptyMessage="No sort options found"
-          />
+        {/* Filters Row 2: Status and Sort */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <CustomSelect
+              value={selectedStatus}
+              onValueChange={onStatusChange}
+              options={[
+                { value: "All", label: "All Machines" },
+                { value: "Online", label: "Online" },
+                { value: "Offline", label: "Offline" },
+              ]}
+              placeholder="All Status"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No status options found"
+            />
+          </div>
+          <div className="flex-1">
+            <CustomSelect
+              value={`${sortOption}-${sortOrder}`}
+              onValueChange={handleSortChange}
+              options={sortOptions}
+              placeholder="Sort by"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No sort options found"
+            />
+          </div>
         </div>
       </div>
 
@@ -163,7 +183,7 @@ export const CabinetSearchFilters = ({
         <select
           value={selectedLocation}
           onChange={(event) => handleLocationChange(event.target.value)}
-          className="w-auto h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+          className="w-auto max-w-[200px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
         >
           {locationOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -176,13 +196,24 @@ export const CabinetSearchFilters = ({
         <select
           value={selectedGameType}
           onChange={(event) => handleGameTypeChange(event.target.value)}
-          className="w-auto h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+          className="w-auto max-w-[200px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
         >
           {gameTypeOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
+        </select>
+
+        {/* Status Filter */}
+        <select
+          value={selectedStatus}
+          onChange={(event) => onStatusChange(event.target.value)}
+          className="w-auto max-w-[150px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
+        >
+          <option value="All">All Machines</option>
+          <option value="Online">Online</option>
+          <option value="Offline">Offline</option>
         </select>
       </div>
     </>

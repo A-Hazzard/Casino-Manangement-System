@@ -2,7 +2,7 @@
 # Meters Report API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 15th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -20,6 +20,26 @@
 ## Overview
 
 The Meters Report API provides access to slot machine meter readings, financial calculations, and performance analytics based on meter data.
+
+**Important:** All date filtering now respects each location's gaming day offset. See [Gaming Day Offset System](./gaming-day-offset-system.md) for details on how gaming days work and how they affect time-based queries.
+
+## Gaming Day Offset System
+
+The system now uses a sophisticated gaming day offset system that ensures accurate financial reporting across different time zones and business hours. Key features:
+
+- **Per-location gaming days**: Each location can have a different gaming day start time (e.g., 9 AM Trinidad time)
+- **Automatic UTC conversion**: All date ranges are automatically converted to UTC for database queries
+- **Consistent time periods**: Standard periods like "Today", "Yesterday", "7d", "30d" now align with gaming day boundaries
+- **Custom date ranges**: Custom date filtering respects the location's gaming day offset
+
+### Example: Gaming Day with 9 AM Offset
+
+If a location has a `gameDayOffset` of 9:
+- **"Today"** = 9:00 AM today to 8:59:59 AM tomorrow (Trinidad time)
+- **"Yesterday"** = 9:00 AM yesterday to 8:59:59 AM today (Trinidad time)
+- **Custom range** = Custom start/end dates adjusted to gaming day boundaries
+
+This ensures that financial metrics and meter readings are calculated based on the location's actual business day, not calendar days.
 
 ## Dashboard Metrics
 
@@ -305,7 +325,7 @@ Average Wager = Handle / Games Played
 # Meters Report API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Date:** August 29, 2025
+**Date:** October 29, 2025
 
 ## Overview
 
@@ -905,6 +925,6 @@ console.error("❌ Meters Report API Error:", {
 
 ---
 
-**Last Updated**: August 29, 2025  
+**Last Updated**: October 29, 2025  
 **Version**: 1.0  
 **Maintained By**: Evolution One CMS Development Team

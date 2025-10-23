@@ -26,7 +26,10 @@ declare module "@/lib/hooks/useCabinetDetails" {
 
 // Allow TypeScript to recognize our component
 declare module "@/components/cabinetDetails/AccountingDetails" {
-  import { GamingMachine as CabinetDetail, TimePeriod } from "@/shared/types/entities";
+  import {
+    GamingMachine as CabinetDetail,
+    TimePeriod,
+  } from "@/shared/types/entities";
 
   export type AccountingDetailsProps = {
     cabinet: CabinetDetail;

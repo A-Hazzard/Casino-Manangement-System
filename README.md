@@ -10,23 +10,34 @@
 
 ## 🚀 Features
 - 📊 **Dashboard with Real-Time Analytics** ([docs](Documentation/frontend/dashboard.md))
+  - Gaming day offset support for accurate financial reporting
+  - Custom date ranges with time inputs
+  - Multi-currency support with real-time conversion
 - 🎮 **Slot Machine & Gaming Floor Management** ([docs](Documentation/frontend/cabinets.md))
   - 🔧 **Cabinet Details & SMIB Configuration** ([docs](Documentation/frontend/cabinet-details.md))
+  - Real-time status monitoring and performance tracking
 - 💰 **Financial Tracking & Collection Reporting** ([docs](Documentation/frontend/collection-report.md))
-  - 📋 **Collection Report Details** - Individual report analysis and management
+  - 📋 **Collection Report Details** - Individual report analysis with SAS time validation
   - ✏️ **Edit/Delete Reports** - Full lifecycle management with meter reversion
+  - 🔧 **Fix SAS Times** - Automatic detection and correction of SAS time issues
+  - Movement Delta Method for accurate financial calculations
 - 📍 **Location Management** ([docs](Documentation/frontend/locations.md))
   - 🎰 **Location Cabinets** ([docs](Documentation/frontend/location-cabinets.md))
   - 📊 **Location Details & Analytics** ([docs](Documentation/frontend/location-details.md))
+  - Custom date filtering with time inputs
 - 👥 **Member Management** ([docs](Documentation/frontend/members.md))
 - 🎯 **Session Management** ([docs](Documentation/frontend/sessions.md))
 - 👥 **User & Licensee Administration** ([docs](Documentation/frontend/administration.md))
 - 🔐 **Secure Authentication** ([docs](Documentation/frontend/login.md))
+  - Role-based access control (RBAC)
+  - JWT token-based authentication
 - 📊 **Comprehensive Reports Module** ([docs](Documentation/frontend/reports.md))
   - Dashboard, Locations, Machines, and Meters tabs with comprehensive financial calculations
+  - Gaming day offset integration for accurate reporting
 - 🔄 **URL Redirects & SEO Optimization** ([docs](Documentation/frontend/redirect-pages.md))
 - 📑 **Pages Overview & Architecture** ([docs](Documentation/frontend/pages-overview.md))
 - 🕐 **Timezone Management** ([docs](Documentation/timezone.md)) - **Trinidad (UTC-4) timezone support**
+- ⏰ **Gaming Day Offset System** ([docs](.cursor/gaming-day-offset-rules.md)) - **8 AM gaming day start time**
 
 ## 🛠️ Tech Stack
 - **Next.js 15** (App Router)
@@ -303,6 +314,8 @@ Evolution1 CMS/
 - **Timezone:** Trinidad timezone handling and date conversion ([timezone.md](Documentation/timezone.md))
 - **Engineering Guidelines:** Development standards and best practices ([ENGINEERING_GUIDELINES.md](Documentation/ENGINEERING_GUIDELINES.md))
 - **Financial Metrics:** Financial calculations and metrics guide ([financial-metrics-guide.md](Documentation/financial-metrics-guide.md))
+- **Gaming Day Offset:** Complete gaming day offset implementation guide ([gaming-day-offset-rules.md](.cursor/gaming-day-offset-rules.md))
+- **SAS GROSS Calculation:** SAS GROSS calculation system and verification ([sas-gross-calculation-system.md](Documentation/backend/sas-gross-calculation-system.md))
 
 See [pages-overview.md](Documentation/frontend/pages-overview.md) for a full list of pages and documentation status.
 
@@ -316,6 +329,8 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 - **Code Organization:** Clear separation of concerns
 - **Security First:** Follow OWASP standards and secure practices
 - **Timezone Consistency:** All dates automatically converted to Trinidad time (UTC-4)
+- **Gaming Day Offset:** Financial reporting aligned with 8 AM gaming day start
+- **Movement Delta Method:** All financial calculations use sum of movement fields
 - **Comprehensive Testing:** Use the test directory for database validation and query testing
 
 **User Management:** Add, edit, and manage user roles and permissions.
@@ -328,4 +343,4 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 
 ---
 
-**Last Updated:** September 23rd, 2025
+**Last Updated:** October 10th, 2025

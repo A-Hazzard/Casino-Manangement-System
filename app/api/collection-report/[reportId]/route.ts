@@ -34,6 +34,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Ensure collectionDate is always present (fallback to timestamp if missing)
+    if (!reportData.collectionDate) {
+      const report = await CollectionReport.findOne({
+        locationReportId: reportId,
+      });
+      if (report?.timestamp) {
+        reportData.collectionDate = new Date(report.timestamp).toISOString();
+      }
+    }
+
     return NextResponse.json(reportData);
   } catch (error) {
     console.error("Error fetching collection report details:", error);
@@ -64,7 +74,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       (await request.json()) as Partial<CreateCollectionReportPayload>;
 
     // Find the existing report
-    const existingReport = await CollectionReport.findById(reportId);
+    // CRITICAL: Use findOne since _id is String type, not ObjectId
+    const existingReport = await CollectionReport.findOne({ _id: reportId });
     if (!existingReport) {
       return NextResponse.json(
         { message: "Collection Report not found" },
@@ -72,11 +83,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Check if timestamp is being changed
+    const isTimestampChanged =
+      body.timestamp &&
+      new Date(body.timestamp).getTime() !== existingReport.timestamp.getTime();
+
     // Update the report
-    const updatedReport = await CollectionReport.findByIdAndUpdate(
-      reportId,
+    // CRITICAL: Use findOneAndUpdate since _id is String type, not ObjectId
+    const updatedReport = await CollectionReport.findOneAndUpdate(
+      { _id: reportId },
       {
         ...body,
+        isEditing: false, // Mark as NOT editing when report is finalized with "Update Report"
         updatedAt: new Date(),
       },
       { new: true }
@@ -87,6 +105,68 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         { message: "Failed to update collection report" },
         { status: 500 }
       );
+    }
+
+    // If timestamp changed, update all related collections and machines
+    if (isTimestampChanged) {
+      try {
+        const newTimestamp = new Date(body.timestamp!);
+
+        // Update all collections for this report
+        const collections = await Collections.find({
+          locationReportId: reportId,
+        });
+
+        for (const collection of collections) {
+          // Update collection timestamp
+          await Collections.findByIdAndUpdate(collection._id, {
+            timestamp: newTimestamp,
+            updatedAt: new Date(),
+          });
+
+          // Update machine collection times
+          if (collection.machineId) {
+            const machine = await Machine.findById(collection.machineId);
+            if (machine) {
+              // Update collectionTime to new timestamp
+              await Machine.findByIdAndUpdate(collection.machineId, {
+                collectionTime: newTimestamp,
+                previousCollectionTime: machine.collectionTime, // Move current to previous
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
+
+        // Update gaming location's previousCollectionTime if this is the latest report
+        if (updatedReport.location) {
+          // Find the most recent report for this location
+          const latestReport = await CollectionReport.findOne({
+            location: updatedReport.location,
+          }).sort({ timestamp: -1 });
+
+          // If this is the latest report, update the gaming location
+          if (latestReport && latestReport._id.toString() === reportId) {
+            const GamingLocations = (
+              await import("@/app/api/lib/models/gaminglocations")
+            ).GamingLocations;
+            await GamingLocations.findByIdAndUpdate(updatedReport.location, {
+              previousCollectionTime: newTimestamp,
+              updatedAt: new Date(),
+            });
+          }
+        }
+
+        console.warn(
+          `Updated timestamp for report ${reportId} and ${collections.length} collections`
+        );
+      } catch (error) {
+        console.error(
+          "Error updating related data after timestamp change:",
+          error
+        );
+        // Don't fail the request, just log the error
+      }
     }
 
     // Log activity
@@ -209,26 +289,62 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     for (const collection of associatedCollections) {
       if (collection.machineId) {
         try {
-          // Revert collection meters to previous values
-          const machine = await Machine.findById(collection.machineId);
-
-          if (machine && machine.collectionMeters) {
-            // Revert metersIn and metersOut to previous values
-            const previousMetersIn = collection.prevIn || 0;
-            const previousMetersOut = collection.prevOut || 0;
-
-            await Machine.findByIdAndUpdate(collection.machineId, {
-              $set: {
-                "collectionMeters.metersIn": previousMetersIn,
-                "collectionMeters.metersOut": previousMetersOut,
-                updatedAt: new Date(),
+          // Find the actual previous collection to get correct revert values
+          // Don't use collection.prevIn/prevOut as they might be incorrect (e.g., 0)
+          const actualPreviousCollection = await Collections.findOne({
+            machineId: collection.machineId,
+            $and: [
+              {
+                $or: [
+                  { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
+                  { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                ],
               },
-            });
+              {
+                $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+              },
+              // Only look for completed collections (from finalized reports)
+              { isCompleted: true },
+            ],
+          })
+            .sort({ collectionTime: -1, timestamp: -1 })
+            .lean();
 
+          let revertToMetersIn = 0;
+          let revertToMetersOut = 0;
+
+          if (actualPreviousCollection) {
+            // Use the actual previous collection's metersIn/metersOut
+            revertToMetersIn = actualPreviousCollection.metersIn || 0;
+            revertToMetersOut = actualPreviousCollection.metersOut || 0;
+            
             console.warn(
-              `Reverted collection meters for machine ${collection.machineId}: metersIn=${previousMetersIn}, metersOut=${previousMetersOut}`
+              `Found actual previous collection for machine ${collection.machineId}:`,
+              {
+                previousCollectionId: actualPreviousCollection._id,
+                previousTimestamp: actualPreviousCollection.timestamp,
+                revertToMetersIn,
+                revertToMetersOut,
+              }
+            );
+          } else {
+            // No previous collection found, revert to 0
+            console.warn(
+              `No previous collection found for machine ${collection.machineId}, reverting to 0`
             );
           }
+
+          await Machine.findByIdAndUpdate(collection.machineId, {
+            $set: {
+              "collectionMeters.metersIn": revertToMetersIn,
+              "collectionMeters.metersOut": revertToMetersOut,
+              updatedAt: new Date(),
+            },
+          });
+
+          console.warn(
+            `Reverted collection meters for machine ${collection.machineId}: metersIn=${revertToMetersIn}, metersOut=${revertToMetersOut}`
+          );
         } catch (revertError) {
           console.error(
             `Failed to revert collection meters for machine ${collection.machineId}:`,

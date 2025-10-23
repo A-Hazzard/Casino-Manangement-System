@@ -187,47 +187,41 @@ export default function EditLocationModal({
     },
   });
 
-  // Generate time options for day start time dropdown (similar to the image)
+  // Generate time options for day start time dropdown (hourly intervals only)
   const generateTimeOptions = () => {
     const options = [];
 
-    // Add previous day options (18:00 to 23:59)
+    // Add previous day options (18:00 to 23:00) - hourly only
     for (let hour = 18; hour <= 23; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        // 15-minute intervals
-        const timeStr = `${hour.toString().padStart(2, "0")}:${minute
-          .toString()
-          .padStart(2, "0")}`;
-        options.push({
-          value: timeStr,
-          label: `Prev. day, ${timeStr}`,
-          hour: hour,
-          minute: minute,
-        });
-      }
+      const timeStr = `${hour.toString().padStart(2, "0")}:00`;
+      options.push({
+        value: `prev-${timeStr}`, // Unique key for previous day
+        label: `Prev. day, ${timeStr}`,
+        hour: hour,
+        minute: 0,
+        displayValue: timeStr, // Store the actual time value separately
+      });
     }
 
     // Add midnight
     options.push({
-      value: "00:00",
+      value: "midnight-00:00", // Unique key for midnight
       label: "Midnight, 00:00",
       hour: 0,
       minute: 0,
+      displayValue: "00:00", // Store the actual time value separately
     });
 
-    // Add current day options (00:15 to 17:45)
-    for (let hour = 0; hour <= 17; hour++) {
-      for (let minute = hour === 0 ? 15 : 0; minute < 60; minute += 15) {
-        const timeStr = `${hour.toString().padStart(2, "0")}:${minute
-          .toString()
-          .padStart(2, "0")}`;
-        options.push({
-          value: timeStr,
-          label: `Curr. day, ${timeStr}`,
-          hour: hour,
-          minute: minute,
-        });
-      }
+    // Add current day options (01:00 to 23:00) - hourly only
+    for (let hour = 1; hour <= 23; hour++) {
+      const timeStr = `${hour.toString().padStart(2, "0")}:00`;
+      options.push({
+        value: `curr-${timeStr}`, // Unique key for current day
+        label: `Curr. day, ${timeStr}`,
+        hour: hour,
+        minute: 0,
+        displayValue: timeStr, // Store the actual time value separately
+      });
     }
 
     return options;
@@ -375,7 +369,6 @@ export default function EditLocationModal({
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
         maximumAge: 600000, // 5 minutes
       }
     );
@@ -877,10 +870,11 @@ export default function EditLocationModal({
                   </label>
                   <select
                     name="dayStartTime"
-                    value={formData.dayStartTime}
-                    onChange={(e) =>
-                      handleSelectChange("dayStartTime", e.target.value)
-                    }
+                    value={timeOptions.find(opt => opt.displayValue === formData.dayStartTime)?.value || ""}
+                    onChange={(e) => {
+                      const selectedOption = timeOptions.find(opt => opt.value === e.target.value);
+                      handleSelectChange("dayStartTime", selectedOption?.displayValue || e.target.value);
+                    }}
                     className="w-full h-12 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-base"
                   >
                     {timeOptions.map((option) => (

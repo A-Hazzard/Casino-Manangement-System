@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { MemberSession } from "@/shared/types/entities";
 import { formatCurrency } from "@/lib/utils/formatters";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 import Link from "next/link";
 import { ActivityIcon, ChevronUp, ChevronDown } from "lucide-react";
 
@@ -115,6 +116,7 @@ const SortableHeader = ({
 
 // Session Card Component for Mobile
 const SessionCard = ({ session }: { session: MemberSession }) => {
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   const wonLess = (session.won || 0) - (session.bet || 0);
   const wonLessColor = wonLess >= 0 ? "text-green-600" : "text-red-600";
 
@@ -135,19 +137,19 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
         <div className="flex justify-between items-center">
           <span className="font-medium text-gray-600">Money In</span>
           <span className="font-semibold text-right break-all">
-            {formatCurrency(session.moneyIn)}
+            {shouldShowCurrency() ? formatAmount(session.moneyIn || 0) : formatCurrency(session.moneyIn || 0)}
           </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-gray-600">Money Out</span>
           <span className="font-semibold text-right break-all">
-            {formatCurrency(session.moneyOut)}
+            {shouldShowCurrency() ? formatAmount(session.moneyOut || 0) : formatCurrency(session.moneyOut || 0)}
           </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-gray-600">Jackpot</span>
           <span className="font-semibold text-right break-all">
-            {formatCurrency(session.jackpot)}
+            {shouldShowCurrency() ? formatAmount(session.jackpot || 0) : formatCurrency(session.jackpot || 0)}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -155,7 +157,7 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
           <span
             className={`font-semibold text-right break-all ${wonLessColor}`}
           >
-            {formatCurrency(wonLess)}
+            {shouldShowCurrency() ? formatAmount(wonLess || 0) : formatCurrency(wonLess || 0)}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -215,6 +217,7 @@ export default function PlayerSessionTable({
   sortOrder,
   onSort,
 }: PlayerSessionTableProps) {
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   const handleFirstPage = () => onPageChange(0);
   const handleLastPage = () => onPageChange(totalPages - 1);
   const handlePrevPage = () => currentPage > 0 && onPageChange(currentPage - 1);
@@ -323,13 +326,13 @@ export default function PlayerSessionTable({
       case "Session Length":
         return session.sessionLength || "N/A";
       case "Money In":
-        return formatCurrency(session.moneyIn);
+        return shouldShowCurrency() ? formatAmount(session.moneyIn || 0) : formatCurrency(session.moneyIn || 0);
       case "Money Out":
-        return formatCurrency(session.moneyOut);
+        return shouldShowCurrency() ? formatAmount(session.moneyOut || 0) : formatCurrency(session.moneyOut || 0);
       case "Jackpot":
-        return formatCurrency(session.jackpot);
+        return shouldShowCurrency() ? formatAmount(session.jackpot || 0) : formatCurrency(session.jackpot || 0);
       case "Won/Less":
-        return <span className={wonLessColor}>{formatCurrency(wonLess)}</span>;
+        return <span className={wonLessColor}>{shouldShowCurrency() ? formatAmount(wonLess || 0) : formatCurrency(wonLess || 0)}</span>;
       case "Points":
         return session.points || 0;
       case "Games Played":
@@ -337,9 +340,9 @@ export default function PlayerSessionTable({
       case "Games Won":
         return session.gamesWon || 0;
       case "Coin In":
-        return formatCurrency(session.coinIn);
+        return shouldShowCurrency() ? formatAmount(session.coinIn || 0) : formatCurrency(session.coinIn || 0);
       case "Coin Out":
-        return formatCurrency(session.coinOut);
+        return shouldShowCurrency() ? formatAmount(session.coinOut || 0) : formatCurrency(session.coinOut || 0);
       case "Actions":
         // For grouped data, don't show actions since there's no single session
         if (session.sessionId && session.sessionId !== session._id) {

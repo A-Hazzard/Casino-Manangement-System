@@ -5,46 +5,39 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import {
-  loadGamingLocations,
-} from "@/lib/helpers/dashboard";
+import { loadGamingLocations } from "@/lib/helpers/dashboard";
 import { toast } from "sonner";
 import type { DashboardTotals, TopPerformingData } from "@/lib/types";
 import type { CustomizedLabelProps } from "@/lib/types/componentProps";
 
-interface UseDashboardDataProps {
+type UseDashboardDataProps = {
   selectedLicencee: string;
   activeMetricsFilter: string;
   customDateRange?: {
     startDate: Date;
     endDate: Date;
   };
-}
+};
 
-interface UseDashboardDataReturn {
-  // Data states
+type UseDashboardDataReturn = {
   gamingLocations: unknown[];
   metricsData: unknown;
   topPerformingData: TopPerformingData[];
   pieChartData: CustomizedLabelProps[];
   totals: DashboardTotals;
-  
-  // Loading states
   loadingChartData: boolean;
   loadingTopPerforming: boolean;
   refreshing: boolean;
-  
-  // Actions
   loadDashboardData: () => Promise<void>;
   refreshDashboard: () => Promise<void>;
   setLoadingChartData: (loading: boolean) => void;
   setLoadingTopPerforming: (loading: boolean) => void;
   setRefreshing: (refreshing: boolean) => void;
-}
+};
 
 export const useDashboardData = ({
   selectedLicencee,
-}: Pick<UseDashboardDataProps, 'selectedLicencee'>): UseDashboardDataReturn => {
+}: Pick<UseDashboardDataProps, "selectedLicencee">): UseDashboardDataReturn => {
   // Get store state and actions
   const {
     loadingChartData,
@@ -66,13 +59,19 @@ export const useDashboardData = ({
   // Load gaming locations
   const loadGamingLocationsData = useCallback(async () => {
     try {
-      const locationsData = await loadGamingLocations(setGamingLocations, selectedLicencee);
-      
+      const locationsData = await loadGamingLocations(
+        setGamingLocations,
+        selectedLicencee
+      );
+
       if (Array.isArray(locationsData)) {
         setGamingLocations(locationsData);
       } else {
         if (process.env.NODE_ENV === "development") {
-          console.error("Gaming locations data is not an array:", locationsData);
+          console.error(
+            "Gaming locations data is not an array:",
+            locationsData
+          );
         }
         setGamingLocations([]);
       }
@@ -122,7 +121,10 @@ export const useDashboardData = ({
         setTopPerformingData(topPerformingResult);
       } else {
         if (process.env.NODE_ENV === "development") {
-          console.error("Top performing data is not an array:", topPerformingResult);
+          console.error(
+            "Top performing data is not an array:",
+            topPerformingResult
+          );
         }
         setTopPerformingData([]);
       }
@@ -149,7 +151,7 @@ export const useDashboardData = ({
       fontSize: "14px",
       fontWeight: "bold" as const,
       fill: "#000",
-      text: "No data available"
+      text: "No data available",
     };
   }, [metricsData]);
 
@@ -172,9 +174,9 @@ export const useDashboardData = ({
   const refreshDashboard = useCallback(async () => {
     try {
       setRefreshing(true);
-      
+
       await loadDashboardData();
-      
+
       toast.success("Dashboard refreshed successfully");
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
@@ -208,12 +210,12 @@ export const useDashboardData = ({
       moneyOut: 0,
       gross: 0,
     },
-    
+
     // Loading states
     loadingChartData,
     loadingTopPerforming,
     refreshing,
-    
+
     // Actions
     loadDashboardData,
     refreshDashboard,

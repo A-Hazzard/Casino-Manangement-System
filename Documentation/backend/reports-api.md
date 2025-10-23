@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 
-**Last Updated:** January 15th, 2025  
+**Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
 
 ## Quick Search Guide
@@ -15,7 +15,7 @@
 - **SAS Evaluation**: `sasEvaluationOnly=true` - Filter for SAS locations only
 - **Financial Data**: Default shows all locations with financial data
 
-**Last Updated:** August 29th, 2025  
+**Last Updated:** October 29th, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -891,7 +891,7 @@ type Meter = {
 
 ---
 
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 15th, 2025
 
 ### 13. Development Guidelines
 

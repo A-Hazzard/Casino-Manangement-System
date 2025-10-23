@@ -21,8 +21,10 @@ import { logoutUser } from "@/lib/helpers/clientAuth";
 import { fetchUserId } from "@/lib/helpers/user";
 import { ClientOnly } from "@/components/ui/ClientOnly";
 import { shouldShowNavigationLinkDb } from "@/lib/utils/permissionsDb";
+import { fetchUserWithCache, CACHE_KEYS } from "@/lib/utils/userCache";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 const DEFAULT_AVATAR = "/defaultAvatar.svg";
 
 type Item = {
@@ -101,12 +103,19 @@ export default function AppSidebar() {
     Record<string, boolean>
   >({});
   const [navigationLoading, setNavigationLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
+  const router = useRouter();
   useEffect(() => {
     // Seed with store info
     const seedEmail = user?.emailAddress || "";
     setEmail(seedEmail);
     setDisplayName(seedEmail ? seedEmail.split("@")[0] : "User");
+
+    // Set profile loading to false if we have basic user data
+    if (user?.emailAddress) {
+      setProfileLoading(false);
+    }
   }, [user?.emailAddress]);
 
   // Load navigation permissions when user changes
@@ -179,6 +188,7 @@ export default function AppSidebar() {
           // In development with auth bypassed, just use store data
           setEmail(user.emailAddress);
           setDisplayName(user.emailAddress.split("@")[0] || "User");
+          setProfileLoading(false);
           return;
         }
 
@@ -189,33 +199,38 @@ export default function AppSidebar() {
             setEmail(user.emailAddress);
             setDisplayName(user.emailAddress.split("@")[0] || "User");
           }
+          setProfileLoading(false);
           return;
         }
 
         try {
-          const res = await fetch(`/api/users/${id}`, {
-            credentials: "include",
-          });
-          if (!res.ok) {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(
-                `Failed to fetch user data: ${res.status} ${res.statusText}`
-              );
-            }
+          const data = await fetchUserWithCache(
+            `${CACHE_KEYS.USER_PROFILE}_${id}`,
+            async () => {
+              const res = await fetch(`/api/users/${id}`, {
+                credentials: "include",
+              });
+              if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+              }
+              return await res.json();
+            },
+            10 * 60 * 1000 // 10 minute cache for profile data
+          );
+
+          if (data?.success && data?.user) {
+            const u = data.user;
+            if (u.profilePicture) setAvatarUrl(u.profilePicture as string);
+            if (u.username) setDisplayName(u.username as string);
+            if (u.email) setEmail(u.email as string);
+          } else {
             // If API call fails but user exists in store, use store data
             if (user?.emailAddress) {
               setEmail(user.emailAddress);
               setDisplayName(user.emailAddress.split("@")[0] || "User");
             }
-            return;
           }
-          const data = await res.json();
-          const u = data?.user;
-          if (u) {
-            if (u.profilePicture) setAvatarUrl(u.profilePicture as string);
-            if (u.username) setDisplayName(u.username as string);
-            if (u.email) setEmail(u.email as string);
-          }
+          setProfileLoading(false);
         } catch (fetchError) {
           if (process.env.NODE_ENV === "development") {
             console.warn("Error fetching user data:", fetchError);
@@ -225,6 +240,7 @@ export default function AppSidebar() {
             setEmail(user.emailAddress);
             setDisplayName(user.emailAddress.split("@")[0] || "User");
           }
+          setProfileLoading(false);
         }
       } catch (error) {
         // If any error occurs but user exists in store, use store data
@@ -232,6 +248,7 @@ export default function AppSidebar() {
           setEmail(user.emailAddress);
           setDisplayName(user.emailAddress.split("@")[0] || "User");
         }
+        setProfileLoading(false);
         if (process.env.NODE_ENV === "development") {
           console.warn("Failed to fetch user profile data:", error);
         }
@@ -243,6 +260,7 @@ export default function AppSidebar() {
       if (detail.profilePicture) setAvatarUrl(detail.profilePicture as string);
       if (detail.username) setDisplayName(detail.username as string);
       if (detail.email) setEmail(detail.email as string);
+      setProfileLoading(false);
     };
     if (typeof window !== "undefined") {
       window.addEventListener(
@@ -329,14 +347,21 @@ export default function AppSidebar() {
           {/* Navigation Section: Main navigation menu with permission-based filtering */}
           <nav className="flex-1 overflow-hidden px-2 py-4 space-y-1 relative">
             {navigationLoading
-              ? // Show loading skeleton for all items
+              ? // Show loading skeleton for all items with square icon skeletons
                 items.map((item) => (
                   <div
                     key={item.href}
                     className="h-9 flex items-center gap-3 rounded-md px-3 py-2"
                   >
+                    {/* Square skeleton for icon */}
                     <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                    {/* Text skeleton - hidden when collapsed */}
+                    <div
+                      className={cn(
+                        "h-4 w-20 bg-gray-200 rounded animate-pulse",
+                        collapsed ? "md:hidden" : ""
+                      )}
+                    />
                   </div>
                 ))
               : // Render items based on pre-loaded permissions
@@ -405,64 +430,89 @@ export default function AppSidebar() {
           </nav>
           {/* User Profile Section: User information and profile controls */}
           <div className="mt-auto px-3 py-3 border-t border-border/50 relative">
-            <button
-              ref={triggerRef}
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent event bubbling to click-outside handler
-
-                setMenuOpen(!menuOpen); // Toggle the menu state
-
-                // Only position outside on desktop (md+) when collapsed
-                if (
-                  collapsed &&
-                  typeof window !== "undefined" &&
-                  window.innerWidth >= 768
-                ) {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setDropdownPosition({
-                    top: rect.top - 100, // Raise it up by 100px
-                    left: rect.right + 8,
-                  });
-                } else {
-                  setDropdownPosition(null);
-                }
-              }}
-              className="w-full flex items-center gap-3 rounded-md px-2 py-2 bg-accent/30 hover:bg-accent/50 transition-colors text-left"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
-              <div className="h-8 w-8 rounded-full overflow-hidden bg-muted shrink-0">
-                <Image
-                  src={avatarUrl || DEFAULT_AVATAR}
-                  alt="avatar"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 object-cover rounded-full"
-                  onError={() => setAvatarUrl(DEFAULT_AVATAR)}
-                  suppressHydrationWarning
+            {profileLoading ? (
+              // Profile skeleton loader
+              <div className="w-full flex items-center gap-3 rounded-md px-2 py-2">
+                {/* Square skeleton for avatar */}
+                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse shrink-0" />
+                {/* Text skeletons - hidden when collapsed */}
+                <div
+                  className={cn(
+                    "min-w-0 max-w-[8rem] space-y-1",
+                    collapsed ? "md:hidden" : ""
+                  )}
+                >
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                {/* Dropdown arrow skeleton - hidden when collapsed */}
+                <div
+                  className={cn(
+                    "ml-auto h-4 w-4 bg-gray-200 rounded animate-pulse",
+                    collapsed ? "md:hidden" : ""
+                  )}
                 />
               </div>
-              {/* Hide user info when collapsed on desktop only */}
-              <div
-                className={cn(
-                  "min-w-0 max-w-[8rem]",
-                  collapsed ? "md:hidden" : ""
-                )}
+            ) : (
+              <button
+                ref={triggerRef}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent event bubbling to click-outside handler
+
+                  setMenuOpen(!menuOpen); // Toggle the menu state
+
+                  // Only position outside on desktop (md+) when collapsed
+                  if (
+                    collapsed &&
+                    typeof window !== "undefined" &&
+                    window.innerWidth >= 768
+                  ) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setDropdownPosition({
+                      top: rect.top - 100, // Raise it up by 100px
+                      left: rect.right + 8,
+                    });
+                  } else {
+                    setDropdownPosition(null);
+                  }
+                }}
+                className="w-full flex items-center gap-3 rounded-md px-2 py-2 bg-accent/30 hover:bg-accent/50 transition-colors text-left"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
               >
-                <div className="text-sm font-medium truncate text-gray-900">
-                  {displayName}
+                <div className="h-8 w-8 rounded-full overflow-hidden bg-muted shrink-0">
+                  <Image
+                    src={avatarUrl || DEFAULT_AVATAR}
+                    alt="avatar"
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 object-cover rounded-full"
+                    onError={() => setAvatarUrl(DEFAULT_AVATAR)}
+                    suppressHydrationWarning
+                  />
                 </div>
-                <div className="text-xs truncate text-gray-600">{email}</div>
-              </div>
-              <span
-                className={cn(
-                  "ml-auto text-gray-600",
-                  collapsed ? "md:hidden" : ""
-                )}
-              >
-                ▾
-              </span>
-            </button>
+                {/* Hide user info when collapsed on desktop only */}
+                <div
+                  className={cn(
+                    "min-w-0 max-w-[8rem]",
+                    collapsed ? "md:hidden" : ""
+                  )}
+                >
+                  <div className="text-sm font-medium truncate text-gray-900">
+                    {displayName}
+                  </div>
+                  <div className="text-xs truncate text-gray-600">{email}</div>
+                </div>
+                <span
+                  className={cn(
+                    "ml-auto text-gray-600",
+                    collapsed ? "md:hidden" : ""
+                  )}
+                >
+                  ▾
+                </span>
+              </button>
+            )}
             {menuOpen &&
               (typeof window === "undefined" ||
                 window.innerWidth < 768 ||
@@ -508,7 +558,7 @@ export default function AppSidebar() {
                       setMenuOpen(false);
                       await logoutUser();
                       clearUser();
-                      window.location.href = "/login";
+                      router.push("/login");
                     }}
                   >
                     Log out
@@ -588,7 +638,7 @@ export default function AppSidebar() {
                 setMenuOpen(false);
                 await logoutUser();
                 clearUser();
-                window.location.href = "/login";
+                router.push("/login");
               }}
             >
               Log out

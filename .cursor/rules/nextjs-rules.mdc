@@ -19,6 +19,7 @@ All contributors should adhere to the following rules, which are enforced throug
   - Do not define types or interfaces directly in component, helper, or utility files.
 - **Prefer `type` over `interface`** for consistency across the codebase.
 - **No `any` allowed** - Create appropriate type definitions for all variables and functions.
+- **No underscore prefixes allowed** - Never prefix variables or functions with underscores (e.g., `_variable`, `_function`). If a parameter is unused, either use it or remove it entirely.
 - **Always check dependencies before deleting types or functions** - Use `grep_search` to verify usage before removal.
 - **Avoid type duplication** - Import and re-export from shared types instead of redefining.
 - Always import types from their respective type files - avoid redefining types.

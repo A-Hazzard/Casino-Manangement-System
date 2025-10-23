@@ -4,7 +4,7 @@ import { Machine } from "@/app/api/lib/models/machines";
 import { Collections } from "@/app/api/lib/models/collections";
 import type { GamingMachine } from "@/shared/types/entities";
 // TODO: Move these to shared types or create new ones
-type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
+type NewMachineData = Omit<GamingMachine, "_id" | "createdAt" | "updatedAt"> & {
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;

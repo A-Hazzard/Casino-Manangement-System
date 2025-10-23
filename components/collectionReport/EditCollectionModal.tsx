@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit3 } from "lucide-react";
+import { Trash2, ExternalLink, Edit } from "lucide-react";
 import axios from "axios";
 import type { CollectionDocument } from "@/lib/types/collections";
 import type {
@@ -22,7 +22,8 @@ import type {
 } from "@/lib/types/api";
 import { updateCollectionReport } from "@/lib/helpers/collectionReport";
 import { updateCollection } from "@/lib/helpers/collections";
-// import { calculateMovement } from "@/lib/utils/movementCalculation";
+import { calculateMovement } from "@/lib/utils/movementCalculation";
+import type { PreviousCollectionMeters } from "@/lib/types/collections";
 import { validateMachineEntry } from "@/lib/helpers/collectionReportModal";
 import { updateMachineCollectionHistory } from "@/lib/helpers/cabinets";
 import { useUserStore } from "@/lib/store/userStore";
@@ -30,9 +31,14 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatting";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import { formatMachineDisplayNameWithBold } from "@/lib/utils/machineDisplay";
+import { getMachineDisplayName } from "@/lib/utils/machineDisplaySimple";
+import { calculateMachineMovement } from "@/lib/utils/frontendMovementCalculation";
 import { getUserDisplayName } from "@/lib/utils/userDisplay";
-import { SimpleDateTimePicker } from "@/components/ui/simple-date-time-picker";
+import { calculateDefaultCollectionTime } from "@/lib/utils/collectionTime";
+import { PCDateTimePicker } from "@/components/ui/pc-date-time-picker";
+import { useDebounce, useDebouncedCallback } from "@/lib/hooks/useDebounce";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
+import { InfoConfirmationDialog } from "@/components/ui/InfoConfirmationDialog";
 import { LocationSelect } from "@/components/ui/custom-select";
 import {
   Tooltip,
@@ -128,25 +134,48 @@ export default function EditCollectionModal({
   const [collectedMachineEntries, setCollectedMachineEntries] = useState<
     CollectionDocument[]
   >([]);
+  const [originalCollections, setOriginalCollections] = useState<
+    CollectionDocument[]
+  >([]);
+  const [collectedMachinesSearchTerm, setCollectedMachinesSearchTerm] =
+    useState("");
+  const [machineSearchTerm, setMachineSearchTerm] = useState("");
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [hasUnsavedEdits, setHasUnsavedEdits] = useState(false);
+  const [showUnsavedChangesWarning, setShowUnsavedChangesWarning] =
+    useState(false);
 
   // Edit functionality state
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
+  const [showViewMachineConfirmation, setShowViewMachineConfirmation] =
+    useState(false);
+  
+  // View toggle state
+  const [viewMode, setViewMode] = useState<'machines' | 'collected'>('machines');
 
   // Custom close handler that checks for changes
   const handleClose = useCallback(() => {
+    // Check if there are unsaved edits
+    if (hasUnsavedEdits) {
+      console.warn("🚫 Preventing modal close - unsaved edits detected");
+      setShowUnsavedChangesWarning(true);
+      return false; // Indicate that close was prevented
+    }
+
     if (hasChanges && onRefresh) {
       onRefresh();
     }
     onClose();
-  }, [hasChanges, onRefresh, onClose]);
+    return true; // Indicate that close was allowed
+  }, [hasChanges, onRefresh, onClose, hasUnsavedEdits]);
+
 
   // Machine input state
   const [currentCollectionTime, setCurrentCollectionTime] = useState<Date>(
-    new Date()
+    new Date() // Will be updated when location is selected
   );
   const [currentMetersIn, setCurrentMetersIn] = useState("");
   const [currentMetersOut, setCurrentMetersOut] = useState("");
@@ -154,12 +183,19 @@ export default function EditCollectionModal({
   const [currentRamClearMetersOut, setCurrentRamClearMetersOut] = useState("");
   const [currentMachineNotes, setCurrentMachineNotes] = useState("");
   const [currentRamClear, setCurrentRamClear] = useState(false);
+  // Advanced SAS controls
+  const [showAdvancedSas, setShowAdvancedSas] = useState(false);
+  const [customSasStartTime, setCustomSasStartTime] = useState<Date | null>(
+    null
+  );
   const [prevIn, setPrevIn] = useState<number | null>(null);
   const [prevOut, setPrevOut] = useState<number | null>(null);
 
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
+    useState(false);
 
   // Financial state
   const [financials, setFinancials] = useState({
@@ -188,6 +224,22 @@ export default function EditCollectionModal({
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
+  const [hasSetCollectionTimeFromReport, setHasSetCollectionTimeFromReport] =
+    useState(false);
+
+  // Update collection time when location changes (only if not already set from report data)
+  useEffect(() => {
+    if (
+      selectedLocation?.gameDayOffset !== undefined &&
+      !hasSetCollectionTimeFromReport
+    ) {
+      const defaultTime = calculateDefaultCollectionTime(
+        selectedLocation.gameDayOffset
+      );
+      setCurrentCollectionTime(defaultTime);
+    }
+  }, [selectedLocation, hasSetCollectionTimeFromReport]);
 
   // Always fetch fresh machine data when location changes
   useEffect(() => {
@@ -198,6 +250,7 @@ export default function EditCollectionModal({
       );
 
       const fetchMachinesForLocation = async () => {
+        setIsLoadingMachines(true);
         try {
           // Add cache-busting parameter to ensure fresh machine data
           const response = await axios.get(
@@ -225,29 +278,74 @@ export default function EditCollectionModal({
         } catch (error) {
           console.error("Error fetching machines for location:", error);
           setMachinesOfSelectedLocation([]);
+        } finally {
+          setIsLoadingMachines(false);
         }
       };
 
       fetchMachinesForLocation();
     } else {
       setMachinesOfSelectedLocation([]);
+      setIsLoadingMachines(false);
     }
   }, [selectedLocationId]);
 
-  const machineForDataEntry = useMemo(
-    () =>
-      machinesOfSelectedLocation.find(
-        (m) => String(m._id) === selectedMachineId
-      ),
-    [machinesOfSelectedLocation, selectedMachineId]
-  );
+  // Filter machines based on search term
+  const filteredMachines = useMemo(() => {
+    if (!machineSearchTerm.trim()) {
+      return machinesOfSelectedLocation;
+    }
+
+    const searchLower = machineSearchTerm.toLowerCase();
+    return machinesOfSelectedLocation.filter(
+      (machine) =>
+        (machine.name && machine.name.toLowerCase().includes(searchLower)) ||
+        (machine.serialNumber &&
+          machine.serialNumber.toLowerCase().includes(searchLower)) ||
+        (machine.custom?.name &&
+          machine.custom.name.toLowerCase().includes(searchLower)) ||
+        (machine.game && machine.game.toLowerCase().includes(searchLower))
+    );
+  }, [machinesOfSelectedLocation, machineSearchTerm]);
+
+  const machineForDataEntry = useMemo(() => {
+    // First, try to find in the machines of selected location
+    let found = machinesOfSelectedLocation.find(
+      (m) => String(m._id) === selectedMachineId
+    );
+
+    // If not found and we have a selectedMachineId, try to find in collected machines
+    if (!found && selectedMachineId) {
+      const collectedEntry = collectedMachineEntries.find(
+        (entry) => entry.machineId === selectedMachineId
+      );
+
+      if (collectedEntry) {
+        // Create a mock machine object from the collected entry for display purposes
+        found = {
+          _id: collectedEntry.machineId as string, // Type assertion for mock object
+          name:
+            collectedEntry.machineCustomName ||
+            collectedEntry.serialNumber ||
+            collectedEntry.machineId,
+          serialNumber: collectedEntry.serialNumber || collectedEntry.machineId,
+          collectionMeters: {
+            metersIn: collectedEntry.prevIn || 0,
+            metersOut: collectedEntry.prevOut || 0,
+          },
+        } as (typeof machinesOfSelectedLocation)[0]; // Type assertion since we're creating a mock object
+      }
+    }
+
+    return found;
+  }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
 
   // Function to handle clicks on disabled input fields
   const handleDisabledFieldClick = useCallback(() => {
     if (!machineForDataEntry) {
       toast.warning("Please select a machine first", {
         duration: 3000,
-        position: "top-right",
+        position: "top-left",
       });
     }
   }, [machineForDataEntry]);
@@ -265,25 +363,34 @@ export default function EditCollectionModal({
       return;
     }
 
-    // Calculate total movement data from all machine entries
+    // Calculate total movement data from all machine entries using proper movement calculation
     const totalMovementData = collectedMachineEntries.map((entry) => {
-      const drop = (entry.metersIn || 0) - (entry.prevIn || 0);
-      const cancelledCredits = (entry.metersOut || 0) - (entry.prevOut || 0);
-      const gross = drop - cancelledCredits;
+      const movement = calculateMachineMovement(
+        entry.metersIn || 0,
+        entry.metersOut || 0,
+        entry.prevIn || 0,
+        entry.prevOut || 0,
+        entry.ramClear || false,
+        undefined, // ramClearCoinIn not available in CollectionDocument
+        undefined, // ramClearCoinOut not available in CollectionDocument
+        entry.ramClearMetersIn,
+        entry.ramClearMetersOut
+      );
       console.warn("🔄 Machine movement calculation:", {
         machineId: entry.machineId,
         metersIn: entry.metersIn,
         prevIn: entry.prevIn,
         metersOut: entry.metersOut,
         prevOut: entry.prevOut,
-        drop,
-        cancelledCredits,
-        gross,
+        ramClear: entry.ramClear,
+        ramClearMetersIn: entry.ramClearMetersIn,
+        ramClearMetersOut: entry.ramClearMetersOut,
+        calculatedMovement: movement,
       });
       return {
-        drop,
-        cancelledCredits,
-        gross,
+        drop: movement.metersIn,
+        cancelledCredits: movement.metersOut,
+        gross: movement.gross,
       };
     });
 
@@ -343,7 +450,7 @@ export default function EditCollectionModal({
 
     setFinancials((prev) => ({
       ...prev,
-      amountToCollect: amountToCollect.toString(),
+      amountToCollect: amountToCollect.toFixed(2),
     }));
   }, [
     collectedMachineEntries,
@@ -374,6 +481,20 @@ export default function EditCollectionModal({
       fetchCollectionReportById(reportId)
         .then((data) => {
           setReportData(data);
+
+          // CRITICAL: If report has isEditing: true, there are unsaved changes
+          // This prevents users from closing the auto-reopened modal without saving
+          if (data.isEditing) {
+            console.warn("⚠️ Report has isEditing: true - marking as having unsaved edits");
+            setHasUnsavedEdits(true);
+          }
+
+          // Set the collection time to the report's timestamp
+          if (data.collectionDate && data.collectionDate !== "-") {
+            setCurrentCollectionTime(new Date(data.collectionDate));
+            setHasSetCollectionTimeFromReport(true);
+          }
+
           setFinancials({
             taxes: data.locationMetrics?.taxes?.toString() || "",
             advance: data.locationMetrics?.advance?.toString() || "",
@@ -395,7 +516,7 @@ export default function EditCollectionModal({
         })
         .catch((error) => {
           console.error("Error loading report:", error);
-          toast.error("Failed to load report data");
+          toast.error("Failed to load report data", { position: "top-left" });
         });
     }
   }, [show, reportId]);
@@ -413,9 +534,21 @@ export default function EditCollectionModal({
           console.warn(
             "🔄 Fresh collections fetched:",
             collections.length,
-            "collections"
+            "collections",
+            collections.map((c) => ({
+              id: c._id,
+              machine: c.machineName,
+              isCompleted: c.isCompleted,
+            }))
           );
           setCollectedMachineEntries(collections);
+          // CRITICAL: Store original collections for dirty tracking
+          setOriginalCollections(JSON.parse(JSON.stringify(collections)));
+          console.warn(
+            "🔍 collectedMachineEntries state updated with",
+            collections.length,
+            "items"
+          );
           if (collections.length > 0) {
             const firstMachine = collections[0];
             if (firstMachine.location) {
@@ -437,6 +570,7 @@ export default function EditCollectionModal({
         .catch((error) => {
           console.error("Error fetching collections:", error);
           setCollectedMachineEntries([]);
+          setOriginalCollections([]);
         })
         .finally(() => setIsLoadingCollections(false));
     }
@@ -459,6 +593,44 @@ export default function EditCollectionModal({
     }
   }, [show, onRefresh, locations.length]);
 
+  // Detect dirty state by comparing current vs original collections
+  useEffect(() => {
+    if (originalCollections.length === 0 || collectedMachineEntries.length === 0) {
+      setHasUnsavedEdits(false);
+      return;
+    }
+
+    let hasChanges = false;
+    for (const current of collectedMachineEntries) {
+      const original = originalCollections.find((o) => o._id === current._id);
+      if (original) {
+        if (
+          current.metersIn !== original.metersIn ||
+          current.metersOut !== original.metersOut
+        ) {
+          hasChanges = true;
+          break;
+        }
+      }
+    }
+
+    setHasUnsavedEdits(hasChanges);
+  }, [collectedMachineEntries, originalCollections]);
+
+  // Add beforeunload warning when there are unsaved changes
+  useEffect(() => {
+    if (!show || !hasUnsavedEdits) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [show, hasUnsavedEdits]);
+
   // Reset form when modal closes
   useEffect(() => {
     if (!show) {
@@ -473,6 +645,7 @@ export default function EditCollectionModal({
       setCurrentMetersIn("");
       setCurrentMetersOut("");
       setCurrentMachineNotes("");
+      setHasSetCollectionTimeFromReport(false);
       setCurrentRamClear(false);
       setEditingEntryId(null);
       setFinancials({
@@ -557,44 +730,125 @@ export default function EditCollectionModal({
     prevOut,
   ]);
 
-  // Validate on input changes
+  // Debounced validation on input changes (3 seconds)
+  const debouncedValidateMeterInputs = useDebouncedCallback(
+    validateMeterInputs,
+    3000
+  );
   useEffect(() => {
-    validateMeterInputs();
-  }, [validateMeterInputs]);
+    debouncedValidateMeterInputs();
+  }, [debouncedValidateMeterInputs]);
 
   // Set prevIn/prevOut values when machineForDataEntry changes (for new entries)
   useEffect(() => {
     if (machineForDataEntry && !editingEntryId) {
+      // Check if this machine is already in the collected entries
+      const isAlreadyCollected = collectedMachineEntries.some(
+        (entry) => entry.machineId === String(machineForDataEntry._id)
+      );
+
+      if (isAlreadyCollected) {
+        console.warn(
+          "🔍 Machine already collected - skipping historical query (will use stored prevIn/prevOut when editing)"
+        );
+        return;
+      }
+
       console.warn(
-        "🔍 Setting prevIn/prevOut from machineForDataEntry for new entry:",
+        "🔍 Setting prevIn/prevOut for new entry being added to historical report:",
         {
           machineId: machineForDataEntry._id,
-          collectionMeters: machineForDataEntry.collectionMeters,
+          reportTimestamp: currentCollectionTime,
+          reportTimestampISO: currentCollectionTime.toISOString(),
         }
       );
 
-      if (machineForDataEntry.collectionMeters) {
-        const metersIn = machineForDataEntry.collectionMeters.metersIn || 0;
-        const metersOut = machineForDataEntry.collectionMeters.metersOut || 0;
-        console.warn("🔍 Setting prevIn/prevOut from collectionMeters:", {
-          metersIn,
-          metersOut,
-          originalMetersIn: machineForDataEntry.collectionMeters.metersIn,
-          originalMetersOut: machineForDataEntry.collectionMeters.metersOut,
-        });
-        setPrevIn(metersIn);
-        setPrevOut(metersOut);
-      } else {
-        console.warn(
-          "🔍 No collectionMeters found, setting prevIn/prevOut to 0"
-        );
-        setPrevIn(0);
-        setPrevOut(0);
-      }
-    }
-  }, [machineForDataEntry, editingEntryId]);
+      // For historical reports, query for the actual previous collection at that time
+      const fetchHistoricalPrevMeters = async () => {
+        try {
+          const { getPreviousCollectionMetersAtTime } = await import(
+            "@/lib/helpers/historicalCollectionData"
+          );
 
-  const handleEditCollectedEntry = useCallback(
+          const previousMeters = await getPreviousCollectionMetersAtTime(
+            String(machineForDataEntry._id),
+            currentCollectionTime
+          );
+
+          console.warn("🔍 Historical query result:", {
+            previousMeters,
+            machineId: machineForDataEntry._id,
+            timestamp: currentCollectionTime.toISOString(),
+          });
+
+          if (previousMeters !== null) {
+            console.warn("🔍 Using historical prevIn/prevOut:", previousMeters);
+            setPrevIn(previousMeters.prevIn);
+            setPrevOut(previousMeters.prevOut);
+          } else {
+            // Query failed - use 0 as safe fallback
+            console.warn("🔍 Historical query returned null, using 0");
+            setPrevIn(0);
+            setPrevOut(0);
+          }
+        } catch (error) {
+          console.error("Error fetching historical prev meters:", error);
+          // Use 0 as safe fallback on error
+          console.warn(
+            "🔍 Error in historical query, using 0 as safe fallback"
+          );
+          setPrevIn(0);
+          setPrevOut(0);
+        }
+      };
+
+      fetchHistoricalPrevMeters();
+    }
+  }, [
+    machineForDataEntry,
+    editingEntryId,
+    currentCollectionTime,
+    collectedMachineEntries,
+  ]);
+
+  // Debounced machine selection validation (1 second)
+  const debouncedMachineForDataEntry = useDebounce(machineForDataEntry, 1000);
+  const debouncedEditingEntryId = useDebounce(editingEntryId, 1000);
+
+  useEffect(() => {
+    if (debouncedMachineForDataEntry || debouncedEditingEntryId) {
+      // Trigger validation when machine selection is debounced
+      validateMeterInputs();
+    }
+  }, [
+    debouncedMachineForDataEntry,
+    debouncedEditingEntryId,
+    validateMeterInputs,
+  ]);
+
+  // Debounced input field validation (1.5 seconds)
+  const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 1500);
+  const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 1500);
+  const debouncedCurrentMachineNotes = useDebounce(currentMachineNotes, 1500);
+
+  useEffect(() => {
+    if (
+      debouncedCurrentMetersIn ||
+      debouncedCurrentMetersOut ||
+      debouncedCurrentMachineNotes
+    ) {
+      // Trigger validation when input fields change (debounced)
+      validateMeterInputs();
+    }
+  }, [
+    debouncedCurrentMetersIn,
+    debouncedCurrentMetersOut,
+    debouncedCurrentMachineNotes,
+    validateMeterInputs,
+  ]);
+
+
+  const handleEditEntry = useCallback(
     async (entryId: string) => {
       if (isProcessing) return;
 
@@ -630,7 +884,8 @@ export default function EditCollectionModal({
         setPrevOut(entryToEdit.prevOut || 0);
 
         toast.info(
-          "Edit mode activated. Make your changes and click 'Update Entry in List'."
+          "Edit mode activated. Make your changes and click 'Update Entry in List'.",
+          { position: "top-left" }
         );
       }
     },
@@ -648,13 +903,13 @@ export default function EditCollectionModal({
     setCurrentRamClear(false);
     setCurrentRamClearMetersIn("");
     setCurrentRamClearMetersOut("");
-    setCurrentCollectionTime(new Date());
+    // Keep existing collectionTime - don't reset it
 
     // Reset prev values
     setPrevIn(null);
     setPrevOut(null);
 
-    toast.info("Edit cancelled");
+    toast.info("Edit cancelled", { position: "top-left" });
   }, []);
 
   const confirmAddOrUpdateEntry = useCallback(async () => {
@@ -676,7 +931,9 @@ export default function EditCollectionModal({
     );
 
     if (!validation.isValid) {
-      toast.error(validation.error || "Validation failed");
+      toast.error(validation.error || "Validation failed", {
+        position: "top-left",
+      });
       return;
     }
 
@@ -684,6 +941,11 @@ export default function EditCollectionModal({
 
     try {
       if (editingEntryId) {
+        // Find the existing collection to get its locationReportId
+        const existingEntry = collectedMachineEntries.find(
+          (e) => e._id === editingEntryId
+        );
+
         // Update existing collection
         const result = await updateCollection(editingEntryId, {
           metersIn: Number(currentMetersIn),
@@ -699,6 +961,8 @@ export default function EditCollectionModal({
           timestamp: currentCollectionTime,
           prevIn: prevIn || 0,
           prevOut: prevOut || 0,
+          // CRITICAL: Preserve the existing locationReportId for history update
+          locationReportId: existingEntry?.locationReportId || reportId,
         });
 
         // Update local state
@@ -708,9 +972,46 @@ export default function EditCollectionModal({
           )
         );
 
-        toast.success("Machine updated!");
+        // Clear editing state and machine selection first to disable inputs
         setEditingEntryId(null);
+        setSelectedMachineId("");
+
+        // Then clear all form fields
+        setCurrentMetersIn("");
+        setCurrentMetersOut("");
+        setCurrentMachineNotes("");
+        setCurrentRamClear(false);
+        setCurrentRamClearMetersIn("");
+        setCurrentRamClearMetersOut("");
+        setPrevIn(null);
+        setPrevOut(null);
+
+        toast.success("Machine updated!", { position: "top-left" });
       } else {
+        // Calculate movement with RAM Clear support using the same utility
+        const previousMeters: PreviousCollectionMeters = {
+          metersIn: prevIn || 0,
+          metersOut: prevOut || 0,
+        };
+
+        const movement = calculateMovement(
+          Number(currentMetersIn),
+          Number(currentMetersOut),
+          previousMeters,
+          currentRamClear,
+          currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
+          currentRamClearMetersOut
+            ? Number(currentRamClearMetersOut)
+            : undefined
+        );
+
+        // Round movement values to 2 decimal places
+        const roundedMovement = {
+          metersIn: Number(movement.metersIn.toFixed(2)),
+          metersOut: Number(movement.metersOut.toFixed(2)),
+          gross: Number(movement.gross.toFixed(2)),
+        };
+
         // Add new collection to the list
         const newEntry: CollectionDocument = {
           _id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique temporary ID
@@ -747,14 +1048,7 @@ export default function EditCollectionModal({
             sasStartTime: "",
             sasEndTime: "",
           },
-          movement: {
-            metersIn: Number(currentMetersIn),
-            metersOut: Number(currentMetersOut),
-            gross:
-              Number(currentMetersIn) -
-              (prevIn || 0) -
-              (Number(currentMetersOut) - (prevOut || 0)),
-          },
+          movement: roundedMovement,
           createdAt: new Date(),
           updatedAt: new Date(),
           __v: 0,
@@ -793,22 +1087,26 @@ export default function EditCollectionModal({
               gross: 0,
               gamesPlayed: 0,
               jackpot: 0,
-              sasStartTime: "",
-              sasEndTime: "",
+              sasStartTime: customSasStartTime || "",
+              sasEndTime: currentCollectionTime,
             },
-            movement: {
-              metersIn: Number(currentMetersIn),
-              metersOut: Number(currentMetersOut),
-              gross:
-                Number(currentMetersIn) -
-                (prevIn || 0) -
-                (Number(currentMetersOut) - (prevOut || 0)),
-            },
+            movement: roundedMovement,
           });
 
           // Add to local state with the real ID from database
           const savedEntry = { ...newEntry, _id: response.data._id };
-          setCollectedMachineEntries((prev) => [...prev, savedEntry]);
+          console.warn("🔍 Adding machine to local state:", {
+            machineId: savedEntry.machineId,
+            machineName: savedEntry.machineName,
+            _id: savedEntry._id,
+            currentEntriesCount: collectedMachineEntries.length,
+          });
+          setCollectedMachineEntries((prev) => {
+            const updated = [...prev, savedEntry];
+            console.warn("🔍 Updated collected entries count:", updated.length);
+            return updated;
+          });
+          setHasChanges(true);
 
           // Reset form fields
           setCurrentMetersIn("");
@@ -822,15 +1120,20 @@ export default function EditCollectionModal({
           setSelectedMachineId("");
 
           toast.success(
-            "Machine added to collection list and saved to database!"
+            "Machine added to collection list and saved to database!",
+            { position: "top-left" }
           );
         } catch (error) {
           console.error("Error saving collection to database:", error);
-          toast.error("Failed to save machine to database. Please try again.");
+          toast.error("Failed to save machine to database. Please try again.", {
+            position: "top-left",
+          });
         }
       }
     } catch {
-      toast.error("Failed to update machine. Please try again.");
+      toast.error("Failed to update machine. Please try again.", {
+        position: "top-left",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -841,6 +1144,7 @@ export default function EditCollectionModal({
     currentMetersIn,
     currentMetersOut,
     currentMachineNotes,
+    collectedMachineEntries,
     currentRamClear,
     currentRamClearMetersIn,
     currentRamClearMetersOut,
@@ -849,6 +1153,7 @@ export default function EditCollectionModal({
     prevIn,
     prevOut,
     userId,
+    customSasStartTime,
     reportId,
     selectedLocationName,
     user,
@@ -889,7 +1194,7 @@ export default function EditCollectionModal({
           "Cannot delete the last collection. A collection report must have at least one machine. Please add another machine before deleting this one.",
           {
             duration: 5000,
-            position: "top-right",
+            position: "top-left",
           }
         );
         return;
@@ -907,7 +1212,7 @@ export default function EditCollectionModal({
     setIsProcessing(true);
     try {
       await deleteMachineCollection(entryToDelete);
-      toast.success("Machine deleted!");
+      toast.success("Machine deleted!", { position: "top-left" });
 
       // Remove the deleted entry from local state immediately
       setCollectedMachineEntries((prev) =>
@@ -941,7 +1246,7 @@ export default function EditCollectionModal({
       setShowDeleteConfirmation(false);
       setEntryToDelete(null);
     } catch {
-      toast.error("Failed to delete machine");
+      toast.error("Failed to delete machine", { position: "top-left" });
     } finally {
       setIsProcessing(false);
     }
@@ -949,7 +1254,7 @@ export default function EditCollectionModal({
 
   const handleUpdateReport = useCallback(async () => {
     if (isProcessing || !userId || !reportData) {
-      toast.error("Missing required data.");
+      toast.error("Missing required data.", { position: "top-left" });
       return;
     }
 
@@ -959,7 +1264,7 @@ export default function EditCollectionModal({
         "Cannot update report. At least one machine must be added to the collection report.",
         {
           duration: 5000,
-          position: "top-right",
+          position: "top-left",
         }
       );
       return;
@@ -967,6 +1272,73 @@ export default function EditCollectionModal({
 
     setIsProcessing(true);
     try {
+      // PHASE 1: Detect machine meter changes and call batch update API
+      const changes: Array<{
+        machineId: string;
+        locationReportId: string;
+        metersIn: number;
+        metersOut: number;
+        prevMetersIn: number;
+        prevMetersOut: number;
+        collectionId: string;
+      }> = [];
+
+      for (const current of collectedMachineEntries) {
+        const original = originalCollections.find((o) => o._id === current._id);
+        if (original) {
+          // Check if meters changed
+          const metersInChanged = current.metersIn !== original.metersIn;
+          const metersOutChanged = current.metersOut !== original.metersOut;
+
+          if (metersInChanged || metersOutChanged) {
+            console.warn(`🔍 Detected changes for machine ${current.machineId}:`, {
+              originalMetersIn: original.metersIn,
+              currentMetersIn: current.metersIn,
+              originalMetersOut: original.metersOut,
+              currentMetersOut: current.metersOut,
+            });
+
+            changes.push({
+              machineId: current.machineId,
+              locationReportId: current.locationReportId || reportId,
+              metersIn: current.metersIn || 0,
+              metersOut: current.metersOut || 0,
+              prevMetersIn: current.prevIn || 0,
+              prevMetersOut: current.prevOut || 0,
+              collectionId: current._id,
+            });
+          }
+        }
+      }
+
+      // If there are meter changes, call batch update API
+      if (changes.length > 0) {
+        console.warn(
+          `🔄 Calling batch update API for ${changes.length} machine(s)`
+        );
+        // CRITICAL: Use PATCH for updating, not POST
+        const batchResponse = await axios.patch(
+          `/api/collection-reports/${reportId}/update-history`,
+          { changes }
+        );
+
+        if (!batchResponse.data.success) {
+          toast.error("Failed to update machine histories. Please try again.", {
+            position: "top-left",
+          });
+          return;
+        }
+
+        console.warn("✅ Machine histories updated successfully");
+        toast.success(
+          `Updated ${changes.length} machine histories successfully!`,
+          { position: "top-left" }
+        );
+      } else {
+        console.warn("ℹ️ No machine meter changes detected");
+      }
+
+      // PHASE 2: Update collection report financials
       const updateData = {
         ...reportData,
         variance: Number(financials.variance) || 0,
@@ -982,13 +1354,24 @@ export default function EditCollectionModal({
       };
 
       await updateCollectionReport(reportId, updateData);
-      toast.success("Report updated successfully!");
+      toast.success("Report updated successfully!", { position: "top-left" });
 
+      // Clear unsaved edits flag and close modal
+      // CRITICAL: Don't call handleClose() here as state update may not have taken effect
+      // Instead, directly call onClose() since we know the update was successful
+      setHasUnsavedEdits(false);
       setHasChanges(true);
-      handleClose();
+      
+      // Refresh parent and close modal
+      if (onRefresh) {
+        onRefresh();
+      }
+      onClose();
     } catch (error) {
       console.error("Failed to update report:", error);
-      toast.error("Failed to update report. Please try again.");
+      toast.error("Failed to update report. Please try again.", {
+        position: "top-left",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -998,8 +1381,10 @@ export default function EditCollectionModal({
     reportData,
     financials,
     reportId,
-    handleClose,
     collectedMachineEntries,
+    originalCollections,
+    onClose,
+    onRefresh,
   ]);
 
   const isUpdateReportEnabled = useMemo(() => {
@@ -1015,18 +1400,26 @@ export default function EditCollectionModal({
 
   if (!show) return null;
 
+  // Use mobile modal for mobile devices
   return (
     <>
       <Dialog
         open={show}
         onOpenChange={(isOpen) => {
+          // CRITICAL: Only allow closing if handleClose returns true
+          // If there are unsaved edits, handleClose will return false and show warning
           if (!isOpen) {
-            handleClose();
+            const canClose = handleClose();
+            if (!canClose) {
+              // Prevent the dialog from closing by not calling the close handler
+              // The warning dialog will be shown by handleClose
+              return;
+            }
           }
         }}
       >
         <DialogContent
-          className="max-w-6xl lg:max-w-7xl h-[calc(100vh-2rem)] md:h-[90vh] p-0 flex flex-col bg-container"
+          className="max-w-6xl lg:max-w-7xl h-[calc(100vh-2rem)] md:h-[95vh] lg:h-[90vh] p-0 flex flex-col bg-container"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-4 md:p-6 pb-0">
@@ -1035,7 +1428,7 @@ export default function EditCollectionModal({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-grow flex flex-col lg:flex-row overflow-hidden">
+          <div className="flex-grow flex flex-col lg:flex-row overflow-y-auto min-h-0">
             {/* Mobile: Full width, Desktop: 1/4 width */}
             <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
               <LocationSelect
@@ -1046,15 +1439,75 @@ export default function EditCollectionModal({
                   name: loc.name,
                 }))}
                 placeholder="Select Location"
-                disabled={isProcessing}
+                disabled={true}
                 className="w-full"
                 emptyMessage="No locations found"
               />
 
-              <div className="flex-grow space-y-2 min-h-[100px]">
-                {selectedLocationId ? (
-                  machinesOfSelectedLocation.length > 0 ? (
-                    machinesOfSelectedLocation.map((machine) => (
+              {/* View Toggle Buttons */}
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant={viewMode === 'machines' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('machines')}
+                  className="flex-1"
+                >
+                  Available Machines
+                </Button>
+                <Button
+                  variant={viewMode === 'collected' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('collected')}
+                  className="flex-1"
+                  disabled={collectedMachineEntries.length === 0}
+                >
+                  Collected ({collectedMachineEntries.length})
+                </Button>
+              </div>
+
+              {/* Search bar for machines - only show in machines view */}
+              {viewMode === 'machines' && machinesOfSelectedLocation.length > 0 && (
+                <div className="mt-2">
+                  <Input
+                    type="text"
+                    placeholder="Search machines..."
+                    value={machineSearchTerm}
+                    onChange={(e) => setMachineSearchTerm(e.target.value)}
+                    className="w-full"
+                  />
+                  {machineSearchTerm && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Showing {filteredMachines.length} of{" "}
+                      {machinesOfSelectedLocation.length} machines
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Search bar for collected machines - only show in collected view */}
+              {viewMode === 'collected' && collectedMachineEntries.length > 0 && (
+                <div className="mt-2">
+                  <Input
+                    type="text"
+                    placeholder="Search collected machines..."
+                    value={collectedMachinesSearchTerm}
+                    onChange={(e) => setCollectedMachinesSearchTerm(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              <div className="flex-1 space-y-2 min-h-0 overflow-y-auto">
+                {viewMode === 'machines' ? (
+                  selectedLocationId ? (
+                    isLoadingMachines ? (
+                      <div className="space-y-2">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Skeleton key={i} className="h-12 w-full rounded-md" />
+                        ))}
+                      </div>
+                    ) : filteredMachines.length > 0 ? (
+                      filteredMachines.map((machine) => (
                       <Button
                         key={String(machine._id)}
                         variant={
@@ -1069,42 +1522,62 @@ export default function EditCollectionModal({
                         className={`w-full justify-start text-left h-auto py-2 px-3 whitespace-normal break-words ${
                           collectedMachineEntries.find(
                             (e) => e.machineId === machine._id
-                          )
+                          ) && !editingEntryId
                             ? "opacity-60 cursor-not-allowed"
                             : ""
                         }`}
                         onClick={() => {
+                          // If in editing mode and this is the machine being edited, allow selection
+                          if (editingEntryId) {
+                            const entryBeingEdited =
+                              collectedMachineEntries.find(
+                                (e) => e._id === editingEntryId
+                              );
+                            if (
+                              entryBeingEdited?.machineId ===
+                              String(machine._id)
+                            ) {
+                              // This is the machine being edited - keep it selected
+                              setSelectedMachineId(String(machine._id));
+                              return;
+                            }
+                          }
+
                           if (
                             collectedMachineEntries.find(
                               (e) => e.machineId === machine._id
-                            )
+                            ) &&
+                            !editingEntryId
                           ) {
                             toast.info(
-                              `${machine.name} is already in the list. Click edit on the right to modify.`
+                              `${machine.name} is already in the list. Click edit on the right to modify.`,
+                              { position: "top-left" }
                             );
                             return;
                           }
+
+                          // If machine is already selected, unselect it
+                          if (selectedMachineId === String(machine._id)) {
+                            console.warn("🔍 Machine unselected:", {
+                              machineId: String(machine._id),
+                              machineName: machine.name,
+                            });
+                            setSelectedMachineId("");
+                            return;
+                          }
+
                           setSelectedMachineId(String(machine._id));
 
-                          // Set prevIn/prevOut from machine's collectionMeters
-                          if (machine.collectionMeters) {
-                            console.warn(
-                              "🔍 Setting prevIn/prevOut from selected machine:",
-                              {
-                                machineId: machine._id,
-                                metersIn: machine.collectionMeters.metersIn,
-                                metersOut: machine.collectionMeters.metersOut,
-                              }
-                            );
-                            setPrevIn(machine.collectionMeters.metersIn || 0);
-                            setPrevOut(machine.collectionMeters.metersOut || 0);
-                          } else {
-                            console.warn(
-                              "🔍 No collectionMeters found for selected machine, setting to 0"
-                            );
-                            setPrevIn(0);
-                            setPrevOut(0);
-                          }
+                          // Don't set prevIn/prevOut here - let the useEffect handle it
+                          // The useEffect will query for historical previous collection
+                          console.warn(
+                            "🔍 Machine selected - useEffect will fetch historical prevIn/prevOut:",
+                            {
+                              machineId: machine._id,
+                              reportTimestamp:
+                                currentCollectionTime.toISOString(),
+                            }
+                          );
                         }}
                         disabled={
                           isProcessing ||
@@ -1118,10 +1591,7 @@ export default function EditCollectionModal({
                             !editingEntryId)
                         }
                       >
-                        {formatMachineDisplayNameWithBold({
-                          serialNumber: getSerialNumberIdentifier(machine),
-                          custom: { name: machine.name },
-                        })}
+                        {formatMachineDisplayNameWithBold(machine)}
                         {collectedMachineEntries.find(
                           (e) => e.machineId === machine._id
                         ) &&
@@ -1131,22 +1601,122 @@ export default function EditCollectionModal({
                             </span>
                           )}
                       </Button>
-                    ))
+                      ))
+                    ) : machineSearchTerm ? (
+                      <p className="text-xs md:text-sm text-grayHighlight pt-2">
+                        No machines found matching &quot;{machineSearchTerm}
+                        &quot;.
+                      </p>
+                    ) : (
+                      <p className="text-xs md:text-sm text-grayHighlight pt-2">
+                        No machines for this location.
+                      </p>
+                    )
                   ) : (
                     <p className="text-xs md:text-sm text-grayHighlight pt-2">
-                      No machines for this location.
+                      Select a location to see machines.
                     </p>
                   )
                 ) : (
-                  <p className="text-xs md:text-sm text-grayHighlight pt-2">
-                    Select a location to see machines.
-                  </p>
+                  // Collected Machines View
+                  isLoadingCollections ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-2"
+                        >
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                          <Skeleton className="h-3 w-2/3" />
+                          <div className="flex justify-end gap-1">
+                            <Skeleton className="h-6 w-6 rounded" />
+                            <Skeleton className="h-6 w-6 rounded" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : collectedMachineEntries.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-10">
+                      No machines added to the list yet.
+                    </p>
+                  ) : (
+                    collectedMachineEntries
+                      .filter((entry) => {
+                        if (!collectedMachinesSearchTerm) return true;
+                        const searchLower =
+                          collectedMachinesSearchTerm.toLowerCase();
+                        return (
+                          (entry.serialNumber &&
+                            entry.serialNumber
+                              .toLowerCase()
+                              .includes(searchLower)) ||
+                          (entry.machineCustomName &&
+                            entry.machineCustomName
+                              .toLowerCase()
+                              .includes(searchLower)) ||
+                          (entry.machineId &&
+                            entry.machineId
+                              .toLowerCase()
+                              .includes(searchLower)) ||
+                          (entry.machineName &&
+                            entry.machineName
+                              .toLowerCase()
+                              .includes(searchLower)) ||
+                          (entry.game &&
+                            entry.game.toLowerCase().includes(searchLower))
+                        );
+                      })
+                      .map((entry) => (
+                        <div
+                          key={entry._id}
+                          className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
+                        >
+                          <p className="font-semibold text-sm text-primary break-words">
+                            {getMachineDisplayName({
+                              serialNumber: entry.serialNumber,
+                              machineCustomName: entry.machineCustomName,
+                              machineId: entry.machineId,
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Time: {formatDate(entry.timestamp)}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Meters: In {entry.metersIn || 0} | Out {entry.metersOut || 0}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Movement: {entry.movement?.gross || 0}
+                          </p>
+                          <div className="flex justify-end gap-1 mt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditEntry(entry._id)}
+                              disabled={isProcessing}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteEntry(entry._id)}
+                              disabled={isProcessing}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                  )
                 )}
               </div>
             </div>
 
-            {/* Mobile: Full width, Desktop: 2/4 width */}
-            <div className="w-full lg:w-2/4 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
+            {/* Mobile: Full width, Desktop: 3/4 width (expanded since we removed right sidebar) */}
+            <div className="w-full lg:w-3/4 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
               {(selectedMachineId && machineForDataEntry) ||
               collectedMachineEntries.length > 0 ? (
                 <>
@@ -1162,31 +1732,99 @@ export default function EditCollectionModal({
 
                   <Button
                     variant="default"
-                    className="w-full bg-lighterBlueHighlight text-primary-foreground"
+                    className="w-full bg-lighterBlueHighlight text-primary-foreground flex items-center justify-between"
                   >
-                    {machineForDataEntry
-                      ? formatMachineDisplayNameWithBold({
-                          serialNumber:
-                            getSerialNumberIdentifier(machineForDataEntry),
-                          custom: { name: machineForDataEntry.name },
-                        })
-                      : "Select a machine to edit"}
+                    <span>
+                      {machineForDataEntry
+                        ? formatMachineDisplayNameWithBold({
+                            serialNumber:
+                              getSerialNumberIdentifier(machineForDataEntry),
+                            custom: { name: machineForDataEntry.name },
+                          })
+                        : "Select a machine to edit"}
+                    </span>
+                    {machineForDataEntry && (
+                      <ExternalLink
+                        className="h-4 w-4 ml-2 hover:scale-110 transition-transform cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowViewMachineConfirmation(true);
+                        }}
+                      />
+                    )}
                   </Button>
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-grayHighlight mb-2">
                       Collection Time:
                     </label>
-                    <SimpleDateTimePicker
+                    <PCDateTimePicker
                       date={currentCollectionTime}
                       setDate={(date) => {
-                        if (date) {
+                        if (
+                          date &&
+                          date instanceof Date &&
+                          !isNaN(date.getTime())
+                        ) {
+                          console.warn(
+                            "🕐 Collection time changed in edit modal:",
+                            {
+                              newDate: date.toISOString(),
+                              newDateLocal: date.toLocaleString(),
+                              previousTime: currentCollectionTime.toISOString(),
+                            }
+                          );
                           setCurrentCollectionTime(date);
                         }
                       }}
-                      disabled={!machineForDataEntry || isProcessing}
+                      disabled={isProcessing}
+                      placeholder="Select collection time"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This time applies to the current machine being
+                      added/edited
+                    </p>
                   </div>
+
+                  {/* Advanced SAS Start override */}
+                  <div className="mb-2">
+                    <button
+                      type="button"
+                      className="text-xs text-button underline"
+                      onClick={() => setShowAdvancedSas((p) => !p)}
+                    >
+                      {showAdvancedSas
+                        ? "Hide Advanced"
+                        : "Advanced: Custom previous SAS start"}
+                    </button>
+                  </div>
+                  {showAdvancedSas && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-grayHighlight mb-2">
+                        Previous SAS Start (optional):
+                      </label>
+                      <PCDateTimePicker
+                        date={customSasStartTime || undefined}
+                        setDate={(date) => {
+                          if (
+                            date &&
+                            date instanceof Date &&
+                            !isNaN(date.getTime())
+                          ) {
+                            setCustomSasStartTime(date);
+                          } else if (!date) {
+                            setCustomSasStartTime(null);
+                          }
+                        }}
+                        disabled={isProcessing}
+                        placeholder="Select previous SAS start (optional)"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave empty to auto-use last collection time or 24h
+                        before.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1722,97 +2360,14 @@ export default function EditCollectionModal({
               )}
             </div>
 
-            {/* Mobile: Full width, Desktop: 1/4 width */}
-            <div className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-300 p-3 md:p-4 flex flex-col space-y-2 overflow-y-auto bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2 sticky top-0 bg-gray-50 py-1">
-                Collected Machines ({collectedMachineEntries.length})
-              </h3>
-              {isLoadingCollections ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-2"
-                    >
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                      <Skeleton className="h-3 w-2/3" />
-                      <div className="flex justify-end gap-1">
-                        <Skeleton className="h-6 w-6 rounded" />
-                        <Skeleton className="h-6 w-6 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : collectedMachineEntries.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-10">
-                  No machines added to the list yet.
-                </p>
-              ) : (
-                collectedMachineEntries.map((entry) => (
-                  <div
-                    key={entry._id}
-                    className="bg-white p-3 rounded-md shadow border border-gray-200 space-y-1 relative"
-                  >
-                    <p className="font-semibold text-sm text-primary break-words">
-                      {formatMachineDisplayNameWithBold({
-                        serialNumber: entry.serialNumber,
-                        assetNumber: entry.machineName,
-                        custom: { name: entry.machineCustomName },
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Time: {formatDate(entry.timestamp)}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Meters In:{" "}
-                      {entry.ramClear
-                        ? entry.movement?.metersIn || entry.metersIn
-                        : entry.metersIn}{" "}
-                      | Meters Out:{" "}
-                      {entry.ramClear
-                        ? entry.movement?.metersOut || entry.metersOut
-                        : entry.metersOut}
-                    </p>
-                    {entry.notes && (
-                      <p className="text-xs text-gray-600 italic">
-                        Notes: {entry.notes}
-                      </p>
-                    )}
-                    {entry.ramClear && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        RAM Cleared
-                      </p>
-                    )}
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 p-0 hover:bg-gray-200"
-                        onClick={() => handleEditCollectedEntry(entry._id)}
-                        disabled={isProcessing}
-                      >
-                        <Edit3 className="h-3.5 w-3.5 text-blue-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 p-0 hover:bg-gray-200"
-                        onClick={() => handleDeleteEntry(entry._id)}
-                        disabled={isProcessing}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
 
           <DialogFooter className="p-4 md:p-6 pt-2 md:pt-4 flex justify-center border-t border-gray-300">
             <Button
-              onClick={handleUpdateReport}
+              onClick={() => {
+                if (!isUpdateReportEnabled || isProcessing) return;
+                setShowUpdateReportConfirmation(true);
+              }}
               className={`w-auto bg-button hover:bg-buttonActive text-base px-8 py-3 ${
                 !isUpdateReportEnabled || isProcessing
                   ? "cursor-not-allowed"
@@ -1861,6 +2416,50 @@ export default function EditCollectionModal({
         confirmText="Yes, Update"
         cancelText="Cancel"
         isLoading={isProcessing}
+      />
+
+      {/* Update Report Confirmation Dialog */}
+      <InfoConfirmationDialog
+        isOpen={showUpdateReportConfirmation}
+        onClose={() => setShowUpdateReportConfirmation(false)}
+        onConfirm={handleUpdateReport}
+        title="Confirm Report Update"
+        message={`You are about to update this collection report with collection time: ${
+          currentCollectionTime ? formatDate(currentCollectionTime) : "Not set"
+        }. Do you want to proceed?`}
+        confirmText="Yes, Update Report"
+        cancelText="Cancel"
+        isLoading={isProcessing}
+      />
+
+      {/* View Machine Confirmation Dialog */}
+      <InfoConfirmationDialog
+        isOpen={showViewMachineConfirmation}
+        onClose={() => setShowViewMachineConfirmation(false)}
+        onConfirm={() => {
+          if (selectedMachineId) {
+            const machineUrl = `/machines/${selectedMachineId}`;
+            window.open(machineUrl, "_blank");
+          }
+          setShowViewMachineConfirmation(false);
+        }}
+        title="View Machine"
+        message="Do you want to open this machine's details in a new tab?"
+        confirmText="Yes, View Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
+
+      {/* Unsaved Changes Warning Dialog */}
+      <ConfirmationDialog
+        isOpen={showUnsavedChangesWarning}
+        onClose={() => setShowUnsavedChangesWarning(false)}
+        onConfirm={() => setShowUnsavedChangesWarning(false)}
+        title="Unsaved Changes"
+        message="You have unsaved machine meter edits. Press 'Update Report' to save your changes before closing."
+        confirmText="Keep Editing"
+        cancelText=""
+        isLoading={false}
       />
     </>
   );

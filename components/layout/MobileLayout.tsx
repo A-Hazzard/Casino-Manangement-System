@@ -3,13 +3,12 @@
 import MapPreview from "@/components/ui/MapPreview";
 import { MobileLayoutProps } from "@/lib/types/componentProps";
 import type { TopPerformingItem } from "@/lib/types";
-import { formatNumber } from "@/lib/utils/metrics";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import {
-  DashboardFinancialMetricsSkeleton,
   DashboardChartSkeleton,
 } from "@/components/ui/skeletons/DashboardSkeletons";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+import { RefreshButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 import Chart from "@/components/ui/dashboard/Chart";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import { RefreshCw } from "lucide-react";
@@ -18,8 +17,12 @@ import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function MobileLayout(props: MobileLayoutProps) {
+
   const NoDataMessage = ({ message }: { message: string }) => (
-    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md" suppressHydrationWarning>
+    <div
+      className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md"
+      suppressHydrationWarning
+    >
       <div className="text-gray-500 text-lg mb-2">No Data Available</div>
       <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
@@ -79,7 +82,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
     <div className="xl:hidden space-y-6">
       {/* Date Filter Controls (mobile) */}
       <div className="flex flex-wrap items-center gap-2">
-        <DashboardDateFilters   
+        <DashboardDateFilters
           disabled={props.loadingChartData || props.refreshing}
           hideAllTime={false}
         />
@@ -96,70 +99,38 @@ export default function MobileLayout(props: MobileLayoutProps) {
 
       {/* Refresh button below Machine Status on mobile */}
       <div className="flex justify-end">
-        <div
-          className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
-            props.loadingChartData || props.refreshing
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-buttonActive/90"
-          }`}
-          onClick={() => {
-            if (!(props.loadingChartData || props.refreshing)) props.onRefresh();
-          }}
-          aria-disabled={props.loadingChartData || props.refreshing}
-          tabIndex={0}
-          role="button"
-        >
-          <RefreshCw
-            className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
-            aria-hidden="true"
-          />
-          <span className="font-semibold">Refresh</span>
-        </div>
+        {props.loadingChartData ? (
+          <RefreshButtonSkeleton />
+        ) : (
+          <div
+            className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
+              props.loadingChartData || props.refreshing
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-buttonActive/90"
+            }`}
+            onClick={() => {
+              if (!(props.loadingChartData || props.refreshing))
+                props.onRefresh();
+            }}
+            aria-disabled={props.loadingChartData || props.refreshing}
+            tabIndex={0}
+            role="button"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+            <span className="font-semibold">Refresh</span>
+          </div>
+        )}
       </div>
 
-
-      {/* Metrics Cards */}
-      {props.loadingChartData ? (
-        <DashboardFinancialMetricsSkeleton />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <>
-            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                Money In
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
-              <div className="flex-1 flex items-center justify-center">
-                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyIn)}`}>
-                  {props.totals ? formatNumber(props.totals.moneyIn) : "--"}
-                </p>
-              </div>
-            </div>
-            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                Money Out
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
-              <div className="flex-1 flex items-center justify-center">
-                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.moneyOut)}`}>
-                  {props.totals ? formatNumber(props.totals.moneyOut) : "--"}
-                </p>
-              </div>
-            </div>
-            <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
-              <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
-                Gross
-              </p>
-              <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
-              <div className="flex-1 flex items-center justify-center">
-                <p className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(props.totals?.gross)}`}>
-                  {props.totals ? formatNumber(props.totals.gross) : "--"}
-                </p>
-              </div>
-            </div>
-          </>
-        </div>
-      )}
+      {/* Metrics Cards - Mobile uses new design */}
+      <FinancialMetricsCards
+        totals={props.totals}
+        loading={props.loadingChartData}
+        title="Total for all Locations and Machines"
+      />
 
       {props.loadingChartData ? (
         <DashboardChartSkeleton />
@@ -269,20 +240,20 @@ export default function MobileLayout(props: MobileLayoutProps) {
               </div>
               <div className="flex items-center justify-between">
                 <ul className="space-y-2">
-                  {props.topPerformingData.map((item: TopPerformingItem, index: number) => (
-                    <li
-                      key={index}
-                      className="flex items-center space-x-2 text-sm"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <span>
-                        {item.name}
-                      </span>
-                    </li>
-                  ))}
+                  {props.topPerformingData.map(
+                    (item: TopPerformingItem, index: number) => (
+                      <li
+                        key={index}
+                        className="flex items-center space-x-2 text-sm"
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        ></div>
+                        <span>{item.name}</span>
+                      </li>
+                    )
+                  )}
                 </ul>
                 <ResponsiveContainer width={160} height={160}>
                   <PieChart>
@@ -296,9 +267,11 @@ export default function MobileLayout(props: MobileLayoutProps) {
                       labelLine={false}
                       label={props.renderCustomizedLabel}
                     >
-                        {props.topPerformingData.map((entry: TopPerformingItem, index: number) => (
+                      {props.topPerformingData.map(
+                        (entry: TopPerformingItem, index: number) => (
                           <Cell key={index} fill={entry.color} />
-                        ))}
+                        )
+                      )}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>

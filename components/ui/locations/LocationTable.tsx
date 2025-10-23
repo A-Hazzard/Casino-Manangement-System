@@ -34,7 +34,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
 
   return (
     <>
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <div className="overflow-x-auto bg-white shadow">
         <Table ref={tableRef} className="table-fixed w-full">
           <TableHeader>
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">

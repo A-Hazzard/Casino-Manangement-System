@@ -1,17 +1,5 @@
 import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-
-export interface AuthLogEntry {
-  action: string;
-  userId?: string;
-  email?: string;
-  details: string;
-  ipAddress: string;
-  userAgent: string;
-  timestamp: Date;
-  success: boolean;
-  errorMessage?: string;
-  metadata?: Record<string, unknown>;
-}
+import type { AuthLogEntry } from "@/lib/types/authLogger";
 
 export class AuthLogger {
   private static instance: AuthLogger;

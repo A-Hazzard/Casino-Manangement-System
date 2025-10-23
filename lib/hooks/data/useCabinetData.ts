@@ -3,7 +3,7 @@
  * Handles loading, filtering, and error states for cabinet operations
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { fetchCabinets, fetchCabinetLocations } from "@/lib/helpers/cabinets";
 import { filterCabinets as filterCabinetsHelper } from "@/lib/helpers/cabinetsPage";
 import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
@@ -20,6 +20,8 @@ type UseCabinetDataProps = {
   searchTerm: string;
   selectedLocation: string;
   selectedGameType: string;
+  selectedStatus: string;
+  displayCurrency?: string;
 };
 
 type UseCabinetDataReturn = {
@@ -42,7 +44,8 @@ type UseCabinetDataReturn = {
     cabinets: Cabinet[],
     searchTerm: string,
     selectedLocation: string,
-    selectedGameType: string
+    selectedGameType: string,
+    selectedStatus: string
   ) => void;
   setError: (error: string | null) => void;
 };
@@ -54,20 +57,24 @@ export const useCabinetData = ({
   searchTerm,
   selectedLocation,
   selectedGameType,
+  selectedStatus,
+  displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
   // State management
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
-  const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
+  // Removed filteredCabinets state - now using memoized value for better performance
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>(
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
 
-  // Calculate financial totals from cabinet data
-  const financialTotals = calculateCabinetFinancialTotals(allCabinets);
+  // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation
+  const financialTotals = useMemo(() => {
+    return calculateCabinetFinancialTotals(allCabinets);
+  }, [allCabinets]);
 
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
@@ -88,34 +95,53 @@ export const useCabinetData = ({
     }
   }, [selectedLicencee]);
 
-  // Filter cabinets based on search term, selected location, and game type
+  // PERFORMANCE OPTIMIZATION: Memoize filtered cabinets calculation
+  const filteredCabinets = useMemo(() => {
+    console.warn("Filtering cabinets:", {
+      totalCabinets: allCabinets.length,
+      searchTerm,
+      selectedLocation,
+      selectedGameType,
+      selectedStatus,
+    });
+
+    let filtered = filterCabinetsHelper(allCabinets, searchTerm, selectedLocation);
+
+    // Apply game type filter
+    if (selectedGameType && selectedGameType !== "all") {
+      filtered = filtered.filter((cabinet) => {
+        const cabinetGame = cabinet.game || cabinet.installedGame;
+        return cabinetGame === selectedGameType;
+      });
+    }
+
+    // Apply status filter
+    if (selectedStatus && selectedStatus !== "All") {
+      filtered = filtered.filter((cabinet) => {
+        if (selectedStatus === "Online") {
+          return cabinet.online === true;
+        } else if (selectedStatus === "Offline") {
+          return cabinet.online === false;
+        }
+        return true;
+      });
+    }
+
+    console.warn("Filtered cabinets result:", filtered.length);
+    return filtered;
+  }, [allCabinets, searchTerm, selectedLocation, selectedGameType, selectedStatus]);
+
+  // Legacy filterCabinets function for backward compatibility (now just updates state)
   const filterCabinets = useCallback(
     (
-      cabinets: Cabinet[],
-      search: string,
-      location: string,
-      gameType: string
+      _cabinets: Cabinet[],
+      _search: string,
+      _location: string,
+      _gameType: string,
+      _status: string
     ) => {
-      console.warn("Filtering cabinets:", {
-        totalCabinets: cabinets.length,
-        searchTerm: search,
-        selectedLocation: location,
-        selectedGameType: gameType,
-      });
-
-      let filtered = filterCabinetsHelper(cabinets, search, location);
-
-      // Apply game type filter
-      if (gameType && gameType !== "all") {
-        filtered = filtered.filter((cabinet) => {
-          const cabinetGame = cabinet.game || cabinet.installedGame;
-          return cabinetGame === gameType;
-        });
-      }
-
-      setFilteredCabinets(filtered);
-
-      console.warn("Filtered cabinets result:", filtered.length);
+      // This function is now handled by the memoized filteredCabinets above
+      // Keeping for backward compatibility but it's no longer needed
     },
     []
   );
@@ -150,19 +176,19 @@ export const useCabinetData = ({
       const cabinetsData = await fetchCabinets(
         selectedLicencee,
         activeMetricsFilter,
-        dateRangeForFetch
+        dateRangeForFetch,
+        displayCurrency
       );
 
       if (!Array.isArray(cabinetsData)) {
         console.error("Cabinets data is not an array:", cabinetsData);
         setAllCabinets([]);
-        setFilteredCabinets([]);
         setError("Invalid data format received from server");
       } else {
         console.warn("Successfully loaded cabinets:", cabinetsData.length);
         setAllCabinets(cabinetsData);
 
-        // Extract unique game types from cabinets
+        // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
         const uniqueGameTypes = Array.from(
           new Set(
             cabinetsData
@@ -172,17 +198,11 @@ export const useCabinetData = ({
         ).sort();
         setGameTypes(uniqueGameTypes);
 
-        filterCabinets(
-          cabinetsData,
-          searchTerm,
-          selectedLocation,
-          selectedGameType
-        );
+        // Filtering is now handled by the memoized filteredCabinets above
       }
     } catch (error) {
       console.error("Error fetching cabinet data:", error);
       setAllCabinets([]);
-      setFilteredCabinets([]);
       setError(
         error instanceof Error ? error.message : "Failed to load cabinets"
       );
@@ -192,12 +212,9 @@ export const useCabinetData = ({
     }
   }, [
     selectedLicencee,
-    filterCabinets,
-    searchTerm,
-    selectedLocation,
-    selectedGameType,
     activeMetricsFilter,
     customDateRange,
+    displayCurrency,
   ]);
 
   // Effect hooks for data loading
@@ -209,15 +226,7 @@ export const useCabinetData = ({
     loadCabinets();
   }, [loadCabinets]);
 
-  useEffect(() => {
-    filterCabinets(allCabinets, searchTerm, selectedLocation, selectedGameType);
-  }, [
-    searchTerm,
-    selectedLocation,
-    selectedGameType,
-    allCabinets,
-    filterCabinets,
-  ]);
+  // Removed useEffect for filtering - now handled by memoized filteredCabinets
 
   return {
     // Data states

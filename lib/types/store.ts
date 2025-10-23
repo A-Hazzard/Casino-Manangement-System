@@ -10,6 +10,7 @@ import {
 import type { UserAuthPayload } from "@/shared/types/auth";
 import { TimePeriod } from "@/shared/types/common";
 import type { Firmware } from "@/shared/types/entities";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export type DashBoardStore = {
   initialLoading: boolean;
@@ -62,6 +63,12 @@ export type DashBoardStore = {
 
   selectedLicencee: string;
   setSelectedLicencee: (_state: string) => void;
+
+  // Currency support
+  displayCurrency: CurrencyCode;
+  setDisplayCurrency: (_state: CurrencyCode) => void;
+  isAllLicensee: boolean;
+  setIsAllLicensee: (_state: boolean) => void;
 };
 
 export type UserStore = {

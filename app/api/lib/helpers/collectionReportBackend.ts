@@ -22,9 +22,12 @@ const formatSmartDecimal = (value: number): string => {
 export async function getAllCollectionReportsWithMachineCounts(
   licenceeId?: string,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  _timePeriod?: string,
+  _customStartDate?: Date,
+  _customEndDate?: Date
 ): Promise<CollectionReportRow[]> {
-  let rawReports;
+  let rawReports: Array<Record<string, unknown>> = [];
 
   // Build base match criteria
   const matchCriteria: Record<string, unknown> = {};
@@ -65,6 +68,7 @@ export async function getAllCollectionReportsWithMachineCounts(
       },
       { $sort: { timestamp: -1 } },
     ];
+    
     rawReports = await CollectionReport.aggregate(aggregationPipeline);
   }
 
@@ -177,17 +181,8 @@ export async function getAllCollectionReportsWithMachineCounts(
         );
 
         // Calculate variation (same as details page: metersGross - sasGross)
-        // Check if any collections have SAS data - if none do, show "No SAS Data"
-        const hasSasData = collections.some(
-          (col) =>
-            col.sasMeters &&
-            col.sasMeters.gross !== undefined &&
-            col.sasMeters.gross !== null &&
-            col.sasMeters.gross !== 0
-        );
-        calculatedVariation = hasSasData
-          ? calculatedGross - calculatedSasGross
-          : "No SAS Data";
+        // Always calculate variation as a number, even if SAS gross is 0
+        calculatedVariation = calculatedGross - calculatedSasGross;
 
         // Use stored values for collected, location revenue, and balance (these are financial, not calculated from meters)
         calculatedCollected = (doc.amountCollected as number) || 0;
@@ -202,7 +197,7 @@ export async function getAllCollectionReportsWithMachineCounts(
         calculatedGross = (doc.totalGross as number) || 0;
         calculatedCollected = (doc.amountCollected as number) || 0;
         calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
-        calculatedVariation = (doc.variance as number) || "No SAS Data";
+        calculatedVariation = (doc.variance as number) || 0;
         calculatedBalance = (doc.currentBalance as number) || 0;
       }
 
@@ -219,9 +214,7 @@ export async function getAllCollectionReportsWithMachineCounts(
             ? formatSmartDecimal(doc.amountUncollected as number)
             : (doc.amountUncollected as string) || "-",
         variation:
-          calculatedVariation === 0
-            ? "No Variance"
-            : typeof calculatedVariation === "string"
+          typeof calculatedVariation === "string"
             ? calculatedVariation
             : formatSmartDecimal(calculatedVariation),
         balance: formatSmartDecimal(calculatedBalance),
@@ -229,28 +222,25 @@ export async function getAllCollectionReportsWithMachineCounts(
         time: (() => {
           const ts = doc.timestamp;
           if (ts) {
-            if (typeof ts === "string" || ts instanceof Date) {
-              return new Date(ts).toLocaleString(undefined, {
+            const date =
+              typeof ts === "string" || ts instanceof Date
+                ? new Date(ts)
+                : typeof ts === "object" &&
+                  "$date" in ts &&
+                  typeof ts.$date === "string"
+                ? new Date(ts.$date)
+                : null;
+
+            if (date) {
+              // Format in local time (not UTC)
+              return date.toLocaleString(undefined, {
                 year: "numeric",
                 month: "short",
                 day: "2-digit",
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",
-              });
-            }
-            if (
-              typeof ts === "object" &&
-              "$date" in ts &&
-              typeof ts.$date === "string"
-            ) {
-              return new Date(ts.$date).toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
+                hour12: true,
               });
             }
           }

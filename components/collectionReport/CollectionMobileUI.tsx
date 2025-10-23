@@ -13,6 +13,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   mobilePage,
   onPaginateMobile,
   mobileCardsRef,
+  reportIssues,
   // Filter props
   locations,
   selectedLocation,
@@ -74,6 +75,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
               <CollectionReportCards
                 data={mobileCurrentItems}
                 gridLayout={false}
+                reportIssues={reportIssues}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />
@@ -84,6 +86,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
               <CollectionReportCards
                 data={mobileCurrentItems}
                 gridLayout={true}
+                reportIssues={reportIssues}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />

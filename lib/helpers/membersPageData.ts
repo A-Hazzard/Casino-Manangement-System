@@ -69,7 +69,7 @@ export async function fetchMembersData(
       };
     }
   } catch (error) {
-    console.error("❌ Error fetching members data:", error);
+    console.error(" Error fetching members data:", error);
     return {
       members: [],
       pagination: {
@@ -91,7 +91,7 @@ export async function fetchMemberById(memberId: string): Promise<Member> {
     const response = await axios.get(`/api/members/${memberId}`);
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching member by ID:", error);
+    console.error(" Error fetching member by ID:", error);
     throw error;
   }
 }
@@ -109,7 +109,7 @@ export async function createMember(
 
     return response.data;
   } catch (error) {
-    console.error("❌ Error creating member:", error);
+    console.error(" Error creating member:", error);
     throw error;
   }
 }
@@ -128,7 +128,7 @@ export async function updateMember(
 
     return response.data;
   } catch (error) {
-    console.error("❌ Error updating member:", error);
+    console.error(" Error updating member:", error);
     throw error;
   }
 }
@@ -142,7 +142,7 @@ export async function deleteMember(memberId: string): Promise<void> {
 
     // Activity logging removed - handled via API calls
   } catch (error) {
-    console.error("❌ Error deleting member:", error);
+    console.error(" Error deleting member:", error);
     throw error;
   }
 }
@@ -168,7 +168,7 @@ export async function searchMembers(
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Error searching members:", error);
+    console.error(" Error searching members:", error);
     return [];
   }
 }

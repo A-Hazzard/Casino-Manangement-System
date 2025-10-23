@@ -17,7 +17,7 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 6th, 2025  
+**Last Updated:** October 6th, 2025  
 **Version:** 2.0.0
 
 ### File Information

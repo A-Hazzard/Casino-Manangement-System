@@ -1,159 +1,124 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useUserStore } from "@/lib/store/userStore";
-import { toast } from "sonner";
+import { fetchUserId } from "@/lib/helpers/user";
+import { fetchUserWithCache, CACHE_KEYS } from "@/lib/utils/userCache";
+import axios from "axios";
+import type { UserAuthPayload } from "@/shared/types/auth";
 
-interface TokenRefreshOptions {
-  refreshInterval?: number; // Default 10 minutes (check every 10 min for 15 min tokens)
-  onTokenExpired?: () => void;
-  onTokenRefreshed?: () => void;
-}
+export function useAuth() {
+  const { user, setUser, clearUser } = useUserStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-/**
- * Custom hook for automatic token refresh and authentication management
- * Prevents random logouts by automatically refreshing tokens before they expire
- */
-export function useAuth(options: TokenRefreshOptions = {}) {
-  const { user, clearUser } = useUserStore();
-  const {
-    refreshInterval = 10 * 60 * 1000, // 10 minutes
-    onTokenExpired,
-    onTokenRefreshed,
-  } = options;
+  useEffect(() => {
+    const validateAndInitializeAuth = async () => {
+      if (!isInitialized) {
+        try {
+          const userId = await fetchUserId();
 
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isRefreshingRef = useRef(false);
+          // Get current user from store to avoid dependency issues
+          const currentUser = useUserStore.getState().user;
 
-  /**
-   * Attempt to refresh the access token using the refresh token
-   */
-  const refreshToken = useCallback(async (): Promise<boolean> => {
-    if (isRefreshingRef.current) {
-      return false; // Already refreshing
-    }
-
-    try {
-      isRefreshingRef.current = true;
-
-      // Get refresh token from cookies (it's httpOnly, so we need to call our API)
-      const response = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken: "auto" }), // Server will get refresh token from cookies
-      });
-
-      if (response.ok) {
-        onTokenRefreshed?.();
-        return true;
-      } else {
-        // Refresh token is invalid or expired
-        const errorData = await response.json();
-        console.warn("Token refresh failed:", errorData.message);
-        return false;
-      }
-    } catch (error) {
-      console.error("Token refresh error:", error);
-      return false;
-    } finally {
-      isRefreshingRef.current = false;
-    }
-  }, [onTokenRefreshed]);
-
-  /**
-   * Check if the current token is valid and refresh if needed
-   */
-  const checkAndRefreshToken = useCallback(async (): Promise<boolean> => {
-    try {
-      // Check if we have a valid token by calling the token endpoint
-      const response = await fetch("/api/auth/token");
-
-      if (response.ok) {
-        // Token is still valid
-        return true;
-      } else if (response.status === 401) {
-        // Token is expired, try to refresh
-        const refreshSuccess = await refreshToken();
-
-        if (!refreshSuccess) {
-          // Refresh failed, user needs to login again
-          if (process.env.NODE_ENV === "development") {
-            console.warn("Token refresh failed, logging out user");
+          // If we have a user in localStorage but no userId from token, clear everything
+          if (currentUser && !userId) {
+            console.warn(
+              "User in store but no valid token found, clearing auth state"
+            );
+            clearUser();
+            return;
           }
-          toast.error("Your session has expired. Please log in again.");
+
+          if (userId) {
+            console.warn("Validating user existence in database:", userId);
+
+            // Use cached user data to reduce API calls
+            const userData = await fetchUserWithCache(
+              `${CACHE_KEYS.CURRENT_USER}_${userId}`,
+              async () => {
+                const response = await axios.get(`/api/users/${userId}`);
+                return response.data;
+              },
+              5 * 60 * 1000 // 5 minute cache
+            );
+
+            if (userData?.success && userData?.user) {
+              const userPayload: UserAuthPayload = {
+                _id: userData.user._id,
+                emailAddress: userData.user.emailAddress,
+                username: userData.user.username || "",
+                isEnabled: userData.user.isEnabled,
+                roles: userData.user.roles || [],
+                profile: userData.user.profile || undefined,
+              };
+              console.warn(
+                "User validated successfully:",
+                userPayload.emailAddress
+              );
+              setUser(userPayload);
+            } else {
+              // User not found in database - clear all auth state
+              console.warn("User not found in database, clearing auth state");
+              clearUser();
+              // Also clear localStorage and cookies
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("user-auth-store");
+                document.cookie =
+                  "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie =
+                  "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+              }
+            }
+          } else {
+            // No userId from token - clear user state if it exists
+            if (currentUser) {
+              console.warn(
+                "No valid token but user in store, clearing auth state"
+              );
+              clearUser();
+            }
+          }
+        } catch (error) {
+          console.error("Failed to validate auth:", error);
+
+          // Check if it's a 404 (user not found) or database mismatch error
+          if (axios.isAxiosError(error)) {
+            if (error.response?.status === 404) {
+              console.warn("User not found (404), clearing auth state");
+            } else if (
+              error.response?.data?.message?.includes(
+                "Database context mismatch"
+              )
+            ) {
+              console.warn("Database mismatch detected, clearing auth state");
+            }
+          }
+
+          // Clear user state on any error
           clearUser();
-          onTokenExpired?.();
-          return false;
+
+          // Also clear localStorage and cookies on auth errors
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("user-auth-store");
+            document.cookie =
+              "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie =
+              "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          }
+        } finally {
+          // CRITICAL: Always set initialized and loading to false, even on error
+          // This prevents the login page from getting stuck on skeleton loader
+          setIsInitialized(true);
+          setIsLoading(false);
         }
-
-        return true;
-      } else {
-        // Other error
-        console.error("Token check failed with status:", response.status);
-        return false;
       }
-    } catch (error) {
-      console.error("Token check error:", error);
-      return false;
-    }
-  }, [refreshToken, clearUser, onTokenExpired]);
-
-  /**
-   * Set up automatic token refresh interval
-   */
-  const startTokenRefresh = useCallback(() => {
-    if (refreshTimeoutRef.current) {
-      clearInterval(refreshTimeoutRef.current);
-    }
-
-    refreshTimeoutRef.current = setInterval(async () => {
-      if (user) {
-        // Only check if user is logged in
-        await checkAndRefreshToken();
-      }
-    }, refreshInterval);
-  }, [user, checkAndRefreshToken, refreshInterval]);
-
-  /**
-   * Stop automatic token refresh
-   */
-  const stopTokenRefresh = useCallback(() => {
-    if (refreshTimeoutRef.current) {
-      clearInterval(refreshTimeoutRef.current);
-      refreshTimeoutRef.current = null;
-    }
-  }, []);
-
-  // Set up automatic token refresh when user is logged in
-  useEffect(() => {
-    if (user) {
-      // Start the refresh interval
-      startTokenRefresh();
-
-      // Also check immediately when user is set
-      checkAndRefreshToken();
-    } else {
-      // Stop refresh when user is logged out
-      stopTokenRefresh();
-    }
-
-    return () => {
-      stopTokenRefresh();
     };
-  }, [user, startTokenRefresh, stopTokenRefresh, checkAndRefreshToken]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopTokenRefresh();
-    };
-  }, [stopTokenRefresh]);
+    validateAndInitializeAuth();
+  }, [setUser, clearUser, isInitialized]); // Using getState() to access user without dependency
 
   return {
-    refreshToken,
-    checkAndRefreshToken,
-    startTokenRefresh,
-    stopTokenRefresh,
-    isRefreshing: isRefreshingRef.current,
+    user: user as UserAuthPayload | null,
+    isLoading: isLoading || !isInitialized,
+    isAuthenticated: !!user && user.isEnabled,
   };
 }

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
+    const displayCurrency = (searchParams.get("currency") as CurrencyCode) || "USD";
 
     if (!licensee) {
       return NextResponse.json(
@@ -86,7 +90,27 @@ export async function GET(request: NextRequest) {
       sasMachines: 0,
     };
 
-    return NextResponse.json({ globalStats });
+    // Apply currency conversion if needed
+    let convertedStats = globalStats;
+    
+    if (shouldApplyCurrencyConversion(licensee)) {
+      console.warn("🔍 ANALYTICS DASHBOARD - Applying currency conversion for All Licensee mode");
+      // Convert financial fields from USD to display currency
+      const financialFields = ['totalDrop', 'totalCancelledCredits', 'totalGross'];
+      convertedStats = { ...globalStats };
+      
+      financialFields.forEach(field => {
+        if (typeof globalStats[field] === 'number') {
+          (convertedStats as Record<string, unknown>)[field] = convertFromUSD(globalStats[field], displayCurrency);
+        }
+      });
+    }
+
+    return NextResponse.json({ 
+      globalStats: convertedStats,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licensee)
+    });
   } catch (error) {
     console.error("Error fetching dashboard analytics:", error);
     return NextResponse.json(

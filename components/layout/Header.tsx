@@ -14,6 +14,8 @@ import { fetchMetricsData } from "@/lib/helpers/dashboard";
 import { ClientOnly } from "@/components/ui/ClientOnly";
 import { useUserStore } from "@/lib/store/userStore";
 import { shouldShowNavigationLink } from "@/lib/utils/permissions";
+import { useCurrency } from "@/lib/contexts/CurrencyContext";
+import CurrencyFilter from "@/components/filters/CurrencyFilter";
 
 export default function Header({
   selectedLicencee,
@@ -39,6 +41,11 @@ export default function Header({
     setShowDatePicker,
     setLoadingChartData,
   } = useDashBoardStore();
+  const {
+    isAllLicensee: _isAllLicensee,
+    displayCurrency,
+    setDisplayCurrency,
+  } = useCurrency();
 
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
@@ -47,6 +54,14 @@ export default function Header({
   const handleLicenseeChange = async (newLicensee: string) => {
     if (setSelectedLicencee) {
       setSelectedLicencee(newLicensee);
+    }
+
+    // Update currency context based on licensee selection
+    const isAllLicensee =
+      !newLicensee || newLicensee === "all" || newLicensee === "";
+    if (isAllLicensee) {
+      // Reset to USD when "All Licensee" is selected
+      setDisplayCurrency("USD");
     }
 
     // If we're on the dashboard and have an active filter, refresh data
@@ -60,7 +75,8 @@ export default function Header({
           setTotals,
           setChartData,
           setActiveFilters,
-          setShowDatePicker
+          setShowDatePicker,
+          displayCurrency
         );
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
@@ -104,27 +120,73 @@ export default function Header({
         {/* Header Section: Main header with title and licensee selector */}
         <header className="flex flex-col p-0 w-full">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex items-center justify-start">
-            {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
-            <SidebarTrigger
-              className={cn(
-                "md:hidden cursor-pointer text-foreground p-2 relative z-20",
-                isOpen && "invisible"
-              )}
-              aria-label="Toggle sidebar"
-            >
-              <PanelLeft className="h-6 w-6" suppressHydrationWarning />
-            </SidebarTrigger>
-            <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
-              Evolution CMS
-            </h1>
+          <div className="flex items-center justify-between w-full">
+            {/* Left side: Menu button and title */}
+            <div className="flex items-center">
+              {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
+              <SidebarTrigger
+                className={cn(
+                  "md:hidden cursor-pointer text-foreground p-2 relative z-20",
+                  isOpen && "invisible"
+                )}
+                aria-label="Toggle sidebar"
+              >
+                <PanelLeft className="h-6 w-6" suppressHydrationWarning />
+              </SidebarTrigger>
+              <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
+                Evolution CMS
+              </h1>
+            </div>
 
+            {/* Right side: Filters */}
             {!hideLicenceeFilter && (
-              <div className="xl:ml-2 flex-grow xl:flex-grow-0 flex justify-end xl:justify-start gap-2">
+              <div className="flex items-center gap-2">
                 <LicenceeSelect
                   selected={selectedLicencee || ""}
                   onChange={handleLicenseeChange}
                   disabled={disabled}
+                />
+                {/* Currency selector - only show when "All Licensee" is selected */}
+                <CurrencyFilter
+                  className="hidden md:flex"
+                  disabled={disabled}
+                  onCurrencyChange={() => {
+                    // Trigger data refresh when currency changes
+                    if (pathname === "/" && activeMetricsFilter) {
+                      setLoadingChartData(true);
+                      fetchMetricsData(
+                        activeMetricsFilter,
+                        customDateRange,
+                        selectedLicencee,
+                        setTotals,
+                        setChartData,
+                        setActiveFilters,
+                        setShowDatePicker,
+                        displayCurrency
+                      ).finally(() => setLoadingChartData(false));
+                    }
+                  }}
+                />
+                {/* Mobile Currency selector - show on small screens */}
+                <CurrencyFilter
+                  className="flex md:hidden"
+                  disabled={disabled}
+                  onCurrencyChange={() => {
+                    // Trigger data refresh when currency changes
+                    if (pathname === "/" && activeMetricsFilter) {
+                      setLoadingChartData(true);
+                      fetchMetricsData(
+                        activeMetricsFilter,
+                        customDateRange,
+                        selectedLicencee,
+                        setTotals,
+                        setChartData,
+                        setActiveFilters,
+                        setShowDatePicker,
+                        displayCurrency
+                      ).finally(() => setLoadingChartData(false));
+                    }
+                  }}
                 />
               </div>
             )}
@@ -320,6 +382,30 @@ export default function Header({
                         <span className="text-lg font-medium">Sessions</span>
                       </motion.button>
                     )}
+
+                    {/* Mobile Currency Selector - only show when "All Licensee" is selected */}
+                    <div className="mt-6 p-4 border-t border-gray-200">
+                      <CurrencyFilter
+                        className="w-full"
+                        disabled={disabled}
+                        onCurrencyChange={() => {
+                          // Trigger data refresh when currency changes
+                          if (pathname === "/" && activeMetricsFilter) {
+                            setLoadingChartData(true);
+                            fetchMetricsData(
+                              activeMetricsFilter,
+                              customDateRange,
+                              selectedLicencee,
+                              setTotals,
+                              setChartData,
+                              setActiveFilters,
+                              setShowDatePicker,
+                              displayCurrency
+                            ).finally(() => setLoadingChartData(false));
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Logout Button Section: User logout functionality */}

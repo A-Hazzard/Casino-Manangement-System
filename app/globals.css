@@ -35,6 +35,25 @@
     --sidebar-collapsed: 5rem; /* 80px */
   }
 
+  /* Custom scrollbar styles for mobile collection modal */
+  .mobile-collection-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .mobile-collection-scrollbar::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+  }
+
+  .mobile-collection-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+
+  .mobile-collection-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
@@ -174,10 +193,10 @@ input[type="checkbox"] {
   /* Reserve left padding for the sidebar on md+ */
   @media (min-width: 768px) {
     .md\:pl-sidebar-expanded {
-      padding-left: var(--sidebar-expanded);
+      padding-left: var(--sidebar-expanded) !important;
     }
     .md\:pl-sidebar-collapsed {
-      padding-left: var(--sidebar-collapsed);
+      padding-left: var(--sidebar-collapsed) !important;
     }
   }
 }

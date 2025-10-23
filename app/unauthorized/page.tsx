@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useUserStore } from "@/lib/store/userStore";
 import { getRoleDisplayName } from "@/lib/utils/permissions";
+import {
+  getDefaultRedirectPathFromRoles,
+  getRedirectDestinationNameFromRoles,
+} from "@/lib/utils/roleBasedRedirect";
 
 /**
  * Unauthorized Access Page
@@ -14,19 +18,25 @@ export default function UnauthorizedPage() {
   const { user } = useUserStore();
 
   useEffect(() => {
-    // Auto-redirect after 5 seconds
+    // Auto-redirect after 5 seconds based on user role
     const timer = setTimeout(() => {
-      router.push("/");
+      const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+      router.push(redirectPath);
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [router, user]);
 
   const userRole = user?.roles ? getRoleDisplayName(user.roles) : "User";
   const userName =
     user?.profile?.firstName && user?.profile?.lastName
       ? `${user.profile.firstName} ${user.profile.lastName}`
       : user?.username || "User";
+
+  const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+  const redirectDestination = getRedirectDestinationNameFromRoles(
+    user?.roles || []
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -66,10 +76,10 @@ export default function UnauthorizedPage() {
 
         <div className="space-y-3">
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push(redirectPath)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
           >
-            Go to Dashboard
+            Go to {redirectDestination}
           </button>
 
           <button
@@ -81,7 +91,8 @@ export default function UnauthorizedPage() {
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          You will be automatically redirected to the dashboard in 5 seconds.
+          You will be automatically redirected to {redirectDestination} in 5
+          seconds.
         </p>
       </div>
     </div>

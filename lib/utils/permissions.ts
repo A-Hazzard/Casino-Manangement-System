@@ -61,13 +61,22 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       "collector",
       "collector meters",
     ],
-    locations: ["evolution admin", "admin", "manager", "location admin"],
+    locations: [
+      "evolution admin",
+      "admin",
+      "manager",
+      "location admin",
+      "collector",
+      "collector meters",
+    ],
     "location-details": [
       "evolution admin",
       "admin",
       "manager",
       "location admin",
       "technician",
+      "collector",
+      "collector meters",
     ],
     members: ["evolution admin", "admin", "manager"],
     "member-details": [
@@ -84,6 +93,7 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       "location admin",
       "collector",
       "collector meters",
+      "technician",
     ],
     reports: ["evolution admin", "admin", "manager", "location admin"],
     sessions: [
@@ -114,8 +124,8 @@ export const hasTabAccess = (
 ): boolean => {
   const tabPermissions: Record<string, string[]> = {
     "administration-users": ["evolution admin", "admin"],
-    "administration-licensees": ["evolution admin"],
-    "administration-activity-logs": ["evolution admin"],
+    "administration-licensees": ["evolution admin", "admin"],
+    "administration-activity-logs": ["evolution admin", "admin"],
     "collection-reports-monthly": [
       "evolution admin",
       "admin",

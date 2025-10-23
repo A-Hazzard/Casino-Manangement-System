@@ -29,7 +29,9 @@ export async function createAggressiveIndexes() {
     try {
       // Drop unique username index if it exists, to avoid duplicate key issues
       const indexes = await Member.collection.indexes();
-      const hasUsernameIdx = indexes.some((idx) => idx.name === "member_username");
+      const hasUsernameIdx = indexes.some(
+        (idx) => idx.name === "member_username"
+      );
       if (hasUsernameIdx) {
         try {
           await Member.collection.dropIndex("member_username");
@@ -39,7 +41,10 @@ export async function createAggressiveIndexes() {
         }
       }
       // Recreate as non-unique index
-      await Member.collection.createIndex({ username: 1 }, { name: "member_username" });
+      await Member.collection.createIndex(
+        { username: 1 },
+        { name: "member_username" }
+      );
     } catch (usernameIdxErr) {
       console.warn("Username index adjustment warning:", usernameIdxErr);
     }
@@ -121,10 +126,10 @@ export async function createAggressiveIndexes() {
       { name: "event_text_search" }
     );
 
-    // console.log("✅ All aggressive indexes created successfully!");
+    // console.log(" All aggressive indexes created successfully!");
     return { success: true, message: "Indexes created successfully" };
   } catch (error) {
-    console.error("❌ Error creating indexes:", error);
+    console.error(" Error creating indexes:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

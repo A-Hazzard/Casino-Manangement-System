@@ -3,6 +3,9 @@ import { connectDB } from "@/app/api/lib/middleware/db";
 import { Meters } from "@/app/api/lib/models/meters";
 import { subDays } from "date-fns";
 import mongoose, { PipelineStage } from "mongoose";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,6 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
     const period = searchParams.get("period") ?? "last30days";
+    const displayCurrency = (searchParams.get("currency") as CurrencyCode) || "USD";
 
     if (!licensee) {
       return NextResponse.json(
@@ -111,7 +115,29 @@ export async function GET(request: NextRequest) {
 
     const series = await Meters.aggregate(chartsPipeline);
 
-    return NextResponse.json({ series });
+    // Apply currency conversion if needed
+    let convertedSeries = series;
+    
+    if (shouldApplyCurrencyConversion(licensee)) {
+      console.warn("🔍 ANALYTICS CHARTS - Applying currency conversion for All Licensee mode");
+      // Convert financial fields from USD to display currency
+      const financialFields = ['totalDrop', 'cancelledCredits', 'gross'];
+      convertedSeries = series.map((item: Record<string, unknown>) => {
+        const convertedItem = { ...item };
+        financialFields.forEach(field => {
+          if (typeof item[field] === 'number') {
+            (convertedItem as Record<string, unknown>)[field] = convertFromUSD(item[field] as number, displayCurrency);
+          }
+        });
+        return convertedItem;
+      });
+    }
+
+    return NextResponse.json({ 
+      series: convertedSeries,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licensee)
+    });
   } catch (error) {
     console.error("Error fetching chart data:", error);
     return NextResponse.json(

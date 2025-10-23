@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Machine } from "@/app/api/lib/models/machines";
 import { PipelineStage } from "mongoose";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +17,7 @@ export async function GET(request: NextRequest) {
     }
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get("licensee");
+    const displayCurrency = (searchParams.get("currency") as CurrencyCode) || "USD";
 
     if (!licensee) {
       return NextResponse.json(
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
     const topLocations = await Machine.aggregate(locationsPipeline);
 
     // Get financial metrics for each location using meters collection
-    const topLocationsWithMetrics = await Promise.all(
+    let topLocationsWithMetrics = await Promise.all(
       topLocations.map(async (location) => {
         const locationId = location._id.toString();
         
@@ -153,8 +157,25 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // Apply currency conversion if needed
+    if (shouldApplyCurrencyConversion(licensee)) {
+      console.warn("🔍 ANALYTICS LOCATIONS - Applying currency conversion for All Licensee mode");
+      // Convert financial fields from USD to display currency
+      topLocationsWithMetrics = topLocationsWithMetrics.map((location) => {
+        return {
+          ...location,
+          totalDrop: convertFromUSD(location.totalDrop, displayCurrency),
+          gross: convertFromUSD(location.gross, displayCurrency),
+        };
+      });
+    }
+    
+    const convertedLocations = topLocationsWithMetrics;
+
     return NextResponse.json({
-      topLocations: topLocationsWithMetrics,
+      topLocations: convertedLocations,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licensee)
     });
   } catch (error) {
     console.error("Error fetching location analytics:", error);

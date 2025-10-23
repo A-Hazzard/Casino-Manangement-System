@@ -1,6 +1,7 @@
 import { Db, Document } from "mongodb";
 import { AggregatedLocation, LocationDateRange } from "@/lib/types/location";
 import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
+import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
@@ -17,13 +18,16 @@ import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
  */
 export const getLocationsWithMetrics = async (
   db: Db,
-  { startDate, endDate }: LocationDateRange,
+  _dateRange: LocationDateRange,
   licencee?: string,
   page: number = 1,
   limit: number = 50,
   sasEvaluationOnly: boolean = false,
   basicList: boolean = false,
-  selectedLocations?: string
+  selectedLocations?: string,
+  timePeriod?: string,
+  customStartDate?: Date,
+  customEndDate?: Date
 ): Promise<{ rows: AggregatedLocation[]; totalCount: number }> => {
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -91,10 +95,19 @@ export const getLocationsWithMetrics = async (
       };
     }
 
-    // Now aggregate meters for each location using the working query pattern
+    // Now aggregate meters for each location using gaming day ranges
     const locationsWithMetrics = await Promise.all(
       locations.map(async (location) => {
         const locationId = location._id.toString();
+        const gameDayOffset = location.gameDayOffset || 0;
+
+        // Calculate gaming day range for this location
+        const gamingDayRange = getGamingDayRangeForPeriod(
+          timePeriod || "Today",
+          gameDayOffset,
+          customStartDate,
+          customEndDate
+        );
 
         // First get all machines for this location
         const machinesForLocation = await db
@@ -113,21 +126,17 @@ export const getLocationsWithMetrics = async (
 
         const machineIds = machinesForLocation.map((m) => m._id);
 
-        // Now aggregate meters for all machines in this location
+        // Now aggregate meters for all machines in this location using gaming day range
         const metersAggregation = await db
           .collection("meters")
           .aggregate([
             {
               $match: {
                 machine: { $in: machineIds }, // Match by machine IDs, not location
-                ...(startDate && endDate
-                  ? {
-                      readAt: {
-                        $gte: startDate,
-                        $lte: endDate,
-                      },
-                    }
-                  : {}),
+                readAt: {
+                  $gte: gamingDayRange.rangeStart,
+                  $lte: gamingDayRange.rangeEnd,
+                },
               },
             },
             {
@@ -221,12 +230,16 @@ export const getLocationsWithMetrics = async (
 
     // Filter by SAS evaluation if requested
     const filteredLocations = sasEvaluationOnly
-      ? locationsWithMetrics.filter((loc) => (loc as unknown as { sasMachines: number }).sasMachines > 0)
+      ? locationsWithMetrics.filter(
+          (loc) => (loc as unknown as { sasMachines: number }).sasMachines > 0
+        )
       : locationsWithMetrics;
 
     // Sort locations alphabetically by name
     const sortedLocations = filteredLocations.sort((a, b) =>
-      (a as unknown as { locationName: string }).locationName.localeCompare((b as unknown as { locationName: string }).locationName)
+      (a as unknown as { locationName: string }).locationName.localeCompare(
+        (b as unknown as { locationName: string }).locationName
+      )
     );
 
     const allResults = sortedLocations;

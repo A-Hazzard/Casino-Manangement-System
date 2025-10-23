@@ -86,15 +86,15 @@ export type UseAdministrationDataReturn = {
   users: User[];
   licensees: Licensee[];
   activityLogs: ActivityLogData[];
-  
+
   // Loading states
   loadingUsers: boolean;
   loadingLicensees: boolean;
   loadingActivityLogs: boolean;
-  
+
   // Error states
   error: string | null;
-  
+
   // Actions
   refreshUsers: () => Promise<void>;
   refreshLicensees: () => Promise<void>;

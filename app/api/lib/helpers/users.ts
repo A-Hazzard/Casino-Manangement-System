@@ -41,6 +41,14 @@ function validateDatabaseContext(
       tokenContext: tokenDbContext,
       currentContext: currentDbContext,
     });
+
+    // In development, we can be more lenient or provide better error messages
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "🔧 Development mode: Database context mismatch detected. Clear your browser cookies and login again."
+      );
+    }
+
     return false;
   }
 

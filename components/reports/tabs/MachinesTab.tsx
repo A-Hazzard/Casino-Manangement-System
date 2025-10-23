@@ -14,7 +14,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown, Monitor } from "lucide-react";
+import {
+  BarChart3,
+  Download,
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  Monitor,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useReportsStore } from "@/lib/store/reportsStore";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { exportData } from "@/lib/utils/exportUtils";
@@ -30,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   handleMachineSort as handleMachineSortHelper,
   sortEvaluationData as sortEvaluationDataHelper,
-  handleExportMeters as handleExportMetersHelper
+  handleExportMeters as handleExportMetersHelper,
 } from "@/lib/helpers/reportsPage";
 import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 
@@ -42,7 +50,7 @@ import {
   ChartSkeleton,
   MachinesOverviewSkeleton,
   MachinesEvaluationSkeleton,
-  MachinesOfflineSkeleton
+  MachinesOfflineSkeleton,
 } from "@/components/ui/skeletons/ReportsSkeletons";
 import { MachineEvaluationSummary } from "@/components/ui/MachineEvaluationSummary";
 import { ManufacturerPerformanceChart } from "@/components/ui/ManufacturerPerformanceChart";
@@ -54,9 +62,7 @@ import type {
   MachineStats,
   MachineStatsApiResponse,
 } from "@/shared/types/machines";
-import type {
-  MachineEvaluationData,
-} from "@/lib/types";
+import type { MachineEvaluationData } from "@/lib/types";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
 
@@ -68,12 +74,12 @@ const SortableHeader = ({
   children, 
   sortKey, 
   currentSort, 
-  onSort 
+  onSort,
 }: { 
   children: React.ReactNode; 
-  sortKey: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; 
-  currentSort: { key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; direction: 'asc' | 'desc' }; 
-  onSort: (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => void; 
+  sortKey: keyof MachineData;
+  currentSort: { key: keyof MachineData; direction: "asc" | "desc" };
+  onSort: (key: keyof MachineData) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
   
@@ -85,7 +91,7 @@ const SortableHeader = ({
       <div className="flex items-center gap-1">
         {children}
         {isActive ? (
-          currentSort.direction === 'asc' ? (
+          currentSort.direction === "asc" ? (
             <ChevronUp className="w-4 h-4" />
           ) : (
             <ChevronDown className="w-4 h-4" />
@@ -100,22 +106,20 @@ const SortableHeader = ({
   );
 };
 
-
-
 export default function MachinesTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   // Separate states for different purposes (streaming approach)
   const [overviewMachines, setOverviewMachines] = useState<MachineData[]>([]); // Paginated for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
   const [offlineMachines, setOfflineMachines] = useState<MachineData[]>([]); // Offline machines only
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
   
-
-  
   // Manufacturer performance data
-  const [manufacturerData, setManufacturerData] = useState<Array<{
+  const [manufacturerData, setManufacturerData] = useState<
+    Array<{
     manufacturer: string;
     floorPositions: number;
     totalHandle: number;
@@ -123,11 +127,13 @@ export default function MachinesTab() {
     totalDrop: number;
     totalCancelledCredits: number;
     totalGross: number;
-  }>>([]);
+    }>
+  >([]);
   const [manufacturerLoading] = useState(false);
   
   // Games performance data
-  const [gamesData, setGamesData] = useState<Array<{
+  const [gamesData, setGamesData] = useState<
+    Array<{
     gameName: string;
     floorPositions: number;
     totalHandle: number;
@@ -135,15 +141,16 @@ export default function MachinesTab() {
     totalDrop: number;
     totalCancelledCredits: number;
     totalGross: number;
-  }>>([]);
+    }>
+  >([]);
   const [gamesLoading] = useState(false);
   
   // Summary calculations
   const [percOfTopMachines, setPercOfTopMachines] = useState(0);
   const [percOfTopMachCoinIn, setPercOfTopMachCoinIn] = useState(0);
-  const [locations, setLocations] = useState<{ id: string; name: string; sasEnabled: boolean }[]>(
-    []
-  );
+  const [locations, setLocations] = useState<
+    { id: string; name: string; sasEnabled: boolean }[]
+  >([]);
 
   // Loading states for each section
   const [statsLoading, setStatsLoading] = useState(true);
@@ -163,16 +170,13 @@ export default function MachinesTab() {
     hasPrevPage: false,
   });
 
-
-
-
   // Sorting state for machine overview table
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn';
-    direction: 'asc' | 'desc';
+    key: keyof MachineData;
+    direction: "asc" | "desc";
   }>({
-    key: 'netWin',
-    direction: 'desc'
+    key: "netWin",
+    direction: "desc",
   });
 
   // Pagination for offline machines tab
@@ -186,11 +190,9 @@ export default function MachinesTab() {
   });
 
   // Sorting function for machine overview table
-  const handleSort = (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => {
+  const handleSort = (key: keyof MachineData) => {
     handleMachineSortHelper(key, setSortConfig);
   };
-
-
 
   // Sort function for evaluation data (different structure)
   const sortEvaluationData = (machines: typeof evaluationData) => {
@@ -211,14 +213,16 @@ export default function MachinesTab() {
 
   const [onlineStatusFilter, setOnlineStatusFilter] = useState("all"); // New filter for online/offline
 
-
   const [activeTab, setActiveTab] = useState("overview");
 
   // Location selection states for each tab (single location selection)
-  const [overviewSelectedLocation, setOverviewSelectedLocation] = useState<string>("all");
+  const [overviewSelectedLocation, setOverviewSelectedLocation] =
+    useState<string>("all");
 
-  const [evaluationSelectedLocation, setEvaluationSelectedLocation] = useState<string>("");
-  const [offlineSelectedLocation, setOfflineSelectedLocation] = useState<string>("all");
+  const [evaluationSelectedLocation, setEvaluationSelectedLocation] =
+    useState<string>("");
+  const [offlineSelectedLocation, setOfflineSelectedLocation] =
+    useState<string>("all");
 
   // Fetch locations data
   const fetchLocationsData = useCallback(async () => {
@@ -231,16 +235,28 @@ export default function MachinesTab() {
       const response = await axios.get("/api/locations", { params });
 
       const locationsData = response.data.locations || [];
-      const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
+      const mappedLocations = locationsData.map(
+        (loc: Record<string, unknown>) => ({
         id: loc._id,
         name: loc.name,
         sasEnabled: loc.sasEnabled || false, // Default to false if not available
-      }));
+        })
+      );
 
       setLocations(mappedLocations);
     } catch (error) {
       console.error("Failed to fetch locations:", error);
-      const errorMessage = (((error as Record<string, unknown>).response as Record<string, unknown>)?.data as Record<string, unknown>)?.error || (error as Record<string, unknown>).message || "Failed to load locations";
+      const errorMessage =
+        (
+          (
+            (error as Record<string, unknown>).response as Record<
+              string,
+              unknown
+            >
+          )?.data as Record<string, unknown>
+        )?.error ||
+        (error as Record<string, unknown>).message ||
+        "Failed to load locations";
       toast.error(errorMessage as string);
       // Set empty locations array to prevent further errors
       setLocations([]);
@@ -281,7 +297,13 @@ export default function MachinesTab() {
     } finally {
       setStatsLoading(false);
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeMetricsFilter]);
+  }, [
+    selectedLicencee,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+    onlineStatusFilter,
+    activeMetricsFilter,
+  ]);
 
   // Fetch overview machines (paginated)
   const fetchOverviewMachines = useCallback(
@@ -336,13 +358,19 @@ export default function MachinesTab() {
         setOverviewLoading(false);
       }
     },
-    [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, overviewSelectedLocation, activeMetricsFilter]
+    [
+      selectedLicencee,
+      selectedDateRange?.start,
+      selectedDateRange?.end,
+      onlineStatusFilter,
+      overviewSelectedLocation,
+      activeMetricsFilter,
+    ]
   );
 
   // Fetch all machines for performance analysis (loads on tab switch)
   const fetchAllMachines = useCallback(async () => {
     try {
-
       const params: Record<string, string> = {
         type: "all",
         timePeriod: activeMetricsFilter || "Today",
@@ -353,7 +381,12 @@ export default function MachinesTab() {
       }
 
       // Apply location filter based on active tab
-      if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "all" && evaluationSelectedLocation !== "") {
+      if (
+        activeTab === "evaluation" &&
+        evaluationSelectedLocation &&
+        evaluationSelectedLocation !== "all" &&
+        evaluationSelectedLocation !== ""
+      ) {
         params.locationId = evaluationSelectedLocation;
       }
 
@@ -377,9 +410,16 @@ export default function MachinesTab() {
       console.error("Failed to fetch all machines:", error);
       toast.error("Failed to load performance analysis data");
     } finally {
-
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, onlineStatusFilter, activeTab, evaluationSelectedLocation, activeMetricsFilter]);
+  }, [
+    selectedLicencee,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+    onlineStatusFilter,
+    activeTab,
+    evaluationSelectedLocation,
+    activeMetricsFilter,
+  ]);
 
   // Fetch offline machines (loads on tab switch)
   const fetchOfflineMachines = useCallback(async () => {
@@ -408,7 +448,9 @@ export default function MachinesTab() {
       //   params.onlineStatus = onlineStatusFilter;
       // }
 
-      console.warn(`🔍 Fetching offline machines with params: ${JSON.stringify(params)}`);
+      console.warn(
+        `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
+      );
 
       const response = await axios.get<MachinesApiResponse>(
         "/api/reports/machines",
@@ -423,8 +465,13 @@ export default function MachinesTab() {
     } finally {
       setOfflineLoading(false);
     }
-  }, [selectedLicencee, selectedDateRange?.start, selectedDateRange?.end, offlineSelectedLocation, activeMetricsFilter]);
-
+  }, [
+    selectedLicencee,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+    offlineSelectedLocation,
+    activeMetricsFilter,
+  ]);
 
   // Handle search with backend fallback for overview tab
   const handleSearchChange = useCallback(
@@ -443,10 +490,7 @@ export default function MachinesTab() {
     [fetchOverviewMachines]
   );
 
-
-
   // Handle evaluation search change
-
 
   // Handle offline search change
   const handleOfflineSearchChange = useCallback((value: string) => {
@@ -458,8 +502,6 @@ export default function MachinesTab() {
     fetchOverviewMachines(newPage, searchTerm);
   };
 
-
-
   // Handle pagination for offline tab
   const handleOfflinePageChange = (newPage: number) => {
     setOfflinePagination((prev) => ({
@@ -469,8 +511,6 @@ export default function MachinesTab() {
       hasPrevPage: newPage > 1,
     }));
   };
-
-
 
   const handleExportMeters = async () => {
     await handleExportMetersHelper(
@@ -483,12 +523,6 @@ export default function MachinesTab() {
       toast
     );
   };
-
-
-
-
-
-
 
   // Filter offline data based on search
   const filteredOfflineData = useMemo(() => {
@@ -524,8 +558,6 @@ export default function MachinesTab() {
     if (holdDifference >= -1) return "average";
     return "poor";
   };
-
-
 
   const formatOfflineDuration = (hours: number) => {
     if (hours === 0) return "Less than 1 hour";
@@ -566,11 +598,31 @@ export default function MachinesTab() {
       return {
         machineId: machine.machineId,
         serialNumber:
-          (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-          (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
+          (typeof (machine as Record<string, unknown>).serialNumber ===
+            "string" &&
+            (
+              (machine as Record<string, unknown>).serialNumber as string
+            ).trim()) ||
+          (typeof (machine as Record<string, unknown>).origSerialNumber ===
+            "string" &&
+            (
+              (machine as Record<string, unknown>).origSerialNumber as string
+            ).trim()) ||
           (typeof (machine as Record<string, unknown>).custom === "object" && 
-           typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
-           (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
+            typeof (
+              (machine as Record<string, unknown>).custom as Record<
+                string,
+                unknown
+              >
+            )?.name === "string" &&
+            (
+              (
+                (machine as Record<string, unknown>).custom as Record<
+                  string,
+                  unknown
+                >
+              ).name as string
+            ).trim()) ||
           machine.machineId,
         machineName: machine.machineName,
         locationName: machine.locationName,
@@ -622,14 +674,15 @@ export default function MachinesTab() {
     if (!filteredEvaluationData.length) return [];
 
     // Get all machines for the selected location (not filtered by search)
-    const locationMachines = evaluationData.filter((machine) => 
+    const locationMachines = evaluationData.filter(
+      (machine) =>
       evaluationSelectedLocation === "all" || 
       evaluationSelectedLocation === machine.locationId
     );
 
     // Group by manufacturer using ALL location machines (not filtered by search)
     const groupByManufacturer = locationMachines.reduce((acc, machine) => {
-      const manufacturer = machine.manufacturer || 'Other';
+      const manufacturer = machine.manufacturer || "Other";
       if (!acc[manufacturer]) {
         acc[manufacturer] = [];
       }
@@ -638,13 +691,16 @@ export default function MachinesTab() {
     }, {} as Record<string, typeof locationMachines>);
 
     // Calculate total metrics across all machines for percentage calculations
-    const totalMetrics = locationMachines.reduce((acc, machine) => ({
+    const totalMetrics = locationMachines.reduce(
+      (acc, machine) => ({
       coinIn: acc.coinIn + (machine.coinIn || 0),
       netWin: acc.netWin + (machine.netWin || 0),
       drop: acc.drop + (machine.drop || 0),
       gross: acc.gross + (machine.gross || 0),
       cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
-    }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+      }),
+      { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+    );
 
     const activeMachinesNumber = locationMachines.length;
 
@@ -652,13 +708,25 @@ export default function MachinesTab() {
       const machines = groupByManufacturer[manufacturer];
       const floorPositions = (machines.length / activeMachinesNumber) * 100;
       
-      const totals = machines.reduce((acc: { coinIn: number; netWin: number; drop: number; gross: number; cancelledCredits: number }, machine: MachineEvaluationData) => ({
+      const totals = machines.reduce(
+        (
+          acc: {
+            coinIn: number;
+            netWin: number;
+            drop: number;
+            gross: number;
+            cancelledCredits: number;
+          },
+          machine: MachineEvaluationData
+        ) => ({
         coinIn: acc.coinIn + (machine.coinIn || 0),
         netWin: acc.netWin + (machine.netWin || 0),
         drop: acc.drop + (machine.drop || 0),
         gross: acc.gross + (machine.gross || 0),
         cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
-      }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+        }),
+        { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+      );
 
       return {
         manufacturer,
@@ -673,14 +741,15 @@ export default function MachinesTab() {
     if (!filteredEvaluationData.length) return [];
 
     // Get all machines for the selected location (not filtered by search)
-    const locationMachines = evaluationData.filter((machine) => 
+    const locationMachines = evaluationData.filter(
+      (machine) =>
       evaluationSelectedLocation === "all" || 
       evaluationSelectedLocation === machine.locationId
     );
 
     // Group by game name using ALL location machines (not filtered by search)
     const groupByGameName = locationMachines.reduce((acc, machine) => {
-      const gameName = machine.gameTitle || 'Other';
+      const gameName = machine.gameTitle || "Other";
       if (!acc[gameName]) {
         acc[gameName] = [];
       }
@@ -689,13 +758,16 @@ export default function MachinesTab() {
     }, {} as Record<string, typeof locationMachines>);
 
     // Calculate total metrics across all machines for percentage calculations
-    const totalMetrics = locationMachines.reduce((acc, machine) => ({
+    const totalMetrics = locationMachines.reduce(
+      (acc, machine) => ({
       coinIn: acc.coinIn + (machine.coinIn || 0),
       netWin: acc.netWin + (machine.netWin || 0),
       drop: acc.drop + (machine.drop || 0),
       gross: acc.gross + (machine.gross || 0),
       cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
-    }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+      }),
+      { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+    );
 
     const activeMachinesNumber = locationMachines.length;
 
@@ -703,13 +775,25 @@ export default function MachinesTab() {
       const machines = groupByGameName[gameName];
       const floorPositions = (machines.length / activeMachinesNumber) * 100;
       
-      const totals = machines.reduce((acc: { coinIn: number; netWin: number; drop: number; gross: number; cancelledCredits: number }, machine: MachineEvaluationData) => ({
+      const totals = machines.reduce(
+        (
+          acc: {
+            coinIn: number;
+            netWin: number;
+            drop: number;
+            gross: number;
+            cancelledCredits: number;
+          },
+          machine: MachineEvaluationData
+        ) => ({
         coinIn: acc.coinIn + (machine.coinIn || 0),
         netWin: acc.netWin + (machine.netWin || 0),
         drop: acc.drop + (machine.drop || 0),
         gross: acc.gross + (machine.gross || 0),
         cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
-      }), { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 });
+        }),
+        { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+      );
 
       return {
         gameName,
@@ -726,17 +810,37 @@ export default function MachinesTab() {
 
     // Use the total metrics from the first item (all items have the same totalMetrics)
     const totalMetrics = processedManufacturerData[0]?.totalMetrics || {
-      coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0
+      coinIn: 0,
+      netWin: 0,
+      drop: 0,
+      gross: 0,
+      cancelledCredits: 0,
     };
 
-    return processedManufacturerData.map(item => ({
+    return processedManufacturerData.map((item) => ({
       manufacturer: item.manufacturer,
       floorPositions: item.floorPositions,
-      totalHandle: totalMetrics.coinIn > 0 ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100 : 0,
-      totalWin: totalMetrics.netWin > 0 ? (item.rawTotals.netWin / totalMetrics.netWin) * 100 : 0,
-      totalDrop: totalMetrics.drop > 0 ? (item.rawTotals.drop / totalMetrics.drop) * 100 : 0,
-      totalCancelledCredits: totalMetrics.cancelledCredits > 0 ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) * 100 : 0,
-      totalGross: totalMetrics.gross > 0 ? (item.rawTotals.gross / totalMetrics.gross) * 100 : 0,
+      totalHandle:
+        totalMetrics.coinIn > 0
+          ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100
+          : 0,
+      totalWin:
+        totalMetrics.netWin > 0
+          ? (item.rawTotals.netWin / totalMetrics.netWin) * 100
+          : 0,
+      totalDrop:
+        totalMetrics.drop > 0
+          ? (item.rawTotals.drop / totalMetrics.drop) * 100
+          : 0,
+      totalCancelledCredits:
+        totalMetrics.cancelledCredits > 0
+          ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) *
+            100
+          : 0,
+      totalGross:
+        totalMetrics.gross > 0
+          ? (item.rawTotals.gross / totalMetrics.gross) * 100
+          : 0,
     }));
   }, [processedManufacturerData]);
 
@@ -746,43 +850,70 @@ export default function MachinesTab() {
 
     // Use the total metrics from the first item (all items have the same totalMetrics)
     const totalMetrics = processedGamesData[0]?.totalMetrics || {
-      coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0
+      coinIn: 0,
+      netWin: 0,
+      drop: 0,
+      gross: 0,
+      cancelledCredits: 0,
     };
 
-    return processedGamesData.map(item => ({
+    return processedGamesData.map((item) => ({
       gameName: item.gameName,
       floorPositions: item.floorPositions,
-      totalHandle: totalMetrics.coinIn > 0 ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100 : 0,
-      totalWin: totalMetrics.netWin > 0 ? (item.rawTotals.netWin / totalMetrics.netWin) * 100 : 0,
-      totalDrop: totalMetrics.drop > 0 ? (item.rawTotals.drop / totalMetrics.drop) * 100 : 0,
-      totalCancelledCredits: totalMetrics.cancelledCredits > 0 ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) * 100 : 0,
-      totalGross: totalMetrics.gross > 0 ? (item.rawTotals.gross / totalMetrics.gross) * 100 : 0,
+      totalHandle:
+        totalMetrics.coinIn > 0
+          ? (item.rawTotals.coinIn / totalMetrics.coinIn) * 100
+          : 0,
+      totalWin:
+        totalMetrics.netWin > 0
+          ? (item.rawTotals.netWin / totalMetrics.netWin) * 100
+          : 0,
+      totalDrop:
+        totalMetrics.drop > 0
+          ? (item.rawTotals.drop / totalMetrics.drop) * 100
+          : 0,
+      totalCancelledCredits:
+        totalMetrics.cancelledCredits > 0
+          ? (item.rawTotals.cancelledCredits / totalMetrics.cancelledCredits) *
+            100
+          : 0,
+      totalGross:
+        totalMetrics.gross > 0
+          ? (item.rawTotals.gross / totalMetrics.gross) * 100
+          : 0,
     }));
   }, [processedGamesData]);
 
   // Calculate summary percentages (based on Angular logic)
   const summaryCalculations = useMemo(() => {
-    if (!filteredEvaluationData.length) return { percOfTopMachines: 0, percOfTopMachCoinIn: 0 };
+    if (!filteredEvaluationData.length)
+      return { percOfTopMachines: 0, percOfTopMachCoinIn: 0 };
 
     const HOURS_PER_DAY = 24;
     const AVG_CONTRIBUTE_RATIO = 0.75;
     const machinesNumber = filteredEvaluationData.length;
     
     const coinInTotal = filteredEvaluationData.reduce((sum, machine) => {
-      return sum + ((machine.coinIn || 0) / HOURS_PER_DAY);
+      return sum + (machine.coinIn || 0) / HOURS_PER_DAY;
     }, 0);
     
-    const avgLocationHandle = (coinInTotal / machinesNumber) * AVG_CONTRIBUTE_RATIO;
-    const machinesMoreThanAvg = filteredEvaluationData.filter(machine => 
-      ((machine.coinIn || 0) / HOURS_PER_DAY) >= avgLocationHandle
+    const avgLocationHandle =
+      (coinInTotal / machinesNumber) * AVG_CONTRIBUTE_RATIO;
+    const machinesMoreThanAvg = filteredEvaluationData.filter(
+      (machine) => (machine.coinIn || 0) / HOURS_PER_DAY >= avgLocationHandle
     );
-    
-    const topMachinesCoinInTotal = machinesMoreThanAvg.reduce((sum, machine) => {
-      return sum + ((machine.coinIn || 0) / HOURS_PER_DAY);
-    }, 0);
-    
-    const percOfTopMachines = (machinesMoreThanAvg.length / machinesNumber) * 100;
-    const percOfTopMachCoinIn = coinInTotal > 0 ? (topMachinesCoinInTotal / coinInTotal) * 100 : 0;
+
+    const topMachinesCoinInTotal = machinesMoreThanAvg.reduce(
+      (sum, machine) => {
+        return sum + (machine.coinIn || 0) / HOURS_PER_DAY;
+      },
+      0
+    );
+
+    const percOfTopMachines =
+      (machinesMoreThanAvg.length / machinesNumber) * 100;
+    const percOfTopMachCoinIn =
+      coinInTotal > 0 ? (topMachinesCoinInTotal / coinInTotal) * 100 : 0;
 
     return { percOfTopMachines, percOfTopMachCoinIn };
   }, [filteredEvaluationData]);
@@ -793,11 +924,11 @@ export default function MachinesTab() {
     setGamesData(gamesDataWithPercentages);
     setPercOfTopMachines(summaryCalculations.percOfTopMachines);
     setPercOfTopMachCoinIn(summaryCalculations.percOfTopMachCoinIn);
-  }, [manufacturerDataWithPercentages, gamesDataWithPercentages, summaryCalculations]);
-
-
-
-
+  }, [
+    manufacturerDataWithPercentages,
+    gamesDataWithPercentages,
+    summaryCalculations,
+  ]);
 
   // Load data on component mount and when dependencies change
   useEffect(() => {
@@ -843,14 +974,13 @@ export default function MachinesTab() {
     fetchMachineStats,
     fetchOverviewMachines,
     fetchLocationsData,
-    fetchAllMachines
+    fetchAllMachines,
   ]);
 
   // Show loading state for current tab when licensee changes
   useEffect(() => {
     if (activeTab === "overview") {
       setOverviewLoading(true);
-
     } else if (activeTab === "evaluation") {
       setEvaluationLoading(true);
     } else if (activeTab === "offline") {
@@ -866,12 +996,20 @@ export default function MachinesTab() {
   }, [overviewSelectedLocation, activeTab, fetchOverviewMachines, searchTerm]);
 
   useEffect(() => {
-    if (activeTab === "evaluation" && evaluationSelectedLocation && evaluationSelectedLocation !== "") {
+    if (
+      activeTab === "evaluation" &&
+      evaluationSelectedLocation &&
+      evaluationSelectedLocation !== ""
+    ) {
       fetchAllMachines();
     }
-  }, [evaluationSelectedLocation, activeTab, fetchAllMachines, selectedDateRange?.start, selectedDateRange?.end]);
-
-
+  }, [
+    evaluationSelectedLocation,
+    activeTab,
+    fetchAllMachines,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+  ]);
 
   useEffect(() => {
     if (activeTab === "offline" && offlineSelectedLocation) {
@@ -896,7 +1034,10 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: (machine as Record<string, unknown>).serialNumber as string || (machine as Record<string, unknown>).origSerialNumber as string || machine.machineId,
+        serialNumber:
+          ((machine as Record<string, unknown>).serialNumber as string) ||
+          ((machine as Record<string, unknown>).origSerialNumber as string) ||
+          machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
@@ -918,7 +1059,9 @@ export default function MachinesTab() {
         gamingLocation: machine.locationId || "",
         createdAt: new Date(),
         updatedAt: new Date(),
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
       };
       openEditModal(cabinetData);
     },
@@ -932,7 +1075,10 @@ export default function MachinesTab() {
       const cabinetData = {
         _id: machine.machineId,
         assetNumber: machine.machineName || "",
-        serialNumber: (machine as Record<string, unknown>).serialNumber as string || (machine as Record<string, unknown>).origSerialNumber as string || machine.machineId,
+        serialNumber:
+          ((machine as Record<string, unknown>).serialNumber as string) ||
+          ((machine as Record<string, unknown>).origSerialNumber as string) ||
+          machine.machineId,
         game: machine.gameTitle || "",
         locationId: machine.locationId || "",
         locationName: machine.locationName || "",
@@ -954,7 +1100,9 @@ export default function MachinesTab() {
         gamingLocation: machine.locationId || "",
         createdAt: new Date(),
         updatedAt: new Date(),
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
       };
       openDeleteModal(cabinetData);
     },
@@ -982,7 +1130,6 @@ export default function MachinesTab() {
         } finally {
           setOverviewLoading(false);
         }
-
       } else if (tab === "evaluation") {
         setEvaluationLoading(true);
         try {
@@ -999,7 +1146,15 @@ export default function MachinesTab() {
         }
       }
     },
-    [fetchOverviewMachines, fetchAllMachines, fetchOfflineMachines, router, pathname, searchParams, searchTerm]
+    [
+      fetchOverviewMachines,
+      fetchAllMachines,
+      fetchOfflineMachines,
+      router,
+      pathname,
+      searchParams,
+      searchTerm,
+    ]
   );
 
   // Initialize activeTab from URL
@@ -1010,10 +1165,6 @@ export default function MachinesTab() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-
-
-
 
   // Offline machines with duration calculation and pagination
   const offlineMachinesWithDuration = useMemo(() => {
@@ -1130,8 +1281,12 @@ export default function MachinesTab() {
           <>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalGross)}`}>
-                  ${machineStats.totalGross.toLocaleString()}
+                <div
+                  className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(
+                    machineStats.totalGross
+                  )}`}
+                >
+                  {shouldShowCurrency() ? formatAmount(machineStats.totalGross) : `$${machineStats.totalGross.toLocaleString()}`}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
                   Total Net Win (Gross)
@@ -1140,8 +1295,12 @@ export default function MachinesTab() {
             </Card>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalDrop)}`}>
-                  ${machineStats.totalDrop.toLocaleString()}
+                <div
+                  className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(
+                    machineStats.totalDrop
+                  )}`}
+                >
+                  {shouldShowCurrency() ? formatAmount(machineStats.totalDrop) : `$${machineStats.totalDrop.toLocaleString()}`}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
                   Total Drop
@@ -1150,8 +1309,12 @@ export default function MachinesTab() {
             </Card>
             <Card className="min-h-[120px]">
               <CardContent className="p-4 h-full flex flex-col justify-center">
-                <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(machineStats.totalCancelledCredits)}`}>
-                  ${machineStats.totalCancelledCredits.toLocaleString()}
+                <div
+                  className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${getFinancialColorClass(
+                    machineStats.totalCancelledCredits
+                  )}`}
+                >
+                  {shouldShowCurrency() ? formatAmount(machineStats.totalCancelledCredits) : `$${machineStats.totalCancelledCredits.toLocaleString()}`}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
                   Total Cancelled Credits
@@ -1250,7 +1413,11 @@ export default function MachinesTab() {
               </SelectContent>
             </Select>
             <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={() => fetchOverviewMachines(1, searchTerm)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOverviewMachines(1, searchTerm)}
+              >
                 <RefreshCw className="h-4 w-4 mr-2" /> Refresh
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportMeters}>
@@ -1264,8 +1431,7 @@ export default function MachinesTab() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <CardTitle>Machine Performance</CardTitle>
-                <div className="flex flex-wrap gap-2">
-                </div>
+                <div className="flex flex-wrap gap-2"></div>
               </div>
             </CardHeader>
             <CardContent>
@@ -1326,14 +1492,52 @@ export default function MachinesTab() {
                                       </div>
                                       <div className="text-sm text-muted-foreground">
                                         {machine.manufacturer || "Unknown"} •{" "}
-                                        {
-                                          (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-                                            (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
-                                            (typeof (machine as Record<string, unknown>).custom === "object" && 
-                                             typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
-                                             (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
-                                            machine.machineId
-                                        }
+                                        {(typeof (
+                                          machine as Record<string, unknown>
+                                        ).serialNumber === "string" &&
+                                          (
+                                            (machine as Record<string, unknown>)
+                                              .serialNumber as string
+                                          ).trim()) ||
+                                          (typeof (
+                                            machine as Record<string, unknown>
+                                          ).origSerialNumber === "string" &&
+                                            (
+                                              (
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).origSerialNumber as string
+                                            ).trim()) ||
+                                          (typeof (
+                                            machine as Record<string, unknown>
+                                          ).custom === "object" &&
+                                            typeof (
+                                              (
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).custom as Record<
+                                                string,
+                                                unknown
+                                              >
+                                            )?.name === "string" &&
+                                            (
+                                              (
+                                                (
+                                                  machine as Record<
+                                                    string,
+                                                    unknown
+                                                  >
+                                                ).custom as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).name as string
+                                            ).trim()) ||
+                                          machine.machineId}
                                       </div>
                                     </div>
                                   </td>
@@ -1346,10 +1550,10 @@ export default function MachinesTab() {
                                     </Badge>
                                   </td>
                                   <td className="p-3 text-sm font-medium text-green-600">
-                                    ${(machine.netWin || 0).toLocaleString()}
+                                    {shouldShowCurrency() ? formatAmount(machine.netWin || 0) : `$${(machine.netWin || 0).toLocaleString()}`}
                                   </td>
                                   <td className="p-3 text-sm font-medium text-yellow-600">
-                                    ${(machine.drop || 0).toLocaleString()}
+                                    {shouldShowCurrency() ? formatAmount(machine.drop || 0) : `$${(machine.drop || 0).toLocaleString()}`}
                                   </td>
                                   <td className="p-3 text-sm">
                                     {(machine.actualHold || 0).toFixed(1)}%
@@ -1367,7 +1571,9 @@ export default function MachinesTab() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleMachineEdit(machine)}
+                                        onClick={() =>
+                                          handleMachineEdit(machine)
+                                        }
                                         className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                       >
                                         <Pencil2Icon className="h-4 w-4" />
@@ -1375,7 +1581,9 @@ export default function MachinesTab() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleMachineDelete(machine)}
+                                        onClick={() =>
+                                          handleMachineDelete(machine)
+                                        }
                                         className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -1413,19 +1621,39 @@ export default function MachinesTab() {
                                 </h4>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {machine.manufacturer || "Unknown"} •{" "}
-                                  {
-                                    (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-                                      (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
-                                      (typeof (machine as Record<string, unknown>).custom === "object" && 
-                                       typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
-                                       (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
-                                      machine.machineId
-                                  }
+                                  {(typeof (machine as Record<string, unknown>)
+                                    .serialNumber === "string" &&
+                                    (
+                                      (machine as Record<string, unknown>)
+                                        .serialNumber as string
+                                    ).trim()) ||
+                                    (typeof (machine as Record<string, unknown>)
+                                      .origSerialNumber === "string" &&
+                                      (
+                                        (machine as Record<string, unknown>)
+                                          .origSerialNumber as string
+                                      ).trim()) ||
+                                    (typeof (machine as Record<string, unknown>)
+                                      .custom === "object" &&
+                                      typeof (
+                                        (machine as Record<string, unknown>)
+                                          .custom as Record<string, unknown>
+                                      )?.name === "string" &&
+                                      (
+                                        (
+                                          (machine as Record<string, unknown>)
+                                            .custom as Record<string, unknown>
+                                        ).name as string
+                                      ).trim()) ||
+                                    machine.machineId}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              <StatusIcon isOnline={machine.isOnline} size="sm" />
+                              <StatusIcon
+                                isOnline={machine.isOnline}
+                                size="sm"
+                              />
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1447,28 +1675,60 @@ export default function MachinesTab() {
                           {/* Tiny screen layout (< 425px) - Single column */}
                           <div className="block sm:hidden space-y-2 text-xs">
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Location:</span>
-                              <span className="font-medium">{machine.locationName || "Unknown"}</span>
+                              <span className="text-muted-foreground">
+                                Location:
+                              </span>
+                              <span className="font-medium">
+                                {machine.locationName || "Unknown"}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Type:</span>
-                              <span className="font-medium">{machine.machineType || "slot"}</span>
+                              <span className="text-muted-foreground">
+                                Type:
+                              </span>
+                              <span className="font-medium">
+                                {machine.machineType || "slot"}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Net Win:</span>
-                              <span className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>${(machine.netWin || 0).toLocaleString()}</span>
+                              <span className="text-muted-foreground">
+                                Net Win:
+                              </span>
+                              <span
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.netWin
+                                )}`}
+                              >
+                                ${(machine.netWin || 0).toLocaleString()}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Drop:</span>
-                              <span className={`font-medium ${getFinancialColorClass(machine.drop)}`}>${(machine.drop || 0).toLocaleString()}</span>
+                              <span className="text-muted-foreground">
+                                Drop:
+                              </span>
+                              <span
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.drop
+                                )}`}
+                              >
+                                ${(machine.drop || 0).toLocaleString()}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Hold %:</span>
-                              <span className="font-medium">{(machine.actualHold || 0).toFixed(1)}%</span>
+                              <span className="text-muted-foreground">
+                                Hold %:
+                              </span>
+                              <span className="font-medium">
+                                {(machine.actualHold || 0).toFixed(1)}%
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Games:</span>
-                              <span className="font-medium">{(machine.gamesPlayed || 0).toLocaleString()}</span>
+                              <span className="text-muted-foreground">
+                                Games:
+                              </span>
+                              <span className="font-medium">
+                                {(machine.gamesPlayed || 0).toLocaleString()}
+                              </span>
                             </div>
                           </div>
                           {/* Small screen layout (425px+) - Two columns */}
@@ -1489,7 +1749,11 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Net Win:
                               </span>
-                              <p className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
+                              <p
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.netWin
+                                )}`}
+                              >
                                 ${(machine.netWin || 0).toLocaleString()}
                               </p>
                             </div>
@@ -1497,7 +1761,11 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Drop:
                               </span>
-                              <p className={`font-medium ${getFinancialColorClass(machine.drop)}`}>
+                              <p
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.drop
+                                )}`}
+                              >
                                 ${(machine.drop || 0).toLocaleString()}
                               </p>
                             </div>
@@ -1531,7 +1799,8 @@ export default function MachinesTab() {
                       {/* Mobile Pagination */}
                       <div className="flex flex-col space-y-3 mt-6 sm:hidden">
                         <div className="text-xs text-gray-600 text-center">
-                          Page {pagination.page} of {pagination.totalPages} ({pagination.totalCount} machines)
+                          Page {pagination.page} of {pagination.totalPages} (
+                          {pagination.totalCount} machines)
                         </div>
                         <div className="flex items-center justify-center space-x-2">
                           <Button
@@ -1546,7 +1815,9 @@ export default function MachinesTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.page - 1)}
+                            onClick={() =>
+                              handlePageChange(pagination.page - 1)
+                            }
                             disabled={!pagination.hasPrevPage}
                             className="px-2 py-1 text-xs"
                           >
@@ -1563,18 +1834,23 @@ export default function MachinesTab() {
                                 let val = Number(e.target.value);
                                 if (isNaN(val)) val = 1;
                                 if (val < 1) val = 1;
-                                if (val > pagination.totalPages) val = pagination.totalPages;
+                                if (val > pagination.totalPages)
+                                  val = pagination.totalPages;
                                 handlePageChange(val);
                               }}
                               className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                               aria-label="Page number"
                             />
-                            <span className="text-xs text-gray-600">of {pagination.totalPages}</span>
+                            <span className="text-xs text-gray-600">
+                              of {pagination.totalPages}
+                            </span>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.page + 1)}
+                            onClick={() =>
+                              handlePageChange(pagination.page + 1)
+                            }
                             disabled={!pagination.hasNextPage}
                             className="px-2 py-1 text-xs"
                           >
@@ -1583,7 +1859,9 @@ export default function MachinesTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.totalPages)}
+                            onClick={() =>
+                              handlePageChange(pagination.totalPages)
+                            }
                             disabled={pagination.page === pagination.totalPages}
                             className="px-2 py-1 text-xs"
                           >
@@ -1615,7 +1893,9 @@ export default function MachinesTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.page - 1)}
+                            onClick={() =>
+                              handlePageChange(pagination.page - 1)
+                            }
                             disabled={!pagination.hasPrevPage}
                           >
                             Previous
@@ -1631,18 +1911,23 @@ export default function MachinesTab() {
                                 let val = Number(e.target.value);
                                 if (isNaN(val)) val = 1;
                                 if (val < 1) val = 1;
-                                if (val > pagination.totalPages) val = pagination.totalPages;
+                                if (val > pagination.totalPages)
+                                  val = pagination.totalPages;
                                 handlePageChange(val);
                               }}
                               className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                               aria-label="Page number"
                             />
-                            <span className="text-sm text-gray-600">of {pagination.totalPages}</span>
+                            <span className="text-sm text-gray-600">
+                              of {pagination.totalPages}
+                            </span>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.page + 1)}
+                            onClick={() =>
+                              handlePageChange(pagination.page + 1)
+                            }
                             disabled={!pagination.hasNextPage}
                           >
                             Next
@@ -1650,7 +1935,9 @@ export default function MachinesTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePageChange(pagination.totalPages)}
+                            onClick={() =>
+                              handlePageChange(pagination.totalPages)
+                            }
                             disabled={pagination.page === pagination.totalPages}
                           >
                             Last
@@ -1664,8 +1951,6 @@ export default function MachinesTab() {
             </CardContent>
           </Card>
         </TabsContent>
-
-
 
         <TabsContent value="evaluation" className="space-y-6 mt-2">
           {/* Filters for Evaluation Tab */}
@@ -1688,23 +1973,36 @@ export default function MachinesTab() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={async () => {
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
                 setEvaluationLoading(true);
-                try { await fetchAllMachines(); } finally { setEvaluationLoading(false); }
-              }}>
+                  try {
+                    await fetchAllMachines();
+                  } finally {
+                    setEvaluationLoading(false);
+                  }
+                }}
+              >
                 <RefreshCw className="h-4 w-4 mr-2" /> Refresh
               </Button>
-              <Button variant="outline" size="sm" onClick={async () => {
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
                 // reuse meters export for now as representative (net win and games)
                 await handleExportMeters();
-              }}>
+                }}
+              >
                 <Download className="h-4 w-4 mr-2" /> Export
               </Button>
             </div>
           </div>
           {evaluationLoading ? (
             <MachinesEvaluationSkeleton />
-          ) : !evaluationSelectedLocation || evaluationSelectedLocation === "" ? (
+          ) : !evaluationSelectedLocation ||
+            evaluationSelectedLocation === "" ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Monitor className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -1712,7 +2010,8 @@ export default function MachinesTab() {
                   Select a Location
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Choose a specific location to view machine evaluation data and performance metrics.
+                  Choose a specific location to view machine evaluation data and
+                  performance metrics.
                 </p>
                 <p className="text-sm text-gray-500">
                   Use the location selector above to get started
@@ -1774,7 +2073,6 @@ export default function MachinesTab() {
                 )}
               </div>
 
-
           {/* Top 5 Machines Table */}
           <Card>
             <CardHeader>
@@ -1821,7 +2119,7 @@ export default function MachinesTab() {
                         Manufacturer
                       </SortableHeader>
                       <SortableHeader 
-                        sortKey="moneyIn" 
+                            sortKey="coinIn"
                         currentSort={sortConfig} 
                         onSort={handleSort}
                       >
@@ -1842,7 +2140,7 @@ export default function MachinesTab() {
                         Jackpot
                       </SortableHeader>
                       <SortableHeader 
-                        sortKey="avgWagerPerGame" 
+                            sortKey="averageWager"
                         currentSort={sortConfig} 
                         onSort={handleSort}
                       >
@@ -1883,16 +2181,35 @@ export default function MachinesTab() {
                             {machine.locationName}
                           </td>
                           <td className="p-3 text-sm font-mono">
-                            {
-                              (typeof (machine as Record<string, unknown>).serialNumber === "string" && ((machine as Record<string, unknown>).serialNumber as string).trim()) ||
-                                (typeof (machine as Record<string, unknown>).origSerialNumber === "string" && ((machine as Record<string, unknown>).origSerialNumber as string).trim()) ||
-                                (typeof (machine as Record<string, unknown>).custom === "object" && 
-                                 typeof ((machine as Record<string, unknown>).custom as Record<string, unknown>)?.name === "string" && 
-                                 (((machine as Record<string, unknown>).custom as Record<string, unknown>).name as string).trim()) ||
-                                machine.machineId
-                            }
+                                {(typeof (machine as Record<string, unknown>)
+                                  .serialNumber === "string" &&
+                                  (
+                                    (machine as Record<string, unknown>)
+                                      .serialNumber as string
+                                  ).trim()) ||
+                                  (typeof (machine as Record<string, unknown>)
+                                    .origSerialNumber === "string" &&
+                                    (
+                                      (machine as Record<string, unknown>)
+                                        .origSerialNumber as string
+                                    ).trim()) ||
+                                  (typeof (machine as Record<string, unknown>)
+                                    .custom === "object" &&
+                                    typeof (
+                                      (machine as Record<string, unknown>)
+                                        .custom as Record<string, unknown>
+                                    )?.name === "string" &&
+                                    (
+                                      (
+                                        (machine as Record<string, unknown>)
+                                          .custom as Record<string, unknown>
+                                      ).name as string
+                                    ).trim()) ||
+                                  machine.machineId}
                           </td>
-                          <td className="p-3 text-sm">{machine.gameTitle}</td>
+                              <td className="p-3 text-sm">
+                                {machine.gameTitle}
+                              </td>
                           <td className="p-3 text-sm">
                             {machine.manufacturer}
                           </td>
@@ -1954,71 +2271,149 @@ export default function MachinesTab() {
                       {/* Tiny screen layout (< 425px) - Single column */}
                       <div className="block sm:hidden space-y-2 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Manufacturer:</span>
-                          <span className="font-medium">{machine.manufacturer}</span>
+                              <span className="text-muted-foreground">
+                                Manufacturer:
+                              </span>
+                              <span className="font-medium">
+                                {machine.manufacturer}
+                              </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Money In:</span>
-                          <span className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</span>
+                              <span className="text-muted-foreground">
+                                Money In:
+                              </span>
+                              <span
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.drop || 0
+                                )}`}
+                              >
+                                ${(machine.drop || 0).toLocaleString()}
+                              </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Net Win:</span>
-                          <span className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
+                              <span className="text-muted-foreground">
+                                Net Win:
+                              </span>
+                              <span
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.netWin
+                                )}`}
+                              >
                             ${machine.netWin.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Avg. Wag. per Game:</span>
-                          <span className="font-medium">${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</span>
+                              <span className="text-muted-foreground">
+                                Avg. Wag. per Game:
+                              </span>
+                              <span className="font-medium">
+                                $
+                                {machine.avgBet
+                                  ? machine.avgBet.toFixed(2)
+                                  : "0.00"}
+                              </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Actual Hold:</span>
-                          <span className={`font-medium ${(machine.actualHold || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className="text-muted-foreground">
+                                Actual Hold:
+                              </span>
+                              <span
+                                className={`font-medium ${
+                                  (machine.actualHold || 0) >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
                             {(machine.actualHold || 0).toFixed(2)}%
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Theoretical Hold:</span>
-                          <span className="font-medium text-green-600">{machine.theoreticalHold.toFixed(2)}%</span>
+                              <span className="text-muted-foreground">
+                                Theoretical Hold:
+                              </span>
+                              <span className="font-medium text-green-600">
+                                {machine.theoreticalHold.toFixed(2)}%
+                              </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Games Played:</span>
-                          <span className="font-medium">{machine.gamesPlayed.toLocaleString()}</span>
+                              <span className="text-muted-foreground">
+                                Games Played:
+                              </span>
+                              <span className="font-medium">
+                                {machine.gamesPlayed.toLocaleString()}
+                              </span>
                         </div>
                       </div>
                       
                       {/* Small screen layout (425px+) - Two columns */}
                       <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Manufacturer:</span>
+                              <span className="text-muted-foreground">
+                                Manufacturer:
+                              </span>
                           <p>{machine.manufacturer}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Money In:</span>
-                          <p className={`font-medium ${getFinancialColorClass(machine.drop || 0)}`}>${(machine.drop || 0).toLocaleString()}</p>
+                              <span className="text-muted-foreground">
+                                Money In:
+                              </span>
+                              <p
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.drop || 0
+                                )}`}
+                              >
+                                ${(machine.drop || 0).toLocaleString()}
+                              </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Net Win:</span>
-                          <p className={`font-medium ${getFinancialColorClass(machine.netWin)}`}>
+                              <span className="text-muted-foreground">
+                                Net Win:
+                              </span>
+                              <p
+                                className={`font-medium ${getFinancialColorClass(
+                                  machine.netWin
+                                )}`}
+                              >
                             ${machine.netWin.toLocaleString()}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Avg. Wag. per Game:</span>
-                          <p>${machine.avgBet ? machine.avgBet.toFixed(2) : "0.00"}</p>
+                              <span className="text-muted-foreground">
+                                Avg. Wag. per Game:
+                              </span>
+                              <p>
+                                $
+                                {machine.avgBet
+                                  ? machine.avgBet.toFixed(2)
+                                  : "0.00"}
+                              </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Actual Hold:</span>
-                          <p className={`font-medium ${machine.actualHold >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className="text-muted-foreground">
+                                Actual Hold:
+                              </span>
+                              <p
+                                className={`font-medium ${
+                                  machine.actualHold >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
                             {machine.actualHold.toFixed(2)}%
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Theoretical Hold:</span>
-                          <p className="text-green-600">{machine.theoreticalHold.toFixed(2)}%</p>
+                              <span className="text-muted-foreground">
+                                Theoretical Hold:
+                              </span>
+                              <p className="text-green-600">
+                                {machine.theoreticalHold.toFixed(2)}%
+                              </p>
                         </div>
                         <div className="col-span-2">
-                          <span className="text-muted-foreground">Games Played:</span>
+                              <span className="text-muted-foreground">
+                                Games Played:
+                              </span>
                           <p>{machine.gamesPlayed.toLocaleString()}</p>
                         </div>
                       </div>
@@ -2192,35 +2587,53 @@ export default function MachinesTab() {
                         {/* Tiny screen layout (< 425px) - Single column */}
                         <div className="block sm:hidden space-y-2 text-xs">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Location:</span>
-                            <span className="font-medium">{machine.locationName}</span>
+                            <span className="text-muted-foreground">
+                              Location:
+                            </span>
+                            <span className="font-medium">
+                              {machine.locationName}
+                            </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Last Activity:</span>
-                            <span className="font-medium">{new Date(machine.lastActivity).toLocaleString()}</span>
+                            <span className="text-muted-foreground">
+                              Last Activity:
+                            </span>
+                            <span className="font-medium">
+                              {new Date(machine.lastActivity).toLocaleString()}
+                            </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Offline Duration:</span>
-                            <span className="font-medium">{machine.offlineDurationFormatted}</span>
+                            <span className="text-muted-foreground">
+                              Offline Duration:
+                            </span>
+                            <span className="font-medium">
+                              {machine.offlineDurationFormatted}
+                            </span>
                           </div>
-
                         </div>
                         
                         {/* Small screen layout (425px+) - Two columns */}
                         <div className="hidden sm:grid sm:grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-muted-foreground">Location:</span>
+                            <span className="text-muted-foreground">
+                              Location:
+                            </span>
                             <p>{machine.locationName}</p>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Last Activity:</span>
-                            <p>{new Date(machine.lastActivity).toLocaleString()}</p>
+                            <span className="text-muted-foreground">
+                              Last Activity:
+                            </span>
+                            <p>
+                              {new Date(machine.lastActivity).toLocaleString()}
+                            </p>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Offline Duration:</span>
+                            <span className="text-muted-foreground">
+                              Offline Duration:
+                            </span>
                             <p>{machine.offlineDurationFormatted}</p>
                           </div>
-
                         </div>
                       </Card>
                     ))}
@@ -2234,7 +2647,9 @@ export default function MachinesTab() {
                   {/* Mobile Pagination */}
                     <div className="flex flex-col space-y-3 mt-6 sm:hidden">
                       <div className="text-xs text-gray-600 text-center">
-                        Page {offlinePagination.page} of {offlinePagination.totalPages} ({offlinePagination.totalCount} offline machines)
+                      Page {offlinePagination.page} of{" "}
+                      {offlinePagination.totalPages} (
+                      {offlinePagination.totalCount} offline machines)
                       </div>
                       <div className="flex items-center justify-center space-x-2">
                         <Button
@@ -2268,13 +2683,16 @@ export default function MachinesTab() {
                               let val = Number(e.target.value);
                               if (isNaN(val)) val = 1;
                               if (val < 1) val = 1;
-                              if (val > offlinePagination.totalPages) val = offlinePagination.totalPages;
+                            if (val > offlinePagination.totalPages)
+                              val = offlinePagination.totalPages;
                               handleOfflinePageChange(val);
                             }}
                             className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                             aria-label="Page number"
                           />
-                          <span className="text-xs text-gray-600">of {offlinePagination.totalPages}</span>
+                        <span className="text-xs text-gray-600">
+                          of {offlinePagination.totalPages}
+                        </span>
                         </div>
                         <Button
                           variant="outline"
@@ -2290,8 +2708,13 @@ export default function MachinesTab() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleOfflinePageChange(offlinePagination.totalPages)}
-                          disabled={offlinePagination.page === offlinePagination.totalPages}
+                        onClick={() =>
+                          handleOfflinePageChange(offlinePagination.totalPages)
+                        }
+                        disabled={
+                          offlinePagination.page ===
+                          offlinePagination.totalPages
+                        }
                           className="px-2 py-1 text-xs"
                         >
                           »»
@@ -2342,13 +2765,16 @@ export default function MachinesTab() {
                               let val = Number(e.target.value);
                               if (isNaN(val)) val = 1;
                               if (val < 1) val = 1;
-                              if (val > offlinePagination.totalPages) val = offlinePagination.totalPages;
+                            if (val > offlinePagination.totalPages)
+                              val = offlinePagination.totalPages;
                               handleOfflinePageChange(val);
                             }}
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
                             aria-label="Page number"
                           />
-                          <span className="text-sm text-gray-600">of {offlinePagination.totalPages}</span>
+                        <span className="text-sm text-gray-600">
+                          of {offlinePagination.totalPages}
+                        </span>
                         </div>
                         <Button
                           variant="outline"
@@ -2363,8 +2789,13 @@ export default function MachinesTab() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleOfflinePageChange(offlinePagination.totalPages)}
-                          disabled={offlinePagination.page === offlinePagination.totalPages}
+                        onClick={() =>
+                          handleOfflinePageChange(offlinePagination.totalPages)
+                        }
+                        disabled={
+                          offlinePagination.page ===
+                          offlinePagination.totalPages
+                        }
                         >
                           Last
                         </Button>

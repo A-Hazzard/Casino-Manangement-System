@@ -18,7 +18,7 @@ import { NewCabinetFormData } from "@/shared/types/entities";
 import { createCabinet } from "@/lib/helpers/cabinets";
 import { fetchManufacturers } from "@/lib/helpers/manufacturers";
 import { toast } from "sonner";
-import { ModernDateTimePicker } from "@/components/ui/modern-date-time-picker";
+import { PCDateTimePicker } from "@/components/ui/pc-date-time-picker";
 import { useUserStore } from "@/lib/store/userStore";
 
 type NewCabinetModalProps = {
@@ -39,7 +39,7 @@ export const NewCabinetModal = ({
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-  const [smibBoardError, setSmibBoardError] = useState<string>("");
+  const [relayIdError, setRelayIdError] = useState<string>("");
   const [serialNumberError, setSerialNumberError] = useState<string>("");
   const [collectionTime, setCollectionTime] = useState<Date>(new Date());
   const [manufacturers, setManufacturers] = useState<string[]>([]);
@@ -162,7 +162,7 @@ export const NewCabinetModal = ({
     cabinetType: "Standing",
     assetStatus: "functional",
     gamingLocation: locationId || "",
-    smibBoard: "",
+    relayId: "",
     manufacturer: "",
     collectionSettings: {
       multiplier: "1",
@@ -253,9 +253,9 @@ export const NewCabinetModal = ({
       setLoading(true);
 
       // Validate SMIB Board before submission
-      const smibError = validateSmibBoard(formData.smibBoard);
+      const smibError = validateSmibBoard(formData.relayId);
       if (smibError) {
-        setSmibBoardError(smibError);
+        setRelayIdError(smibError);
         toast.error("Please fix the SMIB Board validation errors");
         setLoading(false);
         return;
@@ -312,7 +312,7 @@ export const NewCabinetModal = ({
       cabinetType: "Standing",
       assetStatus: "functional",
       gamingLocation: locationId || "",
-      smibBoard: "",
+      relayId: "",
       manufacturer: "",
       collectionSettings: {
         multiplier: "1",
@@ -323,7 +323,7 @@ export const NewCabinetModal = ({
     });
 
     setCollectionTime(new Date()); // Reset to current date/time
-    setSmibBoardError(""); // Clear any validation errors
+    setRelayIdError(""); // Clear any validation errors
     setSerialNumberError(""); // Clear any validation errors
   };
 
@@ -333,7 +333,7 @@ export const NewCabinetModal = ({
     value: string
   ) => {
     // Special handling for SMIB Board with validation
-    if (field === "smibBoard") {
+    if (field === "relayId") {
       // Convert to lowercase and remove any non-hex characters
       const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, "");
 
@@ -342,7 +342,7 @@ export const NewCabinetModal = ({
 
       // Validate the value
       const error = validateSmibBoard(limitedValue);
-      setSmibBoardError(error);
+      setRelayIdError(error);
 
       setFormData((prev: NewCabinetFormData) => ({
         ...prev,
@@ -673,20 +673,20 @@ export const NewCabinetModal = ({
                       SMIB Board <span className="text-red-500">*</span>
                     </label>
                     <Input
-                      id="smibBoard"
-                      placeholder="Enter SMIB Board"
-                      value={formData.smibBoard}
+                      id="relayId"
+                      placeholder="Enter Relay ID"
+                      value={formData.relayId}
                       onChange={(e) =>
-                        handleInputChange("smibBoard", e.target.value)
+                        handleInputChange("relayId", e.target.value)
                       }
                       className={`bg-container border-border ${
-                        smibBoardError ? "border-red-500" : ""
+                        relayIdError ? "border-red-500" : ""
                       }`}
                       maxLength={12}
                     />
-                    {smibBoardError && (
+                    {relayIdError && (
                       <p className="text-red-500 text-xs mt-1">
-                        {smibBoardError}
+                        {relayIdError}
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
@@ -747,7 +747,7 @@ export const NewCabinetModal = ({
                     <label className="text-sm font-medium block mb-2">
                       Last Collection Time
                     </label>
-                    <ModernDateTimePicker
+                    <PCDateTimePicker
                       date={collectionTime}
                       setDate={handleCollectionTimeChange}
                       disabled={loading}

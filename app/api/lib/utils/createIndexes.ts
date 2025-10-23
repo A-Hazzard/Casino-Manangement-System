@@ -121,10 +121,10 @@ export async function createAggressiveIndexes() {
       { name: "event_text_search" }
     );
 
-    // console.log("✅ All aggressive indexes created successfully!");
+    // console.log("All aggressive indexes created successfully!");
     return { success: true, message: "Indexes created successfully" };
   } catch (error) {
-    console.error("❌ Error creating indexes:", error);
+    console.error("Error creating indexes:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

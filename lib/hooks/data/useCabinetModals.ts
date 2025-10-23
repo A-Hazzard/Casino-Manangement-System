@@ -4,23 +4,21 @@
  */
 
 import { useState, useCallback } from "react";
-
-interface UseCabinetModalsReturn {
-  // Modal states
+type UseCabinetModalsReturn = {
   isNewMovementRequestModalOpen: boolean;
   isUploadSmibDataModalOpen: boolean;
-  
-  // Modal actions
   openNewMovementRequestModal: () => void;
   closeNewMovementRequestModal: () => void;
   openUploadSmibDataModal: () => void;
   closeUploadSmibDataModal: () => void;
-}
+};
 
 export function useCabinetModals(): UseCabinetModalsReturn {
   // Modal state management
-  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] = useState(false);
-  const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] = useState(false);
+  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
+    useState(false);
+  const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
+    useState(false);
 
   // Modal handlers
   const openNewMovementRequestModal = useCallback(() => {

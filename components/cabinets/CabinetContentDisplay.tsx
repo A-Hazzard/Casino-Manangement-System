@@ -1,6 +1,6 @@
 /**
- * Cabinet Content Display Component
- * Handles the main content display for cabinets section including table and card views
+ * Machine Content Display Component
+ * Handles the main content display for machines section including table and card views
  */
 
 import { useRef } from "react";
@@ -17,35 +17,29 @@ import CabinetTable from "@/components/ui/cabinets/CabinetTable";
 import { NetworkError } from "@/components/ui/errors";
 import ClientOnly from "@/components/ui/common/ClientOnly";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import type { CabinetSortOption } from "@/lib/hooks/data";
 import { CabinetTableSkeleton } from "@/components/ui/cabinets/CabinetSkeletonLoader";
+import CabinetCardSkeleton from "@/components/ui/cabinets/CabinetCardSkeleton";
+import type { GamingMachine as Machine } from "@/shared/types/entities";
+import type { CabinetSortOption } from "@/lib/hooks/data";
 
-interface CabinetContentDisplayProps {
-  // Data
-  paginatedCabinets: Cabinet[];
-  filteredCabinets: Cabinet[];
-  allCabinets: Cabinet[];
-  
-  // Loading and error states
+type CabinetContentDisplayProps = {
+  paginatedCabinets: Machine[];
+  filteredCabinets: Machine[];
+  allCabinets: Machine[];
   initialLoading: boolean;
   loading: boolean;
   error: string | null;
-  
-  // Sort and pagination
   sortOption: CabinetSortOption;
   sortOrder: "asc" | "desc";
   currentPage: number;
   totalPages: number;
-  
-  // Actions
   onSort: (column: CabinetSortOption) => void;
   onPageChange: (page: number) => void;
-  onEdit: (cabinet: Cabinet) => void;
-  onDelete: (cabinet: Cabinet) => void;
+  onEdit: (machine: Machine) => void;
+  onDelete: (machine: Machine) => void;
   onRetry: () => void;
-  transformCabinet: (cabinet: Cabinet) => Cabinet;
-}
+  transformCabinet: (cabinet: Machine) => Machine;
+};
 
 export const CabinetContentDisplay = ({
   paginatedCabinets,
@@ -77,29 +71,31 @@ export const CabinetContentDisplay = ({
     </div>
   );
 
-  // Handle edit action with proper cabinet lookup
-  const handleEdit = (cabinetProps: Cabinet) => {
-    const cabinet = paginatedCabinets.find((c) => c._id === cabinetProps._id);
-    if (cabinet) {
-      openEditModal(cabinet);
+  // Handle edit action with proper machine lookup
+  const handleEdit = (machineProps: Machine) => {
+    const machine = paginatedCabinets.find((c) => c._id === machineProps._id);
+    if (machine) {
+      openEditModal(machine);
     }
   };
 
-  // Handle delete action with proper cabinet lookup
-  const handleDelete = (cabinetProps: Cabinet) => {
-    const cabinet = paginatedCabinets.find((c) => c._id === cabinetProps._id);
-    if (cabinet) {
-      openDeleteModal(cabinet);
+  // Handle delete action with proper machine lookup
+  const handleDelete = (machineProps: Machine) => {
+    const machine = paginatedCabinets.find((c) => c._id === machineProps._id);
+    if (machine) {
+      openDeleteModal(machine);
     }
   };
 
   // Handle page number input change
-  const handlePageNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePageNumberChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     let pageNumber = Number(event.target.value);
     if (isNaN(pageNumber)) pageNumber = 1;
     if (pageNumber < 1) pageNumber = 1;
     if (pageNumber > totalPages) pageNumber = totalPages;
-    
+
     onPageChange(pageNumber - 1);
   };
 
@@ -107,8 +103,8 @@ export const CabinetContentDisplay = ({
   if (error) {
     return (
       <NetworkError
-        title="Failed to Load Cabinets"
-        message="Unable to load cabinet data. Please check your connection and try again."
+        title="Failed to Load Machines"
+        message="Unable to load machine data. Please check your connection and try again."
         onRetry={onRetry}
         isRetrying={loading}
         errorDetails={error}
@@ -129,8 +125,8 @@ export const CabinetContentDisplay = ({
 
         {/* Card Skeleton for small screens */}
         <div className="block md:hidden">
-          <ClientOnly fallback={<CabinetTableSkeleton />}>
-            <CabinetTableSkeleton />
+          <ClientOnly fallback={<CabinetCardSkeleton />}>
+            <CabinetCardSkeleton />
           </ClientOnly>
         </div>
       </>
@@ -144,8 +140,8 @@ export const CabinetContentDisplay = ({
         <NoDataMessage
           message={
             filteredCabinets.length === 0 && allCabinets.length > 0
-              ? "No cabinets match your search criteria."
-              : "No cabinets available. Click 'Add New Cabinet' to add one."
+              ? "No machines match your search criteria."
+              : "No machines available. Click 'Add New Machine' to add one."
           }
         />
       </div>
@@ -175,38 +171,33 @@ export const CabinetContentDisplay = ({
         ref={cardsRef}
       >
         <ClientOnly fallback={<CabinetTableSkeleton />}>
-          {paginatedCabinets.map((cabinet) => (
+          {paginatedCabinets.map((machine) => (
             <CabinetCard
-              key={cabinet._id}
-              _id={cabinet._id}
-              assetNumber={cabinet.assetNumber || ""}
-              game={cabinet.game || ""}
+              key={machine._id}
+              _id={machine._id}
+              assetNumber={machine.assetNumber || ""}
+              game={machine.game || ""}
               smbId={
-                cabinet.smbId ||
-                cabinet.smibBoard ||
-                cabinet.relayId ||
-                ""
+                machine.relayId || machine.smbId || machine.smibBoard || ""
               }
-              serialNumber={getSerialNumberIdentifier(cabinet)}
-              locationId={cabinet.locationId || ""}
-              locationName={cabinet.locationName || ""}
-              moneyIn={cabinet.moneyIn || 0}
-              moneyOut={cabinet.moneyOut || 0}
-              cancelledCredits={cabinet.moneyOut || 0}
-              jackpot={cabinet.jackpot || 0}
-              gross={cabinet.gross || 0}
+              serialNumber={getSerialNumberIdentifier(machine)}
+              locationId={machine.locationId || ""}
+              locationName={machine.locationName || ""}
+              moneyIn={machine.moneyIn || 0}
+              moneyOut={machine.moneyOut || 0}
+              cancelledCredits={machine.moneyOut || 0}
+              jackpot={machine.jackpot || 0}
+              gross={machine.gross || 0}
               lastOnline={
-                cabinet.lastOnline instanceof Date
-                  ? cabinet.lastOnline.toISOString()
-                  : typeof cabinet.lastOnline === "string"
-                  ? cabinet.lastOnline
+                machine.lastOnline instanceof Date
+                  ? machine.lastOnline.toISOString()
+                  : typeof machine.lastOnline === "string"
+                  ? machine.lastOnline
                   : undefined
               }
-              installedGame={
-                cabinet.installedGame || cabinet.game || ""
-              }
-              onEdit={() => onEdit(cabinet)}
-              onDelete={() => onDelete(cabinet)}
+              installedGame={machine.installedGame || machine.game || ""}
+              onEdit={() => onEdit(machine)}
+              onDelete={() => onDelete(machine)}
             />
           ))}
         </ClientOnly>
@@ -243,13 +234,13 @@ export const CabinetContentDisplay = ({
             className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
             aria-label="Page number"
           />
-          <span className="text-gray-700 text-sm">
-            of {totalPages}
-          </span>
+          <span className="text-gray-700 text-sm">of {totalPages}</span>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+            onClick={() =>
+              onPageChange(Math.min(totalPages - 1, currentPage + 1))
+            }
             disabled={currentPage === totalPages - 1}
             className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
           >

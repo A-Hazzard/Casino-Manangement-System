@@ -5,9 +5,8 @@ import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import GlobalErrorBoundary from "@/components/layout/GlobalErrorBoundary";
 import GlobalSidebarWrapper from "@/components/layout/GlobalSidebarWrapper";
-import AuthProvider from "@/components/auth/AuthProvider";
-import AuthGuard from "@/components/auth/AuthGuard";
-import ActivityMonitor from "@/components/auth/ActivityMonitor";
+import { CurrencyProvider } from "@/lib/contexts/CurrencyContext";
+// Removed AuthProvider and AuthGuard to prevent conflicts with ProtectedRoute
 
 export const metadata: Metadata = {
   title: "Dynamic1 CMS - Manage Casinos Seamlessly",
@@ -71,16 +70,13 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning>
         <GlobalErrorBoundary>
-          <AuthProvider>
-            <AuthGuard>
-              <ActivityMonitor />
-              <SidebarProvider>
-                <GlobalSidebarWrapper />
-                <SidebarInset>{children}</SidebarInset>
-              </SidebarProvider>
-            </AuthGuard>
+          <CurrencyProvider>
+            <SidebarProvider>
+              <GlobalSidebarWrapper />
+              <SidebarInset>{children}</SidebarInset>
+            </SidebarProvider>
             <Toaster position="top-right" />
-          </AuthProvider>
+          </CurrencyProvider>
         </GlobalErrorBoundary>
       </body>
     </html>

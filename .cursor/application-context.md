@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 
-**Last Updated:** September 23rd, 2025
+**Last Updated:** October 10th, 2025
 
 ## System Overview
 
@@ -64,7 +64,8 @@ Based on `Documentation/financial-metrics-guide.md`:
 
 ### Financial Calculations
 ```typescript
-// Primary calculation
+// Primary calculation (Movement Delta Method)
+// Used across all financial APIs - sums movement fields from meters
 const gross = drop - totalCancelledCredits;
 
 // Alternative handle/win analysis
@@ -72,6 +73,11 @@ const handle = coinIn;
 const win = coinOut + jackpot;
 const actualRtp = win / handle;
 const actualHold = 1 - actualRtp;
+
+// IMPORTANT: All calculations use Movement Delta Method
+// - Sum movement.drop for money in
+// - Sum movement.totalCancelledCredits for money out  
+// - NEVER use first/last cumulative approach
 ```
 
 ## Database Relationships
@@ -104,11 +110,12 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ## Collection and Collection Report System
 
 ### Collection Creation Process
-1. **SAS Metrics Calculation:**
+1. **SAS Metrics Calculation (Backend Only):**
    - Query meters collection by machine (serialNumber | customName | machineId)
    - Calculate drop, totalCancelledCredits, gross from movement objects
-   - Set sasStartTime from machineSessions.collectionTime
-   - Set sasEndTime to current time or custom input
+   - Set sasStartTime from **previous collection timestamp** (not current machine.collectionTime)
+   - Set sasEndTime to current collection time
+   - **Race Condition Prevention**: 1-minute buffer to prevent simultaneous collection conflicts
 
 2. **Movement Calculation:**
    - `metersIn = currentMetersIn - previousMetersIn` (from collectionMeters)
@@ -116,13 +123,27 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 
 3. **Machine Updates:**
    - Update machine.collectionMeters with new metersIn/metersOut
-   - Update machine.collectionTime
+   - Update machine.collectionTime and machine.previousCollectionTime
+   - Update collectionMetersHistory with proper timestamps
 
 ### Collection Report Creation
 - Aggregates multiple collections by location
 - Calculates totals: totalDrop, totalGross, totalCancelled
 - Tracks variance between expected and actual collections
 - Links to collections via locationReportId
+- **Smart Detection**: Automatically detects SAS time issues (inverted times, same-day starts)
+- **Fix SAS Times**: Button to automatically correct SAS time issues and recalculate metrics
+- **Confirmation Dialogs**: User confirmation for report creation and editing operations
+
+### SAS Time Validation System
+- **Pre-Creation Validation**: Prevents creation of reports with invalid SAS times
+- **Smart Detection Logic**: Detects various SAS time anomalies:
+  - Inverted times (start >= end)
+  - Same-day start times (should be previous day)
+  - Unreasonable date ranges (too old, future dates)
+  - Unusual time spans (< 1 hour or > 48 hours)
+- **Automatic Fixing**: Recalculates SAS metrics and updates machine history
+- **Collection History Sync**: Ensures collectionMetersHistory matches actual collection timestamps
 
 ## Engineering Guidelines
 
@@ -171,10 +192,29 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 
 ## Key Features
 
+### Gaming Day Offset System ⭐ CRITICAL
+**See: `.cursor/gaming-day-offset-rules.md` for complete documentation**
+
+- **Purpose**: Align financial reporting with actual business operations
+- **Default**: Gaming day starts at 8 AM Trinidad time (not midnight)
+- **Storage**: `gamingLocations.gameDayOffset` (0-23 hours)
+- **Local Time vs UTC**: Users query in Trinidad time (UTC-4), database stores in UTC
+- **Time Conversion**: Backend converts local time to UTC before querying
+- **When Applied**: All meter-based financial queries (machines, locations, dashboard)
+- **When NOT Applied**: Collection reports, activity logs, custom date ranges with times
+
+#### Critical Rules:
+1. **Meter Data = Gaming Day Offset**: All financial metrics use gaming day boundaries
+2. **Event Data = Local Time**: Collection reports and activity logs use calendar days
+3. **Custom Dates = User's Exact Times**: No gaming day adjustment for user-specified times
+4. **Always Default to 8**: Use `gameDayOffset ?? 8` (not `|| 8` which fails for 0)
+5. **Convert Local to UTC**: Add 4 hours to local time for database queries
+
 ### Multi-Tenant Architecture
 - Each licensee has isolated data
 - All queries filter by `rel.licencee`
 - No cross-tenant data access
+- Licensee name to ObjectId mapping system for API compatibility
 
 ### Soft Delete System
 - `deletedAt` field for all major entities
@@ -295,6 +335,19 @@ export default function Component() {
     </div>
   );
 }
+
+// Confirmation Dialog Pattern (for non-destructive actions)
+import { InfoConfirmationDialog } from "@/components/ui/InfoConfirmationDialog";
+
+const [showConfirmation, setShowConfirmation] = useState(false);
+
+<InfoConfirmationDialog
+  open={showConfirmation}
+  onOpenChange={setShowConfirmation}
+  title="Confirm Action"
+  description="This action will create a collection report for the selected time."
+  onConfirm={handleConfirm}
+/>
 ```
 
 ## Development Workflow
@@ -350,7 +403,69 @@ export default function Component() {
 - **Test Coverage**: Enhance automated testing coverage
 
 
-## Recent System Updates (September 2025)
+## Recent System Updates (October 2025)
+
+### Collection Report Creation & SAS Time System - Production Ready ✅
+**Last Updated:** October 10th, 2025
+
+- **SAS Time Calculation Fix**: Removed incorrect frontend SAS time calculation that was overriding backend logic
+- **Smart Detection System**: Enhanced detection logic to catch SAS time issues (same-day start times, inverted times)
+- **Fix SAS Times Button**: Automatic detection and fixing of SAS time issues on Collection Report Details page
+- **Confirmation Dialogs**: Added calm, informative confirmation dialogs for report creation and editing
+- **Frontend-Backend Separation**: Backend now solely responsible for SAS metrics calculation using previous collection timestamps
+- **Type Safety Improvements**: Fixed TypeScript errors in collection modals with proper type definitions
+- **Race Condition Prevention**: Added time buffer logic to prevent SAS time validation failures
+- **Collection History Management**: Proper cleanup and synchronization of collectionMetersHistory
+- **Mobile Modal Enhancements**: Fixed display issues and improved mobile collection workflow
+
+### Gaming Day Offset & Date Filtering System - Production Ready ✅
+**Last Updated:** October 10th, 2025
+
+- **Complete Gaming Day Offset Implementation**: All financial APIs use gaming day boundaries
+- **Local Time vs UTC Conversion**: Proper handling of Trinidad time (UTC-4) to UTC conversion
+- **Time Period Support**: Today, Yesterday, Last 7 Days, Last 30 Days, All Time, Custom
+- **Movement Delta Method**: All financial calculations use sum of movement fields (no cumulative)
+- **API Consistency**: Standardized date filtering across all endpoints
+- **Collection Reports**: Use local time filtering (not gaming day offset)
+- **Bill Validator**: Gaming day offset for predefined periods, local time for custom
+- **Search by ID**: Added _id search capability across locations, machines, and cabinets pages
+- **Licensee Mapping**: Name to ObjectId conversion system for multi-tenant API compatibility
+- **Comprehensive Documentation**: `.cursor/gaming-day-offset-rules.md` with implementation guide
+
+### Custom Date Range & Time Inputs - Production Ready ✅
+**Last Updated:** October 10th, 2025
+
+- **Modern Date Range Picker**: Shadcn UI-based date range picker with optional time inputs
+- **Time Picker Component**: Custom hour/minute selectors with dropdown interface
+- **Proper State Management**: Fixed infinite loop issues with controlled component patterns
+- **Date Range Indicator**: Dynamic display with time information when custom times are set
+- **Timezone Handling**: Correct local time to UTC conversion for custom date ranges
+- **Dropdown Improvements**: Responsive dropdowns with proper width constraints
+- **Error Prevention**: Validation to prevent invalid date ranges and time selections
+- **User Experience**: Immediate feedback when dates are selected, smooth transitions
+
+### Financial Metrics System - Verified & Documented ✅
+**Last Updated**: October 10th, 2025
+
+- **Movement Delta Method**: Standard calculation method across all APIs
+- **SAS GROSS Calculation**: Fixed to use movement delta method (not cumulative)
+- **Collection Report Details**: Accurate SAS metrics using movement.drop and movement.totalCancelledCredits
+- **Live Metrics**: Updated to use $last for cumulative fields (coinIn, coinOut, gamesPlayed, etc.)
+- **API Consistency**: All endpoints return matching values for same time periods
+- **Database Verification**: Comprehensive testing scripts to verify MongoDB vs API accuracy
+- **Documentation**: Complete guide in `Documentation/backend/sas-gross-calculation-system.md`
+
+### UI/UX Improvements - October 2025 ✅
+
+- **Skeleton Loaders**: Content-specific skeleton loaders for all pages and components
+- **Pagination**: Working pagination on locations and location details pages
+- **Error Handling**: React Error Boundaries for graceful error handling
+- **Loading States**: Proper loading states with skeleton loaders (no generic spinners)
+- **Responsive Design**: Mobile-optimized layouts with proper touch targets
+- **Date Display**: Consistent date/time formatting across all components
+- **Console Cleanup**: Minimal API logging (only errors, no spam)
+
+## Recent System Updates (October 2025)
 
 ### Authentication & Authorization System - Complete Implementation
 - **JWT-Based Authentication**: Secure token-based authentication with access and refresh tokens
@@ -438,88 +553,102 @@ export default function Component() {
 - **Error Boundaries**: Graceful error handling throughout the application
 - **Activity Logging**: Complete audit trail for all user actions
 
-## Current System Status
+## Current System Status (October 10th, 2025)
 
-### Type System Consolidation - Active
-- **Status**: In progress with comprehensive analysis completed
-- **Target**: Reduce 25+ type files to 8-10 core files
-- **Progress**: Authentication types consolidated, API types standardized
-- **Next Steps**: Entity type consolidation and component type optimization
-- **Documentation**: See `TYPE_CONSOLIDATION_ANALYSIS.md` and `TYPE_SYSTEM_INVENTORY.md`
-
-### Build System Status
+### Build System Status ✅
 - **TypeScript Compilation**: ✅ Clean (no errors)
-- **ESLint**: ✅ Clean (no warnings)
-- **Build Process**: ✅ Optimized production builds working
+- **ESLint**: ✅ Clean (no warnings)  
+- **Type Check**: ✅ Passing with strict mode
+- **Production Build**: ✅ Optimized and working (compiled in ~26s)
 - **Type Safety**: ✅ Comprehensive coverage across all components
+- **Bundle Size**: ✅ Optimized with code splitting
 
-### Authentication System Status
+### Gaming Day Offset System ✅
+- **Implementation**: ✅ Complete across all financial APIs
+- **Documentation**: ✅ Comprehensive rules file in `.cursor/gaming-day-offset-rules.md`
+- **Testing**: ✅ Verified with MongoDB comparison scripts
+- **API Coverage**: ✅ Machines, Locations, Dashboard, Bill Validator
+- **Exception Handling**: ✅ Collection reports use local time correctly
+- **Edge Cases**: ✅ Handles offset = 0, missing offsets, custom dates
+
+### Financial Metrics System ✅  
+- **Calculation Method**: ✅ Movement Delta Method standardized
+- **API Consistency**: ✅ All endpoints return matching values
+- **SAS GROSS**: ✅ Fixed to use correct movement delta calculation
+- **Live Metrics**: ✅ Properly displays cumulative values
+- **Database Verification**: ✅ Scripts confirm accuracy vs MongoDB
+- **Documentation**: ✅ Complete implementation guides
+
+### UI/UX System ✅
+- **Date Range Picker**: ✅ Working with optional time inputs
+- **Pagination**: ✅ Functional on all table views
+- **Skeleton Loaders**: ✅ Content-specific loaders for all pages
+- **Error Handling**: ✅ Error boundaries implemented
+- **Responsive Design**: ✅ Mobile-optimized layouts
+- **Loading States**: ✅ No generic spinners, all content-specific
+
+### Authentication System Status ✅
 - **JWT Implementation**: ✅ Complete with secure token handling
 - **Role-Based Access**: ✅ All pages protected with proper permissions
 - **Session Management**: ✅ Automatic logout and token refresh
 - **Security Monitoring**: ✅ Activity logging and account locking
+- **Licensee Filtering**: ✅ Multi-tenant data isolation working
 
-## Current Development Priorities
+## Current Development Priorities (October 2025)
+
+### Completed ✅
+1. ✅ **Gaming Day Offset System**: Complete implementation with comprehensive documentation
+2. ✅ **Financial Metrics Accuracy**: All APIs return consistent, verified values
+3. ✅ **Date Filtering System**: Proper timezone handling across all endpoints
+4. ✅ **Custom Date Ranges**: Working time inputs with proper validation
+5. ✅ **UI/UX Polish**: Skeleton loaders, pagination, error handling
+6. ✅ **API Consistency**: Standardized response formats and calculation methods
+7. ✅ **Collection Report Creation**: Fixed SAS time calculation and validation system
+8. ✅ **SAS Time Detection**: Smart detection and automatic fixing of SAS time issues
+9. ✅ **Type Safety**: All TypeScript errors resolved with proper type definitions
 
 ### High Priority
-1. **Type System Consolidation**: Complete the systematic reduction of duplicate type files
-2. **API Response Standardization**: Ensure all endpoints use consistent response formats
-3. **Component Type Optimization**: Create generic component types for reusability
+1. **Performance Optimization**: Optimize MongoDB aggregation queries for large datasets
+2. **Real-time Updates**: Implement WebSocket or polling for live data updates
+3. **Advanced Analytics**: Enhanced reporting and data visualization features
+4. **Mobile App Development**: Native mobile application for collection operations
 
 ### Medium Priority
-1. **Database Query Optimization**: Improve performance of MongoDB queries
-2. **Error Handling Enhancement**: Standardize error responses across all APIs
-3. **Documentation Updates**: Keep all documentation current with system changes
+1. **Test Coverage**: Increase automated testing coverage for critical paths
+2. **Error Monitoring**: Implement comprehensive error tracking (e.g., Sentry)
+3. **Performance Monitoring**: Add performance tracking and analytics
+4. **Documentation**: Keep all documentation current with system changes
 
-### Low Priority
-1. **Test Coverage Enhancement**: Increase automated testing coverage
-2. **Performance Monitoring**: Implement comprehensive performance tracking
-3. **Mobile App Development**: Plan for future mobile application
+### Low Priority  
+1. **Type System Consolidation**: Further reduce duplicate type files
+2. **Code Cleanup**: Remove unused code and optimize bundle size
+3. **Accessibility**: Enhance ARIA labels and keyboard navigation
+4. **Internationalization**: Add multi-language support
 
-## Recent System Updates (January 2025)
+## Key Documentation Files
 
-### Collection System Implementation
-- **Complete Collection Management System** implemented with full CRUD operations
-- **Collection Reports**: Main dashboard for viewing, filtering, and managing collection reports
-- **Collection Detail Views**: Detailed machine-level and location-level financial analysis
-- **New Collection Modal**: Comprehensive interface for creating collection reports with machine selection
-- **Financial Calculations**: Accurate drop, cancelled credits, gross revenue, and variance calculations
-- **Multi-tab Interface**: Collection, Monthly, Manager, and Collector schedule management
-- **Real-time Data**: Live updates and refresh functionality across all collection components
+### Architecture & Guidelines
+- **`.cursor/application-context.md`** (this file): Complete system overview and current status
+- **`.cursor/rules/nextjs-rules.mdc`**: Engineering rules and best practices
+- **`.cursor/gaming-day-offset-rules.md`**: Gaming day offset implementation guide
 
-### Date Filter System Enhancement
-- **Custom Date Range Fix**: Resolved timezone conversion issues for accurate date filtering
-- **All Time Filter**: Implemented proper "All Time" filtering across all endpoints
-- **Independent Date Filters**: Activity Log and Bill Validator now have separate date filters
-- **MUI TimePicker Integration**: Professional time selection components replacing basic HTML inputs
-- **Date Range Validation**: Comprehensive date validation and error handling
+### Feature Documentation
+- **`Documentation/financial-metrics-guide.md`**: Financial calculations and metrics
+- **`Documentation/backend/sas-gross-calculation-system.md`**: SAS GROSS implementation
+- **`Documentation/backend/gaming-day-offset-system.md`**: Gaming day offset details
+- **`Documentation/backend/bill-validator-calculation-system.md`**: Bill validator system
+- **`Documentation/currency-converter-system.md`**: Currency conversion system
+- **`Documentation/frontend/database-relationships.md`**: Database schema relationships
 
-### Cabinet Management System
-- **SMIB Configuration**: Complete SMIB (Slot Machine Interface Board) management interface
-- **Firmware Management**: Upload, version control, and deployment of SMIB firmware
-- **Movement Requests**: Cabinet relocation workflow with approval system
-- **Real-time Monitoring**: Live cabinet status tracking and performance analytics
-- **Collection Settings**: Configure collection parameters and track collection state
-
-### Sample Data Removal
-- **All sample and mock data has been removed** from the codebase
-- Components now use empty arrays and placeholder messages for MongoDB integration
-- All hardcoded data arrays replaced with TODO comments for future MongoDB implementation
-- TypeScript errors from sample data removal resolved with proper type handling
-
-### Skeleton Loading System Implementation
-- **Comprehensive skeleton loading system** implemented across all pages
-- Each page has specific skeleton loaders that match exact content layout
-- Mobile-specific skeleton loaders for responsive design
-- Skeleton files organized in `components/ui/skeletons/` directory
-- All generic loading states replaced with content-specific skeletons
-
-### MongoDB Integration Status
-- **All APIs now use real MongoDB data** - no sample data in API routes
-- Frontend components prepared for MongoDB data fetching
-- Placeholder implementations ready for real data integration
-- Financial calculations and business logic preserved for real data
+### Best Practices
+- **Always check `.cursor/gaming-day-offset-rules.md`** before implementing date filtering
+- **Refer to engineering rules** in `.cursor/rules/nextjs-rules.mdc` for code standards
+- **Use Movement Delta Method** for all financial calculations (sum of movement fields)
+- **Convert local time to UTC** for all database queries (Trinidad UTC-4 → UTC)
+- **Test with MongoDB scripts** to verify API accuracy before deployment
 
 ---
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
+
+**Last Major Update:** October 10th, 2025 - Collection Report Creation Times Fix, SAS Time Validation System, Smart Detection Logic

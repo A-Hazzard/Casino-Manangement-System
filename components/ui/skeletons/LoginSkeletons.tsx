@@ -16,39 +16,39 @@ export const LoginPageSkeleton = () => (
               {/* Logo skeleton */}
               <Skeleton className="h-20 w-40 mx-auto mb-6" />
             </div>
-            
-            {/* Login form skeleton */}
+
+            {/* Login form skeleton - matches LoginForm.tsx exactly */}
+            {/* Title - "Login" (h2 mb-6 text-2xl font-bold) */}
+            <div className="text-left">
+              <Skeleton className="h-8 w-20 mb-6" />
+            </div>
+
+            {/* Form with space-y-6 */}
             <div className="space-y-6">
-              {/* Title */}
-              <div className="text-center">
-                <Skeleton className="h-8 w-48 mx-auto mb-2" />
-                <Skeleton className="h-4 w-32 mx-auto" />
+              {/* Email or Username field */}
+              <div>
+                <Skeleton className="h-5 w-36 mb-1" />
+                <Skeleton className="h-10 w-full rounded-lg" />
               </div>
-              
-              {/* Form fields */}
-              <div className="space-y-4">
-                <div>
-                  <Skeleton className="h-4 w-20 mb-2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-                <div>
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
+
+              {/* Password field */}
+              <div>
+                <Skeleton className="h-5 w-20 mb-1" />
+                <Skeleton className="h-10 w-full rounded-lg" />
               </div>
-              
+
+              {/* Remember me checkbox */}
+              <div className="flex items-center">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-56 ml-2" />
+              </div>
+
               {/* Login button */}
-              <Skeleton className="h-10 w-full" />
-              
-              {/* Additional links */}
-              <div className="text-center space-y-2">
-                <Skeleton className="h-4 w-32 mx-auto" />
-                <Skeleton className="h-4 w-24 mx-auto" />
-              </div>
+              <Skeleton className="h-10 w-full rounded-lg" />
             </div>
           </div>
         </div>
-        
+
         {/* Right side - Image */}
         <div className="relative w-full md:w-1/2 min-h-[250px] md:min-h-0">
           <Skeleton className="absolute inset-0 w-full h-full" />

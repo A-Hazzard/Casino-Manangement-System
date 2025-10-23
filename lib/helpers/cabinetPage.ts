@@ -1,5 +1,16 @@
 import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
+type CabinetSortOption =
+  | "assetNumber"
+  | "locationName"
+  | "moneyIn"
+  | "moneyOut"
+  | "jackpot"
+  | "gross"
+  | "cancelledCredits"
+  | "game"
+  | "smbId"
+  | "serialNumber"
+  | "lastOnline";
 type CabinetProps = Partial<Cabinet> & {
   _id: string;
   onEdit: () => void;

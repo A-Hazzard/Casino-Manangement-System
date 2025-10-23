@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
-
-interface ConfirmationDialogProps {
+type ConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -16,7 +15,7 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
-}
+};
 
 export const ConfirmationDialog = ({
   isOpen,
@@ -172,18 +171,20 @@ export const ConfirmationDialog = ({
               >
                 {isLoading ? "Deleting..." : confirmText}
               </Button>
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.warn("Cancel button clicked");
-                  handleClose();
-                }}
-                className="bg-muted text-muted-foreground hover:bg-accent"
-                disabled={isLoading}
-              >
-                {cancelText}
-              </Button>
+              {cancelText && (
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.warn("Cancel button clicked");
+                    handleClose();
+                  }}
+                  className="bg-muted text-muted-foreground hover:bg-accent"
+                  disabled={isLoading}
+                >
+                  {cancelText}
+                </Button>
+              )}
             </div>
           </div>
         </div>

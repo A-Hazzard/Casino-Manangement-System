@@ -2,7 +2,7 @@
 # Locations API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 15th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -20,6 +20,8 @@
 ## Overview
 
 The Locations API manages gaming locations, their configurations, machine assignments, and financial tracking.
+
+**Important:** All date filtering now respects each location's gaming day offset. See [Gaming Day Offset System](./gaming-day-offset-system.md) for details on how gaming days work and how they affect time-based queries.
 
 ## Location Management
 
@@ -428,7 +430,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 
 # Locations API Documentation
 
-**Last Updated**: September 3rd, 2025  
+**Last Updated**: October 3rd, 2025  
 **Status**: ✅ Fully Functional - All Issues Resolved
 
 ## Overview

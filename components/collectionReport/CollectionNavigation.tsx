@@ -48,7 +48,7 @@ export default function CollectionNavigation({
   return (
     <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
       {/* Desktop - md: and above */}
-      <nav className="hidden md:flex space-x-1 md:space-x-2 lg:justify-between lg:space-x-0 px-1 md:px-2 lg:px-6">
+      <nav className="hidden md:flex space-x-1 md:space-x-2 lg:space-x-8 px-1 md:px-2 lg:px-6">
         {accessibleTabs.map((tab) => (
           <motion.button
             key={tab.id}

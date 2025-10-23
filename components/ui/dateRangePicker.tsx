@@ -15,6 +15,44 @@ import { Button } from "@/components/ui/button"; // Assuming you have shadcn/ui 
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils"; // For conditional class names
 
+// Simple Error Boundary for DayPicker
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    console.warn('DayPicker Error Boundary caught error:', error);
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.warn('DayPicker Error Boundary error details:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 text-center text-red-600">
+          <p>Date picker encountered an error. Please try again.</p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Re-export DateRange from react-day-picker for external use if needed
 export type { RDPDateRange as DateRange };
 
@@ -39,34 +77,76 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const safeValue: RDPDateRange = React.useMemo(
-    () => value ?? { from: undefined, to: undefined },
-    [value]
-  );
+  const safeValue: RDPDateRange = React.useMemo(() => {
+    if (!value) {
+      return { from: undefined, to: undefined };
+    }
+    
+    // Validate that dates exist and are valid
+    const hasValidFrom = value.from && !isNaN(value.from.getTime());
+    const hasValidTo = value.to && !isNaN(value.to.getTime());
+    
+    // If we have both valid dates, return the range
+    if (hasValidFrom && hasValidTo) {
+      return { from: value.from, to: value.to };
+    }
+    
+    // If we only have a valid from date, return partial range (this is important for showing selected date)
+    if (hasValidFrom) {
+      return { from: value.from, to: undefined };
+    }
+    
+    // If we only have a valid to date (shouldn't happen but handle it)
+    if (hasValidTo) {
+      return { from: undefined, to: value.to };
+    }
+    
+    // If neither is valid, return empty range
+    return { from: undefined, to: undefined };
+  }, [value]);
 
   const handleSelect: SelectRangeEventHandler = React.useCallback(
     (range: RDPDateRange | undefined) => {
       if (onChange) {
         onChange(range);
       }
-      // Optional: close popover after selection, especially if it's a full range
+      // Close popover only when both dates are selected (complete range)
       if (range?.from && range?.to) {
         setIsOpen(false);
       }
+      // Keep popover open if only one date is selected (user needs to select second date)
     },
     [onChange]
   );
 
   const displayValue = React.useMemo(() => {
-    if (safeValue.from && safeValue.to) {
-      return `${format(safeValue.from, "MMM d, yyyy")} - ${format(
-        safeValue.to,
-        "MMM d, yyyy"
-      )}`;
-    } else if (safeValue.from) {
-      return format(safeValue.from, "MMM d, yyyy");
+    try {
+      if (safeValue.from && safeValue.to) {
+        // Validate dates before formatting
+        if (isNaN(safeValue.from.getTime()) || isNaN(safeValue.to.getTime())) {
+          return placeholder;
+        }
+        // If same date, show single date
+        if (safeValue.from.getTime() === safeValue.to.getTime()) {
+          return format(safeValue.from, "MMM d, yyyy");
+        }
+        // If different dates, show range
+        return `${format(safeValue.from, "MMM d, yyyy")} - ${format(
+          safeValue.to,
+          "MMM d, yyyy"
+        )}`;
+      } else if (safeValue.from) {
+        // Validate date before formatting
+        if (isNaN(safeValue.from.getTime())) {
+          return placeholder;
+        }
+        return format(safeValue.from, "MMM d, yyyy");
+      }
+      return placeholder;
+    } catch (error) {
+      console.warn('Error formatting date range:', error);
+      return placeholder;
     }
-    return placeholder;
   }, [safeValue, placeholder]);
 
   return (
@@ -87,31 +167,33 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <DayPicker
-          mode="range"
-          selected={safeValue}
-          onSelect={handleSelect}
-          numberOfMonths={numberOfMonths}
-          disabled={
-            disabled === true
-              ? true
-              : maxDate
-              ? [{ after: maxDate }]
-              : undefined
-          }
-          initialFocus={isOpen}
-          showOutsideDays
-          classNames={
-            {
-              // Add any custom Tailwind classes for styling if needed
-              // Example from your previous DayPicker setup:
-              // caption: "text-buttonActive",
-              // day_selected: "bg-button text-white",
-              // day_range_middle: "bg-greenHighlight text-black",
-              // day_today: "border-orangeHighlight",
+        <ErrorBoundary>
+          <DayPicker
+            mode="range"
+            selected={safeValue}
+            onSelect={handleSelect}
+            numberOfMonths={numberOfMonths}
+            disabled={
+              disabled === true
+                ? true
+                : maxDate
+                ? [{ after: maxDate }]
+                : undefined
             }
-          }
-        />
+            initialFocus={isOpen}
+            showOutsideDays
+            classNames={
+              {
+                // Add any custom Tailwind classes for styling if needed
+                // Example from your previous DayPicker setup:
+                // caption: "text-buttonActive",
+                // day_selected: "bg-button text-white",
+                // day_range_middle: "bg-greenHighlight text-black",
+                // day_today: "border-orangeHighlight",
+              }
+            }
+          />
+        </ErrorBoundary>
       </PopoverContent>
     </Popover>
   );

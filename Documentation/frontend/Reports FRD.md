@@ -17,7 +17,7 @@
 This document outlines the core functional requirements for the Reports Module within the Evolution One Casino Management System. The module provides comprehensive reporting capabilities for financial monitoring, machine performance analysis, customer data insights, and operational oversight across all casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 6th, 2025  
+**Last Updated:** October 6th, 2025  
 **Version:** 2.0.0
 
 ### Purpose

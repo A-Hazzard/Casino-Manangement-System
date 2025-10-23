@@ -18,4 +18,4 @@ export type ProcessedActivityEntry = {
   };
   description: string;
   originalActivity: ActivityLog;
-}; 
+};

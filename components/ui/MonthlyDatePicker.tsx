@@ -28,7 +28,7 @@ type MonthlyDatePickerProps = {
  * Automatically sets the range to cover the entire selected month
  *
  * Author: Aaron Hazzard - Senior Software Engineer
- * Last Updated: September 23rd, 2025
+ * Last Updated: October 23rd, 2025
  */
 export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   value,

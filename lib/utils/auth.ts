@@ -45,15 +45,19 @@ export async function generateAccessToken(
   const tokenPayload: JwtPayload = {
     ...payload,
     sessionId,
+    dbContext: {
+      connectionString: getCurrentDbConnectionString(),
+      timestamp: Date.now(),
+    },
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 120 * 60, // 120 minutes (2 hours)
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
     jti: crypto.randomUUID(),
   };
 
   return new SignJWT(tokenPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("120m")
+    .setExpirationTime("7d")
     .sign(new TextEncoder().encode(secret));
 }
 
@@ -267,6 +271,8 @@ export function getFriendlyErrorMessage(
       case "invalid_token":
       case "token_expired":
         return "Your session has expired. Please log in again.";
+      case "database_context_mismatch":
+        return "Database context has changed. Please log in again.";
       case "unauthorized":
         return "You are not authorized to access this resource.";
       default:

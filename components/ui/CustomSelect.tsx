@@ -1,6 +1,6 @@
 "use client";
 
-import { CustomSelectProps } from "@/lib/types/componentProps";
+import { DashboardCustomSelectProps } from "@/lib/types/componentProps";
 import { TimePeriod } from "@shared/types";
 import {
   Select,
@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function CustomSelect(props: CustomSelectProps) {
+export default function CustomSelect(props: DashboardCustomSelectProps) {
   return (
     <Select
       value={props.selectedFilter}

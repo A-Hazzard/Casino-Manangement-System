@@ -1,21 +1,21 @@
 /**
  * Reports page helper functions for managing dashboard interactions and data handling
  */
-import type { 
-  RealTimeMetrics, 
-  MachineEvaluationData, 
-  MachineExportData, 
-  LocationExportData, 
+import type {
+  RealTimeMetrics,
+  MachineEvaluationData,
+  MachineExportData,
+  LocationExportData,
   TopLocationData,
-  DateRange 
+  DateRange,
 } from "@/lib/types";
 import type { MachineData } from "@/shared/types/machines";
 import type { ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
 import type React from "react";
 
 type MachineSortConfig = {
-  key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn';
-  direction: 'asc' | 'desc';
+  key: keyof MachineData;
+  direction: "asc" | "desc";
 };
 
 /**
@@ -36,7 +36,9 @@ export function handleLocationSelect(locationIds: string[]) {
  * @param setIsRefreshing - Function to set refreshing state
  * @returns Promise that resolves when refresh is complete
  */
-export async function handleRefresh(setIsRefreshing: (refreshing: boolean) => void) {
+export async function handleRefresh(
+  setIsRefreshing: (refreshing: boolean) => void
+) {
   setIsRefreshing(true);
   await new Promise((resolve) => setTimeout(resolve, 1500));
   setIsRefreshing(false);
@@ -67,7 +69,7 @@ export function loadDashboardData(
   _selectedDateRange: unknown
 ) {
   setLoading(true);
-  
+
   // TODO: Implement actual API call to fetch dashboard data from MongoDB
   // This should fetch real-time metrics from the database
   // fetchDashboardMetrics().then(data => {
@@ -77,7 +79,7 @@ export function loadDashboardData(
   //   console.error('Error fetching dashboard metrics:', error);
   //   setLoading(false);
   // });
-  
+
   // For now, just set loading to false
   setLoading(false);
 }
@@ -89,7 +91,9 @@ export function loadDashboardData(
  */
 export function handleLocationSelectLocations(
   locationIds: string[],
-  setSelectedLocations: (locations: string[] | ((prev: string[]) => string[])) => void
+  setSelectedLocations: (
+    locations: string[] | ((prev: string[]) => string[])
+  ) => void
 ) {
   // For now, handle the first selected location if any
   if (locationIds.length > 0) {
@@ -119,7 +123,10 @@ export async function handleExportSASEvaluation(
   selectedDateRange: DateRange | null,
   activeMetricsFilter: string,
   exportData: (data: ExtendedLegacyExportData) => Promise<void>,
-  toast: { success: (message: string) => void; error: (message: string) => void }
+  toast: {
+    success: (message: string) => void;
+    error: (message: string) => void;
+  }
 ) {
   try {
     const filteredData =
@@ -214,14 +221,17 @@ export async function handleExportSASEvaluation(
  * @param setSortConfig - Function to update sort configuration
  */
 export function handleMachineSort(
-  key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn',
+  key: keyof MachineData,
   setSortConfig: React.Dispatch<React.SetStateAction<MachineSortConfig>>
 ) {
   setSortConfig((prevConfig) => {
-    const newDirection: 'asc' | 'desc' = prevConfig.key === key && prevConfig.direction === 'desc' ? 'asc' : 'desc';
+    const newDirection: "asc" | "desc" =
+      prevConfig.key === key && prevConfig.direction === "desc"
+        ? "asc"
+        : "desc";
     return {
       key,
-      direction: newDirection
+      direction: newDirection,
     };
   });
 }
@@ -232,75 +242,80 @@ export function handleMachineSort(
  * @param sortConfig - Current sort configuration
  * @returns Sorted array of machines
  */
-export function sortEvaluationData(machines: MachineEvaluationData[], sortConfig: { key: string; direction: 'asc' | 'desc' }) {
-  return [...machines].sort((a: MachineEvaluationData, b: MachineEvaluationData) => {
-    let aValue: number | string;
-    let bValue: number | string;
+export function sortEvaluationData(
+  machines: MachineEvaluationData[],
+  sortConfig: { key: string; direction: "asc" | "desc" }
+) {
+  return [...machines].sort(
+    (a: MachineEvaluationData, b: MachineEvaluationData) => {
+      let aValue: number | string;
+      let bValue: number | string;
 
-    switch (sortConfig.key) {
-      case 'locationName':
-        aValue = a.locationName;
-        bValue = b.locationName;
-        break;
-      case 'machineId':
-        aValue = a.machineId;
-        bValue = b.machineId;
-        break;
-      case 'gameTitle':
-        aValue = a.gameTitle;
-        bValue = b.gameTitle;
-        break;
-      case 'manufacturer':
-        aValue = a.manufacturer;
-        bValue = b.manufacturer;
-        break;
-      case 'handle':
-        aValue = a.coinIn || 0;
-        bValue = b.coinIn || 0;
-        break;
-      case 'moneyIn':
-        aValue = a.drop || 0;
-        bValue = b.drop || 0;
-        break;
-      case 'netWin':
-        aValue = a.netWin;
-        bValue = b.netWin;
-        break;
-      case 'jackpot':
-        aValue = 0; // evaluationData doesn't have jackpot
-        bValue = 0;
-        break;
-      case 'avgWagerPerGame':
-        aValue = a.avgBet || 0;
-        bValue = b.avgBet || 0;
-        break;
-      case 'actualHold':
-        aValue = a.actualHold || 0;
-        bValue = b.actualHold || 0;
-        break;
-      case 'theoreticalHold':
-        aValue = a.theoreticalHold;
-        bValue = b.theoreticalHold;
-        break;
-      case 'gamesPlayed':
-        aValue = a.gamesPlayed;
-        bValue = b.gamesPlayed;
-        break;
-      default:
-        aValue = a.netWin;
-        bValue = b.netWin;
+      switch (sortConfig.key) {
+        case "locationName":
+          aValue = a.locationName;
+          bValue = b.locationName;
+          break;
+        case "machineId":
+          aValue = a.machineId;
+          bValue = b.machineId;
+          break;
+        case "gameTitle":
+          aValue = a.gameTitle;
+          bValue = b.gameTitle;
+          break;
+        case "manufacturer":
+          aValue = a.manufacturer;
+          bValue = b.manufacturer;
+          break;
+        case "handle":
+          aValue = a.coinIn || 0;
+          bValue = b.coinIn || 0;
+          break;
+        case "moneyIn":
+          aValue = a.drop || 0;
+          bValue = b.drop || 0;
+          break;
+        case "netWin":
+          aValue = a.netWin;
+          bValue = b.netWin;
+          break;
+        case "jackpot":
+          aValue = 0; // evaluationData doesn't have jackpot
+          bValue = 0;
+          break;
+        case "avgWagerPerGame":
+          aValue = a.avgBet || 0;
+          bValue = b.avgBet || 0;
+          break;
+        case "actualHold":
+          aValue = a.actualHold || 0;
+          bValue = b.actualHold || 0;
+          break;
+        case "theoreticalHold":
+          aValue = a.theoreticalHold;
+          bValue = b.theoreticalHold;
+          break;
+        case "gamesPlayed":
+          aValue = a.gamesPlayed;
+          bValue = b.gamesPlayed;
+          break;
+        default:
+          aValue = a.netWin;
+          bValue = b.netWin;
+      }
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortConfig.direction === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortConfig.direction === "asc"
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
     }
-
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.direction === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    return sortConfig.direction === 'asc'
-      ? (aValue as number) - (bValue as number)
-      : (bValue as number) - (aValue as number);
-  });
+  );
 }
 
 /**
@@ -320,29 +335,37 @@ export async function handleExportMeters(
   activeMetricsFilter: string,
   customDateRange: { startDate: Date; endDate: Date } | null,
   exportData: (data: ExtendedLegacyExportData) => Promise<void>,
-  toast: { error: (message: string) => void; success: (message: string) => void }
+  toast: {
+    error: (message: string) => void;
+    success: (message: string) => void;
+  }
 ) {
   try {
     // Ensure we have data to export
     let machinesToExport: MachineExportData[] = [];
-    
+
     if (activeTab === "overview") {
       if (overviewMachines.length === 0) {
-        toast.error("No overview data available to export. Please wait for data to load.");
+        toast.error(
+          "No overview data available to export. Please wait for data to load."
+        );
         return;
       }
       machinesToExport = overviewMachines;
-
     } else if (activeTab === "offline") {
       if (offlineMachines.length === 0) {
-        toast.error("No offline data available to export. Please wait for data to load.");
+        toast.error(
+          "No offline data available to export. Please wait for data to load."
+        );
         return;
       }
       machinesToExport = offlineMachines;
     } else {
       // Default to overview data
       if (overviewMachines.length === 0) {
-        toast.error("No data available to export. Please wait for data to load.");
+        toast.error(
+          "No data available to export. Please wait for data to load."
+        );
         return;
       }
       machinesToExport = overviewMachines;
@@ -350,13 +373,13 @@ export async function handleExportMeters(
 
     const metersData: ExtendedLegacyExportData = {
       title: "Machines Export Report",
-              subtitle: `Machine performance data - ${
-          activeMetricsFilter === "Custom" &&
-          customDateRange?.startDate &&
-          customDateRange?.endDate
-            ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
-            : activeMetricsFilter
-        }`,
+      subtitle: `Machine performance data - ${
+        activeMetricsFilter === "Custom" &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+          ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
+          : activeMetricsFilter
+      }`,
       headers: [
         "Machine ID",
         "Machine Name",
@@ -373,56 +396,64 @@ export async function handleExportMeters(
         "Status",
         "SAS Enabled",
       ],
-              data: machinesToExport.map((machine: MachineExportData) => [
-          machine.machineId,
-          machine.machineName,
-          machine.gameTitle,
-          machine.locationName,
-          machine.manufacturer,
-          "Slot", // Default type since it's not in the data
-          machine.netWin.toLocaleString(),
-          machine.drop.toLocaleString(),
-          machine.totalCancelledCredits.toLocaleString(),
-          "0", // Jackpot not available in current data
-          machine.gamesPlayed.toLocaleString(),
-          (() => {
-            const hold = machine.theoreticalHold;
-            if (hold === undefined) return "0%";
-            const hasDecimals = hold % 1 !== 0;
-            const decimalPart = hold % 1;
-            const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
-            return hold.toFixed(hasSignificantDecimals ? 1 : 0) + "%";
-          })(),
-          machine.isOnline ? "Online" : "Offline",
-          machine.isSasEnabled ? "Yes" : "No",
-        ]),
+      data: machinesToExport.map((machine: MachineExportData) => [
+        machine.machineId,
+        machine.machineName,
+        machine.gameTitle,
+        machine.locationName,
+        machine.manufacturer,
+        "Slot", // Default type since it's not in the data
+        machine.netWin.toLocaleString(),
+        machine.drop.toLocaleString(),
+        machine.totalCancelledCredits.toLocaleString(),
+        "0", // Jackpot not available in current data
+        machine.gamesPlayed.toLocaleString(),
+        (() => {
+          const hold = machine.theoreticalHold;
+          if (hold === undefined) return "0%";
+          const hasDecimals = hold % 1 !== 0;
+          const decimalPart = hold % 1;
+          const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
+          return hold.toFixed(hasSignificantDecimals ? 1 : 0) + "%";
+        })(),
+        machine.isOnline ? "Online" : "Offline",
+        machine.isSasEnabled ? "Yes" : "No",
+      ]),
       summary: [
         {
           label: "Total Machines",
           value: machinesToExport.length.toString(),
         },
-                  {
-            label: "Online Machines",
-            value: machinesToExport.filter((m: MachineExportData) => m.isOnline).length.toString(),
-          },
-          {
-            label: "Offline Machines",
-            value: machinesToExport
-              .filter((m: MachineExportData) => !m.isOnline)
-              .length.toString(),
-          },
-          {
-            label: "Total Net Win",
-            value: `$${machinesToExport
-              .reduce((sum: number, m: MachineExportData) => sum + (m.netWin || 0), 0)
-              .toLocaleString()}`,
-          },
-          {
-            label: "Total Drop",
-            value: `$${machinesToExport
-              .reduce((sum: number, m: MachineExportData) => sum + (m.drop || 0), 0)
-              .toLocaleString()}`,
-          },
+        {
+          label: "Online Machines",
+          value: machinesToExport
+            .filter((m: MachineExportData) => m.isOnline)
+            .length.toString(),
+        },
+        {
+          label: "Offline Machines",
+          value: machinesToExport
+            .filter((m: MachineExportData) => !m.isOnline)
+            .length.toString(),
+        },
+        {
+          label: "Total Net Win",
+          value: `$${machinesToExport
+            .reduce(
+              (sum: number, m: MachineExportData) => sum + (m.netWin || 0),
+              0
+            )
+            .toLocaleString()}`,
+        },
+        {
+          label: "Total Drop",
+          value: `$${machinesToExport
+            .reduce(
+              (sum: number, m: MachineExportData) => sum + (m.drop || 0),
+              0
+            )
+            .toLocaleString()}`,
+        },
       ],
       metadata: {
         generatedBy: "Reports System",

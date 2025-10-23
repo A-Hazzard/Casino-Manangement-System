@@ -5,19 +5,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { fetchMachineStats } from "@/lib/helpers/machineStats";
-
-interface MachineStats {
-  totalMachines: number;
-  onlineMachines: number;
-  offlineMachines: number;
-}
-
-interface UseLocationMachineStatsReturn {
-  machineStats: MachineStats | null;
-  machineStatsLoading: boolean;
-  refreshMachineStats: () => Promise<void>;
-  error: string | null;
-}
+import type {
+  MachineStats,
+  UseLocationMachineStatsReturn,
+} from "@/lib/types/locationMachineStats";
 
 export function useLocationMachineStats(): UseLocationMachineStatsReturn {
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
@@ -28,12 +19,13 @@ export function useLocationMachineStats(): UseLocationMachineStatsReturn {
   const fetchMachineStatsData = useCallback(async () => {
     setMachineStatsLoading(true);
     setError(null);
-    
+
     try {
       const stats = await fetchMachineStats("all");
       setMachineStats(stats);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch machine stats";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch machine stats";
       setError(errorMessage);
       setMachineStats({
         totalMachines: 0,
@@ -53,7 +45,7 @@ export function useLocationMachineStats(): UseLocationMachineStatsReturn {
   // Load machine stats on mount
   useEffect(() => {
     let aborted = false;
-    
+
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
       try {
@@ -73,7 +65,7 @@ export function useLocationMachineStats(): UseLocationMachineStatsReturn {
         if (!aborted) setMachineStatsLoading(false);
       }
     };
-    
+
     loadMachineStats();
     return () => {
       aborted = true;

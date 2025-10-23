@@ -1,8 +1,8 @@
-import { FlatCompat } from "@eslint/eslintrc"
+import { FlatCompat } from "@eslint/eslintrc";
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
-})
+});
 
 export default [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
@@ -10,15 +10,18 @@ export default [
     rules: {
       // Prefer const assertions and proper typing
       "prefer-const": "error",
-      
-      // No console.log in production
-      "no-console": ["warn", { "allow": ["warn", "error"] }],
-      
+
+      // Allow all console methods
+      "no-console": "off",
+
       // Catch unused variables
-      "@typescript-eslint/no-unused-vars": ["error", { 
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
-      }]
-    }
-  }
-]
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+];

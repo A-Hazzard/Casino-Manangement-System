@@ -43,7 +43,6 @@ export default function LocationsTabWithErrorHandling() {
   const { data, loading, execute } = useApiWithRetry(fetchLocationsData, {
     maxRetries: 3,
     baseDelay: 1000,
-    timeout: 60000,
     onError: (apiError) => {
       setConnectionError(new Error(getUserFriendlyErrorMessage(apiError)));
       showErrorNotification(apiError, "Locations Data");

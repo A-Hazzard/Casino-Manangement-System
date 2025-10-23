@@ -1,34 +1,34 @@
 "use client";
 
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import React, { Component, ErrorInfo } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-export interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-  errorInfo?: ErrorInfo;
-}
-
-export interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  resetOnPropsChange?: boolean;
-  resetKeys?: Array<string | number>;
-}
+import type {
+  ErrorBoundaryProps,
+  ErrorBoundaryState,
+} from "@/lib/types/errorBoundary";
 
 /**
  * ErrorBoundary component to catch and handle React errors gracefully
- * 
+ *
  * @param children - React components to wrap
  * @param fallback - Custom fallback UI to show when error occurs
  * @param onError - Callback function called when error occurs
  * @param resetOnPropsChange - Whether to reset error state when props change
  * @param resetKeys - Array of keys to watch for changes to reset error state
  */
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export default class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   private resetTimeoutId: number | null = null;
 
   constructor(props: ErrorBoundaryProps) {
@@ -63,15 +63,25 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     const { hasError } = this.state;
 
     if (hasError && prevProps.resetKeys !== resetKeys) {
-      if (resetKeys && prevProps.resetKeys && resetKeys.length === prevProps.resetKeys.length) {
-        const hasResetKeyChanged = resetKeys.some((key, index) => key !== prevProps.resetKeys?.[index]);
+      if (
+        resetKeys &&
+        prevProps.resetKeys &&
+        resetKeys.length === prevProps.resetKeys.length
+      ) {
+        const hasResetKeyChanged = resetKeys.some(
+          (key, index) => key !== prevProps.resetKeys?.[index]
+        );
         if (hasResetKeyChanged) {
           this.resetErrorBoundary();
         }
       }
     }
 
-    if (hasError && resetOnPropsChange && prevProps.children !== this.props.children) {
+    if (
+      hasError &&
+      resetOnPropsChange &&
+      prevProps.children !== this.props.children
+    ) {
       this.resetErrorBoundary();
     }
   }
@@ -88,7 +98,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     }
 
     this.resetTimeoutId = window.setTimeout(() => {
-      this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+      this.setState({
+        hasError: false,
+        error: undefined,
+        errorInfo: undefined,
+      });
     }, 100);
   };
 
@@ -118,7 +132,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
                 <strong>Error:</strong> {error.message}
               </div>
             )}
-            
+
             <Button
               onClick={this.resetErrorBoundary}
               variant="outline"
@@ -127,9 +141,12 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
-            
+
             <div className="text-xs text-red-600">
-              <p>If this problem persists, please refresh the page or contact support.</p>
+              <p>
+                If this problem persists, please refresh the page or contact
+                support.
+              </p>
             </div>
           </CardContent>
         </Card>

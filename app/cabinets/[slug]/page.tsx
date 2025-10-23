@@ -19,11 +19,12 @@ import {
 } from "@radix-ui/react-icons";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import gsap from "gsap";
+// GSAP import removed - animations were causing performance issues
 import RefreshButton from "@/components/ui/RefreshButton";
 import { RefreshCw } from "lucide-react";
 import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
 import { NotFoundError, NetworkError } from "@/components/ui/errors";
+import { toast } from "sonner";
 
 import {
   Tooltip,
@@ -110,9 +111,23 @@ function CabinetDetailPageContent() {
     smibConfigExpanded,
     communicationMode,
     firmwareVersion,
+    isEditMode,
+    mqttConfigData,
+    isLoadingMqttConfig: _isLoadingMqttConfig,
+    isConnectedToMqtt,
+    formData,
     toggleSmibConfig,
+    setEditMode,
     setCommunicationModeFromData,
     setFirmwareVersionFromData,
+    updateFormData,
+    resetFormData,
+    saveConfiguration,
+    fetchMqttConfig,
+    connectToConfigStream,
+    disconnectFromConfigStream,
+    requestLiveConfig,
+    publishConfigUpdate: _publishConfigUpdate,
   } = useSmibConfiguration();
 
   // Initialize activeMetricsTabContent from URL on first load
@@ -139,8 +154,47 @@ function CabinetDetailPageContent() {
     if (cabinet) {
       setCommunicationModeFromData(cabinet);
       setFirmwareVersionFromData(cabinet);
+      // Fetch MQTT configuration from API
+      fetchMqttConfig(String(cabinet._id));
+
+      // Extract relayId from cabinet data
+      const relayId = cabinet.relayId || cabinet.smibBoard;
+      if (relayId) {
+        // Connect to live MQTT config stream
+        connectToConfigStream(relayId);
+
+        // Request initial config data after SSE connection is established
+        // Use a small delay to ensure the connection is ready
+        setTimeout(() => {
+          console.log(
+            `🔍 [PAGE] Requesting initial config for relayId: ${relayId}`
+          );
+          Promise.all([
+            requestLiveConfig(relayId, "net"), // Network config
+            requestLiveConfig(relayId, "mqtt"), // MQTT config
+            requestLiveConfig(relayId, "coms"), // Communication config
+            requestLiveConfig(relayId, "ota"), // OTA config
+            requestLiveConfig(relayId, "app"), // App config
+          ]).catch((error) => {
+            console.error("Error requesting live config:", error);
+          });
+        }, 2000); // Wait 2 seconds for SSE connection to be established
+      }
     }
-  }, [cabinet, setCommunicationModeFromData, setFirmwareVersionFromData]);
+
+    // Cleanup on unmount or cabinet change
+    return () => {
+      disconnectFromConfigStream();
+    };
+  }, [
+    cabinet,
+    setCommunicationModeFromData,
+    setFirmwareVersionFromData,
+    fetchMqttConfig,
+    connectToConfigStream,
+    disconnectFromConfigStream,
+    requestLiveConfig,
+  ]);
 
   // Note: Date filter changes are now handled by the main useEffect above
 
@@ -238,47 +292,9 @@ function CabinetDetailPageContent() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Add animation hook for data changes
-  useEffect(() => {
-    // Only run in browser environment
-    if (typeof document === "undefined" || !cabinet) return;
-
-    // Animate table rows or cards when data changes
-    // Table animation for any tables in the component
-    const tables = document.querySelectorAll("table");
-    tables.forEach((table) => {
-      const tableRows = table.querySelectorAll("tbody tr");
-      gsap.fromTo(
-        tableRows,
-        { opacity: 0, y: 15 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.4,
-          stagger: 0.05,
-          ease: "power2.out",
-        }
-      );
-    });
-
-    // Card animation for any card containers
-    const cardContainers = document.querySelectorAll(".card-container");
-    cardContainers.forEach((container) => {
-      const cards = Array.from(container.children);
-      gsap.fromTo(
-        cards,
-        { opacity: 0, scale: 0.95, y: 15 },
-        {
-          opacity: 1,
-          scale: 1,
-          y: 0,
-          duration: 0.4,
-          stagger: 0.08,
-          ease: "back.out(1.5)",
-        }
-      );
-    });
-  }, [cabinet]);
+  // PERFORMANCE OPTIMIZATION: Remove GSAP animations that run on every data change
+  // These animations were causing performance issues by running on every cabinet data update
+  // Animations should only run on user interactions, not on data changes
 
   // Update the refresh handler to refresh all data
   const handleRefresh = async () => {
@@ -287,6 +303,28 @@ function CabinetDetailPageContent() {
       await fetchCabinetDetailsData();
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  // Handle SMIB configuration save
+  const handleSaveSMIBConfig = async (machineControl?: string) => {
+    if (!cabinet) return;
+
+    const success = await saveConfiguration(cabinet._id, machineControl);
+    if (success) {
+      // Refresh cabinet data to show updated configuration
+      await fetchCabinetDetailsData();
+
+      // Show success message
+      if (machineControl) {
+        toast.success(
+          `Machine control command "${machineControl}" sent successfully!`
+        );
+      } else {
+        toast.success("SMIB configuration updated successfully!");
+      }
+    } else {
+      toast.error("Failed to update SMIB configuration");
     }
   };
 
@@ -585,14 +623,64 @@ function CabinetDetailPageContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div
-              className="px-6 py-4 flex justify-between items-center cursor-pointer"
-              onClick={toggleSmibConfig}
-            >
-              <h2 className="text-xl font-semibold">SMIB Configuration</h2>
+            <div className="px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">SMIB Configuration</h2>
+                {/* MQTT Connection Status */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isConnectedToMqtt ? "bg-green-500" : "bg-gray-400"
+                    }`}
+                  ></div>
+                  <span className="text-sm text-gray-600">
+                    {isConnectedToMqtt ? "Live" : "Offline"}
+                  </span>
+                </div>
+                {smibConfigExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex gap-2"
+                  >
+                    {isEditMode ? (
+                      <>
+                        <Button
+                          onClick={resetFormData}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={async () => await handleSaveSMIBConfig()}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs bg-button text-container hover:bg-buttonActive"
+                        >
+                          Save All
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => setEditMode(true)}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 text-xs"
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </motion.div>
+                )}
+              </div>
               <motion.div
+                className="cursor-pointer"
                 animate={{ rotate: smibConfigExpanded ? 180 : 0 }}
                 transition={{ duration: 0.3 }}
+                onClick={toggleSmibConfig}
               >
                 <ChevronDownIcon className="h-5 w-5" />
               </motion.div>
@@ -608,15 +696,13 @@ function CabinetDetailPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
                 <div>
                   <p className="text-sm text-grayHighlight">
-                    SMIB ID:{" "}
-                    {cabinet?.relayId || cabinet?.smibBoard || "e831cdfa8464"}
+                    SMIB ID: {mqttConfigData?.smibId || "No Value Provided"}
                   </p>
                   <p className="text-sm text-grayHighlight mt-1 md:mt-0">
                     {" "}
                     {/* Adjust margin */}
                     Connected to WiFi network{" "}
-                    {cabinet?.smibConfig?.net?.netStaSSID ||
-                      "Dynamic 1 - Staff Wifi"}
+                    {mqttConfigData?.networkSSID || "No Value Provided"}
                   </p>
                 </div>
                 <div className="md:text-right">
@@ -636,7 +722,7 @@ function CabinetDetailPageContent() {
                     {" "}
                     {/* Adjust margin */}
                     Running firmware{" "}
-                    {cabinet?.smibVersion?.firmware || "FAC_v1-0-4(v1-0-4)"}
+                    {mqttConfigData?.firmwareVersion || "No Value Provided"}
                   </p>
                 </div>
               </div>
@@ -659,43 +745,45 @@ function CabinetDetailPageContent() {
                       <h3 className="font-medium mb-2 text-foreground">
                         Communication Mode
                       </h3>
-                      <div className="flex">
-                        <Tooltip delayDuration={50}>
-                          <TooltipTrigger asChild>
-                            <div className="relative">
-                              <select
-                                className="w-60 border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-                                value={communicationMode}
-                                disabled
-                              >
-                                <option value="sas">sas</option>
-                                <option value="non sas">non sas</option>
-                                <option value="IGT">IGT</option>
-                              </select>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Under maintenance</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip delayDuration={50}>
-                          <TooltipTrigger asChild>
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Button
-                                className="bg-gray-400 text-gray-600 cursor-not-allowed"
-                                disabled
-                              >
-                                UPDATE
-                              </Button>
-                            </motion.div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Under maintenance</p>
-                          </TooltipContent>
-                        </Tooltip>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className={`w-60 border border-border rounded p-2 ${
+                            isEditMode
+                              ? "bg-background text-foreground cursor-pointer"
+                              : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          }`}
+                          value={
+                            isEditMode
+                              ? formData.communicationMode
+                              : communicationMode
+                          }
+                          disabled={!isEditMode}
+                          onChange={(e) =>
+                            updateFormData("communicationMode", e.target.value)
+                          }
+                        >
+                          <option value="sas">sas</option>
+                          <option value="non sas">non sas</option>
+                          <option value="IGT">IGT</option>
+                        </select>
+                        {isEditMode && (
+                          <Button
+                            onClick={async () => await handleSaveSMIBConfig()}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            SAVE
+                          </Button>
+                        )}
+                        {!isEditMode && (
+                          <Button
+                            onClick={() => setEditMode(true)}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            EDIT
+                          </Button>
+                        )}
                       </div>
                     </motion.div>
 
@@ -704,65 +792,47 @@ function CabinetDetailPageContent() {
                       <h3 className="font-medium mb-2 text-foreground">
                         Firmware Update
                       </h3>
-                      <div className="flex">
-                        <Tooltip delayDuration={50}>
-                          <TooltipTrigger asChild>
-                            <div className="relative">
-                              <select
-                                className="w-full border border-border rounded p-2 mr-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-                                value={firmwareVersion}
-                                disabled
-                              >
-                                <option value="Cloudy v1.0">Cloudy v1.0</option>
-                                <option value="Cloudy v1.0.4">
-                                  Cloudy v1.0.4
-                                </option>
-                                <option value="Cloudy v1.0.4.1">
-                                  Cloudy v1.0.4.1
-                                </option>
-                              </select>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Under maintenance</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip delayDuration={50}>
-                          <TooltipTrigger asChild>
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Button
-                                className="ml-auto bg-gray-400 text-gray-600 cursor-not-allowed border border-gray-300"
-                                disabled
-                              >
-                                ⟳
-                              </Button>
-                            </motion.div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Under maintenance</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip delayDuration={50}>
-                          <TooltipTrigger asChild>
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Button
-                                className="ml-2 bg-gray-400 text-gray-600 cursor-not-allowed"
-                                disabled
-                              >
-                                UPDATE
-                              </Button>
-                            </motion.div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Under maintenance</p>
-                          </TooltipContent>
-                        </Tooltip>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className={`flex-1 border border-border rounded p-2 ${
+                            isEditMode
+                              ? "bg-background text-foreground cursor-pointer"
+                              : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          }`}
+                          value={
+                            isEditMode
+                              ? formData.firmwareVersion
+                              : firmwareVersion
+                          }
+                          disabled={!isEditMode}
+                          onChange={(e) =>
+                            updateFormData("firmwareVersion", e.target.value)
+                          }
+                        >
+                          <option value="Cloudy v1.0">Cloudy v1.0</option>
+                          <option value="Cloudy v1.0.4">Cloudy v1.0.4</option>
+                          <option value="Cloudy v1.0.4.1">
+                            Cloudy v1.0.4.1
+                          </option>
+                        </select>
+                        {isEditMode && (
+                          <Button
+                            onClick={async () => await handleSaveSMIBConfig()}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            SAVE
+                          </Button>
+                        )}
+                        {!isEditMode && (
+                          <Button
+                            onClick={() => setEditMode(true)}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            EDIT
+                          </Button>
+                        )}
                       </div>
                     </motion.div>
 
@@ -771,63 +841,51 @@ function CabinetDetailPageContent() {
                       variants={itemVariants}
                       className="flex flex-wrap gap-2 md:gap-4"
                     >
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button
-                              variant="outline"
-                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                              disabled
-                            >
-                              RESTART
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button
-                              variant="outline"
-                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                              disabled
-                            >
-                              UNLOCK MACHINE
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button
-                              variant="outline"
-                              className="border-gray-400 text-gray-500 bg-gray-100 cursor-not-allowed w-full md:w-auto"
-                              disabled
-                            >
-                              LOCK MACHINE
-                            </Button>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Under maintenance</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button
+                          variant="outline"
+                          className="border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent w-full md:w-auto"
+                          onClick={async () =>
+                            await handleSaveSMIBConfig("RESTART")
+                          }
+                          disabled={!isEditMode}
+                        >
+                          RESTART
+                        </Button>
+                      </motion.div>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button
+                          variant="outline"
+                          className="border-orangeHighlight text-orangeHighlight hover:bg-accent w-full md:w-auto"
+                          onClick={async () =>
+                            await handleSaveSMIBConfig("UNLOCK MACHINE")
+                          }
+                          disabled={!isEditMode}
+                        >
+                          UNLOCK MACHINE
+                        </Button>
+                      </motion.div>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button
+                          variant="outline"
+                          className="border-destructive text-destructive hover:bg-accent w-full md:w-auto"
+                          onClick={async () =>
+                            await handleSaveSMIBConfig("LOCK MACHINE")
+                          }
+                          disabled={!isEditMode}
+                        >
+                          LOCK MACHINE
+                        </Button>
+                      </motion.div>
                     </motion.div>
 
                     {/* Apply to all checkbox */}
@@ -862,129 +920,385 @@ function CabinetDetailPageContent() {
                       variants={itemVariants}
                       className="border-t border-border pt-6"
                     >
-                      <h3 className="font-medium mb-4 text-foreground">
-                        Network/WiFi
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-                        {" "}
-                        {/* Responsive grid */}
-                        <div className="flex">
-                          <span className="text-sm font-medium text-grayHighlight w-24">
-                            Name:
-                          </span>
-                          <span className="text-sm truncate">
-                            {" "}
-                            {/* Added truncate */}
-                            {cabinet?.smibConfig?.net?.netStaSSID ||
-                              "Dynamic 1 - Staff Wifi"}
-                          </span>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-medium text-foreground">
+                          Network/WiFi
+                        </h3>
+                        {isEditMode && (
+                          <Button
+                            onClick={async () => await handleSaveSMIBConfig()}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            SAVE NETWORK
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-grayHighlight">
+                            Network Name (live):
+                          </label>
+                          {isEditMode ? (
+                            <input
+                              type="text"
+                              value={formData.networkSSID}
+                              onChange={(e) =>
+                                updateFormData("networkSSID", e.target.value)
+                              }
+                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              placeholder="Enter network name"
+                            />
+                          ) : (
+                            <div className="text-sm truncate">
+                              {formData.networkSSID ||
+                                "Device Online - Config Not Supported"}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex">
-                          <span className="text-sm font-medium text-grayHighlight w-24">
-                            Password:
-                          </span>
-                          <span className="text-sm">
-                            {cabinet?.smibConfig?.net?.netStaPwd ||
-                              "wordsapp!23"}
-                          </span>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-grayHighlight">
+                            Password (live):
+                          </label>
+                          {isEditMode ? (
+                            <input
+                              type="password"
+                              value={formData.networkPassword}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "networkPassword",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              placeholder="Enter network password"
+                            />
+                          ) : (
+                            <div className="text-sm">
+                              {formData.networkPassword ||
+                                "Device Online - Config Not Supported"}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex">
-                          <span className="text-sm font-medium text-grayHighlight w-24">
-                            Channel:
-                          </span>
-                          <span className="text-sm">
-                            {cabinet?.smibConfig?.net?.netStaChan || "1"}
-                          </span>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-grayHighlight">
+                            Channel (live):
+                          </label>
+                          {isEditMode ? (
+                            <input
+                              type="number"
+                              value={formData.networkChannel}
+                              onChange={(e) =>
+                                updateFormData("networkChannel", e.target.value)
+                              }
+                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              placeholder="Enter channel"
+                              min="1"
+                              max="11"
+                            />
+                          ) : (
+                            <div className="text-sm">
+                              {formData.networkChannel ||
+                                "Device Online - Config Not Supported"}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
 
-                    {/* MQTT Section - Responsive */}
+                    {/* COMS Section - Responsive */}
                     <motion.div
                       variants={itemVariants}
                       className="border-t border-border pt-6"
                     >
-                      <h3 className="font-medium mb-4 text-foreground">MQTT</h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-medium text-foreground">COMS</h3>
+                        {isEditMode && (
+                          <Button
+                            onClick={async () => await handleSaveSMIBConfig()}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            SAVE COMS
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {" "}
-                        {/* Responsive grid */}
                         <div>
                           <h4 className="text-sm font-medium mb-2">
-                            Connection
+                            Communication Settings
                           </h4>
-                          <div className="space-y-1">
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Host:
-                              </span>
-                              <span className="text-sm"></span>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Mode:
+                              </label>
+                              {isEditMode ? (
+                                <select
+                                  value={formData.comsMode || "0"}
+                                  onChange={(e) =>
+                                    updateFormData("comsMode", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                >
+                                  <option value="0">SAS</option>
+                                  <option value="1">Non-SAS</option>
+                                  <option value="2">IGT</option>
+                                </select>
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsMode === "0"
+                                    ? "SAS"
+                                    : formData.comsMode === "1"
+                                    ? "Non-SAS"
+                                    : formData.comsMode === "2"
+                                    ? "IGT"
+                                    : formData.comsMode || "No Value Provided"}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Port:
-                              </span>
-                              <span className="text-sm"></span>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Address:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={formData.comsAddr || ""}
+                                  onChange={(e) =>
+                                    updateFormData("comsAddr", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="1"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsAddr || "No Value Provided"}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Use TLS:
-                              </span>
-                              <span className="text-sm">No</span>
-                            </div>
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Idle Timeout:
-                              </span>
-                              <span className="text-sm">30 seconds</span>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Rate (ms):
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={formData.comsRateMs || ""}
+                                  onChange={(e) =>
+                                    updateFormData("comsRateMs", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="200"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsRateMs || "No Value Provided"}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                         <div>
                           <h4 className="text-sm font-medium mb-2">
-                            Authentication
+                            Advanced Settings
                           </h4>
-                          <div className="space-y-1">
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Username:
-                              </span>
-                              <span className="text-sm"></span>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                RTE:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={formData.comsRTE || ""}
+                                  onChange={(e) =>
+                                    updateFormData("comsRTE", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="0"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsRTE || "No Value Provided"}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex">
-                              <span className="text-sm text-grayHighlight w-24">
-                                Password:
-                              </span>
-                              <span className="text-sm"></span>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                GPC:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={formData.comsGPC || ""}
+                                  onChange={(e) =>
+                                    updateFormData("comsGPC", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="0"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsGPC || "No Value Provided"}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       </div>
+                    </motion.div>
 
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-2">Topics</h4>
-                        <div className="space-y-1">
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Server:
-                            </span>
-                            <span className="text-sm">sas/gy/server</span>
+                    {/* MQTT Topics Section - Responsive */}
+                    <motion.div
+                      variants={itemVariants}
+                      className="border-t border-border pt-6"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-medium text-foreground">
+                          MQTT Topics
+                        </h3>
+                        {isEditMode && (
+                          <Button
+                            onClick={async () => await handleSaveSMIBConfig()}
+                            className="bg-button text-container hover:bg-buttonActive"
+                            size="sm"
+                          >
+                            SAVE MQTT TOPICS
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">
+                            Topic Configuration
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                MQTT Public Topic:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={formData.mqttPubTopic || ""}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "mqttPubTopic",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="sas/gy/server"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.mqttPubTopic || "No Value Provided"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                MQTT Config Topic:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={formData.mqttCfgTopic || ""}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "mqttCfgTopic",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="smib/config"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.mqttCfgTopic || "No Value Provided"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                MQTT URI:
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={formData.mqttURI || ""}
+                                  onChange={(e) =>
+                                    updateFormData("mqttURI", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.mqttURI || "No Value Provided"}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              Configuration:
-                            </span>
-                            <span className="text-sm">smib/config</span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-sm text-grayHighlight w-24">
-                              SMIB:
-                            </span>
-                            <span className="text-sm">
-                              sas/relay/
-                              {cabinet?.relayId ||
-                                cabinet?.smibBoard ||
-                                "e831cdfa8464"}
-                            </span>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">
+                            Additional Settings
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                QOS:
+                              </label>
+                              {isEditMode ? (
+                                <select
+                                  value={formData.mqttTLS || "2"}
+                                  onChange={(e) =>
+                                    updateFormData("mqttTLS", e.target.value)
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                >
+                                  <option value="0">0 - At most once</option>
+                                  <option value="1">1 - At least once</option>
+                                  <option value="2">2 - Exactly once</option>
+                                </select>
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.mqttTLS === "0"
+                                    ? "0 - At most once"
+                                    : formData.mqttTLS === "1"
+                                    ? "1 - At least once"
+                                    : formData.mqttTLS === "2"
+                                    ? "2 - Exactly once"
+                                    : formData.mqttTLS || "No Value Provided"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Idle Timeout (s):
+                              </label>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={formData.mqttIdleTimeout || ""}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "mqttIdleTimeout",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
+                                  placeholder="30"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.mqttIdleTimeout ||
+                                    "No Value Provided"}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1007,13 +1321,17 @@ function CabinetDetailPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
                 <div>
                   <p className="text-sm text-grayHighlight">
-                    SMIB ID:{" "}
-                    {cabinet?.relayId || cabinet?.smibBoard || "e831cdfa8464"}
+                    SMIB ID: {mqttConfigData?.smibId || "No Value Provided"}
                   </p>
                   <p className="text-sm text-grayHighlight mt-1 md:mt-0">
                     Connected to WiFi network{" "}
-                    {cabinet?.smibConfig?.net?.netStaSSID ||
-                      "Dynamic 1 - Staff Wifi"}
+                    {mqttConfigData?.networkSSID ||
+                      "Device Online - Config Not Supported"}
+                  </p>
+                  <p className="text-xs text-yellow-500 mt-1">
+                    ⚠️ Device is online but not responding to configuration
+                    requests. Check SMIB device settings to enable config
+                    responses.
                   </p>
                 </div>
                 <div className="md:text-right">
@@ -1029,7 +1347,7 @@ function CabinetDetailPageContent() {
                   </p>
                   <p className="text-sm text-grayHighlight mt-1 md:mt-0">
                     Running firmware{" "}
-                    {cabinet?.smibVersion?.firmware || "FAC_v1-0-4(v1-0-4)"}
+                    {mqttConfigData?.firmwareVersion || "No Value Provided"}
                   </p>
                 </div>
               </div>
@@ -1048,6 +1366,7 @@ function CabinetDetailPageContent() {
             <DashboardDateFilters
               hideAllTime={false}
               onCustomRangeGo={fetchCabinetDetailsData}
+              enableTimeInputs={true}
             />
           </motion.div>
         ) : (
@@ -1055,6 +1374,7 @@ function CabinetDetailPageContent() {
             <DashboardDateFilters
               hideAllTime={false}
               onCustomRangeGo={fetchCabinetDetailsData}
+              enableTimeInputs={true}
             />
           </div>
         )}

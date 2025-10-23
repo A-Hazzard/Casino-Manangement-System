@@ -1,75 +1,70 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { UserStore } from "@/lib/types/store";
+import type { UserAuthPayload } from "@/shared/types/auth";
+import { clearUserCache } from "@/lib/utils/userCache";
 
-// Define a no-op version for SSR
-const dummyState: UserStore = {
-  user: null,
-  setUser: () => {},
-  clearUser: () => {},
+type UserStore = {
+  user: UserAuthPayload | null;
+  setUser: (user: UserAuthPayload | null) => void;
+  clearUser: () => void;
+  isInitialized: boolean;
+  setInitialized: (initialized: boolean) => void;
 };
 
-// Make sure store is created only on client-side
+// SSR-safe store creation
 const createStore = () => {
-  // Only create the persisted store on the client side
   return create<UserStore>()(
     persist(
       (set) => ({
         user: null,
+        isInitialized: false,
         setUser: (user) => {
           set({ user });
+          // Clear cache when user data changes to ensure fresh data
+          if (user) {
+            clearUserCache();
+          }
         },
         clearUser: () => {
-          set({ user: null });
+          set({ user: null, isInitialized: false });
+          // Clear cache when user is logged out
+          clearUserCache();
         },
+        setInitialized: (initialized) => set({ isInitialized: initialized }),
       }),
       {
-        name: "user-store",
+        name: "user-auth-store", // Customize this name
         storage: createJSONStorage(() => {
-          // Check if we're in the browser
           if (typeof window !== "undefined") {
             return localStorage;
           }
-          // Return a mock storage for TypeScript (this should never execute)
           return {
             getItem: () => null,
             setItem: () => {},
             removeItem: () => {},
           };
         }),
-        onRehydrateStorage: () => {
-          return (state, error) => {
-            if (error) {
-              console.error("User store rehydration failed:", error);
-            }
-          };
-        },
       }
     )
   );
 };
 
-// Create the store conditionally
 let storeInstance: ReturnType<typeof createStore> | null = null;
 
-/**
- * Zustand store for managing user authentication state.
- *
- * - Persists user data in localStorage on the client.
- * - Provides setUser and clearUser actions.
- * - Returns a dummy state for SSR.
- *
- * @returns Zustand hook for accessing and updating user state.
- */
-export const useUserStore = (() => {
-  // Only create the persisted store on the client side
-  if (typeof window !== "undefined") {
-    if (!storeInstance) {
-      storeInstance = createStore();
-    }
-    return storeInstance;
+const getClientStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore();
   }
+  return storeInstance;
+};
 
-  // Return a dummy store for SSR
-  return create<UserStore>(() => dummyState);
-})();
+export const useUserStore =
+  typeof window !== "undefined"
+    ? getClientStore()!
+    : create<UserStore>(() => ({
+        user: null,
+        isInitialized: false,
+        setUser: () => {},
+        clearUser: () => {},
+        setInitialized: () => {},
+      }));

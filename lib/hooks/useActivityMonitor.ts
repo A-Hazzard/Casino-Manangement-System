@@ -32,7 +32,7 @@ export function useActivityMonitor(
         const response = await axios.post("/api/auth/refresh-token");
         if (response.data?.success) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("✅ Token refreshed due to user activity");
+            console.warn("Token refreshed due to user activity");
           }
         }
       } catch (error) {

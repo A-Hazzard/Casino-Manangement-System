@@ -25,8 +25,21 @@ export default function DateRangeIndicator({ className = "" }: DateRangeIndicato
         return "All Time";
       case "Custom":
         if (customDateRange?.startDate && customDateRange?.endDate) {
+          // Display the local time dates as calendar dates
           const startDate = format(customDateRange.startDate, "MMM d, yyyy");
           const endDate = format(customDateRange.endDate, "MMM d, yyyy");
+          
+          // Check if times are different from midnight/end of day (indicating custom time was set)
+          const startTime = customDateRange.startDate.getHours() * 60 + customDateRange.startDate.getMinutes();
+          const isEndOfDay = customDateRange.endDate.getHours() === 23 && customDateRange.endDate.getMinutes() === 59;
+          
+          if (startTime !== 0 || !isEndOfDay) {
+            // Show time information
+            const startTimeStr = format(customDateRange.startDate, "h:mm a");
+            const endTimeStr = format(customDateRange.endDate, "h:mm a");
+            return `${startDate} ${startTimeStr} - ${endDate} ${endTimeStr}`;
+          }
+          
           return `${startDate} - ${endDate}`;
         }
         return "Custom Range";
@@ -55,8 +68,21 @@ export default function DateRangeIndicator({ className = "" }: DateRangeIndicato
         return "All available data";
       case "Custom":
         if (customDateRange?.startDate && customDateRange?.endDate) {
+          // Display the local time dates as calendar dates
           const startDate = format(customDateRange.startDate, "EEEE, MMMM d, yyyy");
           const endDate = format(customDateRange.endDate, "EEEE, MMMM d, yyyy");
+          
+          // Check if times are different from midnight/end of day (indicating custom time was set)
+          const startTime = customDateRange.startDate.getHours() * 60 + customDateRange.startDate.getMinutes();
+          const isEndOfDay = customDateRange.endDate.getHours() === 23 && customDateRange.endDate.getMinutes() === 59;
+          
+          if (startTime !== 0 || !isEndOfDay) {
+            // Show time information
+            const startTimeStr = format(customDateRange.startDate, "h:mm a");
+            const endTimeStr = format(customDateRange.endDate, "h:mm a");
+            return `${startDate} at ${startTimeStr} to ${endDate} at ${endTimeStr}`;
+          }
+          
           return `${startDate} to ${endDate}`;
         }
         return "Custom date range selected";

@@ -127,7 +127,7 @@ export function useCabinetDetailsData({
       fetchCabinetDetailsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, activeMetricsFilter, dateFilterInitialized]);
+  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange]);
 
   return {
     cabinet,

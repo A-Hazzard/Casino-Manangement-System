@@ -2,14 +2,14 @@ import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserStore } from "@/lib/store/userStore";
 import { hasPageAccess, PageName } from "@/lib/utils/permissions";
-import { hasPageAccessDb, hasTabAccessDb } from "@/lib/utils/permissionsDb";
+import { hasTabAccessDb } from "@/lib/utils/permissionsDb";
 
-interface UrlProtectionOptions {
+type UrlProtectionOptions = {
   page: string;
   allowedTabs?: string[];
   defaultTab?: string;
   redirectPath?: string;
-}
+};
 
 /**
  * Hook to protect URL parameters and redirect unauthorized users
@@ -33,9 +33,25 @@ export function useUrlProtection({
 
     const checkPermissions = async () => {
       try {
-        // Check if user has access to the page itself (database query)
-        const hasPage = await hasPageAccessDb(page as PageName);
-        if (!hasPage) {
+        // Debug logging
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            `[useUrlProtection] Checking permissions for page: ${page}`
+          );
+          console.warn(
+            `[useUrlProtection] User roles: ${JSON.stringify(userRoles)}`
+          );
+        }
+
+        // First check if user has access to the page using local permissions (faster)
+        const hasPageLocal = hasPageAccess(userRoles, page as PageName);
+        if (!hasPageLocal) {
+          // Only redirect if user definitely doesn't have access locally
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              `[useUrlProtection] User does not have local access to page: ${page}`
+            );
+          }
           router.push(redirectPath || "/unauthorized");
           return;
         }
@@ -69,6 +85,16 @@ export function useUrlProtection({
             } else {
               router.push(redirectPath || "/unauthorized");
             }
+            return;
+          }
+
+          // Only check database permissions for specific tabs that require it
+          // Skip database check for admin users on most tabs
+          if (
+            userRoles.includes("admin") ||
+            userRoles.includes("evolution admin")
+          ) {
+            // Admin users have access to all tabs, skip database check
             return;
           }
 
@@ -129,12 +155,24 @@ export function useUrlProtection({
         }
       } catch (error) {
         console.error("Error checking permissions:", error);
-        router.push(redirectPath || "/unauthorized");
+        // Only redirect on error if user definitely doesn't have local access
+        if (!hasPageAccess(userRoles, page as PageName)) {
+          router.push(redirectPath || "/unauthorized");
+        }
       }
     };
 
     checkPermissions();
-  }, [user, searchParams, router, page, allowedTabs, defaultTab, redirectPath]);
+  }, [
+    user,
+    searchParams,
+    router,
+    page,
+    allowedTabs,
+    defaultTab,
+    redirectPath,
+    userRoles,
+  ]);
 
   return {
     hasAccess: hasPageAccess(userRoles, page as PageName),

@@ -5,6 +5,7 @@ import { LocationData, AggregatedLocation } from "../types/location";
 import { TimePeriod } from "../types/api";
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
+import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -38,7 +39,13 @@ export async function fetchLocationAndCabinets(
     const params: Record<string, string> = {
       timePeriod: timePeriod,
     };
-    if (licencee) params.licencee = licencee;
+    if (licencee) {
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licencee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
+    }
     const cabinetsRes = await axios.get(`/api/locations/${locationId}`, {
       params,
     });
@@ -69,7 +76,11 @@ export default async function getAllGamingLocations(
   try {
     const params: Record<string, string> = {};
     if (licencee && licencee !== "all") {
-      params.licencee = licencee;
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licencee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
     }
 
     const response = await axios.get<{ locations: locations }>(
@@ -93,16 +104,25 @@ export default async function getAllGamingLocations(
  *
  * @param locationId - The unique identifier for the location.
  * @param licensee - (Optional) Licensee filter for security verification.
+ * @param currency - (Optional) Currency code for financial data conversion.
  * @returns Promise resolving to the location details object, or null on error.
  */
 export async function fetchLocationDetails(
   locationId: string,
-  licensee?: string
+  licensee?: string,
+  currency?: string
 ) {
   try {
     const params: Record<string, string> = {};
     if (licensee) {
-      params.licencee = licensee;
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licensee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
+    }
+    if (currency) {
+      params.currency = currency;
     }
 
     const response = await axios.get(
@@ -128,17 +148,26 @@ export async function fetchLocationDetails(
  * @param locationId - The unique identifier for the location.
  * @param timePeriod - (Optional) Time period filter for cabinets.
  * @param licensee - (Optional) Licensee filter for security verification.
+ * @param currency - (Optional) Currency code for financial data conversion.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
 export async function fetchCabinets(
   locationId: string,
   timePeriod?: string,
-  licensee?: string
+  licensee?: string,
+  currency?: string
 ) {
   try {
     const params: Record<string, string> = {};
     if (timePeriod) params.timePeriod = timePeriod;
-    if (licensee && licensee !== "all") params.licencee = licensee;
+    if (licensee && licensee !== "all") {
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licensee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
+    }
+    if (currency) params.currency = currency;
 
     const response = await axios.get(`/api/locations/${locationId}/cabinets`, {
       params,
@@ -167,8 +196,14 @@ export async function fetchAllGamingLocations(licensee?: string) {
       const formattedLocations = locationsList.map((loc) => {
         const locationWithProps = loc as unknown as Record<string, unknown>;
         return {
-          id: (locationWithProps._id as string)?.toString() || (locationWithProps._id as string) || "",
-          name: (locationWithProps.name as string) || (locationWithProps.locationName as string) || "Unknown Location",
+          id:
+            (locationWithProps._id as string)?.toString() ||
+            (locationWithProps._id as string) ||
+            "",
+          name:
+            (locationWithProps.name as string) ||
+            (locationWithProps.locationName as string) ||
+            "Unknown Location",
         };
       });
       // Sort alphabetically by name as additional safeguard
@@ -203,14 +238,17 @@ export async function fetchLocationDetailsById(
 
     const params: Record<string, string> = {};
     if (licensee) {
-      params.licencee = licensee;
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licensee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
     }
 
     // Use the main locations API route to get location details
     const url = `/api/locations`;
     const response = await axios.get(url, {
       params,
-      timeout: 15000,
       headers: getAuthHeaders(),
     });
 
@@ -313,7 +351,7 @@ export const fetchLocationsData = async (
 
     return result;
   } catch (error) {
-    console.error("❌ fetchLocationsData Error:", error);
+    console.error(" fetchLocationsData Error:", error);
     return [];
   }
 };
@@ -433,13 +471,17 @@ export async function fetchAggregatedLocationsData(
     });
 
     if (response.status !== 200) {
-      console.error(`❌ API error (${response.status}):`, response.data);
+      console.error(` API error (${response.status}):`, response.data);
       return [];
     }
 
     // Handle paginated response structure
     const responseData = response.data;
-    if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+    if (
+      responseData &&
+      typeof responseData === "object" &&
+      "data" in responseData
+    ) {
       // Paginated response: { data: [...], pagination: {...} }
       return responseData.data || [];
     } else if (Array.isArray(responseData)) {
@@ -447,7 +489,7 @@ export async function fetchAggregatedLocationsData(
       return responseData;
     } else {
       // Fallback for unexpected structure
-      console.warn('Unexpected API response structure:', responseData);
+      console.warn("Unexpected API response structure:", responseData);
       return [];
     }
   } catch (error) {

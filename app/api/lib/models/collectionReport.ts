@@ -29,6 +29,7 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     balanceCorrection: { type: Number },
     balanceCorrectionReas: { type: String },
     machinesCollected: { type: String },
+    isEditing: { type: Boolean, default: false },
     createdAt: { type: Date },
     updatedAt: { type: Date },
     __v: { type: Number },

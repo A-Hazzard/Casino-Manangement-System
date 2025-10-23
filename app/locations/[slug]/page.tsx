@@ -8,7 +8,6 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
 import { useParams, useRouter } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
 import { motion } from "framer-motion";
@@ -27,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import gsap from "gsap";
 import { RefreshButton } from "@/components/ui/RefreshButton";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
+import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 import {
   animateTableRows,
   animateSortDirection,
@@ -48,11 +48,23 @@ import { ChevronDown } from "lucide-react";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 
+type CabinetSortOption =
+  | "assetNumber"
+  | "locationName"
+  | "moneyIn"
+  | "moneyOut"
+  | "jackpot"
+  | "gross"
+  | "cancelledCredits"
+  | "game"
+  | "smbId"
+  | "serialNumber"
+  | "lastOnline";
+
 export default function LocationPage() {
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
-
 
   const {
     selectedLicencee,
@@ -106,8 +118,10 @@ export default function LocationPage() {
 
   // Calculate machine status from cabinet data
   const machineStats = {
-    onlineMachines: allCabinets.filter(cabinet => cabinet.online === true).length,
-    offlineMachines: allCabinets.filter(cabinet => cabinet.online === false).length,
+    onlineMachines: allCabinets.filter((cabinet) => cabinet.online === true)
+      .length,
+    offlineMachines: allCabinets.filter((cabinet) => cabinet.online === false)
+      .length,
   };
 
   // ====== Filter Cabinets by search and sort ======
@@ -157,15 +171,47 @@ export default function LocationPage() {
         const foundLocation = currentLocation || currentLocationAlt;
 
         // Check if current location exists in new licensee's locations
+        let shouldBypassLicenseeFilter = false;
+
         if (!foundLocation) {
-          // Location doesn't exist for this licensee, show 404 error
-          setSelectedLocation("");
-          setLocationName("");
-          setAllCabinets([]);
-          setError("Location not found");
-          setLoading(false);
-          setCabinetsLoading(false);
-          return;
+          // Location doesn't exist for this licensee, try to find it in all locations
+          console.warn(
+            `Location ${locationId} not found for licensee ${selectedLicencee}, trying all locations...`
+          );
+
+          // Try fetching all locations to find this specific location
+          const allLocations = await fetchAllGamingLocations("all");
+          const locationInAllLocations = allLocations.find(
+            (loc) => loc.id === locationId || loc.id.toString() === locationId
+          );
+
+          if (locationInAllLocations) {
+            // Location exists but belongs to a different licensee
+            console.warn(
+              `Location found in all locations, but belongs to different licensee than ${selectedLicencee}`
+            );
+            console.warn(
+              "Setting location from all locations:",
+              locationInAllLocations.name
+            );
+            setLocationName(locationInAllLocations.name);
+            setSelectedLocation(locationInAllLocations.name);
+
+            // Set a flag to indicate we should bypass licensee filtering for API calls
+            shouldBypassLicenseeFilter = true;
+            setError(
+              "Location belongs to different licensee - showing limited data"
+            );
+          } else {
+            // Location truly doesn't exist
+            setSelectedLocation("");
+            setLocationName("");
+            setAllCabinets([]);
+            setError("Location not found");
+            setLoading(false);
+            setCabinetsLoading(false);
+            return;
+          }
         } else if (formattedLocations.length === 0) {
           // No locations for this licensee, clear selection
           setSelectedLocation("");
@@ -177,12 +223,24 @@ export default function LocationPage() {
 
         // Use the found location data instead of making another API call
         if (foundLocation) {
+          console.warn(
+            "Setting location from found location:",
+            foundLocation.name
+          );
           setLocationName(foundLocation.name);
           setSelectedLocation(foundLocation.name);
+        } else if (shouldBypassLicenseeFilter) {
+          // Location was found in all locations but belongs to different licensee
+          // selectedLocation and locationName were already set above
+          console.warn(
+            "Using location from all locations due to licensee mismatch"
+          );
         } else {
-          // Fallback if location not found
-          setLocationName(locationId);
-          setSelectedLocation(locationId);
+          // Fallback if location truly not found - use a more descriptive name
+          const fallbackName = `Unknown Location (${locationId})`;
+          console.warn("Using fallback location name:", fallbackName);
+          setLocationName(fallbackName);
+          setSelectedLocation(fallbackName);
         }
 
         // Fetch cabinets data for the location
@@ -194,9 +252,14 @@ export default function LocationPage() {
             return;
           }
 
+          // Check if we should bypass licensee filtering (location belongs to different licensee)
+          const licenseeForCabinets = shouldBypassLicenseeFilter
+            ? undefined
+            : selectedLicencee;
+
           const cabinetsData = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
-            selectedLicencee,
+            licenseeForCabinets, // Use undefined if location belongs to different licensee
             activeMetricsFilter, // Pass the selected filter directly
             undefined, // Don't pass searchTerm (4th parameter)
 
@@ -205,7 +268,15 @@ export default function LocationPage() {
               : undefined // Only pass customDateRange when filter is "Custom"
           );
           setAllCabinets(cabinetsData);
-          setError(null); // Clear any previous errors on successful fetch
+
+          // Clear error only if we successfully fetched data or if it's a licensee mismatch
+          if (shouldBypassLicenseeFilter) {
+            setError(
+              "Location belongs to different licensee - showing limited data"
+            );
+          } else {
+            setError(null);
+          }
         } catch (error) {
           // Error handling for cabinet data fetch
           if (process.env.NODE_ENV === "development") {
@@ -221,7 +292,6 @@ export default function LocationPage() {
     };
 
     fetchData();
-
   }, [
     locationId,
     selectedLicencee,
@@ -334,7 +404,6 @@ export default function LocationPage() {
       setLoading(false);
       setCabinetsLoading(false);
     }
-
   }, [
     selectedLicencee,
     activeMetricsFilter,
@@ -351,9 +420,6 @@ export default function LocationPage() {
   };
 
   const { openCabinetModal } = useNewCabinetStore();
-
-
-
 
   return (
     <>
@@ -388,9 +454,6 @@ export default function LocationPage() {
               </h1>
             </div>
 
-
-
-            
             {/* Action buttons - stacked on mobile */}
             <div className="flex gap-2">
               <RefreshButton
@@ -400,14 +463,18 @@ export default function LocationPage() {
                 label="Refresh"
                 className="flex-1"
               />
-              <Button
-                variant="default"
-                className="flex-1 bg-button text-white"
-                disabled={loading || cabinetsLoading || refreshing}
-                onClick={() => openCabinetModal(locationId)}
-              >
-                Create
-              </Button>
+              {loading || cabinetsLoading ? (
+                <ActionButtonSkeleton width="flex-1" showIcon={false} />
+              ) : (
+                <Button
+                  variant="default"
+                  className="flex-1 bg-button text-white"
+                  disabled={loading || cabinetsLoading || refreshing}
+                  onClick={() => openCabinetModal(locationId)}
+                >
+                  Create
+                </Button>
+              )}
             </div>
           </div>
 
@@ -432,14 +499,18 @@ export default function LocationPage() {
                 label="Refresh"
                 className="ml-auto"
               />
-              <Button
-                variant="default"
-                className="ml-2 bg-button text-white"
-                disabled={loading || cabinetsLoading || refreshing}
-                onClick={() => openCabinetModal(locationId)}
-              >
-                Create Machine
-              </Button>
+              {loading || cabinetsLoading ? (
+                <ActionButtonSkeleton width="w-36" showIcon={false} />
+              ) : (
+                <Button
+                  variant="default"
+                  className="ml-2 bg-button text-white"
+                  disabled={loading || cabinetsLoading || refreshing}
+                  onClick={() => openCabinetModal(locationId)}
+                >
+                  Create Machine
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -462,6 +533,7 @@ export default function LocationPage() {
                 disabled={loading || cabinetsLoading || refreshing}
                 onCustomRangeGo={handleRefresh}
                 hideAllTime={false}
+                enableTimeInputs={true}
               />
             </div>
             <div className="flex-shrink-0 ml-4 w-auto">
@@ -480,6 +552,7 @@ export default function LocationPage() {
                 disabled={loading || cabinetsLoading || refreshing}
                 onCustomRangeGo={handleRefresh}
                 hideAllTime={false}
+                enableTimeInputs={true}
               />
             </div>
             <div className="w-full">
@@ -493,7 +566,7 @@ export default function LocationPage() {
         </div>
 
         {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-        <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+        <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive mt-4">
           <div className="relative flex-1 max-w-md min-w-0">
             <Input
               type="text"
@@ -567,6 +640,20 @@ export default function LocationPage() {
               </div>
             )}
           </div>
+
+          {/* Status Filter */}
+          <select
+            value={selectedStatus}
+            onChange={(e) =>
+              handleFilterChange(e.target.value as "All" | "Online" | "Offline")
+            }
+            className="w-auto max-w-[150px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
+            disabled={loading || cabinetsLoading || refreshing}
+          >
+            <option value="All">All Machines</option>
+            <option value="Online">Online</option>
+            <option value="Offline">Offline</option>
+          </select>
         </div>
 
         {/* Mobile: Search and Location Selection Section */}
@@ -603,7 +690,6 @@ export default function LocationPage() {
 
           {/* Mobile: Location Dropdown */}
           <div className="relative w-full" ref={locationDropdownRef}>
-
             <Button
               variant="outline"
               className={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
@@ -897,13 +983,12 @@ export default function LocationPage() {
           <div className="mt-10 text-center text-red-500">{error}</div>
         ) : null}
 
-
         <NewCabinetModal
           currentLocationName={locationName}
           onCreated={handleRefresh}
         />
       </PageLayout>
-      
+
       {/* Cabinet Action Modals */}
       <EditCabinetModal onCabinetUpdated={handleRefresh} />
       <DeleteCabinetModal onCabinetDeleted={handleRefresh} />

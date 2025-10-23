@@ -1,0 +1,359 @@
+import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "../../lib/middleware/db";
+import { MachineAggregationMatchStage } from "@/shared/types/mongo";
+import { getGamingDayRangesForLocations } from "@/lib/utils/gamingDayRange";
+import { Collections } from "@/app/api/lib/models/collections";
+import { Meters } from "@/app/api/lib/models/meters";
+
+export async function GET(req: NextRequest) {
+  try {
+    await connectDB();
+
+    const { searchParams } = new URL(req.url);
+
+    // Get parameters from search params
+    const locationId = searchParams.get("locationId");
+    const searchTerm = searchParams.get("search")?.trim() || "";
+    const licensee = searchParams.get("licensee");
+    const timePeriod = searchParams.get("timePeriod");
+    
+    // Only proceed if timePeriod is provided - no fallback
+    if (!timePeriod) {
+      return NextResponse.json(
+        { error: "timePeriod parameter is required" },
+        { status: 400 }
+      );
+    }
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+
+    // Log the query parameters for debugging
+
+    // We'll calculate gaming day ranges per location instead of using a single range
+    let timePeriodForGamingDay: string;
+    let customStartDateForGamingDay: Date | undefined;
+    let customEndDateForGamingDay: Date | undefined;
+
+    if (timePeriod === "Custom" && startDateParam && endDateParam) {
+      timePeriodForGamingDay = "Custom";
+      customStartDateForGamingDay = new Date(startDateParam);
+      customEndDateForGamingDay = new Date(endDateParam);
+    } else {
+      timePeriodForGamingDay = timePeriod;
+    }
+
+    // We only want "active" locations
+    const matchStage: MachineAggregationMatchStage = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date("2020-01-01") } },
+      ],
+    };
+    if (locationId) {
+      matchStage._id = locationId; // locationId is a string, not ObjectId
+    }
+
+    if (licensee) {
+      matchStage["rel.licencee"] = licensee;
+    } else {
+    }
+
+    // Get all locations with their gameDayOffset
+      const locations = await GamingLocations.find({
+        ...matchStage,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
+        ],
+      }).lean();
+
+    if (locations.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    // Calculate gaming day ranges for each location
+    const gamingDayRanges = getGamingDayRangesForLocations(
+      locations.map((loc: Record<string, unknown>) => ({
+        _id: (loc._id as { toString: () => string }).toString(),
+        gameDayOffset: (loc.gameDayOffset as number) || 0,
+      })),
+      timePeriodForGamingDay,
+      customStartDateForGamingDay,
+      customEndDateForGamingDay
+    );
+
+    // Process each location separately with its gaming day range
+    const allMachines = [];
+    const allLocations = locations; // Store locations for later use
+
+    for (const location of locations) {
+      const locationId = (
+        location._id as { toString: () => string }
+      ).toString();
+      const gameDayRange = gamingDayRanges.get(locationId);
+
+      if (!gameDayRange) continue;
+
+      // Get machines for this location
+      const machines = await GamingLocations.aggregate([
+        { $match: { _id: location._id } },
+          {
+            $lookup: {
+              from: "machines",
+              localField: "_id",
+              foreignField: "gamingLocation",
+              as: "machines",
+            },
+          },
+        { $unwind: { path: "$machines", preserveNullAndEmptyArrays: false } },
+          {
+            $lookup: {
+            from: "collections",
+              let: { machineId: "$machines._id" },
+              pipeline: [
+                {
+                  $match: {
+                  $expr: { $eq: ["$machineId", "$$machineId"] },
+                  timestamp: {
+                    $gte: gameDayRange.rangeStart,
+                    $lte: gameDayRange.rangeEnd,
+                    },
+                  },
+                },
+              {
+                $sort: { timestamp: 1 }, // Sort by timestamp ascending
+              },
+                {
+                  $group: {
+                    _id: null,
+                  // Sum up all collections within the time period
+                  totalMetersIn: { $sum: "$metersIn" },
+                  totalMetersOut: { $sum: "$metersOut" },
+                  totalMovementGross: { $sum: "$movement.gross" },
+                  // Store SAS time periods for later calculation
+                  sasTimePeriods: {
+                    $push: {
+                      sasStartTime: "$sasMeters.sasStartTime",
+                      sasEndTime: "$sasMeters.sasEndTime",
+                    },
+                  },
+                  totalSasDrop: { $sum: "$sasMeters.drop" },
+                  totalSasCancelledCredits: {
+                    $sum: "$sasMeters.totalCancelledCredits",
+                  },
+                  totalJackpot: { $sum: "$sasMeters.jackpot" },
+                  totalGamesPlayed: { $sum: "$sasMeters.gamesPlayed" },
+                  collectionCount: { $sum: 1 },
+                },
+              },
+              {
+                $project: {
+                  _id: null,
+                  // Use SAS metrics for consistency with Collection Reports
+                  sumDrop: "$totalSasDrop",
+                  sumMoneyOut: "$totalSasCancelledCredits",
+                  sumJackpot: "$totalJackpot",
+                  sumCoinIn: "$totalMetersIn", // Use metersIn for coinIn
+                  sumCoinOut: "$totalMetersOut", // Use metersOut for coinOut
+                  sumGamesPlayed: "$totalGamesPlayed",
+                  sumGamesWon: { $literal: 0 }, // Not tracked in collections
+                  // Also include movement gross for reference
+                  movementGross: "$totalMovementGross",
+                  sasGross: "$totalSasGross",
+                  },
+                },
+              ],
+            as: "collectionAgg",
+            },
+          },
+        {
+          $unwind: { path: "$collectionAgg", preserveNullAndEmptyArrays: true },
+        },
+          {
+            $project: {
+              _id: "$machines._id",
+              locationId: "$_id",
+              locationName: { $ifNull: ["$name", "(No Location)"] },
+              assetNumber: { $ifNull: ["$machines.serialNumber", ""] },
+              serialNumber: { $ifNull: ["$machines.serialNumber", ""] },
+              smbId: { $ifNull: ["$machines.relayId", ""] },
+              relayId: { $ifNull: ["$machines.relayId", ""] },
+              installedGame: { $ifNull: ["$machines.game", ""] },
+              game: { $ifNull: ["$machines.game", ""] },
+            manufacturer: {
+              $ifNull: [
+                "$machines.manufacturer",
+                "$machines.manuf",
+                "Unknown Manufacturer",
+              ],
+            },
+              status: { $ifNull: ["$machines.assetStatus", ""] },
+              assetStatus: { $ifNull: ["$machines.assetStatus", ""] },
+              cabinetType: { $ifNull: ["$machines.cabinetType", ""] },
+              accountingDenomination: {
+                $ifNull: ["$machines.gameConfig.accountingDenomination", "1"],
+              },
+            collectionMultiplier: { $literal: "1" },
+            isCronosMachine: { $literal: false },
+              lastOnline: "$machines.lastActivity",
+              lastActivity: "$machines.lastActivity",
+              createdAt: "$machines.createdAt",
+            moneyIn: {
+              $ifNull: [
+                {
+                  $cond: [
+                    { $gt: ["$collectionAgg.sumDrop", 0] },
+                    "$collectionAgg.sumDrop",
+                    "$collectionAgg.sumCoinIn",
+                  ],
+                },
+                0,
+              ],
+            },
+            moneyOut: {
+              $ifNull: [
+                {
+                  $cond: [
+                    { $gt: ["$collectionAgg.sumMoneyOut", 0] },
+                    "$collectionAgg.sumMoneyOut",
+                    "$collectionAgg.sumCoinOut",
+                  ],
+                },
+                0,
+              ],
+            },
+              cancelledCredits: {
+              $ifNull: [
+                {
+                  $cond: [
+                    { $gt: ["$collectionAgg.sumMoneyOut", 0] },
+                    "$collectionAgg.sumMoneyOut",
+                    "$collectionAgg.sumCoinOut",
+                  ],
+                },
+                0,
+              ],
+            },
+            jackpot: { $ifNull: ["$collectionAgg.sumJackpot", 0] },
+            gross: { $ifNull: ["$collectionAgg.sasGross", 0] },
+            coinIn: { $ifNull: ["$collectionAgg.sumCoinIn", 0] },
+            coinOut: { $ifNull: ["$collectionAgg.sumCoinOut", 0] },
+            gamesPlayed: { $ifNull: ["$collectionAgg.sumGamesPlayed", 0] },
+            gamesWon: { $ifNull: ["$collectionAgg.sumGamesWon", 0] },
+              timePeriod: { $literal: timePeriod },
+            },
+          },
+      ]).exec();
+
+      allMachines.push(...machines);
+    }
+
+    // Recalculate SAS gross for each machine using meters collection (same logic as Collection Report)
+    for (const machine of allMachines) {
+      if (machine._id) {
+        try {
+          // Get the gaming day range for this machine's location
+          const machineLocation = allLocations.find(
+            (loc) => loc._id === machine.locationId
+          );
+          if (!machineLocation) continue;
+
+          // Cast location to proper type
+          const typedLocation = machineLocation as {
+            _id: string;
+            gameDayOffset?: number;
+          };
+
+          const gameDayRanges = await getGamingDayRangesForLocations(
+            [typedLocation],
+            timePeriodForGamingDay,
+            customStartDateForGamingDay,
+            customEndDateForGamingDay
+          );
+
+          const gameDayRange = gameDayRanges.get(typedLocation._id);
+          if (!gameDayRange) continue;
+
+          // Find collections for this machine within the time period
+          const collections = await Collections.find({
+            machineId: machine._id,
+            timestamp: {
+              $gte: gameDayRange.rangeStart,
+              $lte: gameDayRange.rangeEnd,
+            },
+          }).lean();
+
+          let calculatedSasGross = 0;
+          let calculatedSasDrop = 0;
+          let calculatedSasCancelled = 0;
+
+          // Calculate SAS gross using meters collection within SAS time periods (same as Collection Report)
+          for (const col of collections) {
+            if (col.sasMeters?.sasStartTime && col.sasMeters?.sasEndTime) {
+              const meters = await Meters.find({
+                machine: col.machineId,
+                readAt: {
+                  $gte: new Date(col.sasMeters.sasStartTime),
+                  $lte: new Date(col.sasMeters.sasEndTime),
+                },
+              })
+                .sort({ readAt: 1 })
+                .lean();
+
+              // Sum all movement fields (daily deltas) within the SAS time period
+              const totalDrop = meters.reduce(
+                (sum, meter) => sum + (meter.movement?.drop || 0),
+                0
+              );
+              const totalCancelled = meters.reduce(
+                (sum, meter) =>
+                  sum + (meter.movement?.totalCancelledCredits || 0),
+                0
+              );
+              calculatedSasDrop += totalDrop;
+              calculatedSasCancelled += totalCancelled;
+              calculatedSasGross += totalDrop - totalCancelled;
+            }
+          }
+
+          // Update the fields with the calculated SAS values
+          machine.gross = calculatedSasGross;
+          machine.moneyIn = calculatedSasDrop;
+          machine.moneyOut = calculatedSasCancelled;
+          machine.cancelledCredits = calculatedSasCancelled;
+
+          // SAS metrics recalculated successfully
+        } catch (error) {
+          console.error(
+            `Error calculating SAS gross for machine ${machine._id}:`,
+            error
+          );
+          // Keep the existing values if calculation fails
+        }
+      }
+    }
+
+    // Apply search filter if provided (search by serial number, relay ID, smib ID, or machine _id)
+    let filteredMachines = allMachines;
+    if (searchTerm) {
+      filteredMachines = allMachines.filter(
+        (machine) =>
+          machine.serialNumber
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          machine.relayId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine.smbId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine._id === searchTerm // Exact match for _id
+      );
+    }
+
+    return NextResponse.json({ success: true, data: filteredMachines });
+  } catch (error) {
+    console.error(" Error in machineAggregation route:", error);
+    return NextResponse.json(
+      { success: false, error: "Aggregation failed", details: String(error) },
+      { status: 500 }
+    );
+  }
+}

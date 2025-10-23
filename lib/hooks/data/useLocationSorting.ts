@@ -7,22 +7,27 @@ import { useState, useEffect, useMemo } from "react";
 import { AggregatedLocation } from "@/shared/types/common";
 import { LocationFilter, LocationSortOption } from "@/lib/types/location";
 
-interface UseLocationSortingProps {
+type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
   selectedFilters: LocationFilter[];
-}
+};
 
-interface UseLocationSortingReturn {
+type UseLocationSortingReturn = {
   filtered: AggregatedLocation[];
   sortedData: AggregatedLocation[];
   currentPage: number;
-  setCurrentPage: (page: number) => void;
   sortOrder: "asc" | "desc";
   sortOption: LocationSortOption;
-  handleColumnSort: (column: LocationSortOption) => void;
+  sortedLocations: AggregatedLocation[];
+  paginatedLocations: AggregatedLocation[];
   totalPages: number;
+  setCurrentPage: (page: number) => void;
+  setSortOrder: (order: "asc" | "desc") => void;
+  setSortOption: (option: LocationSortOption) => void;
+  handleSort: (option: LocationSortOption) => void;
+  handleColumnSort: (option: LocationSortOption) => void;
   currentItems: AggregatedLocation[];
-}
+};
 
 export function useLocationSorting({
   locationData,
@@ -104,5 +109,10 @@ export function useLocationSorting({
     handleColumnSort,
     totalPages,
     currentItems,
+    sortedLocations: sortedData,
+    paginatedLocations: currentItems,
+    setSortOrder,
+    setSortOption,
+    handleSort: handleColumnSort,
   };
 }

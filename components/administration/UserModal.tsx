@@ -56,13 +56,13 @@ export default function UserModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Modal state
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
-  
+
   // Form state for profile details
   const [formData, setFormData] = useState({
     firstName: "",
@@ -81,7 +81,7 @@ export default function UserModal({
     notes: "",
     profilePicture: "",
   });
-  
+
   // Form state for roles and permissions
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -323,7 +323,7 @@ export default function UserModal({
       toast.error("Passwords do not match");
       return;
     }
-    
+
     // Validate that we have a user to update
     if (!user) {
       toast.error("No user selected for update");
@@ -416,7 +416,7 @@ export default function UserModal({
     }
 
     onSave(updatedUser);
-    
+
     setIsEditMode(false);
     setPassword("");
     setConfirmPassword("");
@@ -570,7 +570,7 @@ export default function UserModal({
                   className="hidden"
                 />
               </div>
-              
+
               {/* Right: User info fields */}
               <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 lg:mt-0">
                 {isLoading ? (
@@ -1138,99 +1138,99 @@ export default function UserModal({
                             </label>
                           </div>
 
-                      <div className="relative mb-2">
-                        <Input
-                          value={locationSearch}
-                          onChange={(e) => {
-                            setLocationSearch(e.target.value);
-                            setLocationDropdownOpen(true);
-                          }}
-                          onFocus={() => setLocationDropdownOpen(true)}
-                          onBlur={() =>
+                          <div className="relative mb-2">
+                            <Input
+                              value={locationSearch}
+                              onChange={(e) => {
+                                setLocationSearch(e.target.value);
+                                setLocationDropdownOpen(true);
+                              }}
+                              onFocus={() => setLocationDropdownOpen(true)}
+                              onBlur={() =>
                                 setTimeout(
                                   () => setLocationDropdownOpen(false),
                                   150
                                 )
-                          }
-                          placeholder={
-                            allLocationsSelected
-                              ? "All locations are selected"
-                              : "Select Location.."
-                          }
-                          className="w-full rounded-md pr-10"
-                          autoComplete="off"
-                          disabled={allLocationsSelected}
-                        />
-                        {/* Dropdown of filtered locations, or all if no search */}
-                        {!allLocationsSelected &&
-                          locationDropdownOpen &&
+                              }
+                              placeholder={
+                                allLocationsSelected
+                                  ? "All locations are selected"
+                                  : "Select Location.."
+                              }
+                              className="w-full rounded-md pr-10"
+                              autoComplete="off"
+                              disabled={allLocationsSelected}
+                            />
+                            {/* Dropdown of filtered locations, or all if no search */}
+                            {!allLocationsSelected &&
+                              locationDropdownOpen &&
                               (filteredLocations.length > 0 ||
                                 locationSearch === "") && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                                   {(locationSearch
                                     ? filteredLocations
                                     : locations
                                   ).map((loc) => (
-                                  <button
-                                    key={loc._id}
-                                    type="button"
-                                    className="w-full text-left px-4 py-2 hover:bg-blue-100 text-gray-900"
-                                    onClick={() => {
-                                      handleLocationSelect(loc._id);
-                                      setLocationSearch("");
-                                      setLocationDropdownOpen(false);
-                                    }}
-                                  >
-                                    {loc.name}
-                                  </button>
+                                    <button
+                                      key={loc._id}
+                                      type="button"
+                                      className="w-full text-left px-4 py-2 hover:bg-blue-100 text-gray-900"
+                                      onClick={() => {
+                                        handleLocationSelect(loc._id);
+                                        setLocationSearch("");
+                                        setLocationDropdownOpen(false);
+                                      }}
+                                    >
+                                      {loc.name}
+                                    </button>
                                   ))}
-                            </div>
-                          )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {allLocationsSelected ? (
-                          <span className="bg-green-500 text-white rounded-full px-4 py-2 flex items-center text-sm font-medium">
+                                </div>
+                              )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {allLocationsSelected ? (
+                              <span className="bg-green-500 text-white rounded-full px-4 py-2 flex items-center text-sm font-medium">
                                 All Locations Selected ({locations.length}{" "}
                                 locations)
-                            <button
-                              className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                                <button
+                                  className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
                                   onClick={() =>
                                     handleAllLocationsChange(false)
                                   }
-                              type="button"
-                              title="Remove all locations"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </span>
-                        ) : (
-                          selectedLocationIds.map((id) => {
-                            const loc = locations.find((l) => l._id === id);
-                            return loc ? (
-                              <span
-                                key={id}
-                                className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
-                              >
-                                {loc.name}
-                                <button
-                                  className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
-                                  onClick={() => handleLocationRemove(id)}
                                   type="button"
+                                  title="Remove all locations"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
                               </span>
-                            ) : null;
-                          })
-                        )}
-                      </div>
+                            ) : (
+                              selectedLocationIds.map((id) => {
+                                const loc = locations.find((l) => l._id === id);
+                                return loc ? (
+                                  <span
+                                    key={id}
+                                    className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
+                                  >
+                                    {loc.name}
+                                    <button
+                                      className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                                      onClick={() => handleLocationRemove(id)}
+                                      type="button"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </span>
+                                ) : null;
+                              })
+                            )}
+                          </div>
                         </>
                       ) : (
                         <div className="text-center">
                           <div className="text-gray-700">
-                            {allLocationsSelected 
+                            {allLocationsSelected
                               ? `All Locations (${locations.length} locations)`
-                              : selectedLocationIds.length > 0 
+                              : selectedLocationIds.length > 0
                               ? selectedLocationIds
                                   .map(
                                     (id) =>

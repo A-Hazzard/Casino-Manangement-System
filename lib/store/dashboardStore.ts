@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DashBoardStore } from "@/lib/types/store";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 // Define a no-op version for SSR
 const dummyState: DashBoardStore = {
@@ -28,6 +29,9 @@ const dummyState: DashBoardStore = {
     startDate: new Date(new Date().setHours(0, 0, 0, 0)),
     endDate: new Date(new Date().setHours(23, 59, 59, 999)),
   },
+  // Currency support
+  displayCurrency: "USD" as CurrencyCode,
+  isAllLicensee: false,
   pendingCustomDateRange: undefined,
   topPerformingData: [],
   setInitialLoading: () => {},
@@ -47,6 +51,9 @@ const dummyState: DashBoardStore = {
   setCustomDateRange: () => {},
   setPendingCustomDateRange: () => {},
   setTopPerformingData: () => {},
+  // Currency methods
+  setDisplayCurrency: () => {},
+  setIsAllLicensee: () => {},
 };
 
 // Make sure store is created only on client-side
@@ -80,6 +87,8 @@ const createStore = () => {
         },
         pendingCustomDateRange: undefined,
         topPerformingData: [],
+        displayCurrency: "USD" as CurrencyCode,
+        isAllLicensee: false,
 
         setInitialLoading: (initialLoading) => set({ initialLoading }),
         setLoadingChartData: (loadingChartData) => set({ loadingChartData }),
@@ -105,6 +114,9 @@ const createStore = () => {
         setPendingCustomDateRange: (pendingCustomDateRange) =>
           set({ pendingCustomDateRange }),
         setTopPerformingData: (topPerformingData) => set({ topPerformingData }),
+        // Currency methods
+        setDisplayCurrency: (displayCurrency) => set({ displayCurrency }),
+        setIsAllLicensee: (isAllLicensee) => set({ isAllLicensee }),
       }),
       {
         name: "dashboard-store",

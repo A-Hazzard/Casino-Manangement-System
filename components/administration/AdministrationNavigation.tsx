@@ -45,7 +45,12 @@ export default function AdministrationNavigation({
         {accessibleTabs.map((tab) => (
           <motion.button
             key={tab.id}
-            onClick={() => onChange(tab.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.warn("Tab clicked:", tab.id, "Current:", activeSection);
+              onChange(tab.id);
+            }}
             className={`navigation-button flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 cursor-pointer ${
               activeSection === tab.id
                 ? "border-buttonActive text-buttonActive bg-buttonActive/5"

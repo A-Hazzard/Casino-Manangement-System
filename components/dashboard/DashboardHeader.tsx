@@ -7,16 +7,12 @@ import { RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import RefreshButton from "@/components/ui/RefreshButton";
 import DashboardDateFilters from "./DashboardDateFilters";
-
-interface DashboardHeaderProps {
-  // Loading states
+type DashboardHeaderProps = {
   loadingChartData: boolean;
   refreshing: boolean;
-  
-  // Actions
   onRefresh: () => void;
   onCustomRangeGo: () => void;
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -73,7 +69,7 @@ export const DashboardHeader = ({
             Overview of your gaming operations and performance metrics
           </p>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <RefreshButton
             onClick={handleRefresh}

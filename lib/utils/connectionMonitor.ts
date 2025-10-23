@@ -4,14 +4,14 @@
 
 import { Db } from "mongodb";
 
-interface ConnectionStats {
+type ConnectionStats = {
   totalConnections: number;
   activeConnections: number;
   queuedConnections: number;
   lastHealthCheck: Date;
   isHealthy: boolean;
   averageLatency: number;
-}
+};
 
 class ConnectionMonitor {
   private stats: ConnectionStats = {
@@ -34,22 +34,26 @@ class ConnectionMonitor {
     operation: () => Promise<T>
   ): Promise<T> {
     const startTime = Date.now();
-    
+
     try {
       const result = await operation();
       const latency = Date.now() - startTime;
-      
+
       this.updateLatency(latency);
       this.updateStats();
-      
-      if (latency > 10000) { // Log operations taking >10s
+
+      if (latency > 10000) {
+        // Log operations taking >10s
         console.warn(`🐌 Slow operation: ${operationName} took ${latency}ms`);
       }
-      
+
       return result;
     } catch (error) {
       const latency = Date.now() - startTime;
-      console.error(`❌ Operation failed: ${operationName} after ${latency}ms`, error);
+      console.error(
+        ` Operation failed: ${operationName} after ${latency}ms`,
+        error
+      );
       throw error;
     }
   }
@@ -59,19 +63,19 @@ class ConnectionMonitor {
    */
   async checkHealth(db: Db): Promise<boolean> {
     const startTime = Date.now();
-    
+
     try {
       await db.admin().ping();
       const latency = Date.now() - startTime;
-      
+
       this.updateLatency(latency);
       this.stats.lastHealthCheck = new Date();
       this.stats.isHealthy = true;
-      
+
       return true;
     } catch (error) {
       this.stats.isHealthy = false;
-      console.error("❌ Database health check failed:", error);
+      console.error(" Database health check failed:", error);
       return false;
     }
   }
@@ -88,41 +92,55 @@ class ConnectionMonitor {
    */
   getRecommendations(): string[] {
     const recommendations: string[] = [];
-    
+
     if (this.stats.averageLatency > 5000) {
-      recommendations.push("Consider optimizing database queries - average latency is high");
+      recommendations.push(
+        "Consider optimizing database queries - average latency is high"
+      );
     }
-    
+
     if (this.stats.averageLatency > 10000) {
-      recommendations.push("Database performance is critically slow - check indexes and query optimization");
+      recommendations.push(
+        "Database performance is critically slow - check indexes and query optimization"
+      );
     }
-    
+
     if (!this.stats.isHealthy) {
-      recommendations.push("Database connection is unhealthy - check network and server status");
+      recommendations.push(
+        "Database connection is unhealthy - check network and server status"
+      );
     }
-    
+
     return recommendations;
   }
 
   private updateLatency(latency: number): void {
     this.latencyHistory.push(latency);
-    
+
     // Keep only the last N measurements
     if (this.latencyHistory.length > this.maxHistorySize) {
       this.latencyHistory.shift();
     }
-    
+
     // Calculate average latency
-    this.stats.averageLatency = this.latencyHistory.reduce((a, b) => a + b, 0) / this.latencyHistory.length;
+    this.stats.averageLatency =
+      this.latencyHistory.reduce((a, b) => a + b, 0) /
+      this.latencyHistory.length;
   }
 
   private updateStats(): void {
     // This would ideally get real connection pool stats
     // For now, we'll simulate based on latency
     if (this.stats.averageLatency > 5000) {
-      this.stats.activeConnections = Math.min(10, this.stats.activeConnections + 1);
+      this.stats.activeConnections = Math.min(
+        10,
+        this.stats.activeConnections + 1
+      );
     } else {
-      this.stats.activeConnections = Math.max(1, this.stats.activeConnections - 1);
+      this.stats.activeConnections = Math.max(
+        1,
+        this.stats.activeConnections - 1
+      );
     }
   }
 }
@@ -151,7 +169,7 @@ export async function getConnectionHealth(db: Db): Promise<{
   const isHealthy = await connectionMonitor.checkHealth(db);
   const stats = connectionMonitor.getStats();
   const recommendations = connectionMonitor.getRecommendations();
-  
+
   return {
     isHealthy,
     latency: stats.averageLatency,

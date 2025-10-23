@@ -24,7 +24,7 @@ export async function handleFilterChange(
   };
 
   newFilters[filterKey] = true;
-  setActiveFilters(newFilters); // ✅ Now correctly updating state!
+  setActiveFilters(newFilters); //  Now correctly updating state!
 
   const label = (
     filterKey === "last7days"
@@ -169,11 +169,11 @@ export function calculateSasGross(col: CollectionDocument): number {
  */
 export function calculateVariation(col: CollectionDocument): number | string {
   // Check if SAS data exists - if not, return "No SAS Data"
+  // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
   if (
     !col.sasMeters ||
     col.sasMeters.gross === undefined ||
-    col.sasMeters.gross === null ||
-    col.sasMeters.gross === 0
+    col.sasMeters.gross === null
   ) {
     return "No SAS Data";
   }

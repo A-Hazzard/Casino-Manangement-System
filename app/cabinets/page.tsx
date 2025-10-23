@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import PageLayout from "@/components/layout/PageLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -27,6 +27,7 @@ import { CabinetContentDisplay } from "@/components/cabinets/CabinetContentDispl
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import { CabinetTableSkeleton } from "@/components/ui/cabinets/CabinetSkeletonLoader";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 // Custom hooks
 import {
@@ -36,6 +37,7 @@ import {
   useCabinetModals,
 } from "@/lib/hooks/data";
 import { useCabinetNavigation } from "@/lib/hooks/navigation";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 
 // Store hooks
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -53,6 +55,8 @@ function CabinetsPageContent() {
     customDateRange,
   } = useDashBoardStore();
 
+  const { displayCurrency } = useCurrencyFormat();
+
   // Custom hooks for cabinet functionality
   const {
     isNewMovementRequestModalOpen,
@@ -65,9 +69,11 @@ function CabinetsPageContent() {
     searchTerm,
     selectedLocation,
     selectedGameType,
+    selectedStatus,
     setSearchTerm,
     setSelectedLocation,
     setSelectedGameType,
+    setSelectedStatus,
   } = useCabinetFilters();
 
   // Custom hooks for data management
@@ -88,6 +94,8 @@ function CabinetsPageContent() {
     searchTerm,
     selectedLocation,
     selectedGameType,
+    selectedStatus,
+    displayCurrency,
   });
 
   const {
@@ -106,9 +114,13 @@ function CabinetsPageContent() {
 
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 
-  // Note: Modal handlers are now managed by useCabinetModals hook
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Note: Upload modal handler is now managed by useCabinetModals hook
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadCabinets();
+    setRefreshing(false);
+  };
 
   const handleMovementRequestSubmit = () => {
     loadCabinets();
@@ -168,9 +180,10 @@ function CabinetsPageContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* Page Header */}
-        <div className="flex items-center justify-between mt-4 w-full max-w-full">
-          <div className="flex items-center gap-3 w-full">
+        {/* Mobile-friendly header layout */}
+        <div className="mt-4 w-full max-w-full">
+          {/* Title row */}
+          <div className="flex items-center gap-3 mb-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
               Cabinets
             </h1>
@@ -179,24 +192,36 @@ function CabinetsPageContent() {
               alt="Cabinet Icon"
               width={32}
               height={32}
-              className="w-6 h-6 sm:w-8 sm:h-8 ml-2"
+              className="w-6 h-6 sm:w-8 sm:h-8"
             />
           </div>
-
-          {/* Desktop Action Buttons */}
-          <CabinetActions
-            activeSection={activeSection}
-            selectedLocation={selectedLocation}
-            locations={locations}
-            onMovementRequestClick={() => {}}
-            onCabinetCreated={loadCabinets}
-            onCabinetUpdated={loadCabinets}
-            onCabinetDeleted={loadCabinets}
-          />
+          
+          {/* Actions row - stacked on mobile, side-by-side on desktop */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <RefreshButton
+                onClick={handleRefresh}
+                isSyncing={refreshing}
+                disabled={loading}
+                label="Refresh"
+                className=""
+              />
+            </div>
+            <CabinetActions
+              activeSection={activeSection}
+              selectedLocation={selectedLocation}
+              locations={locations}
+              onMovementRequestClick={() => {}}
+              onCabinetCreated={loadCabinets}
+              onCabinetUpdated={loadCabinets}
+              onCabinetDeleted={loadCabinets}
+              loading={loading}
+            />
+          </div>
         </div>
 
         {/* Section Navigation */}
-        <div className="mt-8 mb-6">
+        <div className="mt-6 mb-4">
           <CabinetsNavigation
             tabs={CABINET_TABS_CONFIG}
             activeSection={activeSection}
@@ -211,17 +236,18 @@ function CabinetsPageContent() {
             totals={financialTotals}
             loading={loading}
             title="Total for all Machines"
-            className="mt-6"
+            className="mt-4 mb-4"
           />
         )}
 
         {/* Date Filters */}
-        <div className="flex items-center justify-between mt-4 mb-0 gap-4">
+        <div className="flex items-center justify-between mt-2 mb-2 gap-4">
           <div className="flex-1 min-w-0">
             <DashboardDateFilters
               disabled={loading}
               hideAllTime={true}
               onCustomRangeGo={loadCabinets}
+              enableTimeInputs={true}
             />
           </div>
         </div>
@@ -236,6 +262,8 @@ function CabinetsPageContent() {
           selectedGameType={selectedGameType}
           gameTypes={gameTypes}
           onGameTypeChange={handleGameTypeChange}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onSortChange={handleSortChange}

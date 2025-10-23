@@ -1,8 +1,10 @@
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { NextRequest, NextResponse } from "next/server";
-import { getDatesForTimePeriod } from "@/lib/utils/dates";
-import { TimePeriod } from "@/shared/types";
 import { Document } from "mongodb";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
+import { getGamingDayRangesForLocations } from "@/lib/utils/gamingDayRange";
 
 /**
  * Gets overall dashboard totals (Money In, Money Out, Gross) across ALL locations
@@ -23,6 +25,22 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const timePeriod = searchParams.get("timePeriod");
     const licencee = searchParams.get("licencee");
+    const displayCurrency =
+      (searchParams.get("currency") as CurrencyCode) || "USD";
+
+    // Log currency conversion parameters
+    console.warn("=== DASHBOARD TOTALS API CURRENCY DEBUG ===");
+    console.warn("Request parameters:", {
+      timePeriod,
+      licencee,
+      displayCurrency,
+      shouldApplyConversion: shouldApplyCurrencyConversion(licencee),
+    });
+    console.warn("Full URL:", req.url);
+    console.warn(
+      "Search params:",
+      Object.fromEntries(req.nextUrl.searchParams)
+    );
 
     // Only proceed if timePeriod is provided
     if (!timePeriod) {
@@ -32,8 +50,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let startDate: Date | undefined, endDate: Date | undefined;
-
+    // Parse custom dates if provided (for gaming day offset calculations)
+    let customStartDate: Date | undefined, customEndDate: Date | undefined;
     if (timePeriod === "Custom") {
       const customStart = searchParams.get("startDate");
       const customEnd = searchParams.get("endDate");
@@ -43,136 +61,545 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      // For custom date ranges, the frontend sends dates that already represent Trinidad time
-      // We need to convert them to UTC for database queries by adding 4 hours
-      const start = new Date(customStart);
-      const end = new Date(customEnd);
-      
-      // Convert Trinidad time to UTC by adding 4 hours
-      startDate = new Date(start.getTime() + (4 * 60 * 60 * 1000));
-      endDate = new Date(end.getTime() + (4 * 60 * 60 * 1000));
-    } else {
-      const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod as TimePeriod);
-      startDate = s;
-      endDate = e;
+      customStartDate = new Date(customStart);
+      customEndDate = new Date(customEnd);
     }
 
-    // Build the aggregation pipeline using the same logic as your working MongoDB shell queries
-    const pipeline: Document[] = [
-      // Stage 1: Filter meter records by date range (if provided)
-      {
-        $match: {
-          ...(startDate && endDate
-            ? {
-                readAt: { $gte: startDate, $lte: endDate }
-              }
-            : {}),
-        },
-      },
-      
-      // Stage 2: Aggregate all financial metrics across all machines and locations
-      {
-        $group: {
-          _id: null,
-          totalDrop: { $sum: "$movement.drop" },
-          totalCancelled: { $sum: "$movement.totalCancelledCredits" }
-        }
-      },
-      
-      // Stage 3: Transform and calculate final dashboard totals
-      {
-        $project: {
-          _id: 0,
-          moneyIn: { $ifNull: ["$totalDrop", 0] },
-          moneyOut: { $ifNull: ["$totalCancelled", 0] },
-          gross: { 
-            $subtract: [
-              { $ifNull: ["$totalDrop", 0] }, 
-              { $ifNull: ["$totalCancelled", 0] }
-            ] 
-          }
-        }
-      }
-    ];
+    let totals: { moneyIn: number; moneyOut: number; gross: number };
 
-    // If licencee filter is provided, we need to filter by locations first
-    if (licencee && licencee !== "all") {
-      // First get all location IDs for this licencee
-      const locations = await db
+    // Check if we need to apply currency conversion (All Licensee mode)
+    if (shouldApplyCurrencyConversion(licencee)) {
+      console.warn("=== APPLYING CURRENCY CONVERSION FOR ALL LICENSEE ===");
+      
+      // Get all licensee IDs
+      const allLicenseeIds = await db
         .collection("gaminglocations")
-        .find(
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date("2020-01-01") } },
-            ],
-            "rel.licencee": licencee,
-          },
-          { projection: { _id: 1 } }
-        )
-        .toArray();
-
-      const locationIds = locations.map((l) => l._id);
-
-      if (locationIds.length === 0) {
-        // No locations for this licencee, return 0 values
-        return NextResponse.json({
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0
+        .distinct("rel.licencee", {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date("2020-01-01") } },
+          ],
         });
-      }
 
-      // Get all machines for these locations
-      const machines = await db
-        .collection("machines")
+      console.warn("Found licensee IDs:", allLicenseeIds);
+
+      // Fetch licensee details to get their names
+      const licenseesData = await db
+        .collection("licencees")
         .find(
           {
-            gamingLocation: { $in: locationIds },
+            _id: { $in: allLicenseeIds },
             $or: [
               { deletedAt: null },
               { deletedAt: { $lt: new Date("2020-01-01") } },
             ],
           },
-          { projection: { _id: 1 } }
+          { projection: { _id: 1, name: 1 } }
         )
         .toArray();
 
-      const machineIds = machines.map((m) => m._id);
+      // Create a map of licensee ID to name
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach((lic) => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
 
-      if (machineIds.length === 0) {
-        // No machines for this licencee, return 0 values
-        return NextResponse.json({
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0
-        });
+      console.warn(
+        "Licensee ID to Name mapping:",
+        Object.fromEntries(licenseeIdToName)
+      );
+
+      let totalMoneyInUSD = 0;
+      let totalMoneyOutUSD = 0;
+      let totalGrossUSD = 0;
+
+      // Process each licensee separately
+      for (const licenseeId of allLicenseeIds) {
+        if (!licenseeId) continue;
+
+        const licenseeName =
+          licenseeIdToName.get(licenseeId.toString()) || "Unknown";
+        console.warn(`Processing licensee: ${licenseeId} (${licenseeName})`);
+
+        // Get locations for this licensee
+        const locations = await db
+          .collection("gaminglocations")
+          .find(
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+              "rel.licencee": licenseeId,
+            },
+            { projection: { _id: 1 } }
+          )
+          .toArray();
+
+        const locationIds = locations.map((l) => l._id);
+
+        if (locationIds.length === 0) continue;
+
+        // Get machines for these locations
+        const machines = await db
+          .collection("machines")
+          .find(
+            {
+              gamingLocation: { $in: locationIds },
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+            },
+            { projection: { _id: 1 } }
+          )
+          .toArray();
+
+        const machineIds = machines.map((m) => m._id);
+
+        if (machineIds.length === 0) continue;
+
+        // Get locations with their gameDayOffset for this licensee
+        const locationsWithOffset = await db
+          .collection("gaminglocations")
+          .find(
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+              "rel.licencee": licenseeId,
+            },
+            { projection: { _id: 1, gameDayOffset: 1 } }
+          )
+          .toArray();
+
+        // Calculate gaming day ranges for each location
+        const gamingDayRanges = getGamingDayRangesForLocations(
+          locationsWithOffset.map((loc) => ({
+            _id: loc._id.toString(),
+            gameDayOffset: loc.gameDayOffset || 0,
+          })),
+          timePeriod,
+          customStartDate,
+          customEndDate
+        );
+
+        let licenseeMoneyIn = 0;
+        let licenseeMoneyOut = 0;
+        let licenseeGross = 0;
+
+        // Process each location separately with its gaming day range
+        for (const location of locationsWithOffset) {
+          const locationId = location._id.toString();
+          const gameDayRange = gamingDayRanges.get(locationId);
+
+          if (!gameDayRange) continue;
+
+          // Get machines for this specific location
+          const locationMachines = await db
+            .collection("machines")
+            .find(
+              {
+                gamingLocation: locationId,
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date("2020-01-01") } },
+                ],
+              },
+              { projection: { _id: 1 } }
+            )
+            .toArray();
+
+          const locationMachineIds = locationMachines.map((m) => m._id);
+
+          if (locationMachineIds.length === 0) continue;
+
+          // Aggregate data for this location using its gaming day range
+          const locationPipeline: Document[] = [
+          {
+            $match: {
+                machine: { $in: locationMachineIds },
+                readAt: {
+                  $gte: gameDayRange.rangeStart,
+                  $lte: gameDayRange.rangeEnd,
+                },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalDrop: { $sum: "$movement.drop" },
+                totalCancelled: { $sum: "$movement.totalCancelledCredits" },
+              },
+          },
+          {
+            $project: {
+              _id: 0,
+              moneyIn: { $ifNull: ["$totalDrop", 0] },
+              moneyOut: { $ifNull: ["$totalCancelled", 0] },
+              gross: { 
+                $subtract: [
+                  { $ifNull: ["$totalDrop", 0] }, 
+                    { $ifNull: ["$totalCancelled", 0] },
+                  ],
+                },
+              },
+            },
+          ];
+
+          const locationResult = await db
+            .collection("meters")
+            .aggregate(locationPipeline)
+            .toArray();
+          const locationTotals = locationResult[0] || {
+            moneyIn: 0,
+            moneyOut: 0,
+            gross: 0,
+          };
+
+          licenseeMoneyIn += locationTotals.moneyIn;
+          licenseeMoneyOut += locationTotals.moneyOut;
+          licenseeGross += locationTotals.gross;
+        }
+
+        const licenseeTotals = {
+          moneyIn: licenseeMoneyIn,
+          moneyOut: licenseeMoneyOut,
+          gross: licenseeGross,
+        };
+
+        console.warn(
+          `Licensee ${licenseeName} (${licenseeId}) raw values:`,
+          licenseeTotals
+        );
+
+        // Convert this licensee's values to USD using their name for currency mapping
+        const { convertToUSD } = await import("@/lib/helpers/rates");
+        
+        const moneyInUSD = convertToUSD(licenseeTotals.moneyIn, licenseeName);
+        const moneyOutUSD = convertToUSD(licenseeTotals.moneyOut, licenseeName);
+        const grossUSD = convertToUSD(licenseeTotals.gross, licenseeName);
+
+        console.warn(
+          `Licensee ${licenseeName} (${licenseeId}) converted to USD:`,
+          {
+          moneyIn: moneyInUSD,
+          moneyOut: moneyOutUSD,
+            gross: grossUSD,
+          }
+        );
+
+        // Add to totals
+        totalMoneyInUSD += moneyInUSD;
+        totalMoneyOutUSD += moneyOutUSD;
+        totalGrossUSD += grossUSD;
       }
 
-      // Update the pipeline to filter by machine IDs
-      pipeline[0] = {
-        $match: {
-          machine: { $in: machineIds },
-          ...(startDate && endDate
-            ? {
-                readAt: { $gte: startDate, $lte: endDate }
-              }
-            : {}),
-        },
+      console.warn("Total USD values before final conversion:", {
+        moneyIn: Math.round(totalMoneyInUSD * 100) / 100,
+        moneyOut: Math.round(totalMoneyOutUSD * 100) / 100,
+        gross: Math.round(totalGrossUSD * 100) / 100,
+      });
+
+      // Convert from USD to display currency
+      
+      console.warn("Converting from USD to display currency:", {
+        displayCurrency,
+        totalMoneyInUSD,
+        totalMoneyOutUSD,
+        totalGrossUSD,
+      });
+      
+      const convertedMoneyIn = convertFromUSD(totalMoneyInUSD, displayCurrency);
+      const convertedMoneyOut = convertFromUSD(
+        totalMoneyOutUSD,
+        displayCurrency
+      );
+      const convertedGross = convertFromUSD(totalGrossUSD, displayCurrency);
+      
+      console.warn("After convertFromUSD:", {
+        convertedMoneyIn,
+        convertedMoneyOut,
+        convertedGross,
+        rate:
+          displayCurrency === "TTD"
+            ? 6.75
+            : displayCurrency === "GYD"
+            ? 209.5
+            : displayCurrency === "BBD"
+            ? 2.0
+            : 1.0,
+      });
+      
+      // Manual calculation to verify
+      const manualTTD = totalMoneyInUSD * 6.75;
+      console.warn("Manual TTD calculation:", {
+        totalMoneyInUSD,
+        manualTTD,
+        convertedMoneyIn,
+        areEqual: Math.abs(convertedMoneyIn - manualTTD) < 0.01,
+      });
+      
+      totals = {
+        moneyIn: Math.round(convertedMoneyIn * 100) / 100,
+        moneyOut: Math.round(convertedMoneyOut * 100) / 100,
+        gross: Math.round(convertedGross * 100) / 100,
       };
+
+      console.warn("Final converted values:", totals);
+    } else {
+      // Single licensee or no conversion needed - use original logic
+      console.warn("=== SINGLE LICENSEE MODE - NO CONVERSION ===");
+      
+      // If licencee filter is provided, we need to filter by locations with gaming day offsets
+      if (licencee && licencee !== "all") {
+        // Get all locations for this licencee with their gameDayOffset
+        const locations = await db
+          .collection("gaminglocations")
+          .find(
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+              "rel.licencee": licencee,
+            },
+            { projection: { _id: 1, gameDayOffset: 1 } }
+          )
+          .toArray();
+
+        if (locations.length === 0) {
+          // No locations for this licencee, return 0 values
+          return NextResponse.json({
+            moneyIn: 0,
+            moneyOut: 0,
+            gross: 0,
+          });
+        }
+
+        // Calculate gaming day ranges for each location
+        const gamingDayRanges = getGamingDayRangesForLocations(
+          locations.map((loc) => ({
+            _id: loc._id.toString(),
+            gameDayOffset: loc.gameDayOffset || 0,
+          })),
+          timePeriod,
+          customStartDate,
+          customEndDate
+        );
+
+        let totalMoneyIn = 0;
+        let totalMoneyOut = 0;
+        let totalGross = 0;
+
+        // Process each location separately with its gaming day range
+        for (const location of locations) {
+          const locationId = location._id.toString();
+          const gameDayRange = gamingDayRanges.get(locationId);
+
+          if (!gameDayRange) continue;
+
+          // Get machines for this specific location
+          const locationMachines = await db
+            .collection("machines")
+            .find(
+              {
+                gamingLocation: locationId,
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date("2020-01-01") } },
+                ],
+              },
+              { projection: { _id: 1 } }
+            )
+            .toArray();
+
+          const locationMachineIds = locationMachines.map((m) => m._id);
+
+          if (locationMachineIds.length === 0) continue;
+
+          // Aggregate data for this location using its gaming day range
+          const locationPipeline: Document[] = [
+        {
+          $match: {
+                machine: { $in: locationMachineIds },
+                readAt: {
+                  $gte: gameDayRange.rangeStart,
+                  $lte: gameDayRange.rangeEnd,
+                },
+              },
+            },
+        {
+          $group: {
+            _id: null,
+            totalDrop: { $sum: "$movement.drop" },
+                totalCancelled: { $sum: "$movement.totalCancelledCredits" },
+              },
+        },
+        {
+          $project: {
+            _id: 0,
+            moneyIn: { $ifNull: ["$totalDrop", 0] },
+            moneyOut: { $ifNull: ["$totalCancelled", 0] },
+            gross: { 
+              $subtract: [
+                { $ifNull: ["$totalDrop", 0] }, 
+                    { $ifNull: ["$totalCancelled", 0] },
+                  ],
+                },
+              },
+            },
+          ];
+
+          const locationResult = await db
+            .collection("meters")
+            .aggregate(locationPipeline)
+            .toArray();
+          const locationTotals = locationResult[0] || {
+            moneyIn: 0,
+            moneyOut: 0,
+            gross: 0,
+          };
+
+          totalMoneyIn += locationTotals.moneyIn;
+          totalMoneyOut += locationTotals.moneyOut;
+          totalGross += locationTotals.gross;
+        }
+
+        // Round to 2 decimal places
+        totals = {
+          moneyIn: Math.round(totalMoneyIn * 100) / 100,
+          moneyOut: Math.round(totalMoneyOut * 100) / 100,
+          gross: Math.round(totalGross * 100) / 100,
+        };
+      } else {
+        // No licensee filter - process all locations with their individual gaming day offsets
+        const allLocations = await db
+          .collection("gaminglocations")
+          .find(
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+            },
+            { projection: { _id: 1, gameDayOffset: 1 } }
+          )
+          .toArray();
+
+        // Calculate gaming day ranges for each location
+        const gamingDayRanges = getGamingDayRangesForLocations(
+          allLocations.map((loc) => ({
+            _id: loc._id.toString(),
+            gameDayOffset: loc.gameDayOffset || 0,
+          })),
+          timePeriod,
+          customStartDate,
+          customEndDate
+        );
+
+        let totalMoneyIn = 0;
+        let totalMoneyOut = 0;
+        let totalGross = 0;
+
+        // Process each location separately with its gaming day range
+        for (const location of allLocations) {
+          const locationId = location._id.toString();
+          const gameDayRange = gamingDayRanges.get(locationId);
+
+          if (!gameDayRange) continue;
+
+          // Get machines for this specific location
+          const locationMachines = await db
+          .collection("machines")
+          .find(
+            {
+                gamingLocation: locationId,
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date("2020-01-01") } },
+              ],
+            },
+            { projection: { _id: 1 } }
+          )
+          .toArray();
+
+          const locationMachineIds = locationMachines.map((m) => m._id);
+
+          if (locationMachineIds.length === 0) continue;
+
+          // Aggregate data for this location using its gaming day range
+          const locationPipeline: Document[] = [
+            {
+          $match: {
+                machine: { $in: locationMachineIds },
+                readAt: {
+                  $gte: gameDayRange.rangeStart,
+                  $lte: gameDayRange.rangeEnd,
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalDrop: { $sum: "$movement.drop" },
+                totalCancelled: { $sum: "$movement.totalCancelledCredits" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                moneyIn: { $ifNull: ["$totalDrop", 0] },
+                moneyOut: { $ifNull: ["$totalCancelled", 0] },
+                gross: {
+                  $subtract: [
+                    { $ifNull: ["$totalDrop", 0] },
+                    { $ifNull: ["$totalCancelled", 0] },
+                  ],
+                },
+              },
+            },
+          ];
+
+          const locationResult = await db
+            .collection("meters")
+            .aggregate(locationPipeline)
+            .toArray();
+          const locationTotals = locationResult[0] || {
+        moneyIn: 0,
+        moneyOut: 0,
+            gross: 0,
+      };
+
+          totalMoneyIn += locationTotals.moneyIn;
+          totalMoneyOut += locationTotals.moneyOut;
+          totalGross += locationTotals.gross;
+        }
+      
+      // Round to 2 decimal places
+      totals = {
+          moneyIn: Math.round(totalMoneyIn * 100) / 100,
+          moneyOut: Math.round(totalMoneyOut * 100) / 100,
+          gross: Math.round(totalGross * 100) / 100,
+        };
+      }
     }
 
-    // Execute the aggregation
-    const result = await db.collection("meters").aggregate(pipeline).toArray();
+    // Log final values
+    console.warn("Final API response values:", {
+      moneyIn: totals.moneyIn,
+      moneyOut: totals.moneyOut,
+      gross: totals.gross,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
+    });
 
-    // Always return a result, even if no data exists
-    const totals = result[0] || {
-      moneyIn: 0,
-      moneyOut: 0,
-      gross: 0
-    };
-
-    return NextResponse.json(totals);
+    return NextResponse.json({
+      ...totals,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
+    });
   } catch (error) {
     console.error("Error in dashboard totals API:", error);
     
@@ -181,41 +608,52 @@ export async function GET(req: NextRequest) {
       const errorMessage = error.message.toLowerCase();
       
       // MongoDB connection timeout
-      if (errorMessage.includes("mongonetworktimeouterror") || 
-          (errorMessage.includes("connection") && errorMessage.includes("timed out"))) {
+      if (
+        errorMessage.includes("mongonetworktimeouterror") ||
+        (errorMessage.includes("connection") &&
+          errorMessage.includes("timed out"))
+      ) {
         return NextResponse.json(
           { 
             error: "Database connection timeout",
-            message: "The database is currently experiencing high load. Please try again in a few moments.",
+            message:
+              "The database is currently experiencing high load. Please try again in a few moments.",
             type: "CONNECTION_TIMEOUT",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
       }
       
       // MongoDB server selection error
-      if (errorMessage.includes("mongoserverselectionerror") || 
-          errorMessage.includes("server selection")) {
+      if (
+        errorMessage.includes("mongoserverselectionerror") ||
+        errorMessage.includes("server selection")
+      ) {
         return NextResponse.json(
           { 
             error: "Database server unavailable",
-            message: "Unable to connect to the database server. Please try again later.",
+            message:
+              "Unable to connect to the database server. Please try again later.",
             type: "SERVER_UNAVAILABLE",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
       }
       
       // Generic MongoDB connection error
-      if (errorMessage.includes("mongodb") || errorMessage.includes("connection")) {
+      if (
+        errorMessage.includes("mongodb") ||
+        errorMessage.includes("connection")
+      ) {
         return NextResponse.json(
           { 
             error: "Database connection failed",
-            message: "Unable to establish connection to the database. Please try again.",
+            message:
+              "Unable to establish connection to the database. Please try again.",
             type: "CONNECTION_ERROR",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
@@ -228,7 +666,7 @@ export async function GET(req: NextRequest) {
         error: "Internal server error",
         message: "An unexpected error occurred while processing your request.",
         type: "INTERNAL_ERROR",
-        retryable: false
+        retryable: false,
       },
       { status: 500 }
     );

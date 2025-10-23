@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,17 +22,12 @@ import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 
 type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
 
-interface AccountingMetricsSectionProps {
-  // Data props
+type AccountingMetricsSectionProps = {
   cabinetDetails: Cabinet | null;
-  
-  // Loading states
   loading: boolean;
-  
-  // Actions
   onTimePeriodChange: (period: TimePeriod) => void;
   onCustomDateRangeChange: (startDate: string, endDate: string) => void;
-}
+};
 
 // Skeleton loader for metrics
 const MetricsSkeleton = () => (
@@ -53,8 +49,11 @@ export const AccountingMetricsSection = ({
   onTimePeriodChange,
   onCustomDateRangeChange,
 }: AccountingMetricsSectionProps) => {
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  
   // State management
-  const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("Today");
+  const [selectedTimePeriod, setSelectedTimePeriod] =
+    useState<TimePeriod>("Today");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [showCustomDateInputs, setShowCustomDateInputs] = useState(false);
@@ -62,7 +61,7 @@ export const AccountingMetricsSection = ({
   // Handle time period change
   const handleTimePeriodChange = (period: TimePeriod) => {
     setSelectedTimePeriod(period);
-    
+
     if (period === "Custom") {
       setShowCustomDateInputs(true);
     } else {
@@ -99,7 +98,6 @@ export const AccountingMetricsSection = ({
     const gross = cabinetDetails.gross || 0;
     const handle = cabinetDetails.handle || 0;
 
-
     return {
       moneyIn,
       moneyOut,
@@ -118,7 +116,9 @@ export const AccountingMetricsSection = ({
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Financial Metrics</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Financial Metrics
+          </h2>
           <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
         </div>
         <MetricsSkeleton />
@@ -130,7 +130,9 @@ export const AccountingMetricsSection = ({
     return (
       <div className="text-center py-8">
         <div className="text-gray-500 text-lg">No financial data available</div>
-        <div className="text-gray-400 text-sm">Unable to load financial metrics for this cabinet</div>
+        <div className="text-gray-400 text-sm">
+          Unable to load financial metrics for this cabinet
+        </div>
       </div>
     );
   }
@@ -144,10 +146,15 @@ export const AccountingMetricsSection = ({
     >
       {/* Section Header with Time Period Selector */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Financial Metrics</h2>
-        
+        <h2 className="text-xl font-semibold text-gray-900">
+          Financial Metrics
+        </h2>
+
         <div className="flex items-center gap-4">
-          <Select value={selectedTimePeriod} onValueChange={handleTimePeriodChange}>
+          <Select
+            value={selectedTimePeriod}
+            onValueChange={handleTimePeriodChange}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
@@ -198,8 +205,8 @@ export const AccountingMetricsSection = ({
               <Button onClick={handleCustomDateSubmit} size="sm">
                 Apply
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setShowCustomDateInputs(false);
@@ -222,7 +229,7 @@ export const AccountingMetricsSection = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Money In</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(financialMetrics.moneyIn)}
+                {shouldShowCurrency() ? formatAmount(financialMetrics.moneyIn) : formatCurrency(financialMetrics.moneyIn)}
               </p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -237,7 +244,7 @@ export const AccountingMetricsSection = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Money Out</p>
               <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(financialMetrics.moneyOut)}
+                {shouldShowCurrency() ? formatAmount(financialMetrics.moneyOut) : formatCurrency(financialMetrics.moneyOut)}
               </p>
             </div>
             <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -251,19 +258,29 @@ export const AccountingMetricsSection = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Net Win</p>
-              <p className={`text-2xl font-bold ${
-                financialMetrics.netWin >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatCurrency(financialMetrics.netWin)}
+              <p
+                className={`text-2xl font-bold ${
+                  financialMetrics.netWin >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {shouldShowCurrency() ? formatAmount(financialMetrics.netWin) : formatCurrency(financialMetrics.netWin)}
               </p>
             </div>
-            <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-              financialMetrics.netWin >= 0 ? 'bg-green-100' : 'bg-red-100'
-            }`}>
-              <span className={`font-bold ${
-                financialMetrics.netWin >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {financialMetrics.netWin >= 0 ? '+' : ''}
+            <div
+              className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                financialMetrics.netWin >= 0 ? "bg-green-100" : "bg-red-100"
+              }`}
+            >
+              <span
+                className={`font-bold ${
+                  financialMetrics.netWin >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {financialMetrics.netWin >= 0 ? "+" : ""}
               </span>
             </div>
           </div>
@@ -306,7 +323,9 @@ export const AccountingMetricsSection = ({
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Cancelled Credits</p>
+              <p className="text-sm font-medium text-gray-600">
+                Cancelled Credits
+              </p>
               <p className="text-xl font-bold text-orange-600">
                 {formatCurrency(financialMetrics.cancelledCredits)}
               </p>
@@ -321,7 +340,9 @@ export const AccountingMetricsSection = ({
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Win Percentage</p>
+              <p className="text-sm font-medium text-gray-600">
+                Win Percentage
+              </p>
               <p className="text-xl font-bold text-indigo-600">
                 {financialMetrics.winPercentage.toFixed(2)}%
               </p>

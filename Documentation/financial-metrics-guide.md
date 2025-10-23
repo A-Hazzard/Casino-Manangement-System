@@ -1,8 +1,8 @@
 # Financial Metrics Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 9th, 2025  
+**Status:** Updated to reflect current implementation
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -21,7 +21,7 @@
 
 This guide covers all financial metrics used in the Evolution One Casino Management System. All calculations follow standard casino industry practices and support regulatory reporting requirements.
 
-**Last Updated:** August 29th, 2025  
+**Last Updated:** October 29th, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -106,8 +106,6 @@ This document provides a comprehensive guide to the financial metrics used in th
 
 ### Primary Gross Revenue Calculation
 
-
-
 The core financial calculation used throughout the UI:
 
 ```
@@ -117,6 +115,30 @@ Gross = Money In - Money Out
 Where:
 - **Money In** = `movement.drop` (total money physically inserted)
 - **Money Out** = `movement.totalCancelledCredits` (manual payouts)
+
+### SAS GROSS Calculation (Updated October 9, 2025)
+
+**Current Implementation:** Movement Delta Method
+**Formula:**
+```
+SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
+```
+
+**Data Source:** `meters` collection
+**Time Period:** Uses SAS time periods from collections
+**Accuracy:** High - accounts for all meter readings in period
+
+**Implementation Across Pages:**
+- ✅ **Collection Report Details**: Queries meters for SAS time period
+- ✅ **Cabinets Page**: Uses MongoDB aggregation pipeline
+- ✅ **Location Details**: Uses MongoDB aggregation pipeline  
+- ✅ **Dashboard**: Aggregates across all locations
+- ✅ **Collection Reports**: Recalculates SAS GROSS on-the-fly
+
+**Deprecated Method:** First/Last Cumulative Method (no longer used)
+- Only used 2 data points (first and last meter readings)
+- Missed intermediate changes and corrections
+- Only worked with cumulative data (coinIn/coinOut fields)
 
 ### Machine Performance Calculations
 
@@ -512,4 +534,4 @@ These metrics support comprehensive financial reporting including:
 
 ---
 
-**Last Updated:** August 29th, 2025
+**Last Updated:** October 29th, 2025

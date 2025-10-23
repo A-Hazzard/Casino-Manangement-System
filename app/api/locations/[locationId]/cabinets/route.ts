@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const locationId = url.pathname.split("/")[3]; // Extracts ID from /api/locations/[locationId]/cabinets
 
     console.warn(
-      `🔍 POST request to create cabinet for location: ${locationId}`
+      `POST request to create cabinet for location: ${locationId}`
     );
 
     // Location ID validation removed - _id is stored as String, not ObjectId
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       ],
     });
     if (!location) {
-      console.warn(`❌ Location not found or deleted with ID: ${locationId}`);
+      console.warn(`Location not found or deleted with ID: ${locationId}`);
       return NextResponse.json(
         { success: false, error: "Location not found or has been deleted" },
         { status: 404 }
@@ -220,14 +220,14 @@ export async function POST(request: NextRequest) {
     });
 
     await newMachine.save();
-    // console.log(`✅ Cabinet created successfully with ID: ${newMachine._id}`);
+    // console.log(`Cabinet created successfully with ID: ${newMachine._id}`);
 
     return NextResponse.json({
       success: true,
       data: newMachine,
     });
   } catch (error) {
-    console.error("❌ Error creating cabinet:", error);
+    console.error("Error creating cabinet:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create cabinet" },
       { status: 500 }

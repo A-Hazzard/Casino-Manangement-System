@@ -17,22 +17,20 @@ import { differenceInMinutes } from "date-fns";
 import RefreshButton from "@/components/ui/RefreshButton";
 import StatusIcon from "@/components/ui/common/StatusIcon";
 import type { GamingMachine as CabinetDetail } from "@/shared/types/entities";
+// Removed unused LocationInfo import
 
-interface CabinetDetailsHeaderProps {
-  // Data props
+// Removed unused ExtendedLocationInfo type
+
+type CabinetDetailsHeaderProps = {
   cabinetDetails: CabinetDetail | null;
   serialNumberIdentifier: string;
   isOnline: boolean;
   lastOnlineMinutes: number;
-  
-  // Loading states
   loading: boolean;
-  
-  // Actions
   onEdit: () => void;
   onRefresh: () => void;
   onBack: () => void;
-}
+};
 
 // Animation variants
 const configContentVariants = {
@@ -86,11 +84,11 @@ export const CabinetDetailsHeader = ({
   // Format last online time
   const formatLastOnline = () => {
     if (!cabinetDetails?.lastOnline) return "Never";
-    
+
     const lastOnlineDate = new Date(cabinetDetails.lastOnline);
     const now = new Date();
     const minutesAgo = differenceInMinutes(now, lastOnlineDate);
-    
+
     if (minutesAgo < 1) return "Just now";
     if (minutesAgo < 60) return `${minutesAgo} minutes ago`;
     if (minutesAgo < 1440) return `${Math.floor(minutesAgo / 60)} hours ago`;
@@ -100,7 +98,8 @@ export const CabinetDetailsHeader = ({
   // Get status badge color
   const getStatusBadgeColor = () => {
     if (isOnline) return "bg-green-100 text-green-800 border-green-200";
-    if (lastOnlineMinutes < 60) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (lastOnlineMinutes < 60)
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
     return "bg-red-100 text-red-800 border-red-200";
   };
 
@@ -136,7 +135,9 @@ export const CabinetDetailsHeader = ({
     return (
       <div className="text-center py-8">
         <div className="text-gray-500 text-lg">Cabinet not found</div>
-        <div className="text-gray-400 text-sm">The requested cabinet could not be loaded</div>
+        <div className="text-gray-400 text-sm">
+          The requested cabinet could not be loaded
+        </div>
       </div>
     );
   }
@@ -164,11 +165,12 @@ export const CabinetDetailsHeader = ({
               {cabinetDetails.assetNumber || "Unknown Asset"}
             </h1>
             <p className="text-sm text-gray-600">
-              {cabinetDetails.game || "Unknown Game"} • {cabinetDetails.locationName || "Unknown Location"}
+              {cabinetDetails.game || "Unknown Game"} •{" "}
+              {cabinetDetails.locationName || "Unknown Location"}
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -198,7 +200,11 @@ export const CabinetDetailsHeader = ({
               <p className="text-sm font-medium text-gray-600">Status</p>
               <div className="flex items-center gap-2 mt-1">
                 <StatusIcon isOnline={isOnline} />
-                <span className={`text-sm font-medium ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                <span
+                  className={`text-sm font-medium ${
+                    isOnline ? "text-green-600" : "text-red-600"
+                  }`}
+                >
                   {getStatusText()}
                 </span>
               </div>
@@ -247,16 +253,20 @@ export const CabinetDetailsHeader = ({
           className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
         >
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">Configuration Details</h3>
-            <p className="text-sm text-gray-600">View cabinet configuration and settings</p>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Configuration Details
+            </h3>
+            <p className="text-sm text-gray-600">
+              View cabinet configuration and settings
+            </p>
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-5 w-5 text-gray-400 transition-transform ${
-              showConfigDetails ? 'rotate-180' : ''
-            }`} 
+              showConfigDetails ? "rotate-180" : ""
+            }`}
           />
         </button>
-        
+
         <AnimatePresence>
           {showConfigDetails && (
             <motion.div
@@ -270,25 +280,33 @@ export const CabinetDetailsHeader = ({
                 {/* Game Configuration */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Game Type</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Game Type
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {cabinetDetails.gameType || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Cabinet Type</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Cabinet Type
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {cabinetDetails.cabinetType || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Asset Status</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Asset Status
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {cabinetDetails.assetStatus || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">SAS Version</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      SAS Version
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {cabinetDetails.sasVersion || "N/A"}
                     </p>
@@ -298,16 +316,22 @@ export const CabinetDetailsHeader = ({
                 {/* Network Configuration */}
                 {cabinetDetails.smibConfig && (
                   <div className="border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">Network Configuration</h4>
+                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                      Network Configuration
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-600">MQTT URI</label>
+                        <label className="text-sm font-medium text-gray-600">
+                          MQTT URI
+                        </label>
                         <p className="text-sm text-gray-900 mt-1 font-mono">
                           {cabinetDetails.smibConfig.mqtt?.mqttURI || "N/A"}
                         </p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Network Mode</label>
+                        <label className="text-sm font-medium text-gray-600">
+                          Network Mode
+                        </label>
                         <p className="text-sm text-gray-900 mt-1">
                           {cabinetDetails.smibConfig.net?.netMode || "N/A"}
                         </p>

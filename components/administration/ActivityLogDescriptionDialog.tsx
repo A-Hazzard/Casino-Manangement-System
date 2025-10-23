@@ -9,44 +9,18 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/formatting";
+import type { ActivityLog } from "@/app/api/lib/types/activityLog";
 
-interface ActivityLog {
-  _id: string;
-  timestamp: string;
-  userId: string;
-  username: string;
-  action: string;
-  resource: string;
-  resourceId: string;
-  resourceName?: string;
-  details?: string;
-  description?: string;
-  actor?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-  ipAddress?: string;
-  changes?: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-}
-
-interface ActivityLogDescriptionDialogProps {
+type ActivityLogDescriptionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   log: ActivityLog | null;
   searchMode: "username" | "email" | "description";
-}
+};
 
-const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> = ({
-  isOpen,
-  onClose,
-  log,
-  searchMode,
-}) => {
+const ActivityLogDescriptionDialog: React.FC<
+  ActivityLogDescriptionDialogProps
+> = ({ isOpen, onClose, log, searchMode }) => {
   if (!log) return null;
 
   // Get action badge variant
@@ -94,11 +68,11 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Badge variant={getActionBadgeVariant(log.action)}>
-              {log.action.toUpperCase()}
+            <Badge variant={getActionBadgeVariant(log.action || "unknown")}>
+              {(log.action || "unknown").toUpperCase()}
             </Badge>
-            <Badge variant={getResourceBadgeVariant(log.resource)}>
-              {log.resource}
+            <Badge variant={getResourceBadgeVariant(log.resource || "unknown")}>
+              {log.resource || "unknown"}
             </Badge>
             <span className="text-sm text-gray-500 font-normal">
               {formatDate(log.timestamp)}
@@ -115,18 +89,14 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
                 <>
                   <div className="font-medium">{log.actor?.email || "N/A"}</div>
                   {log.username && (
-                    <div className="text-gray-500">
-                      {log.username}
-                    </div>
+                    <div className="text-gray-500">{log.username}</div>
                   )}
                 </>
               ) : (
                 <>
                   <div className="font-medium">{log.username}</div>
                   {log.actor?.email && (
-                    <div className="text-gray-500">
-                      {log.actor.email}
-                    </div>
+                    <div className="text-gray-500">{log.actor.email}</div>
                   )}
                 </>
               )}
@@ -142,7 +112,8 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
               </div>
               {log.resourceName && (
                 <div>
-                  <span className="text-gray-500">Name:</span> {log.resourceName}
+                  <span className="text-gray-500">Name:</span>{" "}
+                  {log.resourceName}
                 </div>
               )}
             </div>
@@ -150,7 +121,9 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
 
           {/* Description */}
           <div className="border-b pb-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Description</h4>
+            <h4 className="font-medium text-sm text-gray-700 mb-2">
+              Description
+            </h4>
             <div className="text-sm text-gray-900 whitespace-pre-wrap break-words bg-gray-50 p-3 rounded-md">
               {description}
             </div>
@@ -159,10 +132,15 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
           {/* Changes (if available) */}
           {log.changes && log.changes.length > 0 && (
             <div className="border-b pb-3">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">Changes</h4>
+              <h4 className="font-medium text-sm text-gray-700 mb-2">
+                Changes
+              </h4>
               <div className="space-y-2">
                 {log.changes.map((change, index) => (
-                  <div key={index} className="text-sm bg-blue-50 p-3 rounded-md">
+                  <div
+                    key={index}
+                    className="text-sm bg-blue-50 p-3 rounded-md"
+                  >
                     <div className="font-medium text-blue-900 mb-1">
                       {change.field}
                     </div>
@@ -186,10 +164,13 @@ const ActivityLogDescriptionDialog: React.FC<ActivityLogDescriptionDialogProps> 
 
           {/* Technical Details */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Technical Details</h4>
+            <h4 className="font-medium text-sm text-gray-700 mb-2">
+              Technical Details
+            </h4>
             <div className="text-sm space-y-1 text-gray-600">
               <div>
-                <span className="text-gray-500">IP Address:</span> {log.ipAddress || "N/A"}
+                <span className="text-gray-500">IP Address:</span>{" "}
+                {log.ipAddress || "N/A"}
               </div>
               <div>
                 <span className="text-gray-500">User ID:</span> {log.userId}

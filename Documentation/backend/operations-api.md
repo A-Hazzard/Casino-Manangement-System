@@ -2,7 +2,7 @@
 
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025  
+**Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
 
 ## Quick Search Guide
@@ -1114,7 +1114,7 @@ Staff Efficiency = Revenue / Staff Hours
 
 ---
 
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 15th, 2025
 
 ## Features
 

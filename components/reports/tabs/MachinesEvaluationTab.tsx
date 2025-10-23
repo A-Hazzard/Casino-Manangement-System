@@ -34,7 +34,7 @@ import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal"
 import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { MachinesEvaluationSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
 import { MachineEvaluationSummary } from "@/components/ui/MachineEvaluationSummary";
-import type { MachineData } from "@/shared/types/machines";
+// Removed duplicate import - using MachineData from lib/types/machinesEvaluationTab instead
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
 import StatusIcon from "@/components/ui/common/StatusIcon";
@@ -77,25 +77,10 @@ const SortableEvaluationHeader = ({
   );
 };
 
-interface MachinesEvaluationTabProps {
-  // Data props
-  evaluationData: MachineData[];
-  locations: { id: string; name: string; sasEnabled: boolean }[];
-
-  // Loading states
-  evaluationLoading: boolean;
-
-  // Sorting
-  sortConfig: {
-    key: keyof MachineData;
-    direction: "asc" | "desc";
-  };
-
-  // Actions
-  onSort: (key: keyof MachineData) => void;
-  onRefresh: () => void;
-  onExport: () => void;
-}
+import type {
+  MachinesEvaluationTabProps,
+  MachineData,
+} from "@/lib/types/machinesEvaluationTab";
 
 export const MachinesEvaluationTab = ({
   evaluationData,
@@ -141,7 +126,9 @@ export const MachinesEvaluationTab = ({
         gamesPlayed: machine.gamesPlayed,
         gamesWon: machine.gamesWon,
         handle: machine.coinIn,
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -178,7 +165,9 @@ export const MachinesEvaluationTab = ({
         gamesPlayed: machine.gamesPlayed,
         gamesWon: machine.gamesWon,
         handle: machine.coinIn,
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -189,7 +178,6 @@ export const MachinesEvaluationTab = ({
 
   // Filter evaluation data based on search and location
   const filteredEvaluationData = useMemo(() => {
-
     let filtered = evaluationData;
 
     // Filter by search term
@@ -232,7 +220,6 @@ export const MachinesEvaluationTab = ({
 
   // Sort evaluation data
   const sortedEvaluationData = useMemo(() => {
-
     const sorted = [...filteredEvaluationData].sort((a, b) => {
       const aValue = a[sortConfig.key] as string | number;
       const bValue = b[sortConfig.key] as string | number;
@@ -267,7 +254,6 @@ export const MachinesEvaluationTab = ({
       (sum, machine) => sum + (machine.coinIn || 0),
       0
     );
-
 
     return {
       totalMachines,

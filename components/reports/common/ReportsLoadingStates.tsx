@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Bell } from "lucide-react";
 import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
+import { useRouter } from "next/navigation";
 
 type LoadingOverlayProps = {
   isLoading: boolean;
@@ -52,6 +53,7 @@ export function AuthLoadingState({}: AuthLoadingProps) {
  * Access denied state when user has no permissions
  */
 export function AccessDeniedState({}: AccessDeniedProps) {
+  const router = useRouter();
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center max-w-md mx-auto p-6">
@@ -66,7 +68,7 @@ export function AccessDeniedState({}: AccessDeniedProps) {
           your administrator for access.
         </p>
         <Button
-          onClick={() => (window.location.href = "/")}
+          onClick={() => (router.push("/"))}
           className="bg-buttonActive hover:bg-buttonActive/90"
         >
           Return to Dashboard

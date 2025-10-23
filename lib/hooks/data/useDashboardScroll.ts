@@ -4,13 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-
-interface UseDashboardScrollReturn {
-  showFloatingRefresh: boolean;
-  scrollThreshold: number;
-  setScrollThreshold: (threshold: number) => void;
-  resetScrollState: () => void;
-}
+import type { UseDashboardScrollReturn } from "@/lib/types/dashboardScroll";
 
 export function useDashboardScroll(
   initialThreshold: number = 200

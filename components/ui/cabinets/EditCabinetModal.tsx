@@ -53,7 +53,7 @@ export const EditCabinetModal = ({
 
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
-  const [smibBoardError, setSmibBoardError] = useState<string>("");
+  const [relayIdError, setRelayIdError] = useState<string>("");
   const [serialNumberError, setSerialNumberError] = useState<string>("");
   const [installedGameError, setInstalledGameError] = useState<string>("");
   const [locationError, setLocationError] = useState<string>("");
@@ -440,7 +440,7 @@ export const EditCabinetModal = ({
 
       // Validate the value
       const error = validateSmibBoard(limitedValue);
-      setSmibBoardError(error);
+      setRelayIdError(error);
 
       setFormData((prev) => ({ ...prev, [name]: limitedValue }));
     } else {
@@ -500,8 +500,8 @@ export const EditCabinetModal = ({
         setLocationError("Location is required");
         errors.push("location");
       }
-      if (smibBoardError) {
-        errors.push("smibBoard");
+      if (relayIdError) {
+        errors.push("relayId");
       }
       if (errors.length > 0) {
         toast.error("Please fix the highlighted fields before saving");
@@ -885,13 +885,13 @@ export const EditCabinetModal = ({
                           onChange={handleChange}
                           placeholder="Enter SMIB Board"
                           className={`bg-container border-border ${
-                            smibBoardError ? "border-red-500" : ""
+                            relayIdError ? "border-red-500" : ""
                           }`}
                           maxLength={12}
                         />
-                        {smibBoardError && (
+                        {relayIdError && (
                           <p className="text-red-500 text-xs mt-1">
-                            {smibBoardError}
+                            {relayIdError}
                           </p>
                         )}
                       </>

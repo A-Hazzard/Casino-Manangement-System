@@ -36,6 +36,7 @@ const collectionsSchema = new Schema(
     softMetersOut: { type: Number },
     notes: { type: String },
     timestamp: { type: Date },
+    collectionTime: { type: Date },
     location: { type: String },
     collector: { type: String },
     locationReportId: { type: String },

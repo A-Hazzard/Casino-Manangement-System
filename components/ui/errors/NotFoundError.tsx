@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, ArrowLeft, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
-
-interface NotFoundErrorProps {
+type NotFoundErrorProps = {
   title?: string;
   message?: string;
   resourceType?: string;
@@ -16,7 +15,7 @@ interface NotFoundErrorProps {
   showGoBack?: boolean;
   customBackText?: string;
   customBackHref?: string;
-}
+};
 
 /**
  * 404 Not Found Error Component with animated design
@@ -56,23 +55,23 @@ export default function NotFoundError({
         isDashboard: false,
       };
     }
-    
+
     if (pathname.includes("/locations/")) {
       return {
-        text: "Back to Locations", 
+        text: "Back to Locations",
         href: "/locations",
         isDashboard: false,
       };
     }
-    
+
     if (pathname.includes("/members/")) {
       return {
         text: "Back to Members",
-        href: "/members", 
+        href: "/members",
         isDashboard: false,
       };
     }
-    
+
     if (pathname.includes("/sessions/")) {
       return {
         text: "Back to Sessions",
@@ -80,7 +79,7 @@ export default function NotFoundError({
         isDashboard: false,
       };
     }
-    
+
     if (pathname.includes("/collection-report/report/")) {
       return {
         text: "Back to Collection Reports",
@@ -88,7 +87,7 @@ export default function NotFoundError({
         isDashboard: false,
       };
     }
-    
+
     if (pathname.includes("/reports/")) {
       return {
         text: "Back to Reports",
@@ -127,7 +126,12 @@ export default function NotFoundError({
         <motion.div
           initial={{ scale: 0, rotate: -10 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+          transition={{
+            delay: 0.2,
+            type: "spring",
+            stiffness: 200,
+            damping: 15,
+          }}
           className="mb-6"
         >
           <h1 className="text-8xl font-bold text-buttonActive mb-2">404</h1>
@@ -164,8 +168,8 @@ export default function NotFoundError({
             <Button
               onClick={handleNavigation}
               className={`flex items-center gap-2 px-6 py-3 ${
-                navigation.isDashboard 
-                  ? "bg-buttonActive hover:bg-buttonActive/90" 
+                navigation.isDashboard
+                  ? "bg-buttonActive hover:bg-buttonActive/90"
                   : "bg-button hover:bg-buttonActive"
               }`}
             >
@@ -177,7 +181,7 @@ export default function NotFoundError({
               {navigation.text}
             </Button>
           )}
-          
+
           {showRetry && onRetry && (
             <Button
               onClick={onRetry}

@@ -304,8 +304,13 @@ export default function LocationMap({
                 customDateRange.endDate instanceof Date
                   ? customDateRange.endDate
                   : new Date(customDateRange.endDate as string);
-              params.append("startDate", sd.toISOString());
-              params.append("endDate", ed.toISOString());
+              
+              // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+              // The API will treat these as Trinidad time and convert to UTC
+              const startDateStr = sd.toISOString().split('T')[0];
+              const endDateStr = ed.toISOString().split('T')[0];
+              params.append("startDate", startDateStr);
+              params.append("endDate", endDateStr);
             } else {
               // No valid timePeriod, skip the request
               return;

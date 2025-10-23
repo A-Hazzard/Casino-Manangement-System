@@ -4,10 +4,7 @@ import { Collections } from "@/app/api/lib/models/collections";
 import { Machine } from "@/app/api/lib/models/machines";
 import { generateMongoId } from "@/lib/utils/id";
 import { createCollectionWithCalculations } from "@/lib/helpers/collectionCreation";
-import {
-  logActivity,
-  calculateChanges,
-} from "@/lib/helpers/activityLogger";
+import { logActivity, calculateChanges } from "@/lib/helpers/activityLogger";
 import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type {
@@ -23,7 +20,12 @@ export async function GET(req: NextRequest) {
     const location = searchParams.get("location");
     const collector = searchParams.get("collector");
     const isCompleted = searchParams.get("isCompleted");
-    const incompleteOnly = searchParams.get("incompleteOnly"); // New parameter for filtering
+    const incompleteOnly = searchParams.get("incompleteOnly");
+    const machineId = searchParams.get("machineId");
+    const beforeTimestamp = searchParams.get("beforeTimestamp");
+    const limit = searchParams.get("limit");
+    const sortBy = searchParams.get("sortBy");
+    const sortOrder = searchParams.get("sortOrder");
 
     const filter: Record<string, unknown> = {};
     if (locationReportId) filter.locationReportId = locationReportId;
@@ -31,6 +33,7 @@ export async function GET(req: NextRequest) {
     if (collector) filter.collector = collector;
     if (isCompleted !== null && isCompleted !== undefined)
       filter.isCompleted = isCompleted === "true";
+    if (machineId) filter.machineId = machineId;
 
     // If incompleteOnly is true, only return incomplete collections with empty locationReportId
     if (incompleteOnly === "true") {
@@ -38,16 +41,44 @@ export async function GET(req: NextRequest) {
       filter.locationReportId = "";
     }
 
-    const collections = (await Collections.find(
-      filter
-    ).lean()) as CollectionDocument[];
-    
-    console.warn("🔍 Collections API GET result:", {
+    // Support querying for collections before a specific timestamp (for historical prevIn/prevOut)
+    if (beforeTimestamp) {
+      filter.timestamp = { $lt: new Date(beforeTimestamp) };
+    }
+
+    // Always include soft-deleted documents in queries (as per user preference)
+    let query = Collections.find(filter);
+
+    // Apply sorting if specified
+    if (sortBy) {
+      const sortDirection = sortOrder === "desc" ? -1 : 1;
+      query = query.sort({ [sortBy]: sortDirection });
+    }
+
+    // Apply limit if specified
+    if (limit) {
+      query = query.limit(parseInt(limit, 10));
+    }
+
+    const collections = (await query.lean()) as CollectionDocument[];
+
+    console.warn("Collections API GET result:", {
       filter,
+      beforeTimestamp: beforeTimestamp || "none",
+      sortBy: sortBy || "none",
+      sortOrder: sortOrder || "none",
+      limit: limit || "none",
       collectionsCount: collections.length,
-      collections: collections.map(c => ({ _id: c._id, machineId: c.machineId, locationReportId: c.locationReportId }))
+      collections: collections.map((c) => ({
+        _id: c._id,
+        machineId: c.machineId,
+        timestamp: c.timestamp,
+        metersIn: c.metersIn,
+        metersOut: c.metersOut,
+        locationReportId: c.locationReportId,
+      })),
     });
-    
+
     return NextResponse.json(collections);
   } catch {
     return NextResponse.json(
@@ -70,6 +101,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // CRITICAL: Do NOT generate locationReportId when adding machines to the list
+    // locationReportId should only be set when the collection report is actually created
+    // This prevents orphaned collections and ensures proper timing
+    let finalLocationReportId = payload.locationReportId;
+    if (!finalLocationReportId || finalLocationReportId.trim() === "") {
+      // Keep it empty - will be set when report is created
+      finalLocationReportId = "";
+      console.warn("🔧 Collection created without locationReportId - will be set when report is created");
+    }
+
     if (
       typeof payload.metersIn !== "number" ||
       typeof payload.metersOut !== "number"
@@ -89,9 +130,35 @@ export async function POST(req: NextRequest) {
     // Safely access machine properties with type assertion
     const machineData = machine as Record<string, unknown>;
 
+    // Extract SAS times from payload for backend calculation
+    const payloadWithSasMeters = payload as CreateCollectionPayload & {
+      sasMeters?: { sasStartTime?: string; sasEndTime?: string };
+    };
+    const sasStartTime = payloadWithSasMeters.sasMeters?.sasStartTime
+      ? new Date(payloadWithSasMeters.sasMeters.sasStartTime)
+      : payload.sasStartTime;
+    // Prefer explicit sasEndTime; fallback to payload.timestamp to enforce deterministic windows
+    const sasEndTime = payloadWithSasMeters.sasMeters?.sasEndTime
+      ? new Date(payloadWithSasMeters.sasMeters.sasEndTime)
+      : payload.sasEndTime ||
+        (payload.timestamp ? new Date(payload.timestamp) : undefined);
+
     // Calculate SAS metrics, movement, and update machine
-    const { sasMeters, movement, previousMeters } =
-      await createCollectionWithCalculations(payload);
+    const {
+      sasMeters,
+      movement,
+      previousMeters,
+      locationReportId: calculatedLocationReportId,
+    } = await createCollectionWithCalculations({
+      ...payload,
+      sasStartTime,
+      sasEndTime,
+    });
+
+    // Use the calculated locationReportId if one was generated during the calculation
+    if (calculatedLocationReportId && calculatedLocationReportId !== finalLocationReportId) {
+      finalLocationReportId = calculatedLocationReportId;
+    }
 
     // Create collection document with all calculated fields
     const collectionData = {
@@ -99,15 +166,26 @@ export async function POST(req: NextRequest) {
       isCompleted: payload.isCompleted ?? false,
       metersIn: payload.metersIn,
       metersOut: payload.metersOut,
-      prevIn: previousMeters.metersIn,
-      prevOut: previousMeters.metersOut,
+      // CRITICAL: Use client-provided prevIn/prevOut if available, otherwise use calculated values
+      // This ensures accuracy when client has the correct previous meter values
+      prevIn:
+        payload.prevIn !== undefined ? payload.prevIn : previousMeters.metersIn,
+      prevOut:
+        payload.prevOut !== undefined
+          ? payload.prevOut
+          : previousMeters.metersOut,
       softMetersIn: payload.metersIn,
       softMetersOut: payload.metersOut,
       notes: payload.notes || "",
-      timestamp: new Date(),
+      timestamp: payload.timestamp ? new Date(payload.timestamp) : new Date(),
+      collectionTime: payload.collectionTime
+        ? new Date(payload.collectionTime)
+        : payload.timestamp
+        ? new Date(payload.timestamp)
+        : new Date(),
       location: payload.location,
       collector: payload.collector,
-      locationReportId: payload.locationReportId || "",
+      locationReportId: finalLocationReportId,
       sasMeters: {
         machine:
           (machineData.serialNumber as string) ||
@@ -148,6 +226,11 @@ export async function POST(req: NextRequest) {
 
     // Create the collection
     const created = await Collections.create(collectionData);
+
+    // CRITICAL: Do NOT create collection history entries when adding machines to the list
+    // Collection history entries should only be created when the user presses "Create Report"
+    // This prevents duplicate history entries and ensures proper timing
+    console.warn("✅ Collection created without history entry - history will be created when report is finalized");
 
     // Log activity
     const currentUser = await getUserFromServer();
@@ -195,7 +278,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Error creating collection:", error);
+    console.error("Error creating collection:", error);
     return NextResponse.json(
       {
         error: "Failed to create collection",
@@ -288,13 +371,16 @@ export async function DELETE(req: NextRequest) {
     // Revert machine's collectionMeters to previous values
     if (collectionToDelete.machineId) {
       try {
-        console.warn("🔄 Reverting machine collectionMeters after collection deletion:", {
-          machineId: collectionToDelete.machineId,
-          prevIn: collectionToDelete.prevIn,
-          prevOut: collectionToDelete.prevOut,
-          currentMetersIn: collectionToDelete.metersIn,
-          currentMetersOut: collectionToDelete.metersOut
-        });
+        console.warn(
+          "🔄 Reverting machine collectionMeters after collection deletion:",
+          {
+            machineId: collectionToDelete.machineId,
+            prevIn: collectionToDelete.prevIn,
+            prevOut: collectionToDelete.prevOut,
+            currentMetersIn: collectionToDelete.metersIn,
+            currentMetersOut: collectionToDelete.metersOut,
+          }
+        );
 
         await Machine.findByIdAndUpdate(collectionToDelete.machineId, {
           $set: {
@@ -304,9 +390,12 @@ export async function DELETE(req: NextRequest) {
           },
         });
 
-        console.warn("✅ Machine collectionMeters reverted successfully");
+        console.warn("Machine collectionMeters reverted successfully");
       } catch (machineUpdateError) {
-        console.error("❌ Failed to revert machine collectionMeters:", machineUpdateError);
+        console.error(
+          "Failed to revert machine collectionMeters:",
+          machineUpdateError
+        );
         // Don't fail the deletion if machine update fails, but log the error
       }
     }

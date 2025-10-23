@@ -30,9 +30,12 @@ export async function GET(
 
     // Forward the request to the location-specific endpoint
     const url = new URL(request.url);
-    const newUrl = new URL(`/api/locations/${locationId}/cabinets/${cabinetId}`, url.origin);
+    const newUrl = new URL(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      url.origin
+    );
     newUrl.search = url.search; // Preserve query parameters
-    
+
     return NextResponse.redirect(newUrl);
   } catch (error) {
     console.error("Error in cabinet endpoint:", error);
@@ -71,8 +74,11 @@ export async function PUT(
 
     // Forward the request to the location-specific endpoint
     const url = new URL(request.url);
-    const newUrl = new URL(`/api/locations/${locationId}/cabinets/${cabinetId}`, url.origin);
-    
+    const newUrl = new URL(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      url.origin
+    );
+
     return NextResponse.redirect(newUrl);
   } catch (error) {
     console.error("Error in cabinet endpoint:", error);
@@ -111,8 +117,11 @@ export async function PATCH(
 
     // Forward the request to the location-specific endpoint
     const url = new URL(request.url);
-    const newUrl = new URL(`/api/locations/${locationId}/cabinets/${cabinetId}`, url.origin);
-    
+    const newUrl = new URL(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      url.origin
+    );
+
     return NextResponse.redirect(newUrl);
   } catch (error) {
     console.error("Error in cabinet endpoint:", error);
@@ -151,8 +160,11 @@ export async function DELETE(
 
     // Forward the request to the location-specific endpoint
     const url = new URL(request.url);
-    const newUrl = new URL(`/api/locations/${locationId}/cabinets/${cabinetId}`, url.origin);
-    
+    const newUrl = new URL(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      url.origin
+    );
+
     return NextResponse.redirect(newUrl);
   } catch (error) {
     console.error("Error in cabinet endpoint:", error);

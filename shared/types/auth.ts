@@ -137,6 +137,8 @@ export type LoginFormProps = {
   setPassword: (value: string) => void;
   showPassword: boolean;
   setShowPassword: (value: boolean) => void;
+  rememberMe: boolean;
+  setRememberMe: (value: boolean) => void;
   errors: { [key: string]: string };
   message?: string;
   messageType?: "success" | "error" | "info";

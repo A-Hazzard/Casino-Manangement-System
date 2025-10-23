@@ -5,26 +5,28 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useDebounce } from "@/lib/utils/hooks";
-import { fetchAggregatedLocationsData, searchAllLocations } from "@/lib/helpers/locations";
-import { TimePeriod } from "@/shared/types/common";
-import { AggregatedLocation } from "@/shared/types/common";
+import {
+  fetchAggregatedLocationsData,
+  searchAllLocations,
+} from "@/lib/helpers/locations";
+import { AggregatedLocation, TimePeriod } from "@/shared/types/common";
 import { LocationFilter } from "@/lib/types/location";
 
-interface UseLocationDataProps {
+type UseLocationDataProps = {
   selectedLicencee: string;
   activeMetricsFilter: string | null;
   customDateRange: { startDate: Date; endDate: Date } | null;
   searchTerm: string;
   selectedFilters: LocationFilter[];
-}
+};
 
-interface UseLocationDataReturn {
+type UseLocationDataReturn = {
   locationData: AggregatedLocation[];
   loading: boolean;
   searchLoading: boolean;
   error: string | null;
   fetchData: () => Promise<void>;
-}
+};
 
 export function useLocationData({
   selectedLicencee,
@@ -45,7 +47,7 @@ export function useLocationData({
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // If there's a search term, use the search function to get ALL locations
       if (debouncedSearchTerm.trim()) {
@@ -67,7 +69,7 @@ export function useLocationData({
 
       let dateRangeForFetch = undefined;
       const effectiveFilter = activeMetricsFilter || "Today";
-      
+
       if (
         effectiveFilter === "Custom" &&
         customDateRange?.startDate &&

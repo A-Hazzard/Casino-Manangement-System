@@ -2,7 +2,7 @@
 
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 15th, 2025  
+**Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
 
 ## Quick Search Guide
@@ -1047,7 +1047,7 @@ const response = await axios.post('/api/gaming-locations', {
 
 ---
 
-**Last Updated:** January 15th, 2025
+**Last Updated:** October 15th, 2025
 
   headers: {
     'Authorization': `Bearer ${token}`

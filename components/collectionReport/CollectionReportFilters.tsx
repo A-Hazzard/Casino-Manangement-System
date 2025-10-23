@@ -24,6 +24,11 @@ export default function CollectionReportFilters({
   onClearFilters,
   isSearching,
 }: CollectionReportFiltersProps) {
+  console.warn("[COLLECTION REPORT FILTERS] Component rendered with:");
+  console.warn(`  - selectedLocation: "${selectedLocation}"`);
+  console.warn(`  - locations count: ${locations.length}`);
+  console.warn(`  - search: "${search}"`);
+  console.warn(`  - showUncollectedOnly: ${showUncollectedOnly}`);
   const filterRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
@@ -82,7 +87,7 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="rounded-t-lg p-4 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col gap-y-3 lg:gap-y-4"
+      className="p-4 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col gap-y-3 lg:gap-y-4"
     >
       {/* Top row - Search, Location, and Clear Button (only on lg and above) */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-y-3 lg:gap-4">
@@ -107,7 +112,10 @@ export default function CollectionReportFilters({
         {/* Location Select Dropdown */}
         <CustomSelect
           value={selectedLocation}
-          onValueChange={onLocationChange}
+          onValueChange={(value) => {
+            console.warn("[LOCATION SELECT] Value changed to:", value);
+            onLocationChange(value);
+          }}
           options={[
             { value: "all", label: "Select Location" },
             ...locations.map((loc) => ({
@@ -123,7 +131,7 @@ export default function CollectionReportFilters({
         />
 
         {/* Clear Filters Button - only visible on lg and above */}
-        <div className="hidden lg:flex items-center">
+        <div className="hidden lg:flex items-center gap-4">
           <Button
             variant="outline"
             onClick={onClearFilters}
@@ -131,16 +139,33 @@ export default function CollectionReportFilters({
           >
             Clear Filters
           </Button>
+
+          {/* Uncollected Only Checkbox - positioned to the right of Clear Filters on lg and above */}
+          <div ref={checkboxRef} className="flex items-center">
+            <label className="flex items-center gap-2 font-medium text-white cursor-pointer">
+              <Checkbox
+                id="uncollected-only"
+                checked={showUncollectedOnly}
+                onCheckedChange={(checked) =>
+                  onShowUncollectedOnlyChange(!!checked)
+                }
+                className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+              />
+              <span className="text-sm font-medium whitespace-nowrap">
+                SHOW UNCOLLECTED ONLY
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
-      {/* Bottom row - Checkboxes and Clear Button (for xl and below lg) */}
-      <div className="flex flex-col lg:flex-row lg:items-center gap-y-3 lg:gap-4">
-        {/* Uncollected Only Checkbox */}
-        <div ref={checkboxRef} className="flex items-center w-full lg:w-auto">
-          <label className="flex items-center gap-2 font-medium text-black lg:text-white cursor-pointer">
+      {/* Bottom row - Checkboxes and Clear Button (for mobile and tablet) */}
+      <div className="flex flex-col lg:hidden gap-y-3">
+        {/* Uncollected Only Checkbox - only visible on mobile and tablet */}
+        <div ref={checkboxRef} className="flex items-center w-full">
+          <label className="flex items-center gap-2 font-medium text-black cursor-pointer">
             <Checkbox
-              id="uncollected-only"
+              id="uncollected-only-mobile"
               checked={showUncollectedOnly}
               onCheckedChange={(checked) =>
                 onShowUncollectedOnlyChange(!!checked)

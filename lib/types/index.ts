@@ -15,16 +15,10 @@ export * from "@/shared/types/entities";
 
 export type { LoginRequestBody, AuthResult } from "@/shared/types/auth";
 
-// Collection Report types
-export type { 
-  UseCollectionReportDataProps, 
-  UseCollectionReportDataReturn 
-} from "./collectionReport";
-
 // Dashboard types
-export type { 
-  UseDashboardFiltersProps, 
-  UseDashboardFiltersReturn 
+export type {
+  UseDashboardFiltersProps,
+  UseDashboardFiltersReturn,
 } from "./dashboard";
 
 // Dashboard types

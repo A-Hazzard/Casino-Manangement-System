@@ -8,20 +8,10 @@ import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { handleDashboardRefresh } from "@/lib/helpers/dashboard";
 import { TimePeriod } from "@/shared/types/common";
 import { TopPerformingData } from "@/lib/types";
-
-interface UseDashboardRefreshProps {
-  selectedLicencee: string;
-  activeMetricsFilter: string | null;
-  activePieChartFilter: string | null;
-  customDateRange: { startDate: Date; endDate: Date } | null;
-  activeTab: string;
-}
-
-interface UseDashboardRefreshReturn {
-  refreshing: boolean;
-  handleRefresh: () => Promise<void>;
-  canRefresh: boolean;
-}
+import type {
+  UseDashboardRefreshProps,
+  UseDashboardRefreshReturn,
+} from "@/lib/types/dashboardRefresh";
 
 export function useDashboardRefresh({
   selectedLicencee,
@@ -29,6 +19,7 @@ export function useDashboardRefresh({
   activePieChartFilter,
   customDateRange,
   activeTab,
+  displayCurrency,
 }: UseDashboardRefreshProps): UseDashboardRefreshReturn {
   const {
     refreshing,
@@ -64,7 +55,8 @@ export function useDashboardRefresh({
       setActiveFilters,
       setShowDatePicker,
       (data: TopPerformingData[]) =>
-        setTopPerformingData(data as unknown as TopPerformingData)
+        setTopPerformingData(data as unknown as TopPerformingData),
+      displayCurrency
     );
   }, [
     canRefresh,
@@ -73,6 +65,7 @@ export function useDashboardRefresh({
     selectedLicencee,
     activeTab,
     activePieChartFilter,
+    displayCurrency, // Include currency in dependencies
     setRefreshing,
     setLoadingChartData,
     setLoadingTopPerforming,

@@ -13,12 +13,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
-import { validateProfileField, validateNameField, containsPhonePattern } from "@/lib/utils/validation";
+import {
+  validateProfileField,
+  validateNameField,
+  containsPhonePattern,
+} from "@/lib/utils/validation";
 
 type ProfileValidationModalProps = {
   open: boolean;
   onClose: () => void;
-  onUpdate: (data: { username: string; firstName: string; lastName: string }) => Promise<void>;
+  onUpdate: (data: {
+    username: string;
+    firstName: string;
+    lastName: string;
+  }) => Promise<void>;
   loading?: boolean;
   invalidFields: {
     username?: boolean;
@@ -58,9 +66,11 @@ export default function ProfileValidationModal({
       newErrors.username = "Username is required";
     } else if (!validateProfileField(formData.username)) {
       if (containsPhonePattern(formData.username)) {
-        newErrors.username = "Username cannot be a phone number. Please use a proper username.";
+        newErrors.username =
+          "Username cannot be a phone number. Please use a proper username.";
       } else {
-        newErrors.username = "Username contains invalid characters. Only letters, numbers, spaces, hyphens, and apostrophes are allowed.";
+        newErrors.username =
+          "Username contains invalid characters. Only letters, numbers, spaces, hyphens, and apostrophes are allowed.";
       }
     }
 
@@ -68,9 +78,11 @@ export default function ProfileValidationModal({
       newErrors.firstName = "First name is required";
     } else if (!validateNameField(formData.firstName)) {
       if (containsPhonePattern(formData.firstName)) {
-        newErrors.firstName = "First name cannot be a phone number. Please use your actual first name.";
+        newErrors.firstName =
+          "First name cannot be a phone number. Please use your actual first name.";
       } else {
-        newErrors.firstName = "First name contains invalid characters. Only letters and spaces are allowed.";
+        newErrors.firstName =
+          "First name contains invalid characters. Only letters and spaces are allowed.";
       }
     }
 
@@ -78,9 +90,11 @@ export default function ProfileValidationModal({
       newErrors.lastName = "Last name is required";
     } else if (!validateNameField(formData.lastName)) {
       if (containsPhonePattern(formData.lastName)) {
-        newErrors.lastName = "Last name cannot be a phone number. Please use your actual last name.";
+        newErrors.lastName =
+          "Last name cannot be a phone number. Please use your actual last name.";
       } else {
-        newErrors.lastName = "Last name contains invalid characters. Only letters and spaces are allowed.";
+        newErrors.lastName =
+          "Last name contains invalid characters. Only letters and spaces are allowed.";
       }
     }
 
@@ -139,7 +153,8 @@ export default function ProfileValidationModal({
             Profile Validation Required
           </DialogTitle>
           <DialogDescription>
-            Your profile contains special characters or phone number patterns that are not allowed. Please update the following fields:
+            Your profile contains special characters or phone number patterns
+            that are not allowed. Please update the following fields:
           </DialogDescription>
         </DialogHeader>
 
@@ -151,12 +166,16 @@ export default function ProfileValidationModal({
               <Input
                 id="username"
                 value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, username: e.target.value }))
+                }
                 className={getFieldError("username") ? "border-red-500" : ""}
                 placeholder="Enter username"
               />
               {getFieldError("username") && (
-                <p className="text-sm text-red-500">{getFieldError("username")}</p>
+                <p className="text-sm text-red-500">
+                  {getFieldError("username")}
+                </p>
               )}
             </div>
           )}
@@ -168,12 +187,19 @@ export default function ProfileValidationModal({
               <Input
                 id="firstName"
                 value={formData.firstName}
-                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    firstName: e.target.value,
+                  }))
+                }
                 className={getFieldError("firstName") ? "border-red-500" : ""}
                 placeholder="Enter first name"
               />
               {getFieldError("firstName") && (
-                <p className="text-sm text-red-500">{getFieldError("firstName")}</p>
+                <p className="text-sm text-red-500">
+                  {getFieldError("firstName")}
+                </p>
               )}
             </div>
           )}
@@ -185,12 +211,16 @@ export default function ProfileValidationModal({
               <Input
                 id="lastName"
                 value={formData.lastName}
-                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
+                }
                 className={getFieldError("lastName") ? "border-red-500" : ""}
                 placeholder="Enter last name"
               />
               {getFieldError("lastName") && (
-                <p className="text-sm text-red-500">{getFieldError("lastName")}</p>
+                <p className="text-sm text-red-500">
+                  {getFieldError("lastName")}
+                </p>
               )}
             </div>
           )}

@@ -84,7 +84,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     asChild?: boolean;
   };
 
-export type CustomSelectProps = {
+export type DashboardCustomSelectProps = {
   selectedFilter: TimePeriod | "";
   placeholder?: string;
   activePieChartFilter?: TimePeriod | "";
@@ -117,6 +117,7 @@ export type DashboardDateFiltersProps = {
   onCustomRangeGo?: () => void;
   hideAllTime: boolean;
   mode?: "auto" | "mobile" | "desktop";
+  enableTimeInputs?: boolean;
 };
 
 export type HeaderProps = {
@@ -228,8 +229,12 @@ export type CollectionDesktopUIProps = {
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
+  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  sortField?: keyof CollectionReportRow;
+  sortDirection?: "asc" | "desc";
+  onSort?: (field: keyof CollectionReportRow) => void;
 };
 
 export type CollectionMobileUIProps = {
@@ -255,6 +260,7 @@ export type CollectionMobileUIProps = {
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
+  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
 };

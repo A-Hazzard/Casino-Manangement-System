@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { MachineSession } from "@/app/api/lib/models/machineSessions";
+import {
+  getCurrencyFromQuery,
+  applyCurrencyConversionToMetrics,
+  shouldApplyCurrencyConversion,
+} from "@/app/api/lib/helpers/currencyHelper";
 
 // Helper function to calculate ISO week number
 function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  );
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 export async function GET(
@@ -24,6 +31,8 @@ export async function GET(
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const filter = searchParams.get("filter") || "session";
+    const displayCurrency = getCurrencyFromQuery(searchParams);
+    const licencee = searchParams.get("licencee") || null;
 
     // Build query for member sessions
     const query: Record<string, unknown> = { memberId: id };
@@ -70,7 +79,8 @@ export async function GET(
         const moneyIn = session.endMeters?.movement?.drop || 0;
 
         // Calculate money out (manual payouts) from endMeters using financial guide
-        const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+        const moneyOut =
+          session.endMeters?.movement?.totalCancelledCredits || 0;
 
         // Calculate jackpot from endMeters using movement field
         const jackpot = session.endMeters?.movement?.jackpot || 0;
@@ -92,14 +102,14 @@ export async function GET(
           _id: session._id,
           sessionId: session._id,
           machineId: session.machineId,
-          time: session.startTime 
+          time: session.startTime
             ? new Date(session.startTime).toLocaleString("en-US", {
                 day: "numeric",
-                month: "short", 
+                month: "short",
                 year: "numeric",
                 hour: "2-digit",
                 minute: "2-digit",
-                hour12: true
+                hour12: true,
               })
             : "N/A",
           sessionLength,
@@ -119,10 +129,17 @@ export async function GET(
         };
       });
 
+      // Apply currency conversion if needed
+      const convertedSessions = await applyCurrencyConversionToMetrics(
+        processedSessions,
+        licencee,
+        displayCurrency
+      );
+
       return NextResponse.json({
         success: true,
         data: {
-          sessions: processedSessions,
+          sessions: convertedSessions,
           pagination: {
             currentPage: page,
             totalPages: Math.ceil(totalSessions / limit),
@@ -131,6 +148,8 @@ export async function GET(
             hasPrevPage: page > 1,
           },
         },
+        currency: displayCurrency,
+        converted: shouldApplyCurrencyConversion(licencee),
       });
     } else {
       // For grouped views, fetch all sessions and group them
@@ -160,15 +179,18 @@ export async function GET(
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               weekStart.setDate(sessionDate.getDate() - daysToSubtract);
               weekStart.setHours(0, 0, 0, 0);
-              
+
               // Calculate week number (ISO week number)
               const weekNumber = getWeekNumber(weekStart);
-              
-              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}`;
+
+              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString(
+                "en-US",
+                {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                }
+              )}`;
               break;
             case "month":
               groupKey = sessionDate.toLocaleDateString("en-US", {
@@ -214,7 +236,8 @@ export async function GET(
           // Calculate session metrics
           const handle = session.endMeters?.movement?.coinIn || 0;
           const moneyIn = session.endMeters?.movement?.drop || 0;
-          const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+          const moneyOut =
+            session.endMeters?.movement?.totalCancelledCredits || 0;
           const jackpot = session.endMeters?.movement?.jackpot || 0;
           const coinIn = session.endMeters?.movement?.coinIn || 0;
           const coinOut = session.endMeters?.movement?.coinOut || 0;
@@ -273,13 +296,21 @@ export async function GET(
       // Sort by date (newest first)
       processedSessions.sort(
         (a: Record<string, unknown>, b: Record<string, unknown>) =>
-          new Date(b.time as string).getTime() - new Date(a.time as string).getTime()
+          new Date(b.time as string).getTime() -
+          new Date(a.time as string).getTime()
+      );
+
+      // Apply currency conversion if needed
+      const convertedGroupedSessions = await applyCurrencyConversionToMetrics(
+        processedSessions,
+        licencee,
+        displayCurrency
       );
 
       return NextResponse.json({
         success: true,
         data: {
-          sessions: processedSessions,
+          sessions: convertedGroupedSessions,
           pagination: {
             currentPage: 1,
             totalPages: 1,
@@ -288,6 +319,8 @@ export async function GET(
             hasPrevPage: false,
           },
         },
+        currency: displayCurrency,
+        converted: shouldApplyCurrencyConversion(licencee),
       });
     }
 
@@ -334,7 +367,8 @@ export async function GET(
         const moneyIn = session.endMeters?.movement?.drop || 0;
 
         // Calculate money out (manual payouts) from endMeters using financial guide
-        const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+        const moneyOut =
+          session.endMeters?.movement?.totalCancelledCredits || 0;
 
         // Calculate jackpot from endMeters using movement field
         const jackpot = session.endMeters?.movement?.jackpot || 0;
@@ -356,14 +390,14 @@ export async function GET(
           _id: session._id,
           sessionId: session._id,
           machineId: session.machineId,
-          time: session.startTime 
+          time: session.startTime
             ? new Date(session.startTime).toLocaleString("en-US", {
                 day: "numeric",
-                month: "short", 
+                month: "short",
                 year: "numeric",
                 hour: "2-digit",
                 minute: "2-digit",
-                hour12: true
+                hour12: true,
               })
             : "N/A",
           sessionLength,
@@ -381,6 +415,29 @@ export async function GET(
           coinOut,
           duration,
         };
+      });
+
+      // Apply currency conversion if needed
+      const convertedSessions = await applyCurrencyConversionToMetrics(
+        processedSessions,
+        licencee,
+        displayCurrency
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          sessions: convertedSessions,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalSessions / limit),
+            totalSessions,
+            hasNextPage: page < Math.ceil(totalSessions / limit),
+            hasPrevPage: page > 1,
+          },
+        },
+        currency: displayCurrency,
+        converted: shouldApplyCurrencyConversion(licencee),
       });
     } else {
       // Group by date periods (day, week, month)
@@ -405,15 +462,18 @@ export async function GET(
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               weekStart.setDate(sessionDate.getDate() - daysToSubtract);
               weekStart.setHours(0, 0, 0, 0);
-              
+
               // Calculate week number (ISO week number)
               const weekNumber = getWeekNumber(weekStart);
-              
-              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}`;
+
+              groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString(
+                "en-US",
+                {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                }
+              )}`;
               break;
             case "month":
               groupKey = sessionDate.toLocaleDateString("en-US", {
@@ -459,7 +519,8 @@ export async function GET(
           // Calculate session metrics
           const handle = session.endMeters?.movement?.coinIn || 0;
           const moneyIn = session.endMeters?.movement?.drop || 0;
-          const moneyOut = session.endMeters?.movement?.totalCancelledCredits || 0;
+          const moneyOut =
+            session.endMeters?.movement?.totalCancelledCredits || 0;
           const jackpot = session.endMeters?.movement?.jackpot || 0;
           const coinIn = session.endMeters?.movement?.coinIn || 0;
           const coinOut = session.endMeters?.movement?.coinOut || 0;
@@ -518,23 +579,33 @@ export async function GET(
       // Sort by date (newest first)
       processedSessions.sort(
         (a: Record<string, unknown>, b: Record<string, unknown>) =>
-          new Date(b.time as string).getTime() - new Date(a.time as string).getTime()
+          new Date(b.time as string).getTime() -
+          new Date(a.time as string).getTime()
       );
-    }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        sessions: processedSessions,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalSessions / limit),
-          totalSessions,
-          hasNextPage: page < Math.ceil(totalSessions / limit),
-          hasPrevPage: page > 1,
+      // Apply currency conversion if needed
+      const convertedProcessedSessions = await applyCurrencyConversionToMetrics(
+        processedSessions,
+        licencee,
+        displayCurrency
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          sessions: convertedProcessedSessions,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalSessions / limit),
+            totalSessions,
+            hasNextPage: page < Math.ceil(totalSessions / limit),
+            hasPrevPage: page > 1,
+          },
         },
-      },
-    });
+        currency: displayCurrency,
+        converted: shouldApplyCurrencyConversion(licencee),
+      });
+    }
   } catch (error) {
     console.error("Error fetching member sessions:", error);
     return NextResponse.json(

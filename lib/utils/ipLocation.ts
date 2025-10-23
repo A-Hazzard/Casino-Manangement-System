@@ -96,7 +96,6 @@ export async function getUserLocationWithFallback(): Promise<LocationCoordinates
             },
             {
               enableHighAccuracy: true,
-              timeout: 15000, // Increased timeout
               maximumAge: 600000, // 5 minutes cache
             }
           );

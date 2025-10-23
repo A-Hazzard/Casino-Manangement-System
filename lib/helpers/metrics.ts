@@ -68,7 +68,6 @@ export async function getMetrics(
         };
       }>
     >(url, {
-      timeout: 60000, // 30 second timeout
       headers: {
         "Cache-Control": "no-cache",
       },
@@ -171,21 +170,26 @@ export async function getMetrics(
       }
     }
 
-    if (error && typeof error === "object" && "code" in error && error.code === "ECONNABORTED") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ECONNABORTED"
+    ) {
       console.error("Metrics API request timed out");
       return [];
     }
 
     if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "NETWORK_ERROR" ||
       (error &&
-      typeof error === "object" &&
-      "message" in error &&
-      typeof error.message === "string" &&
-      error.message?.includes("Network Error"))
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "NETWORK_ERROR") ||
+      (error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string" &&
+        error.message?.includes("Network Error"))
     ) {
       console.error("Network error while fetching metrics");
       return [];

@@ -1,21 +1,5 @@
 import type { AuthResult } from "@/shared/types/auth";
 
-/**
- * Validates database context on client side
- */
-export function validateClientDatabaseContext(): boolean {
-  // This function can be called to check if the current environment
-  // matches what was used when the token was created
-  // For now, we'll rely on server-side validation
-  return true;
-}
-
-/**
- * Client-side login function that makes an API call to authenticate user
- *
- * @param credentials - Object containing identifier and password
- * @returns Promise resolving to authentication result
- */
 export async function loginUser(credentials: {
   identifier: string;
   password: string;
@@ -32,34 +16,23 @@ export async function loginUser(credentials: {
     const data = await response.json();
 
     if (!response.ok) {
-      // Handle different error status codes with specific messages
       let errorMessage = "Login failed";
-
-      if (response.status === 400) {
-        errorMessage =
-          data.message || "Invalid email/username or password format";
-      } else if (response.status === 401) {
-        errorMessage =
-          data.message ||
-          "Invalid credentials. Please check your email/username and password";
+      if (response.status === 401) {
+        errorMessage = data.message || "Invalid credentials";
       } else if (response.status === 500) {
         errorMessage = "Server error. Please try again later";
-      } else if (response.status === 404) {
-        errorMessage = "User not found. Please check your credentials";
-      } else {
-        errorMessage =
-          data.message || data.error || `Login failed (${response.status})`;
       }
-
       return { success: false, message: errorMessage };
     }
 
-    // Extract the data from the API response to match AuthResult structure
+    // Extract user data from nested structure
     return {
       success: data.success,
       message: data.message,
       user: data.data?.user,
       expiresAt: data.data?.expiresAt,
+      token: data.data?.token,
+      refreshToken: data.data?.refreshToken,
       requiresPasswordUpdate: data.data?.requiresPasswordUpdate,
       requiresProfileUpdate: data.data?.requiresProfileUpdate,
       invalidProfileFields: data.data?.invalidProfileFields,
@@ -73,11 +46,6 @@ export async function loginUser(credentials: {
   }
 }
 
-/**
- * Client-side logout function that clears user session
- *
- * @returns Promise resolving to logout result
- */
 export async function logoutUser(): Promise<AuthResult> {
   try {
     const response = await fetch("/api/auth/logout", {
@@ -89,7 +57,7 @@ export async function logoutUser(): Promise<AuthResult> {
 
     // Clear client-side storage regardless of API response
     if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
+      localStorage.removeItem("user-auth-store");
       sessionStorage.clear();
     }
 
@@ -100,9 +68,8 @@ export async function logoutUser(): Promise<AuthResult> {
     return { success: true, message: "Logged out successfully" };
   } catch (error) {
     console.error("Logout error:", error);
-    // Still clear local storage even if API call fails
     if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
+      localStorage.removeItem("user-auth-store");
       sessionStorage.clear();
     }
     return { success: true, message: "Logged out locally" };

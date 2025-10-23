@@ -4,20 +4,20 @@ import React, { ComponentType, useState, useCallback } from "react";
 import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
 import ConnectionError from "./ConnectionError";
 
-export interface PageErrorBoundaryProps {
+type PageErrorBoundaryProps = {
   children: React.ReactNode;
   fallback?: React.ReactNode;
   onError?: (error: unknown) => void;
-}
+};
 
 /**
  * Page-level error boundary that catches and handles errors gracefully
  * Provides retry functionality and user-friendly error messages
  */
-export default function PageErrorBoundary({ 
-  children, 
+export default function PageErrorBoundary({
+  children,
   fallback,
-  onError 
+  onError,
 }: PageErrorBoundaryProps) {
   const [error, setError] = useState<Error | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -26,18 +26,21 @@ export default function PageErrorBoundary({
   const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     setError(null);
-    
+
     // Wait a moment before retrying
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     setIsRetrying(false);
   }, []);
 
-  const handleErrorBoundary = useCallback((error: Error, _errorInfo: React.ErrorInfo) => {
-    setError(error);
-    handleError(error, "Page Error");
-    onError?.(error);
-  }, [handleError, onError]);
+  const handleErrorBoundary = useCallback(
+    (error: Error, _errorInfo: React.ErrorInfo) => {
+      setError(error);
+      handleError(error, "Page Error");
+      onError?.(error);
+    },
+    [handleError, onError]
+  );
 
   // If there's an error, show error UI
   if (error) {
@@ -68,11 +71,11 @@ export default function PageErrorBoundary({
 /**
  * Internal error boundary wrapper component
  */
-function ErrorBoundaryWrapper({ 
-  children, 
-  onError 
-}: { 
-  children: React.ReactNode; 
+function ErrorBoundaryWrapper({
+  children,
+  onError,
+}: {
+  children: React.ReactNode;
   onError: (error: Error, errorInfo: React.ErrorInfo) => void;
 }) {
   const [hasError, setHasError] = useState(false);

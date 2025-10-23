@@ -10,9 +10,7 @@ type CabinetProps = Cabinet;
  * @param cabinet - Raw cabinet data from API
  * @returns Transformed cabinet props for UI components
  */
-export function mapToCabinetProps(
-  cabinet: Cabinet
-): CabinetProps {
+export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
   return {
     _id: cabinet._id,
     serialNumber: cabinet.serialNumber || "",
@@ -20,7 +18,10 @@ export function mapToCabinetProps(
     game: cabinet.game || cabinet.installedGame || "",
     assetStatus: cabinet.assetStatus || cabinet.status || "",
     gamingLocation: cabinet.gamingLocation || cabinet.locationId || "",
-    accountingDenomination: cabinet.accountingDenomination || cabinet.gameConfig?.accountingDenomination || "",
+    accountingDenomination:
+      cabinet.accountingDenomination ||
+      cabinet.gameConfig?.accountingDenomination ||
+      "",
     createdAt: cabinet.createdAt || new Date(),
     updatedAt: cabinet.updatedAt || new Date(),
     // Optional fields with defaults
@@ -56,8 +57,6 @@ export function mapToCabinetProps(
  * @param cabinets - Array of cabinet objects
  * @returns Array of transformed cabinet props
  */
-export function transformCabinetsToProps(
-  cabinets: Cabinet[]
-): CabinetProps[] {
-  return cabinets.map(cabinet => mapToCabinetProps(cabinet));
+export function transformCabinetsToProps(cabinets: Cabinet[]): CabinetProps[] {
+  return cabinets.map((cabinet) => mapToCabinetProps(cabinet));
 }

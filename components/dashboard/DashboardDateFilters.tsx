@@ -14,6 +14,7 @@ export default function DashboardDateFilters({
   onCustomRangeGo,
   hideAllTime,
   mode = "auto",
+  enableTimeInputs = false,
 }: DashboardDateFiltersProps) {
   const {
     activeMetricsFilter,
@@ -62,18 +63,11 @@ export default function DashboardDateFilters({
 
   const handleApplyCustomRange = () => {
     if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
-      // Convert dates to Trinidad timezone format (UTC-4)
-      // The dates from the picker are in local time, but we need to convert them
-      // to represent the start and end of the day in Trinidad time
-      const startDate = new Date(pendingCustomDateRange.startDate);
-      startDate.setHours(0, 0, 0, 0); // Start of day in local time
-      
-      const endDate = new Date(pendingCustomDateRange.endDate);
-      endDate.setHours(23, 59, 59, 999); // End of day in local time
-      
+      // Use the exact dates with time information from the ModernDateRangePicker
+      // The ModernDateRangePicker now handles time inputs and provides complete datetime objects
       setCustomDateRange({
-        startDate: startDate,
-        endDate: endDate,
+        startDate: pendingCustomDateRange.startDate,
+        endDate: pendingCustomDateRange.endDate,
       });
       setActiveMetricsFilter("Custom");
       setShowCustomPicker(false);
@@ -188,6 +182,7 @@ export default function DashboardDateFilters({
             onGo={handleApplyCustomRange}
             onCancel={handleCancelCustomRange}
             onSetLastMonth={handleSetLastMonth}
+            enableTimeInputs={enableTimeInputs}
           />
         </div>
       )}

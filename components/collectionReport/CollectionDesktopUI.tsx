@@ -26,13 +26,18 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   onFilterChange,
   onClearFilters,
   isSearching,
+  reportIssues,
   onEdit,
   onDelete,
+  // Sorting props
+  sortField,
+  sortDirection,
+  onSort,
 }) => {
   return (
     <div className="hidden lg:block">
       {/* Filter Container - positioned at the top */}
-      <div className="mb-4">
+      <div>
         <CollectionReportFilters
           locations={locations}
           selectedLocation={selectedLocation}
@@ -66,7 +71,15 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
             ref={desktopTableRef}
             className="animate-in fade-in-0 slide-in-from-bottom-2"
           >
-            <CollectionReportTable data={desktopCurrentItems} onEdit={onEdit} onDelete={onDelete} />
+            <CollectionReportTable
+              data={desktopCurrentItems}
+              reportIssues={reportIssues}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={onSort}
+            />
           </div>
         )}
       </div>

@@ -3,25 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export interface SelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
-}
-
-export interface CustomSelectProps {
-  value?: string;
-  onValueChange?: (value: string) => void;
-  options: SelectOption[];
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-  triggerClassName?: string;
-  contentClassName?: string;
-  searchable?: boolean;
-  emptyMessage?: string;
-}
+import type { SelectOption, CustomSelectProps } from "@/lib/types/customSelect";
 
 export function CustomSelect({
   value,
@@ -41,6 +23,7 @@ export function CustomSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
 
   // Filter options based on search term
   const filteredOptions = searchable
@@ -51,6 +34,15 @@ export function CustomSelect({
 
   // Find selected option
   const selectedOption = options.find((option) => option.value === value);
+
+  // Debug logging for location select
+  if (options.length > 0 && options[0]?.value === "all") {
+    console.warn('[CUSTOM SELECT - LOCATION] Debug info:');
+    console.warn(`  - Received value: "${value}"`);
+    console.warn(`  - Selected option: ${selectedOption ? `"${selectedOption.label}"` : 'null'}`);
+    console.warn(`  - Options count: ${options.length}`);
+    console.warn(`  - First option: ${JSON.stringify(options[0])}`);
+  }
 
   // Handle click outside to close
   useEffect(() => {
@@ -76,67 +68,90 @@ export function CustomSelect({
     };
   }, [isOpen]);
 
-  // Focus search input when opened
+  // Focus search input when opened and calculate dropdown position
   useEffect(() => {
-    if (isOpen && searchable && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (isOpen) {
+      if (searchable && searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+      
+      // Calculate dropdown position based on available space
+      if (triggerRef.current) {
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        const spaceAbove = triggerRect.top;
+        
+        // If there's more space above and less than 200px below, position above
+        if (spaceAbove > spaceBelow && spaceBelow < 200) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
     }
   }, [isOpen, searchable]);
 
-  const handleSelect = useCallback((selectedValue: string) => {
-    onValueChange?.(selectedValue);
-    setIsOpen(false);
-    setSearchTerm("");
-    setFocusedIndex(-1);
-    triggerRef.current?.focus();
-  }, [onValueChange]);
+  const handleSelect = useCallback(
+    (selectedValue: string) => {
+      onValueChange?.(selectedValue);
+      setIsOpen(false);
+      setSearchTerm("");
+      setFocusedIndex(-1);
+      triggerRef.current?.focus();
+    },
+    [onValueChange]
+  );
 
   // Handle keyboard navigation
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (
-        event.key === "Enter" ||
-        event.key === " " ||
-        event.key === "ArrowDown"
-      ) {
-        event.preventDefault();
-        setIsOpen(true);
-        setFocusedIndex(0);
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case "Escape":
-        event.preventDefault();
-        setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
-        triggerRef.current?.focus();
-        break;
-      case "ArrowDown":
-        event.preventDefault();
-        setFocusedIndex((prev) =>
-          prev < filteredOptions.length - 1 ? prev + 1 : 0
-        );
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        setFocusedIndex((prev) =>
-          prev > 0 ? prev - 1 : filteredOptions.length - 1
-        );
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
-          const option = filteredOptions[focusedIndex];
-          if (!option.disabled) {
-            handleSelect(option.value);
-          }
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (!isOpen) {
+        if (
+          event.key === "Enter" ||
+          event.key === " " ||
+          event.key === "ArrowDown"
+        ) {
+          event.preventDefault();
+          setIsOpen(true);
+          setFocusedIndex(0);
         }
-        break;
-    }
-  }, [isOpen, filteredOptions, focusedIndex, handleSelect]);
+        return;
+      }
+
+      switch (event.key) {
+        case "Escape":
+          event.preventDefault();
+          setIsOpen(false);
+          setSearchTerm("");
+          setFocusedIndex(-1);
+          triggerRef.current?.focus();
+          break;
+        case "ArrowDown":
+          event.preventDefault();
+          setFocusedIndex((prev) =>
+            prev < filteredOptions.length - 1 ? prev + 1 : 0
+          );
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          setFocusedIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredOptions.length - 1
+          );
+          break;
+        case "Enter":
+          event.preventDefault();
+          if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
+            const option = filteredOptions[focusedIndex];
+            if (!option.disabled) {
+              handleSelect(option.value);
+            }
+          }
+          break;
+      }
+    },
+    [isOpen, filteredOptions, focusedIndex, handleSelect]
+  );
 
   const handleTriggerClick = useCallback(() => {
     if (!disabled) {
@@ -185,7 +200,9 @@ export function CustomSelect({
           ref={contentRef}
           id="select-options"
           className={cn(
-            "absolute top-full z-50 mt-1 w-full rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
+            "absolute z-50 w-full rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 min-w-full max-w-none",
+            "sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px]",
+            dropdownPosition === 'bottom' ? "top-full mt-1" : "bottom-full mb-1",
             contentClassName
           )}
           role="listbox"
@@ -224,7 +241,7 @@ export function CustomSelect({
                   onClick={() => !option.disabled && handleSelect(option.value)}
                   disabled={option.disabled}
                   className={cn(
-                    "relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+                    "relative flex w-full cursor-default select-none items-center rounded-sm px-3 py-2 text-sm outline-none transition-colors",
                     "hover:bg-accent hover:text-accent-foreground",
                     "focus:bg-accent focus:text-accent-foreground",
                     "disabled:pointer-events-none disabled:opacity-50",
@@ -235,7 +252,7 @@ export function CustomSelect({
                   role="option"
                   aria-selected={value === option.value}
                 >
-                  <span className="flex-1 truncate text-left">
+                  <span className="flex-1 truncate text-left font-medium">
                     {option.label}
                   </span>
                   {value === option.value && <Check className="ml-2 h-4 w-4" />}
@@ -250,15 +267,7 @@ export function CustomSelect({
 }
 
 // Convenience component for location selection
-export interface LocationSelectProps {
-  value?: string;
-  onValueChange?: (value: string) => void;
-  locations: Array<{ _id: string; name: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-  emptyMessage?: string;
-}
+import type { LocationSelectProps } from "@/lib/types/customSelect";
 
 export function LocationSelect({
   value,

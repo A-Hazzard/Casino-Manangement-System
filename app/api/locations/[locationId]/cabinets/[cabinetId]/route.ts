@@ -348,6 +348,14 @@ export async function PATCH(
       updateFields.collectorDenomination = data.collectorDenomination;
     }
 
+    // Handle SMIB configuration updates
+    if (data.smibConfig !== undefined) {
+      updateFields.smibConfig = data.smibConfig;
+    }
+    if (data.smibVersion !== undefined) {
+      updateFields.smibVersion = data.smibVersion;
+    }
+
     // Update the machine with only the fields that were provided
     const updatedMachine = await Machine.findByIdAndUpdate(
       cabinetId,

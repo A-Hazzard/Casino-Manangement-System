@@ -18,9 +18,7 @@ This directory contains all custom React hooks organized by functionality for be
 - `useCabinetFilters.ts` - Cabinet search and filter state management
 - `useCabinetModals.ts` - Cabinet modal state management
 - `useCabinetSorting.ts` - Cabinet sorting and pagination logic
-- `useCollectionReportData.ts` - Collection report data fetching and state
 - `useCollectionReportModals.ts` - Collection report modal state management
-- `useCollectionReportsData.ts` - Collection reports data management
 - `useDashboardData.ts` - Dashboard data fetching and state
 - `useDashboardFilters.ts` - Dashboard filter state and logic
 - `useDashboardRefresh.ts` - Dashboard refresh functionality
@@ -111,6 +109,31 @@ When adding new hooks, follow these guidelines:
 5. **Add proper TypeScript types** and JSDoc comments
 6. **Test the hook** thoroughly before committing
 
+## Key Features in Hooks
+
+### Gaming Day Offset Support
+Many data hooks (particularly dashboard, location, and cabinet hooks) support gaming day offset functionality:
+- Default gaming day starts at 8 AM (configurable per location)
+- Local time (Trinidad UTC-4) is converted to UTC for database queries
+- Custom date ranges with time inputs for precise filtering
+
+### Financial Calculations
+Data hooks use the **Movement Delta Method** for all financial calculations:
+- Sum of `movement.drop` for money in
+- Sum of `movement.totalCancelledCredits` for money out
+- Gross = Drop - Total Cancelled Credits
+
+### Authentication & Permissions
+Auth hooks implement comprehensive role-based access control (RBAC):
+- Super Admin, Admin, Manager, Collector, Viewer roles
+- Granular permissions for all actions
+- Automatic session management and token refresh
+
 ## Migration Notes
 
 All existing imports have been updated to use the new organized structure. The old individual hook imports have been replaced with category-based imports for better maintainability.
+
+---
+
+**Last Updated**: October 10th, 2025  
+**Version**: 2.0.0

@@ -5,13 +5,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { getActiveSectionFromURL, handleSectionChange as handleSectionChangeHelper } from "@/lib/helpers/cabinetsPage";
+import {
+  getActiveSectionFromURL,
+  handleSectionChange as handleSectionChangeHelper,
+} from "@/lib/helpers/cabinetsPage";
 import type { CabinetSection } from "@/lib/constants/cabinets";
-
-interface UseCabinetNavigationReturn {
-  activeSection: CabinetSection;
-  handleSectionChange: (section: CabinetSection) => void;
-}
+import type { UseCabinetNavigationReturn } from "@/lib/types/cabinets";
 
 export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   const pathname = usePathname();
@@ -30,17 +29,25 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   );
 
   // Handle section changes with URL updates
-  const handleSectionChange = useCallback((section: CabinetSection) => {
-    console.warn("Changing section from", activeSection, "to", section);
-    setActiveSection(section);
-    handleSectionChangeHelper(section, searchParams, pathname, router);
-  }, [activeSection, searchParams, pathname, router]);
+  const handleSectionChange = useCallback(
+    (section: CabinetSection) => {
+      console.warn("Changing section from", activeSection, "to", section);
+      setActiveSection(section);
+      handleSectionChangeHelper(section, searchParams, pathname, router);
+    },
+    [activeSection, searchParams, pathname, router]
+  );
 
   // Sync state with URL changes
   useEffect(() => {
     const newSection = getActiveSectionFromURLLocal();
     if (newSection !== activeSection) {
-      console.warn("URL changed, updating active section from", activeSection, "to", newSection);
+      console.warn(
+        "URL changed, updating active section from",
+        activeSection,
+        "to",
+        newSection
+      );
       setActiveSection(newSection);
     }
   }, [searchParams, activeSection, getActiveSectionFromURLLocal]);

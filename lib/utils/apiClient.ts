@@ -6,7 +6,6 @@ import { showErrorNotification } from "./errorNotifications";
  * Enhanced axios instance with error handling
  */
 const apiClient = axios.create({
-  timeout: 60000, // 30 second timeout
   headers: {
     "Content-Type": "application/json",
   },

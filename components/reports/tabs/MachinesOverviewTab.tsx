@@ -14,7 +14,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  BarChart3,
+  Download,
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -34,38 +40,38 @@ import {
 import { ManufacturerPerformanceChart } from "@/components/ui/ManufacturerPerformanceChart";
 import { GamesPerformanceChart } from "@/components/ui/GamesPerformanceChart";
 import { GamesPerformanceRevenueChart } from "@/components/ui/GamesPerformanceRevenueChart";
-import type {
-  MachineData,
-  MachineStats,
-} from "@/shared/types/machines";
+// Removed duplicate import - using MachineData and MachineStats from lib/types/machinesOverviewTab instead
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Trash2 } from "lucide-react";
 import StatusIcon from "@/components/ui/common/StatusIcon";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 
 // Sortable table header component
-const SortableHeader = ({ 
-  children, 
-  sortKey, 
-  currentSort, 
-  onSort 
-}: { 
-  children: React.ReactNode; 
-  sortKey: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; 
-  currentSort: { key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn'; direction: 'asc' | 'desc' }; 
-  onSort: (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => void; 
+const SortableHeader = ({
+  children,
+  sortKey,
+  currentSort,
+  onSort,
+}: {
+  children: React.ReactNode;
+  sortKey: keyof MachineData;
+  currentSort: {
+    key: keyof MachineData;
+    direction: "asc" | "desc";
+  };
+  onSort: (key: keyof MachineData) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
-  
+
   return (
-    <th 
+    <th
       className="text-center p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
       onClick={() => onSort(sortKey)}
     >
       <div className="flex items-center gap-1">
         {children}
         {isActive ? (
-          currentSort.direction === 'asc' ? (
+          currentSort.direction === "asc" ? (
             <ChevronUp className="w-4 h-4" />
           ) : (
             <ChevronDown className="w-4 h-4" />
@@ -80,61 +86,10 @@ const SortableHeader = ({
   );
 };
 
-interface MachinesOverviewTabProps {
-  // Data props
-  overviewMachines: MachineData[];
-  allMachines: MachineData[];
-  machineStats: MachineStats | null;
-  manufacturerData: Array<{
-    manufacturer: string;
-    floorPositions: number;
-    totalHandle: number;
-    totalWin: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    totalGross: number;
-  }>;
-  gamesData: Array<{
-    gameName: string;
-    floorPositions: number;
-    totalHandle: number;
-    totalWin: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    totalGross: number;
-  }>;
-  locations: { id: string; name: string; sasEnabled: boolean }[];
-  
-  // Loading states
-  overviewLoading: boolean;
-  manufacturerLoading: boolean;
-  gamesLoading: boolean;
-  statsLoading: boolean;
-  
-  // Pagination
-  pagination: {
-    page: number;
-    limit: number;
-    totalCount: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
-  
-  // Sorting
-  sortConfig: {
-    key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn';
-    direction: 'asc' | 'desc';
-  };
-  
-  // Actions
-  onSort: (key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => void;
-  onPageChange: (page: number) => void;
-  onRefresh: () => void;
-  onExport: () => void;
-  onEdit: (machine: MachineData) => void;
-  onDelete: (machine: MachineData) => void;
-}
+import type {
+  MachinesOverviewTabProps,
+  MachineData,
+} from "@/lib/types/machinesOverviewTab";
 
 export const MachinesOverviewTab = ({
   overviewMachines,
@@ -158,7 +113,8 @@ export const MachinesOverviewTab = ({
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedManufacturer, setSelectedManufacturer] = useState<string>("all");
+  const [selectedManufacturer, setSelectedManufacturer] =
+    useState<string>("all");
 
   // Handle edit action
   const handleEdit = useCallback(
@@ -188,7 +144,9 @@ export const MachinesOverviewTab = ({
         gamesPlayed: machine.gamesPlayed,
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -225,7 +183,9 @@ export const MachinesOverviewTab = ({
         gamesPlayed: machine.gamesPlayed,
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
-        custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -240,21 +200,26 @@ export const MachinesOverviewTab = ({
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter((machine) =>
-        machine.machineId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        machine.gameTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        machine.locationName?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (machine) =>
+          machine.machineId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine.gameTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine.locationName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by location
     if (selectedLocation !== "all") {
-      filtered = filtered.filter((machine) => machine.locationId === selectedLocation);
+      filtered = filtered.filter(
+        (machine) => machine.locationId === selectedLocation
+      );
     }
 
     // Filter by manufacturer
     if (selectedManufacturer !== "all") {
-      filtered = filtered.filter((machine) => machine.manufacturer === selectedManufacturer);
+      filtered = filtered.filter(
+        (machine) => machine.manufacturer === selectedManufacturer
+      );
     }
 
     return filtered;
@@ -262,7 +227,11 @@ export const MachinesOverviewTab = ({
 
   // Get unique manufacturers for filter
   const uniqueManufacturers = useMemo(() => {
-    const manufacturers = [...new Set(overviewMachines.map(machine => machine.manufacturer).filter(Boolean))];
+    const manufacturers = [
+      ...new Set(
+        overviewMachines.map((machine) => machine.manufacturer).filter(Boolean)
+      ),
+    ];
     return manufacturers;
   }, [overviewMachines]);
 
@@ -274,7 +243,9 @@ export const MachinesOverviewTab = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Machines</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Machines
+            </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -289,31 +260,31 @@ export const MachinesOverviewTab = ({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Online Machines</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Online Machines
+            </CardTitle>
             <StatusIcon isOnline={true} />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {statsLoading ? "..." : machineStats?.onlineCount || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Currently connected
-            </p>
+            <p className="text-xs text-muted-foreground">Currently connected</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Offline Machines</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Offline Machines
+            </CardTitle>
             <StatusIcon isOnline={false} />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {statsLoading ? "..." : machineStats?.offlineCount || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Require attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
 
@@ -326,7 +297,9 @@ export const MachinesOverviewTab = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statsLoading ? "..." : machineStats?.totalGross?.toLocaleString() || "0"}
+              {statsLoading
+                ? "..."
+                : machineStats?.totalGross?.toLocaleString() || "0"}
             </div>
             <p className="text-xs text-muted-foreground">
               Gross revenue this period
@@ -415,15 +388,17 @@ export const MachinesOverviewTab = ({
         <Card>
           <CardHeader>
             <CardTitle>Manufacturer Performance</CardTitle>
-            <CardDescription>
-              Revenue by manufacturer
-            </CardDescription>
+            <CardDescription>Revenue by manufacturer</CardDescription>
           </CardHeader>
           <CardContent>
             {manufacturerLoading ? (
               <ChartSkeleton />
             ) : manufacturerData.length === 0 ? (
-              <ChartNoData title="No Data" icon={null} message="No manufacturer data available" />
+              <ChartNoData
+                title="No Data"
+                icon={null}
+                message="No manufacturer data available"
+              />
             ) : (
               <ManufacturerPerformanceChart data={manufacturerData} />
             )}
@@ -434,15 +409,17 @@ export const MachinesOverviewTab = ({
         <Card>
           <CardHeader>
             <CardTitle>Games Performance</CardTitle>
-            <CardDescription>
-              Revenue by game type
-            </CardDescription>
+            <CardDescription>Revenue by game type</CardDescription>
           </CardHeader>
           <CardContent>
             {gamesLoading ? (
               <ChartSkeleton />
             ) : gamesData.length === 0 ? (
-              <ChartNoData title="No Data" icon={null} message="No games data available" />
+              <ChartNoData
+                title="No Data"
+                icon={null}
+                message="No games data available"
+              />
             ) : (
               <GamesPerformanceChart data={gamesData} />
             )}
@@ -454,15 +431,17 @@ export const MachinesOverviewTab = ({
       <Card>
         <CardHeader>
           <CardTitle>Games Revenue Analysis</CardTitle>
-          <CardDescription>
-            Detailed revenue breakdown by game
-          </CardDescription>
+          <CardDescription>Detailed revenue breakdown by game</CardDescription>
         </CardHeader>
         <CardContent>
           {gamesLoading ? (
             <ChartSkeleton />
           ) : gamesData.length === 0 ? (
-            <ChartNoData title="No Data" icon={null} message="No games revenue data available" />
+            <ChartNoData
+              title="No Data"
+              icon={null}
+              message="No games revenue data available"
+            />
           ) : (
             <GamesPerformanceRevenueChart data={gamesData} />
           )}
@@ -489,50 +468,103 @@ export const MachinesOverviewTab = ({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b">
-                    <SortableHeader sortKey="machineId" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="machineId"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Machine ID
                     </SortableHeader>
-                    <SortableHeader sortKey="gameTitle" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="gameTitle"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Game
                     </SortableHeader>
-                    <SortableHeader sortKey="locationName" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="locationName"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Location
                     </SortableHeader>
-                    <SortableHeader sortKey="manufacturer" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="manufacturer"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Manufacturer
                     </SortableHeader>
-                    <SortableHeader sortKey="coinIn" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="coinIn"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Handle
                     </SortableHeader>
-                    <SortableHeader sortKey="netWin" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="netWin"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Net Win
                     </SortableHeader>
-                    <SortableHeader sortKey="gross" currentSort={sortConfig} onSort={onSort}>
+                    <SortableHeader
+                      sortKey="gross"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
                       Gross
                     </SortableHeader>
-                    <th className="text-center p-3 font-medium text-gray-700">Status</th>
-                    <th className="text-center p-3 font-medium text-gray-700">Actions</th>
+                    <th className="text-center p-3 font-medium text-gray-700">
+                      Status
+                    </th>
+                    <th className="text-center p-3 font-medium text-gray-700">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredMachines.map((machine) => (
-                    <tr key={machine.machineId} className="border-b hover:bg-gray-50">
-                      <td className="p-3 text-center">{machine.machineId || "N/A"}</td>
-                      <td className="p-3 text-center">{machine.gameTitle || "N/A"}</td>
-                      <td className="p-3 text-center">{machine.locationName || "N/A"}</td>
-                      <td className="p-3 text-center">{machine.manufacturer || "N/A"}</td>
+                    <tr
+                      key={machine.machineId}
+                      className="border-b hover:bg-gray-50"
+                    >
                       <td className="p-3 text-center">
-                        <span className={getFinancialColorClass(machine.coinIn || 0)}>
+                        {machine.machineId || "N/A"}
+                      </td>
+                      <td className="p-3 text-center">
+                        {machine.gameTitle || "N/A"}
+                      </td>
+                      <td className="p-3 text-center">
+                        {machine.locationName || "N/A"}
+                      </td>
+                      <td className="p-3 text-center">
+                        {machine.manufacturer || "N/A"}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={getFinancialColorClass(
+                            machine.coinIn || 0
+                          )}
+                        >
                           ${(machine.coinIn || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className={getFinancialColorClass(machine.netWin || 0)}>
+                        <span
+                          className={getFinancialColorClass(
+                            machine.netWin || 0
+                          )}
+                        >
                           ${(machine.netWin || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className={getFinancialColorClass(machine.gross || 0)}>
+                        <span
+                          className={getFinancialColorClass(machine.gross || 0)}
+                        >
                           ${(machine.gross || 0).toLocaleString()}
                         </span>
                       </td>
@@ -568,9 +600,12 @@ export const MachinesOverviewTab = ({
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-gray-500">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of{" "}
-                {pagination.totalCount} results
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(
+                  pagination.page * pagination.limit,
+                  pagination.totalCount
+                )}{" "}
+                of {pagination.totalCount} results
               </div>
               <div className="flex gap-2">
                 <Button

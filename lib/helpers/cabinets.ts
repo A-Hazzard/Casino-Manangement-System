@@ -5,6 +5,7 @@ type CabinetFormData = Partial<GamingMachine>;
 
 import { DateRange } from "react-day-picker";
 import { getAuthHeaders } from "@/lib/utils/auth";
+import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
 // Activity logging removed - handled via API calls
 
 import type { GamingMachine as CabinetDetails } from "@/shared/types/entities";
@@ -32,7 +33,8 @@ export type { CabinetDetails, CabinetMetrics };
 export const fetchCabinets = async (
   licensee?: string,
   timePeriod?: string,
-  customDateRange?: DateRange
+  customDateRange?: DateRange,
+  currency?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -52,6 +54,10 @@ export const fetchCabinets = async (
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
+
+    if (currency) {
+      queryParams.push(`currency=${encodeURIComponent(currency)}`);
     }
 
     // Append query string if we have parameters
@@ -119,6 +125,9 @@ export const fetchCabinetById = async (
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
+
+    // Add cache-busting timestamp to prevent caching issues
+    queryParams.push(`_t=${Date.now()}`);
 
     if (queryParams.length > 0) {
       endpoint += `?${queryParams.join("&")}`;
@@ -370,7 +379,11 @@ export async function fetchCabinetsForLocation(
     };
 
     if (licencee) {
-      params.licencee = licencee;
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licencee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
     }
 
     if (searchTerm) {
@@ -403,7 +416,7 @@ export async function fetchCabinetsForLocation(
     );
 
     if (response.status !== 200) {
-      console.error(`❌ API error (${response.status}):`, response.data);
+      console.error(` API error (${response.status}):`, response.data);
       return [];
     }
 
@@ -416,7 +429,7 @@ export async function fetchCabinetsForLocation(
 
     return data;
   } catch (error) {
-    console.error("❌ Error in fetchCabinetsForLocation:", error);
+    console.error(" Error in fetchCabinetsForLocation:", error);
     // Always return an empty array instead of throwing
     return [];
   }
@@ -466,7 +479,7 @@ export async function fetchCabinetDetails(
 
     if (response.status !== 200) {
       console.error(
-        `❌ Cabinet details API error (${response.status}):`,
+        ` Cabinet details API error (${response.status}):`,
         response.data
       );
       return null;
@@ -481,7 +494,7 @@ export async function fetchCabinetDetails(
 
     return data as CabinetDetails;
   } catch (error) {
-    console.error("❌ Error fetching cabinet details:", error);
+    console.error(" Error fetching cabinet details:", error);
     return null;
   }
 }
@@ -508,7 +521,6 @@ export async function updateCabinetMetrics(
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 10000,
     });
 
     if (response.status !== 200) {
@@ -554,7 +566,11 @@ export async function loadCabinetsForLocation(
     };
 
     if (licencee) {
-      params.licencee = licencee;
+      // Convert licensee name to ObjectId for API compatibility
+      const licenseeObjectId = getLicenseeObjectId(licencee);
+      if (licenseeObjectId) {
+        params.licencee = licenseeObjectId;
+      }
     }
 
     const response = await axios.get(`/api/locations/${locationId}`, {

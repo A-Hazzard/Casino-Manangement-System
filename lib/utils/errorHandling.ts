@@ -2,14 +2,10 @@
  * Utility functions for handling errors gracefully in the application
  */
 
-export interface ApiError {
-  message: string;
-  status?: number;
-  code?: string;
-  isNetworkError?: boolean;
-  isTimeoutError?: boolean;
-  isConnectionError?: boolean;
-}
+import type { ApiError } from "@/lib/types/errors";
+
+// Re-export for use in other files
+export type { ApiError };
 
 /**
  * Classify error types for better error handling

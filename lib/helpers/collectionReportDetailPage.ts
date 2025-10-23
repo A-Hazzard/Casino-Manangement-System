@@ -150,16 +150,16 @@ export function generateMachineMetricsData(
     // Get meters gross from movement
     const metersGross = col.movement?.gross || 0;
 
-    // Get SAS gross from sasMeters
+    // Get SAS gross from sasMeters (will be calculated correctly in backend)
     const sasGross = col.sasMeters?.gross || 0;
 
     // Calculate variation (difference between meters gross and SAS gross)
     // Check if SAS data exists - if not, show "No SAS Data"
+    // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
     const variation =
       !col.sasMeters ||
       col.sasMeters.gross === undefined ||
-      col.sasMeters.gross === null ||
-      col.sasMeters.gross === 0
+      col.sasMeters.gross === null
         ? "No SAS Data"
         : metersGross - sasGross;
 

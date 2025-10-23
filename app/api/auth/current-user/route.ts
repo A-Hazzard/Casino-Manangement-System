@@ -11,7 +11,6 @@ export async function GET(_request: NextRequest) {
   try {
     // Get user ID from JWT token
     const userId = await getUserIdFromServer();
-
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -27,22 +26,28 @@ export async function GET(_request: NextRequest) {
     }
 
     // Return the current user data from database
+
     return NextResponse.json({
       success: true,
       user: {
-        id: user._id.toString(),
-        username: user.username,
-        emailAddress: user.emailAddress,
-        profile: user.profile,
-        roles: user.roles,
-        enabled: user.enabled,
-        resourcePermissions: user.resourcePermissions,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        id: user._id?.toString() || "",
+        username: user.username || "",
+        emailAddress: user.emailAddress || "",
+        profile: user.profile || {},
+        roles: user.roles || [],
+        isEnabled: user.isEnabled ?? true,
+        resourcePermissions: user.resourcePermissions || {},
+        createdAt: user.createdAt || new Date(),
+        updatedAt: user.updatedAt || new Date(),
       },
     });
   } catch (error) {
-    console.error("Error fetching current user:", error);
+    console.error(" Error fetching current user:", error);
+    console.error(" Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

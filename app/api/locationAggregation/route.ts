@@ -5,7 +5,12 @@ import { getDatesForTimePeriod } from "../lib/utils/dates";
 import { trinidadTimeToUtc } from "../lib/utils/timezone";
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { LocationFilter } from "@/lib/types/location";
-import { getCacheKey, getCachedData, setCachedData, clearCache } from "@/app/api/lib/helpers/cacheUtils";
+import {
+  getCacheKey,
+  getCachedData,
+  setCachedData,
+  clearCache,
+} from "@/app/api/lib/helpers/cacheUtils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,7 +19,6 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get("licencee") || undefined;
     const machineTypeFilter =
       (searchParams.get("machineTypeFilter") as LocationFilter) || null;
-
 
     const clearCacheParam = searchParams.get("clearCache") === "true";
     const sasEvaluationOnly = searchParams.get("sasEvaluationOnly") === "true";
@@ -32,8 +36,8 @@ export async function GET(req: NextRequest) {
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? parseInt(limitParam) : 1000000;
 
-
     let startDate: Date | undefined, endDate: Date | undefined;
+    let customStartDate: Date | undefined, customEndDate: Date | undefined;
 
     if (timePeriod === "Custom") {
       const customStart = searchParams.get("startDate");
@@ -47,6 +51,8 @@ export async function GET(req: NextRequest) {
       // For custom date ranges, convert from Trinidad time to UTC
       startDate = trinidadTimeToUtc(new Date(customStart));
       endDate = trinidadTimeToUtc(new Date(customEnd));
+      customStartDate = new Date(customStart);
+      customEndDate = new Date(customEnd);
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
@@ -68,7 +74,7 @@ export async function GET(req: NextRequest) {
     });
 
     const skipCacheForSelected = Boolean(selectedLocations);
-    
+
     // Check cache first
     if (!clearCacheParam && !skipCacheForSelected) {
       const cachedResult = getCachedData(cacheKey);
@@ -110,15 +116,20 @@ export async function GET(req: NextRequest) {
       limit,
       sasEvaluationOnly,
       basicList,
-      selectedLocations || undefined
+      selectedLocations || undefined,
+      timePeriod,
+      customStartDate,
+      customEndDate
     );
 
     // Apply filters if needed
     let filteredRows = rows;
     if (machineTypeFilter) {
       // Handle comma-separated multiple filters
-      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
-      
+      const filters = machineTypeFilter
+        .split(",")
+        .filter((f) => f.trim() !== "");
+
       filteredRows = rows.filter((loc) => {
         // Apply AND logic - location must match ALL selected filters
         return filters.every((filter) => {
@@ -157,63 +168,74 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error(
-      "❌ LocationAggregation API Error:",
+      " LocationAggregation API Error:",
       error instanceof Error ? error.message : String(error)
     );
-    
+
     // Handle specific MongoDB connection errors
     if (error instanceof Error) {
       const errorMessage = error.message.toLowerCase();
-      
+
       // MongoDB connection timeout
-      if (errorMessage.includes("mongonetworktimeouterror") || 
-          (errorMessage.includes("connection") && errorMessage.includes("timed out"))) {
+      if (
+        errorMessage.includes("mongonetworktimeouterror") ||
+        (errorMessage.includes("connection") &&
+          errorMessage.includes("timed out"))
+      ) {
         return NextResponse.json(
-          { 
+          {
             error: "Database connection timeout",
-            message: "The database is currently experiencing high load. Please try again in a few moments.",
+            message:
+              "The database is currently experiencing high load. Please try again in a few moments.",
             type: "CONNECTION_TIMEOUT",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
       }
-      
+
       // MongoDB server selection error
-      if (errorMessage.includes("mongoserverselectionerror") || 
-          errorMessage.includes("server selection")) {
+      if (
+        errorMessage.includes("mongoserverselectionerror") ||
+        errorMessage.includes("server selection")
+      ) {
         return NextResponse.json(
-          { 
+          {
             error: "Database server unavailable",
-            message: "Unable to connect to the database server. Please try again later.",
+            message:
+              "Unable to connect to the database server. Please try again later.",
             type: "SERVER_UNAVAILABLE",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
       }
-      
+
       // Generic MongoDB connection error
-      if (errorMessage.includes("mongodb") || errorMessage.includes("connection")) {
+      if (
+        errorMessage.includes("mongodb") ||
+        errorMessage.includes("connection")
+      ) {
         return NextResponse.json(
-          { 
+          {
             error: "Database connection failed",
-            message: "Unable to establish connection to the database. Please try again.",
+            message:
+              "Unable to establish connection to the database. Please try again.",
             type: "CONNECTION_ERROR",
-            retryable: true
+            retryable: true,
           },
           { status: 503 }
         );
       }
     }
-    
+
     // Generic server error
     return NextResponse.json(
-      { 
+      {
         error: "Internal server error",
         message: "An unexpected error occurred while processing your request.",
         type: "INTERNAL_ERROR",
-        retryable: false
+        retryable: false,
       },
       { status: 500 }
     );

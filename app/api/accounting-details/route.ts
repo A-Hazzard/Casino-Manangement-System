@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       data: accountingDetails,
     });
   } catch (error) {
-    console.error("❌ Accounting Details API Error:", error);
+    console.error(" Accounting Details API Error:", error);
     return NextResponse.json(
       {
         success: false,

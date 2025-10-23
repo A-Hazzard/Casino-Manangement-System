@@ -1,10 +1,12 @@
 import { GamingMachine } from "@/shared/types/entities";
 import { TimePeriod } from "../types/api";
-import { DebounceFunction } from "../types/utils";
 
 type ExtendedCabinetDetail = GamingMachine & {
   lastCommunication?: string | Date;
 };
+
+// DebounceFunction is a generic function type for debounce utilities
+type DebounceFunction = (...args: unknown[]) => unknown;
 
 /**
  * Creates a debounced version of a function

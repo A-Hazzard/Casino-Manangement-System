@@ -41,7 +41,8 @@ const PASSWORD_REQUIREMENTS = [
   },
   {
     label: "Special character",
-    test: (password: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    test: (password: string) =>
+      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
   },
 ];
 
@@ -109,7 +110,8 @@ export default function PasswordUpdateModal({
         <DialogHeader>
           <DialogTitle>Update Your Password</DialogTitle>
           <DialogDescription>
-            Your current password is weak. Please update it to meet security requirements.
+            Your current password is weak. Please update it to meet security
+            requirements.
           </DialogDescription>
         </DialogHeader>
 

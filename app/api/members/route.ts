@@ -5,6 +5,11 @@ import { logActivity } from "@/app/api/lib/helpers/activityLogger";
 import { getUserFromServer } from "../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { PipelineStage } from "mongoose";
+import {
+  getCurrencyFromQuery,
+  applyCurrencyConversionToMetrics,
+  shouldApplyCurrencyConversion,
+} from "@/app/api/lib/helpers/currencyHelper";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +32,10 @@ export async function GET(request: NextRequest) {
 
     // Location filter
     const locationFilter = searchParams.get("locationFilter");
+
+    // Currency parameters
+    const displayCurrency = getCurrencyFromQuery(searchParams);
+    const licencee = searchParams.get("licencee") || null;
 
     // Build optimized query
     const query: Record<string, unknown> = {};
@@ -254,10 +263,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Apply currency conversion if needed
+    const convertedMembers = await applyCurrencyConversionToMetrics(
+      members,
+      licencee,
+      displayCurrency
+    );
+
     const response = {
       success: true,
       data: {
-        members,
+        members: convertedMembers,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(totalMembers / limit),
@@ -266,6 +282,8 @@ export async function GET(request: NextRequest) {
           hasPrevPage: page > 1,
         },
       },
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
     };
 
     return NextResponse.json(response);

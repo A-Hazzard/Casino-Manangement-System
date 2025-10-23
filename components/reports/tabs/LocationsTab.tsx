@@ -35,6 +35,7 @@ import {
 // import { formatCurrency } from "@/lib/utils/formatting";
 import { useReportsStore } from "@/lib/store/reportsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 import { exportData, type ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
 import LocationMap from "@/components/reports/common/LocationMap";
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from "@/lib/helpers/reportsPage";
@@ -120,6 +121,7 @@ export default function LocationsTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
 
@@ -296,16 +298,17 @@ export default function LocationsTab() {
           customDateRange?.startDate &&
           customDateRange?.endDate
         ) {
-          params.startDate = (
-            customDateRange.startDate instanceof Date
+          const sd = customDateRange.startDate instanceof Date
               ? customDateRange.startDate
-              : new Date(customDateRange.startDate as string)
-          ).toISOString();
-          params.endDate = (
-            customDateRange.endDate instanceof Date
+            : new Date(customDateRange.startDate as string);
+          const ed = customDateRange.endDate instanceof Date
               ? customDateRange.endDate
-              : new Date(customDateRange.endDate as string)
-          ).toISOString();
+            : new Date(customDateRange.endDate as string);
+          
+          // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+          // The API will treat these as Trinidad time and convert to UTC
+          params.startDate = sd.toISOString().split('T')[0];
+          params.endDate = ed.toISOString().split('T')[0];
         } else {
           // Fallback to Today if no valid filter
           params.timePeriod = "Today";
@@ -315,9 +318,7 @@ export default function LocationsTab() {
 
         // API call to get location data with financial metrics
         const response = await axios.get("/api/locationAggregation", {
-          params,
-          timeout: 60000, // 60 second timeout
-        });
+          params        });
 
         // Check for error response
         if (response.data.error) {
@@ -543,16 +544,16 @@ export default function LocationsTab() {
         customDateRange?.startDate &&
         customDateRange?.endDate
       ) {
-        params.startDate = (
-          customDateRange.startDate instanceof Date
+        const sd = customDateRange.startDate instanceof Date
             ? customDateRange.startDate
-            : new Date(customDateRange.startDate as string)
-        ).toISOString();
-        params.endDate = (
-          customDateRange.endDate instanceof Date
+          : new Date(customDateRange.startDate as string);
+        const ed = customDateRange.endDate instanceof Date
             ? customDateRange.endDate
-            : new Date(customDateRange.endDate as string)
-        ).toISOString();
+          : new Date(customDateRange.endDate as string);
+        
+        // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+        params.startDate = sd.toISOString().split('T')[0];
+        params.endDate = ed.toISOString().split('T')[0];
       } else {
         params.timePeriod = "Today";
       }
@@ -629,16 +630,16 @@ export default function LocationsTab() {
         customDateRange?.startDate &&
         customDateRange?.endDate
       ) {
-        params.startDate = (
-          customDateRange.startDate instanceof Date
+        const sd = customDateRange.startDate instanceof Date
             ? customDateRange.startDate
-            : new Date(customDateRange.startDate as string)
-        ).toISOString();
-        params.endDate = (
-          customDateRange.endDate instanceof Date
+          : new Date(customDateRange.startDate as string);
+        const ed = customDateRange.endDate instanceof Date
             ? customDateRange.endDate
-            : new Date(customDateRange.endDate as string)
-        ).toISOString();
+          : new Date(customDateRange.endDate as string);
+        
+        // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+        params.startDate = sd.toISOString().split('T')[0];
+        params.endDate = ed.toISOString().split('T')[0];
       } else {
         params.timePeriod = "Today";
       }
@@ -1017,7 +1018,7 @@ export default function LocationsTab() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
-                        ${metricsOverview.totalGross.toLocaleString()}
+                        {shouldShowCurrency() ? formatAmount(metricsOverview.totalGross) : `$${metricsOverview.totalGross.toLocaleString()}`}
                       </div>
                       <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Total Gross Revenue
@@ -1030,7 +1031,7 @@ export default function LocationsTab() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 break-words">
-                        ${metricsOverview.totalDrop.toLocaleString()}
+                        {shouldShowCurrency() ? formatAmount(metricsOverview.totalDrop) : `$${metricsOverview.totalDrop.toLocaleString()}`}
                       </div>
                       <p className="text-xs sm:text-sm text-muted-foreground break-words">
                         Total Drop

@@ -1,7 +1,6 @@
 import axios from "axios";
 import type { AggregatedLocation } from "@/lib/types/location";
 
-
 /**
  * Fetch locations data with filters and date range
  */
@@ -34,7 +33,7 @@ export async function fetchLocationsData(
     const response = await axios.get(`/api/locations?${params.toString()}`);
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching locations data:", error);
+    console.error(" Error fetching locations data:", error);
     return [];
   }
 }
@@ -58,7 +57,7 @@ export async function searchAllLocations(
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Error searching locations:", error);
+    console.error(" Error searching locations:", error);
     return [];
   }
 }
@@ -86,7 +85,7 @@ export async function fetchMachineStats(): Promise<{
       offlineMachines: data.offlineMachines || 0,
     };
   } catch (error) {
-    console.error("❌ Error fetching machine stats:", error);
+    console.error(" Error fetching machine stats:", error);
     return {
       totalMachines: 0,
       onlineMachines: 0,
@@ -94,5 +93,3 @@ export async function fetchMachineStats(): Promise<{
     };
   }
 }
-
-

@@ -11,7 +11,9 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
  * @param searchParams - Current search parameters
  * @returns The active cabinet section
  */
-export function getActiveSectionFromURL(searchParams: URLSearchParams): CabinetSection {
+export function getActiveSectionFromURL(
+  searchParams: URLSearchParams
+): CabinetSection {
   const section = searchParams.get("section");
   if (section === "movement-requests") return "movement";
   if (section === "smib-firmware") return "firmware";
@@ -51,11 +53,44 @@ export function handleSectionChange(
 }
 
 /**
+ * Utility function for proper alphabetical and numerical sorting
+ */
+function sortMachinesAlphabetically(machines: Cabinet[]) {
+  return machines.sort((a, b) => {
+    const nameA = (a.assetNumber || a.smbId || a.serialNumber || "").toString();
+    const nameB = (b.assetNumber || b.smbId || b.serialNumber || "").toString();
+
+    // Extract the base name and number parts
+    const matchA = nameA.match(/^(.+?)(\d+)?$/);
+    const matchB = nameB.match(/^(.+?)(\d+)?$/);
+
+    if (!matchA || !matchB) {
+      return nameA.localeCompare(nameB);
+    }
+
+    const [, baseA, numA] = matchA;
+    const [, baseB, numB] = matchB;
+
+    // First compare the base part alphabetically
+    const baseCompare = baseA.localeCompare(baseB);
+    if (baseCompare !== 0) {
+      return baseCompare;
+    }
+
+    // If base parts are the same, compare numerically
+    const numAInt = numA ? parseInt(numA, 10) : 0;
+    const numBInt = numB ? parseInt(numB, 10) : 0;
+
+    return numAInt - numBInt;
+  });
+}
+
+/**
  * Filters cabinets based on search term and selected location
  * @param cabinets - Array of cabinets to filter
  * @param search - Search term
  * @param selectedLocation - Selected location filter
- * @returns Filtered array of cabinets
+ * @returns Filtered and sorted array of cabinets
  */
 export function filterCabinets(
   cabinets: Cabinet[],
@@ -66,9 +101,7 @@ export function filterCabinets(
 
   // Filter by location if a specific location is selected
   if (selectedLocation !== "all") {
-    filtered = filtered.filter(
-      (cab) => cab.locationId === selectedLocation
-    );
+    filtered = filtered.filter((cab) => cab.locationId === selectedLocation);
   }
 
   // Filter by search term
@@ -83,5 +116,6 @@ export function filterCabinets(
     );
   }
 
-  return filtered;
+  // Sort the filtered cabinets alphabetically and numerically
+  return sortMachinesAlphabetically(filtered);
 }

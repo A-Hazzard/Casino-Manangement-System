@@ -18,7 +18,7 @@
 The Members page provides comprehensive member management for the casino system, including member profiles, session tracking, and machine event monitoring. This page serves as the central hub for managing casino members and their gaming activities.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** September 6th, 2025  
+**Last Updated:** October 6th, 2025  
 **Version:** 2.0.0
 
 ### File Information

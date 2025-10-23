@@ -509,11 +509,16 @@ export async function fetchAllLocationNames(): Promise<string[]> {
   }
 }
 
-export async function getLocationsWithMachines() {
+export async function getLocationsWithMachines(licensee?: string) {
   try {
+    const params = new URLSearchParams();
+    params.append("locationsWithMachines", "1");
+    if (licensee && licensee !== "all") {
+      params.append("licencee", licensee);
+    }
+
     const { data } = await axios.get(
-      "/api/collectionReport?locationsWithMachines=1",
-      { timeout: 60000 } // 60 second timeout to match database timeout
+      `/api/collectionReport?${params.toString()}`
     );
     return data.locations || [];
   } catch (error) {
@@ -549,9 +554,7 @@ export async function createCollectionReport(
   payload: CreateCollectionReportPayload
 ) {
   try {
-    const { data } = await axios.post("/api/collectionReport", payload, {
-      timeout: 60000, // 60 second timeout to match database timeout
-    });
+    const { data } = await axios.post("/api/collectionReport", payload, {});
     return data;
   } catch (error) {
     // Handle different types of errors gracefully
@@ -564,12 +567,16 @@ export async function createCollectionReport(
           "🔧 Server error creating collection report - database may be unavailable"
         );
         throw new Error("Server error. Please try again later.");
-      } else if (error.response?.status === 400) {
+      } else if (error.response?.status === 400 || error.response?.status === 409) {
         console.warn(
-          "⚠️ Validation error creating collection report:",
+          "⚠️ Validation/Conflict error creating collection report:",
           error.response.data
         );
-        throw new Error("Invalid data provided. Please check your inputs.");
+        // Preserve the original error with response data for proper handling
+        const enhancedError = new Error(error.response.data?.error || "Invalid data provided. Please check your inputs.");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (enhancedError as any).response = error.response;
+        throw enhancedError;
       } else {
         console.warn(
           "⚠️ Network error creating collection report:",
@@ -591,8 +598,7 @@ export async function updateCollectionReport(
   try {
     const { data } = await axios.patch(
       `/api/collection-report/${reportId}`,
-      payload,
-      { timeout: 15000 } // 15 second timeout for updates
+      payload
     );
     return data;
   } catch (error) {
@@ -643,7 +649,7 @@ export async function fetchCollectionReportsByLicencee(
   retryCount = 0
 ): Promise<CollectionReportRow[]> {
   const maxRetries = 2;
-  
+
   try {
     const params: Record<string, string> = {};
 
@@ -663,7 +669,6 @@ export async function fetchCollectionReportsByLicencee(
 
     const { data } = await axios.get("/api/collectionReport", {
       params,
-      timeout: 60000, // 60 second timeout to match database timeout
     });
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -675,9 +680,20 @@ export async function fetchCollectionReportsByLicencee(
         );
         // Retry on timeout if we haven't exceeded max retries
         if (retryCount < maxRetries) {
-          console.warn(`🔄 Retrying collection reports request (${retryCount + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Exponential backoff
-          return fetchCollectionReportsByLicencee(licencee, dateRange, timePeriod, retryCount + 1);
+          console.warn(
+            `🔄 Retrying collection reports request (${
+              retryCount + 1
+            }/${maxRetries})`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, 2000 * (retryCount + 1))
+          ); // Exponential backoff
+          return fetchCollectionReportsByLicencee(
+            licencee,
+            dateRange,
+            timePeriod,
+            retryCount + 1
+          );
         }
       } else if (error.response?.status === 500) {
         console.warn(
@@ -870,7 +886,7 @@ export async function calculateSasMetrics(
   try {
     // Validate dates before using them
     if (isNaN(sasStartTime.getTime()) || isNaN(sasEndTime.getTime())) {
-      console.warn("❌ Invalid dates provided to calculateSasMetrics:", {
+      console.warn(" Invalid dates provided to calculateSasMetrics:", {
         sasStartTime: sasStartTime,
         sasEndTime: sasEndTime,
         startTimeValid: !isNaN(sasStartTime.getTime()),

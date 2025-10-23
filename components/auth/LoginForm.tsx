@@ -11,6 +11,8 @@ export default function LoginForm({
   setPassword,
   showPassword,
   setShowPassword,
+  rememberMe,
+  setRememberMe,
   errors,
   message,
   messageType,
@@ -88,6 +90,22 @@ export default function LoginForm({
               {errors.password}
             </p>
           )}
+        </div>
+        <div className="flex items-center">
+          <input
+            id="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            disabled={loading || redirecting}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+          />
+          <Label
+            htmlFor="rememberMe"
+            className="ml-2 text-sm text-gray-600 cursor-pointer"
+          >
+            Remember my email/username
+          </Label>
         </div>
         <Button
           type="submit"

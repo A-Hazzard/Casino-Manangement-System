@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type React from "react";
 
-interface ClientOnlyProps {
+type ClientOnlyProps = {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-}
+};
 
 /**
  * ClientOnly component that only renders its children on the client side.

@@ -1,21 +1,17 @@
 "use client";
 
 import React, { ComponentType, useState, useCallback } from "react";
-import { classifyError, type ApiError } from "@/lib/utils/errorHandling";
+import { classifyError } from "@/lib/utils/errorHandling";
+import type { ApiError } from "@/lib/types/errors";
+import type { WithErrorHandlingProps } from "@/lib/types/errorHandlingHOC";
 import { showErrorNotification } from "@/lib/utils/errorNotifications";
 import ConnectionError from "./ConnectionError";
 
-export interface WithErrorHandlingProps {
-  onError?: (error: ApiError) => void;
-  onRetry?: () => void;
-  showErrorUI?: boolean;
-  errorTitle?: string;
-  errorDescription?: string;
-}
+// Props moved to lib/types/errorHandlingHOC
 
 /**
  * Higher-order component that adds error handling to any component
- * 
+ *
  * @param WrappedComponent - The component to wrap with error handling
  * @param options - Configuration options for error handling
  * @returns Enhanced component with error handling
@@ -36,30 +32,30 @@ export function withErrorHandling<P extends object>(
     const [error, setError] = useState<ApiError | null>(null);
     const [isRetrying, setIsRetrying] = useState(false);
 
-  const handleError = useCallback((err: unknown) => {
-    const apiError = classifyError(err);
-    setError(apiError);
-    
-    // Show notification
-    showErrorNotification(apiError);
-    
-    // Call custom error handler
-    onError?.(apiError);
-  }, []);
+    const handleError = useCallback((err: unknown) => {
+      const apiError = classifyError(err);
+      setError(apiError);
 
-  const handleRetry = useCallback(async () => {
-    setIsRetrying(true);
-    setError(null);
-    
-    try {
-      // Call custom retry handler
-      await onRetry?.();
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsRetrying(false);
-    }
-  }, [handleError]);
+      // Show notification
+      showErrorNotification(apiError);
+
+      // Call custom error handler
+      onError?.(apiError);
+    }, []);
+
+    const handleRetry = useCallback(async () => {
+      setIsRetrying(true);
+      setError(null);
+
+      try {
+        // Call custom retry handler
+        await onRetry?.();
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setIsRetrying(false);
+      }
+    }, [handleError]);
 
     // If there's an error and we should show error UI
     if (error && showErrorUI) {
@@ -102,18 +98,21 @@ export function useErrorHandling() {
     showErrorNotification(apiError);
   }, []);
 
-  const handleRetry = useCallback(async (retryFn?: () => Promise<void>) => {
-    setIsRetrying(true);
-    setError(null);
-    
-    try {
-      await retryFn?.();
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsRetrying(false);
-    }
-  }, [handleError]);
+  const handleRetry = useCallback(
+    async (retryFn?: () => Promise<void>) => {
+      setIsRetrying(true);
+      setError(null);
+
+      try {
+        await retryFn?.();
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setIsRetrying(false);
+      }
+    },
+    [handleError]
+  );
 
   const clearError = useCallback(() => {
     setError(null);

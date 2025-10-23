@@ -2,6 +2,7 @@ import React from "react";
 import { ChevronDown } from "lucide-react";
 import { CasinoMember as Member } from "@/shared/types/entities";
 import { formatCurrency } from "@/lib/utils/formatters";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 
 type PlayerTotalsCardProps = {
   member: Member;
@@ -31,6 +32,7 @@ export default function PlayerTotalsCard({
   showTotals,
   handleToggleTotals,
 }: PlayerTotalsCardProps) {
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   const totalWonLoss = (member.sessions || []).reduce(
     (acc, s) => acc + (s.won || 0) - (s.bet || 0),
     0
@@ -91,7 +93,7 @@ export default function PlayerTotalsCard({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard
               title="Account Balance"
-              value={formatCurrency(member.uaccount || 0)}
+              value={shouldShowCurrency() ? formatAmount(member.uaccount || 0) : formatCurrency(member.uaccount || 0)}
             />
             <StatCard
               title="Points Balance"
@@ -99,14 +101,14 @@ export default function PlayerTotalsCard({
             />
             <StatCard
               title="Total Balance"
-              value={formatCurrency(member.uaccount || 0)}
+              value={shouldShowCurrency() ? formatAmount(member.uaccount || 0) : formatCurrency(member.uaccount || 0)}
             />
             <StatCard
               title="Won/Loss"
-              value={formatCurrency(totalWonLoss)}
+              value={shouldShowCurrency() ? formatAmount(totalWonLoss) : formatCurrency(totalWonLoss)}
               colorClass={wonLossColor}
             />
-            <StatCard title="Total Bet" value={formatCurrency(totalBet)} />
+            <StatCard title="Total Bet" value={shouldShowCurrency() ? formatAmount(totalBet) : formatCurrency(totalBet)} />
             <StatCard title="Total Games Played" value={totalGamesPlayed} />
           </div>
         </div>

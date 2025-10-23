@@ -113,7 +113,11 @@ export type CollectionReportMachineSummary = {
   origSerialNumber?: string;
   machineId?: string;
   name: string;
+  game?: string;
   custom?: { name?: string };
+  relayId?: string;
+  smibBoard?: string;
+  smbId?: string;
   collectionMeters?: {
     metersIn: number;
     metersOut: number;
@@ -128,6 +132,7 @@ export type CollectionReportLocationWithMachines = {
   previousCollectionTime?: string | Date;
   profitShare?: number;
   collectionBalance?: number;
+  gameDayOffset?: number;
 };
 
 // Types for Collection Report Page
@@ -179,6 +184,7 @@ export type CollectionReportData = {
   machineMetrics: MachineMetric[];
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
+  isEditing?: boolean;
 };
 
 export type ICollectionReport = Document & {
@@ -208,6 +214,7 @@ export type ICollectionReport = Document & {
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
   machinesCollected?: string;
+  isEditing?: boolean;
   createdAt: Date;
   updatedAt: Date;
   __v: number;

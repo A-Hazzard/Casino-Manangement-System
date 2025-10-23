@@ -15,5 +15,14 @@ export async function POST() {
     path: "/",
   });
 
+  // Clear the refresh token cookie
+  response.cookies.set("refreshToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0, // Expire immediately
+    path: "/",
+  });
+
   return response;
 }

@@ -6,16 +6,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeftIcon,
-  ChevronDownIcon,
-} from "@radix-ui/react-icons";
+import { ArrowLeftIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import { RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import RefreshButton from "@/components/ui/RefreshButton";
 import type { LocationInfo } from "@/lib/types/pages";
 
-// Extended LocationInfo type to include additional properties
 type ExtendedLocationInfo = LocationInfo & {
   status?: string;
   city?: string;
@@ -31,17 +27,12 @@ type ExtendedLocationInfo = LocationInfo & {
   }>;
 };
 
-interface LocationDetailsHeaderProps {
-  // Data props
+type LocationDetailsHeaderProps = {
   locationInfo: ExtendedLocationInfo | null;
-  
-  // Loading states
   loading: boolean;
-  
-  // Actions
   onRefresh: () => void;
   onBack: () => void;
-}
+};
 
 // Animation variants
 const configContentVariants = {
@@ -86,9 +77,9 @@ export const LocationDetailsHeader = ({
   // Get status badge color
   const getStatusBadgeColor = () => {
     if (!locationInfo) return "bg-gray-100 text-gray-800 border-gray-200";
-    
+
     const isActive = locationInfo?.status === "active";
-    return isActive 
+    return isActive
       ? "bg-green-100 text-green-800 border-green-200"
       : "bg-red-100 text-red-800 border-red-200";
   };
@@ -124,7 +115,9 @@ export const LocationDetailsHeader = ({
     return (
       <div className="text-center py-8">
         <div className="text-gray-500 text-lg">Location not found</div>
-        <div className="text-gray-400 text-sm">The requested location could not be loaded</div>
+        <div className="text-gray-400 text-sm">
+          The requested location could not be loaded
+        </div>
       </div>
     );
   }
@@ -152,11 +145,12 @@ export const LocationDetailsHeader = ({
               {locationInfo.name || "Unknown Location"}
             </h1>
             <p className="text-sm text-gray-600">
-              {locationInfo.address || "No address provided"} • {locationInfo?.city || "Unknown City"}
+              {locationInfo.address || "No address provided"} •{" "}
+              {locationInfo?.city || "Unknown City"}
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <RefreshButton
             onClick={handleRefresh}
@@ -180,9 +174,7 @@ export const LocationDetailsHeader = ({
                 {getStatusText()}
               </p>
             </div>
-            <Badge className={getStatusBadgeColor()}>
-              {getStatusText()}
-            </Badge>
+            <Badge className={getStatusBadgeColor()}>{getStatusText()}</Badge>
           </div>
         </div>
 
@@ -201,7 +193,8 @@ export const LocationDetailsHeader = ({
           <div>
             <p className="text-sm font-medium text-gray-600">Online Cabinets</p>
             <p className="text-2xl font-bold text-green-600 mt-1">
-              {locationInfo?.cabinets?.filter(cabinet => cabinet.online).length || 0}
+              {locationInfo?.cabinets?.filter((cabinet) => cabinet.online)
+                .length || 0}
             </p>
           </div>
         </div>
@@ -209,9 +202,12 @@ export const LocationDetailsHeader = ({
         {/* Offline Cabinets Card */}
         <div className="bg-white rounded-lg border p-4">
           <div>
-            <p className="text-sm font-medium text-gray-600">Offline Cabinets</p>
+            <p className="text-sm font-medium text-gray-600">
+              Offline Cabinets
+            </p>
             <p className="text-2xl font-bold text-red-600 mt-1">
-              {locationInfo?.cabinets?.filter(cabinet => !cabinet.online).length || 0}
+              {locationInfo?.cabinets?.filter((cabinet) => !cabinet.online)
+                .length || 0}
             </p>
           </div>
         </div>
@@ -224,16 +220,20 @@ export const LocationDetailsHeader = ({
           className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
         >
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">Location Details</h3>
-            <p className="text-sm text-gray-600">View location information and settings</p>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Location Details
+            </h3>
+            <p className="text-sm text-gray-600">
+              View location information and settings
+            </p>
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-5 w-5 text-gray-400 transition-transform ${
-              showLocationDetails ? 'rotate-180' : ''
-            }`} 
+              showLocationDetails ? "rotate-180" : ""
+            }`}
           />
         </button>
-        
+
         <AnimatePresence>
           {showLocationDetails && (
             <motion.div
@@ -247,37 +247,49 @@ export const LocationDetailsHeader = ({
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Location ID</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Location ID
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo._id || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Status</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Status
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo?.status || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Address</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Address
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo.address || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">City</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      City
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo?.city || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">State</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      State
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo?.state || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Zip Code</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Zip Code
+                    </label>
                     <p className="text-sm text-gray-900 mt-1">
                       {locationInfo?.zipCode || "N/A"}
                     </p>
@@ -287,11 +299,15 @@ export const LocationDetailsHeader = ({
                 {/* Contact Information */}
                 {(locationInfo?.phone || locationInfo?.email) && (
                   <div className="border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">Contact Information</h4>
+                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                      Contact Information
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {locationInfo?.phone && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Phone</label>
+                          <label className="text-sm font-medium text-gray-600">
+                            Phone
+                          </label>
                           <p className="text-sm text-gray-900 mt-1">
                             {locationInfo.phone}
                           </p>
@@ -299,7 +315,9 @@ export const LocationDetailsHeader = ({
                       )}
                       {locationInfo?.email && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Email</label>
+                          <label className="text-sm font-medium text-gray-600">
+                            Email
+                          </label>
                           <p className="text-sm text-gray-900 mt-1">
                             {locationInfo.email}
                           </p>
@@ -312,19 +330,27 @@ export const LocationDetailsHeader = ({
                 {/* License Information */}
                 {locationInfo?.licenseNumber && (
                   <div className="border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">License Information</h4>
+                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                      License Information
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-600">License Number</label>
+                        <label className="text-sm font-medium text-gray-600">
+                          License Number
+                        </label>
                         <p className="text-sm text-gray-900 mt-1 font-mono">
                           {locationInfo.licenseNumber}
                         </p>
                       </div>
                       {locationInfo?.licenseExpiry && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">License Expiry</label>
+                          <label className="text-sm font-medium text-gray-600">
+                            License Expiry
+                          </label>
                           <p className="text-sm text-gray-900 mt-1">
-                            {new Date(locationInfo.licenseExpiry).toLocaleDateString()}
+                            {new Date(
+                              locationInfo.licenseExpiry
+                            ).toLocaleDateString()}
                           </p>
                         </div>
                       )}

@@ -11,7 +11,7 @@ export type SelectedLocation = LocationCoordinates & {
   country?: string;
 };
 
-export type MapType = 'street' | 'satellite';
+export type MapType = "street" | "satellite";
 
 export type PlaceSuggestion = {
   id: string;
@@ -36,4 +36,4 @@ export type NewLocationModalProps = {
   onOpenChange: (open: boolean) => void;
   onLocationSave: (location: SelectedLocation) => void;
   initialMapType?: MapType;
-}; 
+};

@@ -8,9 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "perf-test": "node scripts/performance-test.js",
-    "create-indexes": "node scripts/create-indexes.js"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -47,6 +45,7 @@
     "@types/file-saver": "^2.0.7",
     "@types/leaflet-geosearch": "^3.0.0",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/mqtt": "^2.5.0",
     "@types/node-cron": "^3.0.11",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
@@ -75,6 +74,7 @@
     "lucide-react": "^0.488.0",
     "mongodb": "6.17.0",
     "mongoose": "^8.18.1",
+    "mqtt": "^5.14.1",
     "mssql": "^11.0.1",
     "nanoid": "^5.1.5",
     "next": "15.3.0",

@@ -30,6 +30,11 @@ export type CollectionReportMachineEntry = {
   selectedDate: string; // Store date as string e.g. YYYY-MM-DD
   timeHH: string;
   timeMM: string;
+  ramClear?: boolean;
+  ramClearCoinIn?: number;
+  ramClearCoinOut?: number;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
 };
 
 export type LocationSelectItem = {
@@ -65,6 +70,7 @@ export type CollectionDocument = {
   softMetersOut: number;
   notes: string;
   timestamp: Date;
+  collectionTime?: Date;
   location: string;
   collector: string;
   locationReportId: string;
@@ -73,6 +79,7 @@ export type CollectionDocument = {
   machineCustomName: string;
   machineId: string;
   machineName: string;
+  game?: string;
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
@@ -89,6 +96,11 @@ export type CreateCollectionPayload = {
   collector: string;
   metersIn: number;
   metersOut: number;
+  // CRITICAL: Include prevIn and prevOut for proper meter tracking
+  prevIn?: number;
+  prevOut?: number;
+  timestamp?: Date | string;
+  collectionTime?: Date | string;
   sasStartTime?: Date;
   sasEndTime?: Date;
   notes?: string;

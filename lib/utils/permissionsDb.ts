@@ -1,4 +1,5 @@
 import { UserRole, PageName, TabName } from "./permissions";
+import { fetchUserWithCache, CACHE_KEYS } from "./userCache";
 
 /**
  * Database-based permission utilities
@@ -13,28 +14,34 @@ async function getCurrentUserFromDb(): Promise<{
   enabled: boolean;
 } | null> {
   try {
-    const response = await fetch("/api/auth/current-user", {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
+    const data = await fetchUserWithCache(
+      CACHE_KEYS.CURRENT_USER,
+      async () => {
+        const response = await fetch("/api/auth/current-user", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            // User not authenticated
+            return null;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
       },
-    });
+      5 * 60 * 1000 // 5 minute cache
+    );
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        // User not authenticated
-        return null;
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.success && data.user) {
+    if (data?.success && data?.user) {
       return {
         roles: data.user.roles || [],
-        enabled: data.user.enabled !== false,
+        enabled: data.user.isEnabled !== false,
       };
     }
 

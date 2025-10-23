@@ -7,10 +7,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import axios from "axios";
-import type {
-  MachineData,
-  MachineStats,
-} from "@/shared/types/machines";
+import type { MachineData, MachineStats } from "@/shared/types/machines";
 import { handleMachineSort } from "@/lib/helpers/reportsPage";
 import { fetchMachineStats } from "@/lib/helpers/machineStats";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -32,34 +29,40 @@ export default function MachinesTabRefactored() {
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
 
   // Manufacturer performance data
-  const [manufacturerData] = useState<Array<{
-    manufacturer: string;
-    floorPositions: number;
-    totalHandle: number;
-    totalWin: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    totalGross: number;
-  }>>([]);
+  const [manufacturerData] = useState<
+    Array<{
+      manufacturer: string;
+      floorPositions: number;
+      totalHandle: number;
+      totalWin: number;
+      totalDrop: number;
+      totalCancelledCredits: number;
+      totalGross: number;
+    }>
+  >([]);
   const [manufacturerLoading] = useState(false);
 
   // Games performance data
-  const [gamesData] = useState<Array<{
-    gameName: string;
-    floorPositions: number;
-    totalHandle: number;
-    totalWin: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-    totalGross: number;
-  }>>([]);
+  const [gamesData] = useState<
+    Array<{
+      gameName: string;
+      floorPositions: number;
+      totalHandle: number;
+      totalWin: number;
+      totalDrop: number;
+      totalCancelledCredits: number;
+      totalGross: number;
+    }>
+  >([]);
   const [gamesLoading] = useState(false);
 
   // Evaluation data
   const [evaluationData, setEvaluationData] = useState<MachineData[]>([]);
 
   // Summary calculations
-  const [locations] = useState<{ id: string; name: string; sasEnabled: boolean }[]>([]);
+  const [locations] = useState<
+    { id: string; name: string; sasEnabled: boolean }[]
+  >([]);
 
   // Loading states for each section
   const [statsLoading, setStatsLoading] = useState(true);
@@ -89,29 +92,29 @@ export default function MachinesTabRefactored() {
 
   // Sorting state for machine overview table
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn';
-    direction: 'asc' | 'desc';
+    key: keyof MachineData;
+    direction: "asc" | "desc";
   }>({
-    key: 'netWin',
-    direction: 'desc'
+    key: "netWin",
+    direction: "desc",
   });
 
   // Sorting state for evaluation data
   const [evaluationSortConfig, setEvaluationSortConfig] = useState<{
     key: keyof MachineData;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   }>({
-    key: 'netWin',
-    direction: 'desc'
+    key: "netWin",
+    direction: "desc",
   });
 
   // Sorting state for offline machines
   const [offlineSortConfig, setOfflineSortConfig] = useState<{
     key: keyof MachineData;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   }>({
-    key: 'isOnline',
-    direction: 'desc'
+    key: "isOnline",
+    direction: "desc",
   });
 
   // Data fetching functions
@@ -151,10 +154,10 @@ export default function MachinesTabRefactored() {
           sortOrder: sortConfig.direction,
         },
       });
-      
+
       if (response.data?.success) {
         setOverviewMachines(response.data.data || []);
-        setPagination(prev => ({
+        setPagination((prev) => ({
           ...prev,
           totalCount: response.data.totalCount || 0,
           totalPages: response.data.totalPages || 1,
@@ -184,10 +187,10 @@ export default function MachinesTabRefactored() {
           sortOrder: offlineSortConfig.direction,
         },
       });
-      
+
       if (response.data?.success) {
         setOfflineMachines(response.data.data || []);
-        setOfflinePagination(prev => ({
+        setOfflinePagination((prev) => ({
           ...prev,
           totalCount: response.data.totalCount || 0,
           totalPages: response.data.totalPages || 1,
@@ -203,7 +206,12 @@ export default function MachinesTabRefactored() {
     } finally {
       setOfflineLoading(false);
     }
-  }, [selectedLicencee, offlinePagination.page, offlinePagination.limit, offlineSortConfig]);
+  }, [
+    selectedLicencee,
+    offlinePagination.page,
+    offlinePagination.limit,
+    offlineSortConfig,
+  ]);
 
   const fetchEvaluationData = useCallback(async () => {
     setEvaluationLoading(true);
@@ -215,7 +223,7 @@ export default function MachinesTabRefactored() {
           sortOrder: evaluationSortConfig.direction,
         },
       });
-      
+
       if (response.data?.success) {
         setEvaluationData(response.data.data || []);
       }
@@ -230,34 +238,34 @@ export default function MachinesTabRefactored() {
   }, [selectedLicencee, evaluationSortConfig]);
 
   // Handle sort for overview machines
-  const handleOverviewSort = useCallback((key: keyof MachineData | 'handle' | 'avgWagerPerGame' | 'moneyIn') => {
+  const handleOverviewSort = useCallback((key: keyof MachineData) => {
     handleMachineSort(key, setSortConfig);
   }, []);
 
   // Handle sort for evaluation data
   const handleEvaluationSort = useCallback((key: keyof MachineData) => {
-    setEvaluationSortConfig(prev => ({
+    setEvaluationSortConfig((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+      direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc",
     }));
   }, []);
 
   // Handle sort for offline machines
   const handleOfflineSort = useCallback((key: keyof MachineData) => {
-    setOfflineSortConfig(prev => ({
+    setOfflineSortConfig((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+      direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc",
     }));
   }, []);
 
   // Handle page change for overview
   const handleOverviewPageChange = useCallback((page: number) => {
-    setPagination(prev => ({ ...prev, page }));
+    setPagination((prev) => ({ ...prev, page }));
   }, []);
 
   // Handle page change for offline machines
   const handleOfflinePageChange = useCallback((page: number) => {
-    setOfflinePagination(prev => ({ ...prev, page }));
+    setOfflinePagination((prev) => ({ ...prev, page }));
   }, []);
 
   // Handle refresh for all data
@@ -269,25 +277,33 @@ export default function MachinesTabRefactored() {
       fetchEvaluationData(),
     ]);
     toast.success("Data refreshed successfully");
-  }, [fetchMachineStatsData, fetchOverviewMachines, fetchOfflineMachines, fetchEvaluationData]);
+  }, [
+    fetchMachineStatsData,
+    fetchOverviewMachines,
+    fetchOfflineMachines,
+    fetchEvaluationData,
+  ]);
 
   // Handle export for all data
   const handleExport = useCallback(async () => {
     try {
       const response = await axios.get("/api/analytics/machines/export", {
         params: { licensee: selectedLicencee },
-        responseType: 'blob',
+        responseType: "blob",
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `machines-report-${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `machines-report-${new Date().toISOString().split("T")[0]}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success("Export completed successfully");
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
@@ -317,97 +333,98 @@ export default function MachinesTabRefactored() {
   }, [fetchEvaluationData]);
 
   // Handle edit for machines
-  const handleEdit = useCallback((machine: MachineData) => {
-    // Convert MachineData to GamingMachine format for the modal
-    const gamingMachine = {
-      _id: machine.machineId,
-      serialNumber: machine.serialNumber || machine.machineId,
-      relayId: machine.machineId,
-      game: machine.gameTitle,
-      gameType: machine.machineType,
-      isCronosMachine: false,
-      cabinetType: machine.machineType,
-      assetStatus: machine.isOnline ? "active" : "inactive",
-      manufacturer: machine.manufacturer,
-      gamingLocation: machine.locationName,
-      accountingDenomination: 1,
-      lastActivity: machine.lastActivity,
-      online: machine.isOnline,
-      moneyIn: machine.coinIn,
-      moneyOut: machine.coinOut,
-      jackpot: machine.jackpot,
-      cancelledCredits: machine.totalCancelledCredits,
-      gross: machine.gross,
-      coinIn: machine.coinIn,
-      coinOut: machine.coinOut,
-      gamesPlayed: machine.gamesPlayed,
-      gamesWon: machine.gamesWon || 0,
-      handle: machine.coinIn,
-      custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    // Open the edit modal
-    openEditModal(gamingMachine);
-  }, [openEditModal]);
+  const handleEdit = useCallback(
+    (machine: MachineData) => {
+      // Convert MachineData to GamingMachine format for the modal
+      const gamingMachine = {
+        _id: machine.machineId,
+        serialNumber: machine.serialNumber || machine.machineId,
+        relayId: machine.machineId,
+        game: machine.gameTitle,
+        gameType: machine.machineType,
+        isCronosMachine: false,
+        cabinetType: machine.machineType,
+        assetStatus: machine.isOnline ? "active" : "inactive",
+        manufacturer: machine.manufacturer,
+        gamingLocation: machine.locationName,
+        accountingDenomination: 1,
+        lastActivity: machine.lastActivity,
+        online: machine.isOnline,
+        moneyIn: machine.coinIn,
+        moneyOut: machine.coinOut,
+        jackpot: machine.jackpot,
+        cancelledCredits: machine.totalCancelledCredits,
+        gross: machine.gross,
+        coinIn: machine.coinIn,
+        coinOut: machine.coinOut,
+        gamesPlayed: machine.gamesPlayed,
+        gamesWon: machine.gamesWon || 0,
+        handle: machine.coinIn,
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Open the edit modal
+      openEditModal(gamingMachine);
+    },
+    [openEditModal]
+  );
 
   // Handle delete for machines
-  const handleDelete = useCallback((machine: MachineData) => {
-    // Convert MachineData to GamingMachine format for the modal
-    const gamingMachine = {
-      _id: machine.machineId,
-      serialNumber: machine.serialNumber || machine.machineId,
-      relayId: machine.machineId,
-      game: machine.gameTitle,
-      gameType: machine.machineType,
-      isCronosMachine: false,
-      cabinetType: machine.machineType,
-      assetStatus: machine.isOnline ? "active" : "inactive",
-      manufacturer: machine.manufacturer,
-      gamingLocation: machine.locationName,
-      accountingDenomination: 1,
-      lastActivity: machine.lastActivity,
-      online: machine.isOnline,
-      moneyIn: machine.coinIn,
-      moneyOut: machine.coinOut,
-      jackpot: machine.jackpot,
-      cancelledCredits: machine.totalCancelledCredits,
-      gross: machine.gross,
-      coinIn: machine.coinIn,
-      coinOut: machine.coinOut,
-      gamesPlayed: machine.gamesPlayed,
-      gamesWon: machine.gamesWon || 0,
-      handle: machine.coinIn,
-      custom: { name: machine.serialNumber || machine.machineId || "Unknown" },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    // Open the delete modal
-    openDeleteModal(gamingMachine);
-  }, [openDeleteModal]);
+  const handleDelete = useCallback(
+    (machine: MachineData) => {
+      // Convert MachineData to GamingMachine format for the modal
+      const gamingMachine = {
+        _id: machine.machineId,
+        serialNumber: machine.serialNumber || machine.machineId,
+        relayId: machine.machineId,
+        game: machine.gameTitle,
+        gameType: machine.machineType,
+        isCronosMachine: false,
+        cabinetType: machine.machineType,
+        assetStatus: machine.isOnline ? "active" : "inactive",
+        manufacturer: machine.manufacturer,
+        gamingLocation: machine.locationName,
+        accountingDenomination: 1,
+        lastActivity: machine.lastActivity,
+        online: machine.isOnline,
+        moneyIn: machine.coinIn,
+        moneyOut: machine.coinOut,
+        jackpot: machine.jackpot,
+        cancelledCredits: machine.totalCancelledCredits,
+        gross: machine.gross,
+        coinIn: machine.coinIn,
+        coinOut: machine.coinOut,
+        gamesPlayed: machine.gamesPlayed,
+        gamesWon: machine.gamesWon || 0,
+        handle: machine.coinIn,
+        custom: {
+          name: machine.serialNumber || machine.machineId || "Unknown",
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Open the delete modal
+      openDeleteModal(gamingMachine);
+    },
+    [openDeleteModal]
+  );
 
   return (
     <div className="space-y-6">
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger
-            value="overview"
-            className="flex items-center gap-2"
-          >
+          <TabsTrigger value="overview" className="flex items-center gap-2">
             Overview
           </TabsTrigger>
-          <TabsTrigger
-            value="evaluation"
-            className="flex items-center gap-2"
-          >
+          <TabsTrigger value="evaluation" className="flex items-center gap-2">
             Evaluation
           </TabsTrigger>
-          <TabsTrigger
-            value="offline"
-            className="flex items-center gap-2"
-          >
+          <TabsTrigger value="offline" className="flex items-center gap-2">
             Offline
           </TabsTrigger>
         </TabsList>

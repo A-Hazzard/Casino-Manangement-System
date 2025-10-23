@@ -22,7 +22,7 @@ export async function DELETE(request: NextRequest) {
 
     await connectDB();
 
-    console.warn("🗑️ Deleting collections and history for locationReportId:", locationReportId);
+    console.warn("Deleting collections and history for locationReportId:", locationReportId);
 
     // Step 1: Find all collections with this locationReportId
     const collections = await Collections.find({ locationReportId }).lean();
@@ -62,7 +62,7 @@ export async function DELETE(request: NextRequest) {
           );
           
           if (result) {
-            console.warn(`✅ Reverted machine ${collection.machineId} collectionMeters:`, {
+            console.warn(`Reverted machine ${collection.machineId} collectionMeters:`, {
               from: { metersIn: collection.metersIn, metersOut: collection.metersOut },
               to: { metersIn: collection.prevIn, metersOut: collection.prevOut }
             });
@@ -71,7 +71,7 @@ export async function DELETE(request: NextRequest) {
             const remainingHistory = result.collectionMetersHistory?.filter(
               (entry: { locationReportId: string }) => entry.locationReportId === locationReportId
             ) || [];
-            console.warn(`🔍 Remaining history entries for ${locationReportId} on machine ${collection.machineId}:`, remainingHistory.length);
+            console.warn(`Remaining history entries for ${locationReportId} on machine ${collection.machineId}:`, remainingHistory.length);
           }
         }
       } catch (error) {
@@ -91,7 +91,7 @@ export async function DELETE(request: NextRequest) {
 
     // Step 6: Final verification - check if any collections or history entries remain
     const remainingCollections = await Collections.find({ locationReportId }).lean();
-    console.warn("🔍 Final verification - remaining collections:", remainingCollections.length);
+    console.warn("Final verification - remaining collections:", remainingCollections.length);
     
     // Check remaining history entries on machines
     for (const machineId of machineIds) {
@@ -99,7 +99,7 @@ export async function DELETE(request: NextRequest) {
       const remainingHistory = machine?.collectionMetersHistory?.filter(
         (entry: { locationReportId: string }) => entry.locationReportId === locationReportId
       ) || [];
-      console.warn(`🔍 Final verification - remaining history on machine ${machineId}:`, remainingHistory.length);
+      console.warn(`Final verification - remaining history on machine ${machineId}:`, remainingHistory.length);
     }
 
     return NextResponse.json({
@@ -115,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("❌ Error deleting collections by report ID:", error);
+    console.error("Error deleting collections by report ID:", error);
     return NextResponse.json(
       {
         success: false,

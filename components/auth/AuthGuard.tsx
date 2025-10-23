@@ -3,10 +3,11 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useUserStore } from "@/lib/store/userStore";
+import type React from "react";
 
-interface AuthGuardProps {
+type AuthGuardProps = {
   children: React.ReactNode;
-}
+};
 
 /**
  * Global authentication guard that redirects to login if user is null

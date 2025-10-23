@@ -111,7 +111,9 @@ export function SidebarInset({
   return (
     <div
       className={cn(
-        collapsed ? "md:pl-sidebar-collapsed" : "md:pl-sidebar-expanded",
+        "transition-all duration-200 min-h-screen",
+        // Use responsive padding that matches sidebar widths
+        collapsed ? "md:pl-2" : "md:pl-32", // 80px and 192px respectively
         className
       )}
     >
@@ -142,7 +144,8 @@ export function SidebarContainer({ children }: { children: React.ReactNode }) {
       className={cn(
         "fixed left-0 top-0 h-full bg-container shadow-md overflow-hidden",
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        collapsed ? "w-72 md:w-20" : "w-72 md:w-48",
+        // Use exact widths that match CSS variables: 5rem (80px) and 12rem (192px)
+        collapsed ? "w-72 md:w-20" : "w-72 md:w-52", // 288px mobile, 80px/192px desktop
         "z-[90] transition-all duration-200"
       )}
     >

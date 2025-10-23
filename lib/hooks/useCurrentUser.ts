@@ -1,26 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useUserStore } from "@/lib/store/userStore";
 import axios from "axios";
-
-interface CurrentUserData {
-  id: string;
-  username: string;
-  emailAddress: string;
-  profile: Record<string, unknown>;
-  roles: string[];
-  enabled: boolean;
-  resourcePermissions: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface UseCurrentUserReturn {
-  currentUser: CurrentUserData | null;
-  isLoading: boolean;
-  error: string | null;
-  refreshUser: () => Promise<void>;
-  hasChanges: boolean;
-}
+import type { CurrentUserData, UseCurrentUserReturn } from "@/lib/types/user";
+import { fetchUserWithCache, CACHE_KEYS } from "@/lib/utils/userCache";
 
 /**
  * Hook to fetch current user data from database and detect changes
@@ -32,16 +14,37 @@ export function useCurrentUser(): UseCurrentUserReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const hasFetchedRef = useRef(false);
 
   const fetchCurrentUser = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (hasFetchedRef.current) {
+      return;
+    }
+    hasFetchedRef.current = true;
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await axios.get("/api/auth/current-user", {
-        timeout: 10000, // 10 second timeout
-        withCredentials: true, // Include cookies for authentication
-      });
+      const cachedData = await fetchUserWithCache(
+        CACHE_KEYS.CURRENT_USER,
+        async () => {
+          const response = await axios.get("/api/auth/current-user", {
+            withCredentials: true, // Include cookies for authentication
+          });
+          return response.data;
+        },
+        2 * 60 * 1000 // 2 minutes cache
+      );
+
+      if (!cachedData) {
+        setError("Failed to fetch user data");
+        hasFetchedRef.current = false;
+        return;
+      }
+
+      const response = { data: cachedData };
 
       if (response.data.success) {
         const dbUser = response.data.user;
@@ -105,6 +108,7 @@ export function useCurrentUser(): UseCurrentUserReturn {
       }
     } catch (error: unknown) {
       console.error("Error fetching current user:", error);
+      hasFetchedRef.current = false;
 
       if (
         error &&

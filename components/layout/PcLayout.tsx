@@ -6,6 +6,8 @@ import { PcLayoutProps } from "@/lib/types/componentProps";
 import type { TopPerformingItem } from "@/lib/types";
 import { getFinancialColorClass } from "@/lib/utils/financialColors";
 import { formatCurrency } from "@/lib/utils/currency";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+import { RefreshButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import CustomSelect from "../ui/CustomSelect";
@@ -22,6 +24,8 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 export default function PcLayout(props: PcLayoutProps) {
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
+  const { formatAmount, shouldShowCurrency, displayCurrency } =
+    useCurrencyFormat();
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
@@ -113,26 +117,30 @@ export default function PcLayout(props: PcLayoutProps) {
             <h2 className="text-lg text-gray-700">
               Total for all Locations and Machines
             </h2>
-            <div
-              className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
-                props.loadingChartData || props.refreshing
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-buttonActive/90"
-              }`}
-              onClick={() => {
-                if (!(props.loadingChartData || props.refreshing))
-                  props.onRefresh();
-              }}
-              aria-disabled={props.loadingChartData || props.refreshing}
-              tabIndex={0}
-              role="button"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
-                aria-hidden="true"
-              />
-              <span className="font-semibold">Refresh</span>
-            </div>
+            {props.loadingChartData ? (
+              <RefreshButtonSkeleton />
+            ) : (
+              <div
+                className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
+                  props.loadingChartData || props.refreshing
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-buttonActive/90"
+                }`}
+                onClick={() => {
+                  if (!(props.loadingChartData || props.refreshing))
+                    props.onRefresh();
+                }}
+                aria-disabled={props.loadingChartData || props.refreshing}
+                tabIndex={0}
+                role="button"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
+                <span className="font-semibold">Refresh</span>
+              </div>
+            )}
           </div>
 
           {/* Financial Metrics Cards */}
@@ -152,7 +160,11 @@ export default function PcLayout(props: PcLayoutProps) {
                       props.totals?.moneyIn
                     )}`}
                   >
-                    {props.totals ? formatCurrency(props.totals.moneyIn) : "--"}
+                    {props.totals
+                      ? shouldShowCurrency()
+                        ? formatAmount(props.totals.moneyIn, displayCurrency)
+                        : formatCurrency(props.totals.moneyIn)
+                      : "--"}
                   </p>
                 </div>
               </div>
@@ -169,7 +181,9 @@ export default function PcLayout(props: PcLayoutProps) {
                     )}`}
                   >
                     {props.totals
-                      ? formatCurrency(props.totals.moneyOut)
+                      ? shouldShowCurrency()
+                        ? formatAmount(props.totals.moneyOut, displayCurrency)
+                        : formatCurrency(props.totals.moneyOut)
                       : "--"}
                   </p>
                 </div>
@@ -186,7 +200,11 @@ export default function PcLayout(props: PcLayoutProps) {
                       props.totals?.gross
                     )}`}
                   >
-                    {props.totals ? formatCurrency(props.totals.gross) : "--"}
+                    {props.totals
+                      ? shouldShowCurrency()
+                        ? formatAmount(props.totals.gross, displayCurrency)
+                        : formatCurrency(props.totals.gross)
+                      : "--"}
                   </p>
                 </div>
               </div>

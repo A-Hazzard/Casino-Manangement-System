@@ -85,7 +85,9 @@ export async function POST(
       }).sort({ readAt: 1 }); // Sort ascending to get chronological order
 
       if (metersInPeriod.length === 0) {
-        console.warn(`⚠️ No meters found for machine ${machineId} in the specified period`);
+        console.warn(
+          `⚠️ No meters found for machine ${machineId} in the specified period`
+        );
         continue;
       }
 
@@ -93,8 +95,11 @@ export async function POST(
       const firstMeter = metersInPeriod[0];
       const lastMeter = metersInPeriod[metersInPeriod.length - 1];
 
-      const dropMovement = (lastMeter.movement?.drop || 0) - (firstMeter.movement?.drop || 0);
-      const cancelledMovement = (lastMeter.movement?.totalCancelledCredits || 0) - (firstMeter.movement?.totalCancelledCredits || 0);
+      const dropMovement =
+        (lastMeter.movement?.drop || 0) - (firstMeter.movement?.drop || 0);
+      const cancelledMovement =
+        (lastMeter.movement?.totalCancelledCredits || 0) -
+        (firstMeter.movement?.totalCancelledCredits || 0);
       const sasGross = dropMovement - cancelledMovement;
 
       // Use movement calculation as primary method
@@ -122,7 +127,7 @@ export async function POST(
 
       if (updateResult.modifiedCount > 0) {
         updatedCollections++;
-        
+
         // Add to report totals
         reportTotalDrop += finalDrop;
         reportTotalCancelled += finalCancelled;
@@ -151,14 +156,13 @@ export async function POST(
             movement: {
               drop: dropMovement,
               cancelled: cancelledMovement,
-            }
+            },
           },
           timePeriod: {
             start: sasStartTime.toISOString(),
             end: sasEndTime.toISOString(),
           },
         });
-
       }
     }
 
@@ -194,7 +198,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("❌ Error syncing meter data:", error);
+    console.error(" Error syncing meter data:", error);
     return NextResponse.json(
       {
         success: false,

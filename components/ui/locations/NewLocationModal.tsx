@@ -73,24 +73,19 @@ export default function NewLocationModal({
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
 
-  // Generate time options for day start time dropdown
+  // Generate time options for day start time dropdown (hourly intervals only)
   const generateTimeOptions = () => {
     const options = [];
 
-    // Add previous day options (18:00 to 23:59)
+    // Add previous day options (18:00 to 23:00) - hourly only
     for (let hour = 18; hour <= 23; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        // 15-minute intervals
-        const timeStr = `${hour.toString().padStart(2, "0")}:${minute
-          .toString()
-          .padStart(2, "0")}`;
+      const timeStr = `${hour.toString().padStart(2, "0")}:00`;
         options.push({
           value: timeStr,
           label: `Prev. day, ${timeStr}`,
           hour: hour,
-          minute: minute,
+        minute: 0,
         });
-      }
     }
 
     // Add midnight
@@ -101,19 +96,15 @@ export default function NewLocationModal({
       minute: 0,
     });
 
-    // Add current day options (00:15 to 17:45)
-    for (let hour = 0; hour <= 17; hour++) {
-      for (let minute = hour === 0 ? 15 : 0; minute < 60; minute += 15) {
-        const timeStr = `${hour.toString().padStart(2, "0")}:${minute
-          .toString()
-          .padStart(2, "0")}`;
+    // Add current day options (01:00 to 23:00) - hourly only
+    for (let hour = 1; hour <= 23; hour++) {
+      const timeStr = `${hour.toString().padStart(2, "0")}:00`;
         options.push({
           value: timeStr,
           label: `Curr. day, ${timeStr}`,
           hour: hour,
-          minute: minute,
+        minute: 0,
         });
-      }
     }
 
     return options;
@@ -275,7 +266,6 @@ export default function NewLocationModal({
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
         maximumAge: 600000, // 5 minutes
       }
     );

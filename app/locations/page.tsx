@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { FloatingRefreshButton } from "@/components/ui/FloatingRefreshButton";
+import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 
 import PageLayout from "@/components/layout/PageLayout";
 
@@ -172,27 +173,35 @@ function LocationsPageContent() {
           </div>
           {/* Desktop: New Location button */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <Button
-              onClick={openNewLocationModal}
-              className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
-            >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
-              <span>New Location</span>
-            </Button>
+            {isLoading ? (
+              <ActionButtonSkeleton width="w-36" showIcon={true} />
+            ) : (
+              <Button
+                onClick={openNewLocationModal}
+                className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              >
+                <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
+                  <Plus className="w-4 h-4 text-white" />
+                </div>
+                <span>New Location</span>
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Mobile: New Location button below title */}
         <div className="md:hidden mt-4 w-full">
-          <Button
-            onClick={openNewLocationModal}
-            className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
-          >
-            <Plus size={20} />
-            New Location
-          </Button>
+          {isLoading ? (
+            <ActionButtonSkeleton width="w-full" showIcon={true} />
+          ) : (
+            <Button
+              onClick={openNewLocationModal}
+              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              New Location
+            </Button>
+          )}
         </div>
 
         {/* Financial Metrics Section: Total financial overview cards */}
@@ -326,7 +335,7 @@ function LocationsPageContent() {
         </div>
 
         {/* Search and Filter Section: Desktop search bar with SMIB filters */}
-        <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
+        <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive mt-4">
           <div className="relative flex-1 min-w-0">
             <Input
               type="text"

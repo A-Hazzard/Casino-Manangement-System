@@ -2,9 +2,9 @@ import { NextResponse, NextRequest } from "next/server";
 import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
 import { connectDB } from "../../lib/middleware/db";
 import { TransformedCabinet } from "@/lib/types/mongo";
-import { getDatesForTimePeriod } from "../../lib/utils/dates";
 import { TimePeriod } from "../../lib/types";
 import mongoose from "mongoose";
+import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
 
 // Helper function to safely convert an ID to ObjectId if possible
 function safeObjectId(id: string): string | mongoose.Types.ObjectId {
@@ -70,28 +70,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calculate date range for filtering meters
-    let startDate: Date | undefined, endDate: Date | undefined;
+    // We'll calculate the gaming day range after we get the location's gameDayOffset
+    let timePeriodForGamingDay: string;
+    let customStartDateForGamingDay: Date | undefined;
+    let customEndDateForGamingDay: Date | undefined;
 
     if (timePeriod === "Custom" && customStartDate && customEndDate) {
-      // Parse custom dates and apply timezone handling
-      // The frontend sends dates that represent the start and end of the day in Trinidad time, already converted to UTC
-      const customStart = new Date(customStartDate);
-      let customEnd = new Date(customEndDate);
-
-      // The end date from frontend represents the start of the end day in Trinidad time
-      // We need to extend it to the end of that day (23:59:59 Trinidad time = 03:59:59 UTC next day)
-      customEnd = new Date(
-        customEnd.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000
-      );
-
-      // Use the dates as-is since they're already in the correct UTC format
-      startDate = customStart;
-      endDate = customEnd;
+      timePeriodForGamingDay = "Custom";
+      customStartDateForGamingDay = new Date(customStartDate);
+      customEndDateForGamingDay = new Date(customEndDate);
     } else {
-      const dateRange = getDatesForTimePeriod(timePeriod);
-      startDate = dateRange.startDate;
-      endDate = dateRange.endDate;
+      timePeriodForGamingDay = timePeriod;
     }
 
     // Convert locationId to ObjectId for proper matching
@@ -120,6 +109,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Calculate gaming day range for this location
+    let gamingDayRange: { rangeStart: Date; rangeEnd: Date };
+
+    if (
+      timePeriod === "Custom" &&
+      customStartDateForGamingDay &&
+      customEndDateForGamingDay
+    ) {
+      // For custom dates, use the exact user-specified times without gaming day offset
+      // The Date constructor already handles the local time to UTC conversion
+      const customStartUTC = customStartDateForGamingDay;
+      const customEndUTC = customEndDateForGamingDay;
+
+      gamingDayRange = {
+        rangeStart: customStartUTC,
+        rangeEnd: customEndUTC,
+      };
+    } else {
+      // For predefined periods, use gaming day offset logic
+      const gameDayOffset = locationCheck.gameDayOffset || 0;
+      gamingDayRange = getGamingDayRangeForPeriod(
+        timePeriodForGamingDay,
+        gameDayOffset,
+        customStartDateForGamingDay,
+        customEndDateForGamingDay
+      );
+    }
+
     // Build aggregation pipeline based on your MongoDB compass query
     const aggregationPipeline: Record<string, unknown>[] = [
       // Match the specific location (similar to your $match: { name: "Big Shot" })
@@ -144,7 +161,7 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    // Add search filter if provided (similar to your $match: { "machines.serialNumber": "GMID3" })
+    // Add search filter if provided (search by serial number, relay ID, smib board, or machine _id)
     if (searchTerm) {
       aggregationPipeline.push({
         $match: {
@@ -152,12 +169,14 @@ export async function GET(request: NextRequest) {
             { "machines.serialNumber": { $regex: searchTerm, $options: "i" } },
             { "machines.relayId": { $regex: searchTerm, $options: "i" } },
             { "machines.smibBoard": { $regex: searchTerm, $options: "i" } },
+            { "machines._id": searchTerm }, // Exact match for machine _id
           ],
         },
       });
     }
 
-    // Add meter data lookup using your exact pattern
+    // Add meter data lookup using gaming day range
+    // IMPORTANT: Meters are CUMULATIVE, so we calculate last - first, NOT sum
     aggregationPipeline.push({
       $lookup: {
         from: "meters",
@@ -166,20 +185,17 @@ export async function GET(request: NextRequest) {
           {
             $match: {
               $expr: { $eq: ["$machine", "$$machineId"] },
-              // Add date filtering based on timePeriod
-              ...(startDate && endDate
-                ? {
-                    readAt: {
-                      $gte: startDate,
-                      $lte: endDate,
-                    },
-                  }
-                : {}),
+              // Use the calculated gaming day range for this location
+              readAt: {
+                $gte: gamingDayRange.rangeStart,
+                $lte: gamingDayRange.rangeEnd,
+              },
             },
           },
           {
             $group: {
               _id: null,
+              // Use sum of deltas to match locations list API and MongoDB Compass results
               moneyIn: { $sum: "$movement.drop" },
               moneyOut: { $sum: "$movement.totalCancelledCredits" },
               jackpot: { $sum: "$movement.jackpot" },

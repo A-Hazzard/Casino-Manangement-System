@@ -3,9 +3,14 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-export interface ConnectionErrorProps {
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+type ConnectionErrorProps = {
   error?: Error | string;
   onRetry?: () => void;
   isRetrying?: boolean;
@@ -13,11 +18,11 @@ export interface ConnectionErrorProps {
   description?: string;
   showRetryButton?: boolean;
   className?: string;
-}
+};
 
 /**
  * ConnectionError component for displaying database connection issues
- * 
+ *
  * @param error - The error object or error message
  * @param onRetry - Function to call when retry button is clicked
  * @param isRetrying - Whether a retry operation is currently in progress
@@ -35,6 +40,7 @@ export default function ConnectionError({
   showRetryButton = true,
   className = "",
 }: ConnectionErrorProps) {
+
   const getErrorMessage = () => {
     if (typeof error === "string") return error;
     if (error instanceof Error) {
@@ -58,7 +64,10 @@ export default function ConnectionError({
     if (errorMessage.includes("timeout")) {
       return <Wifi className="h-8 w-8 text-yellow-500" />;
     }
-    if (errorMessage.includes("connection") || errorMessage.includes("network")) {
+    if (
+      errorMessage.includes("connection") ||
+      errorMessage.includes("network")
+    ) {
       return <WifiOff className="h-8 w-8 text-red-500" />;
     }
     return <AlertTriangle className="h-8 w-8 text-orange-500" />;
@@ -67,19 +76,26 @@ export default function ConnectionError({
   return (
     <Card className={`border-orange-200 bg-orange-50 ${className}`}>
       <CardHeader className="text-center">
-        <div className="flex justify-center mb-2">
-          {getErrorIcon()}
-        </div>
+        <div className="flex justify-center mb-2">{getErrorIcon()}</div>
         <CardTitle className="text-orange-800">{title}</CardTitle>
         <CardDescription className="text-orange-700">
           {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="text-center space-y-4">
-        <div className="text-sm text-orange-600 bg-orange-100 p-3 rounded-md">
-          <strong>Error Details:</strong> {getErrorMessage()}
+        <div className="text-sm text-red-800 bg-red-50 p-3 rounded-md max-h-96 overflow-y-auto">
+          <strong className="text-red-700">Error Details:</strong>{" "}
+          {getErrorMessage()}
+          {error instanceof Error && error.stack && (
+            <div className="mt-3">
+              <strong className="text-red-700">Stack Trace:</strong>
+              <pre className="mt-2 text-xs whitespace-pre-wrap font-mono bg-gray-800 text-gray-100 p-2 rounded border">
+                {error.stack}
+              </pre>
+            </div>
+          )}
         </div>
-        
+
         {showRetryButton && onRetry && (
           <Button
             onClick={onRetry}
@@ -100,7 +116,7 @@ export default function ConnectionError({
             )}
           </Button>
         )}
-        
+
         <div className="text-xs text-orange-600">
           <p>If this problem persists, please:</p>
           <ul className="list-disc list-inside mt-1 space-y-1">
@@ -124,12 +140,16 @@ export function ConnectionErrorCompact({
   className = "",
 }: Omit<ConnectionErrorProps, "title" | "description" | "showRetryButton">) {
   return (
-    <div className={`flex items-center justify-center p-4 bg-orange-50 border border-orange-200 rounded-md ${className}`}>
+    <div
+      className={`flex items-center justify-center p-4 bg-orange-50 border border-orange-200 rounded-md ${className}`}
+    >
       <div className="flex items-center space-x-3">
         <WifiOff className="h-5 w-5 text-orange-500" />
         <div className="text-sm text-orange-700">
           <span className="font-medium">Connection issue:</span>{" "}
-          {typeof error === "string" ? error : error?.message || "Database connection failed"}
+          {typeof error === "string"
+            ? error
+            : error?.message || "Database connection failed"}
         </div>
         {onRetry && (
           <Button

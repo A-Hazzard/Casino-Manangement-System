@@ -189,10 +189,30 @@ export function filterCollectionReports(
   locations: LocationSelectItem[],
   dateRange?: RDPDateRange
 ): CollectionReportRow[] {
-  return reports.filter((r) => {
-    const matchesLocation =
-      selectedLocation === "all" ||
-      r.location === locations.find((l) => l._id === selectedLocation)?.name;
+  console.warn('[filterCollectionReports] Starting filter process');
+  console.warn(`[filterCollectionReports] selectedLocation: "${selectedLocation}"`);
+  console.warn(`[filterCollectionReports] search: "${search}"`);
+  console.warn(`[filterCollectionReports] showUncollectedOnly: ${showUncollectedOnly}`);
+  console.warn(`[filterCollectionReports] locations count: ${locations.length}`);
+  console.warn(`[filterCollectionReports] reports count: ${reports.length}`);
+
+  const filtered = reports.filter((r, index) => {
+    // Location matching logic
+    const isAllLocations = selectedLocation === "all";
+    const foundLocation = locations.find((l) => l._id === selectedLocation);
+    const locationName = foundLocation?.name;
+    const matchesLocation = isAllLocations || r.location === locationName;
+
+    // Log first few reports for debugging
+    if (index < 3) {
+      console.warn(`[filterCollectionReports] Report ${index + 1}:`);
+      console.warn(`  - Report location: "${r.location}"`);
+      console.warn(`  - Selected location: "${selectedLocation}"`);
+      console.warn(`  - Is all locations: ${isAllLocations}`);
+      console.warn(`  - Found location name: "${locationName}"`);
+      console.warn(`  - Matches location: ${matchesLocation}`);
+    }
+
     const matchesSearch =
       !search ||
       r.collector.toLowerCase().includes(search.toLowerCase()) ||
@@ -217,8 +237,17 @@ export function filterCollectionReports(
       }
     }
 
-    return matchesLocation && matchesSearch && matchesUncollected && matchesDate;
+    const finalMatch = matchesLocation && matchesSearch && matchesUncollected && matchesDate;
+    
+    if (index < 3) {
+      console.warn(`  - Final match: ${finalMatch} (location: ${matchesLocation}, search: ${matchesSearch}, uncollected: ${matchesUncollected}, date: ${matchesDate})`);
+    }
+
+    return finalMatch;
   });
+
+  console.warn(`[filterCollectionReports] Filtered ${filtered.length} reports from ${reports.length} total`);
+  return filtered;
 }
 
 /**

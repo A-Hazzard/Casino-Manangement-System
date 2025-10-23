@@ -71,8 +71,7 @@ export async function fetchCollectionReportsData(
     }
 
     const response = await axios.get(
-      `/api/collection-report?${params.toString()}`,
-      { timeout: 60000 } // 60 second timeout to match database timeout
+      `/api/collection-report?${params.toString()}`
     );
     return response.data;
   } catch (error) {
@@ -136,7 +135,7 @@ export async function fetchMonthlyReportData(
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching monthly report data:", error);
+    console.error(" Error fetching monthly report data:", error);
     return {
       summary: { drop: "-", cancelledCredits: "-", gross: "-", sasGross: "-" },
       details: [],
@@ -179,7 +178,7 @@ export async function fetchManagerScheduleData(
       collectors,
     };
   } catch (error) {
-    console.error("❌ Error fetching manager schedule data:", error);
+    console.error(" Error fetching manager schedule data:", error);
     return { schedulers: [], collectors: [] };
   }
 }
@@ -225,7 +224,7 @@ export async function fetchCollectorScheduleData(
       collectors,
     };
   } catch (error) {
-    console.error("❌ Error fetching collector schedule data:", error);
+    console.error(" Error fetching collector schedule data:", error);
     return { collectorSchedules: [], collectors: [] };
   }
 }
@@ -238,7 +237,7 @@ export async function fetchAllLocationNames(): Promise<string[]> {
     const response = await axios.get("/api/locations/names");
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching location names:", error);
+    console.error(" Error fetching location names:", error);
     return [];
   }
 }
@@ -250,9 +249,7 @@ export async function fetchLocationsWithMachines(): Promise<
   CollectionReportLocationWithMachines[]
 > {
   try {
-    const response = await axios.get("/api/collectionReport/locations", {
-      timeout: 10000, // 10 second timeout
-    });
+    const response = await axios.get("/api/collectionReport/locations", {});
     return response.data;
   } catch (error) {
     // Handle different types of errors gracefully
@@ -290,9 +287,7 @@ export async function fetchAllGamingLocations(): Promise<
   { id: string; name: string }[]
 > {
   try {
-    const response = await axios.get("/api/gaming-locations", {
-      timeout: 10000, // 10 second timeout
-    });
+    const response = await axios.get("/api/gaming-locations", {});
     return response.data;
   } catch (error) {
     // Handle different types of errors gracefully

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGO_URI;
-if (typeof window === 'undefined' && !MONGODB_URI) {
+if (typeof window === "undefined" && !MONGODB_URI) {
   throw new Error("MONGO_URI not set in environment variables");
 }
 
@@ -20,7 +20,7 @@ const mongooseCache: {
  */
 export async function connectDB() {
   // Only run on server-side
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     throw new Error("connectDB can only be called on the server-side");
   }
 
@@ -33,22 +33,23 @@ export async function connectDB() {
   }
 
   if (!mongooseCache.promise) {
+    console.warn("Connecting to MongoDB", MONGODB_URI);
     mongooseCache.promise = mongoose
       .connect(MONGODB_URI, {
         bufferCommands: false,
-        connectTimeoutMS: 60000,        // 30s connection timeout
+        connectTimeoutMS: 60000, // 30s connection timeout
         serverSelectionTimeoutMS: 60000, // 30s server selection timeout
-        socketTimeoutMS: 45000,         // 45s socket timeout (longer than server selection)
-        maxPoolSize: 10,                // Maximum number of connections in pool
-        minPoolSize: 2,                 // Minimum number of connections in pool
-        maxIdleTimeMS: 60000,           // Close connections after 30s of inactivity
-        heartbeatFrequencyMS: 10000,     // Send heartbeat every 10s
-        retryWrites: true,              // Retry write operations
-        retryReads: true,               // Retry read operations
+        socketTimeoutMS: 45000, // 45s socket timeout (longer than server selection)
+        maxPoolSize: 10, // Maximum number of connections in pool
+        minPoolSize: 2, // Minimum number of connections in pool
+        maxIdleTimeMS: 60000, // Close connections after 30s of inactivity
+        heartbeatFrequencyMS: 10000, // Send heartbeat every 10s
+        retryWrites: true, // Retry write operations
+        retryReads: true, // Retry read operations
         // Connection pool settings
-        maxConnecting: 2,               // Maximum number of connections being established
+        maxConnecting: 2, // Maximum number of connections being established
         // Timeout settings
-        waitQueueTimeoutMS: 5000,       // Wait 5s for connection from pool
+        waitQueueTimeoutMS: 5000, // Wait 5s for connection from pool
       })
       .then((mongooseInstance) => {
         return mongooseInstance.connection;

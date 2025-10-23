@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/app/api/lib/middleware/db";
+import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
+import { convertFromUSD } from "@/lib/helpers/rates";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -12,6 +15,8 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
     const licencee = searchParams.get("licencee");
+    const displayCurrency =
+      (searchParams.get("currency") as CurrencyCode) || "USD";
 
     if (!locations) {
       return NextResponse.json(
@@ -442,17 +447,83 @@ export async function GET(req: NextRequest) {
 
     const duration = Date.now() - startTime;
     console.warn(
-      `✅ Meters report completed successfully in ${duration}ms - ${totalCount} machines`
+      `Meters report completed successfully in ${duration}ms - ${totalCount} machines`
     );
 
+    // Apply currency conversion if needed
+    let convertedData = paginatedData;
+
+    if (shouldApplyCurrencyConversion(licencee)) {
+      console.warn(
+        "🔍 REPORTS METERS - Applying currency conversion for All Licensee mode"
+      );
+      // Convert financial fields from USD to display currency
+      convertedData = paginatedData.map((item) => {
+        const itemAsRecord = item as unknown as Record<string, unknown>;
+        const convertedItem = { ...item };
+        const convertedAsRecord = convertedItem as unknown as Record<
+          string,
+          unknown
+        >;
+
+        // Convert top-level financial fields
+        [
+          "drop",
+          "totalCancelledCredits",
+          "gross",
+          "coinIn",
+          "coinOut",
+          "jackpot",
+          "currentCredits",
+        ].forEach((field) => {
+          if (typeof itemAsRecord[field] === "number") {
+            convertedAsRecord[field] = convertFromUSD(
+              itemAsRecord[field] as number,
+              displayCurrency
+            );
+          }
+        });
+
+        // Handle nested movement object
+        if (
+          itemAsRecord.movement &&
+          typeof itemAsRecord.movement === "object"
+        ) {
+          const movement = itemAsRecord.movement as Record<string, unknown>;
+          const convertedMovement = { ...movement };
+          [
+            "drop",
+            "totalCancelledCredits",
+            "gross",
+            "coinIn",
+            "coinOut",
+            "jackpot",
+            "currentCredits",
+          ].forEach((field) => {
+            if (typeof movement[field] === "number") {
+              convertedMovement[field] = convertFromUSD(
+                movement[field] as number,
+                displayCurrency
+              );
+            }
+          });
+          convertedAsRecord.movement = convertedMovement;
+        }
+
+        return convertedItem;
+      });
+    }
+
     return NextResponse.json({
-      data: paginatedData,
+      data: convertedData,
       totalCount,
       totalPages,
       currentPage: page,
       limit,
       locations: locationList,
       dateRange: { start, end },
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
       pagination: {
         page,
         limit,
@@ -465,7 +536,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const duration = Date.now() - startTime;
     console.error(
-      `❌ Meters report failed after ${duration}ms:`,
+      ` Meters report failed after ${duration}ms:`,
       err instanceof Error ? err.message : err
     );
     return NextResponse.json(
