@@ -1043,14 +1043,19 @@ function CabinetDetailPageContent() {
                             <span className="lg:hidden">SAVE</span>
                           </Button>
                         ) : (
-                          <Button
-                            onClick={() => setEditingSection('network')}
-                            className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
-                            size="sm"
-                          >
-                            <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
-                            <span className="hidden lg:inline">EDIT NETWORK</span>
-                          </Button>
+                          <>
+                            <Pencil
+                              onClick={() => setEditingSection('network')}
+                              className="h-5 w-5 cursor-pointer text-green-500 lg:hidden"
+                            />
+                            <Button
+                              onClick={() => setEditingSection('network')}
+                              className="hidden bg-button text-container hover:bg-buttonActive lg:inline-flex"
+                              size="sm"
+                            >
+                              EDIT NETWORK
+                            </Button>
+                          </>
                         )}
                       </div>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1144,14 +1149,19 @@ function CabinetDetailPageContent() {
                               <span className="lg:hidden">SAVE</span>
                             </Button>
                           ) : (
-                            <Button
-                              onClick={() => setEditingSection('coms')}
-                              className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
-                              size="sm"
-                            >
-                              <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
-                              <span className="hidden lg:inline">EDIT COMS</span>
-                            </Button>
+                            <>
+                              <Pencil
+                                onClick={() => setEditingSection('coms')}
+                                className="h-5 w-5 cursor-pointer text-green-500 lg:hidden"
+                              />
+                              <Button
+                                onClick={() => setEditingSection('coms')}
+                                className="hidden bg-button text-container hover:bg-buttonActive lg:inline-flex"
+                                size="sm"
+                              >
+                                EDIT COMS
+                              </Button>
+                            </>
                           )}
                         </div>
                         <div className="space-y-2">
@@ -1255,14 +1265,19 @@ function CabinetDetailPageContent() {
                               <span className="lg:hidden">SAVE</span>
                             </Button>
                           ) : (
-                            <Button
-                              onClick={() => setEditingSection('mqtt')}
-                              className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
-                              size="sm"
-                            >
-                              <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
-                              <span className="hidden lg:inline">EDIT MQTT</span>
-                            </Button>
+                            <>
+                              <Pencil
+                                onClick={() => setEditingSection('mqtt')}
+                                className="h-5 w-5 cursor-pointer text-green-500 lg:hidden"
+                              />
+                              <Button
+                                onClick={() => setEditingSection('mqtt')}
+                                className="hidden bg-button text-container hover:bg-buttonActive lg:inline-flex"
+                                size="sm"
+                              >
+                                EDIT MQTT
+                              </Button>
+                            </>
                           )}
                         </div>
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
